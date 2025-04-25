@@ -1,5 +1,6 @@
 "use client"
-import { use } from "react"
+
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -7,60 +8,42 @@ import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ArrowLeft, Printer } from "lucide-react"
 import Link from "next/link"
+import { schedulesAPI } from "@/lib/api"
+import { useToast } from "@/components/ui/use-toast"
+import { useAuth } from "@/lib/auth-context"
 
-export default function ScheduleDetailPage({ params }: { params: { id: Promise<string> } }) {
-  // Sử dụng React.use để unwrap params
-  const id = use(params.id)
+export default function ScheduleDetailPage({ params }: { params: { id: string } }) {
+  const { id } = params
+  const scheduleId = Number.parseInt(id)
+  const { hasRole } = useAuth()
+  const { toast } = useToast()
 
-  // Dữ liệu mẫu
-  const schedule = {
-    id: Number.parseInt(id),
-    title: `Lịch công tác tuần ${Number.parseInt(id) + 17} (24/04 - 30/04/2023)`,
-    department: "Phòng Kế hoạch - Tài chính",
-    creator: "Nguyễn Văn B",
-    createdAt: "20/04/2023",
-    period: "Tuần",
-    status: id === "1" ? "pending" : "approved",
-    description: "Lịch công tác tuần của Phòng Kế hoạch - Tài chính",
-    approver: id === "1" ? "" : "Trần Văn E (Thủ trưởng)",
-    approvedAt: id === "1" ? "" : "22/04/2023",
-    comments: id === "1" ? "" : "Lịch công tác đã được phê duyệt. Lưu ý chuẩn bị tốt cho cuộc họp với Sở KH&ĐT.",
-    items: [
-      {
-        id: 1,
-        title: "Họp giao ban đầu tuần",
-        date: "24/04/2023",
-        startTime: "08:00",
-        endTime: "09:30",
-        location: "Phòng họp tầng 2",
-        type: "internal",
-        participants: ["Trưởng phòng", "Phó phòng", "Các chuyên viên"],
-        description: "Họp giao ban đầu tuần để đánh giá kết quả công việc tuần trước và triển khai nhiệm vụ tuần này.",
-      },
-      {
-        id: 2,
-        title: "Làm việc với Sở KH&ĐT",
-        date: "24/04/2023",
-        startTime: "14:00",
-        endTime: "16:30",
-        location: "Trụ sở Sở KH&ĐT",
-        type: "external",
-        participants: ["Trưởng phòng", "Chuyên viên Nguyễn Văn X"],
-        description: "Làm việc với Sở KH&ĐT về việc triển khai các dự án đầu tư công năm 2023.",
-      },
-      {
-        id: 3,
-        title: "Kiểm tra tiến độ dự án",
-        date: "26/04/2023",
-        startTime: "08:30",
-        endTime: "11:30",
-        location: "Hiện trường dự án",
-        type: "field",
-        participants: ["Phó phòng", "Chuyên viên Trần Thị Y", "Chuyên viên Lê Văn Z"],
-        description: "Kiểm tra tiến độ thực hiện dự án XYZ tại hiện trường.",
-      },
-    ],
-  }
+  const [schedule, setSchedule] = useState<any>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const fetchSchedule = async () => {
+      try {
+        setIsLoading(true)
+        const response = await schedulesAPI.getScheduleById(id)
+        setSchedule(response.data)
+        setError(null)
+      } catch (err: any) {
+        console.error("Error fetching schedule:", err)
+        setError(err.message || "Không thể tải thông tin lịch công tác")
+        toast({
+          title: "Lỗi",
+          description: "Không thể tải thông tin lịch công tác",
+          variant: "destructive",
+        })
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchSchedule()
+  }, [scheduleId, toast])
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -90,9 +73,27 @@ export default function ScheduleDetailPage({ params }: { params: { id: Promise<s
     }
   }
 
-  // Giả định vai trò người dùng là người tạo lịch
-  const userRole = "creator" // Có thể là: "creator", "department_head", "deputy", "manager", "staff"
-  const canEdit = ["creator"].includes(userRole) && schedule.status === "pending"
+  // Kiểm tra quyền chỉnh sửa
+  const canEdit = hasRole("creator") && schedule?.status === "pending"
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-[calc(100vh-200px)]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    )
+  }
+
+  if (error || !schedule) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[calc(100vh-200px)]">
+        <p className="text-red-500 mb-4">{error || "Không tìm thấy lịch công tác"}</p>
+        <Button asChild>
+          <Link href="/lich-cong-tac">Quay lại danh sách</Link>
+        </Button>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-8">
@@ -122,7 +123,8 @@ export default function ScheduleDetailPage({ params }: { params: { id: Promise<s
                 {getStatusBadge(schedule.status)}
               </div>
               <CardDescription>
-                {schedule.department} • Người tạo: {schedule.creator} • Ngày tạo: {schedule.createdAt}
+                {schedule.department} • Người tạo: {schedule.creator?.name || "Không xác định"} • Ngày tạo:{" "}
+                {new Date(schedule.createdAt).toLocaleDateString("vi-VN")}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -150,33 +152,41 @@ export default function ScheduleDetailPage({ params }: { params: { id: Promise<s
                     <TabsTrigger value="calendar">Lịch</TabsTrigger>
                   </TabsList>
                   <TabsContent value="list" className="space-y-4 mt-4">
-                    {schedule.items.map((item) => (
-                      <Card key={item.id}>
-                        <CardContent className="p-4">
-                          <div className="flex items-start space-x-4">
-                            <div className="flex flex-col items-center">
-                              <div className="text-sm font-medium">{item.startTime}</div>
-                              <div className="h-full w-px bg-border mt-1"></div>
-                              <div className="text-sm font-medium">{item.endTime}</div>
-                            </div>
-                            <div className="flex-1">
-                              <div className="flex items-center justify-between">
-                                <h3 className="font-medium">{item.title}</h3>
-                                {getEventTypeBadge(item.type)}
+                    {schedule.items && schedule.items.length > 0 ? (
+                      schedule.items.map((item: any) => (
+                        <Card key={item.id}>
+                          <CardContent className="p-4">
+                            <div className="flex items-start space-x-4">
+                              <div className="flex flex-col items-center">
+                                <div className="text-sm font-medium">{item.startTime}</div>
+                                <div className="h-full w-px bg-border mt-1"></div>
+                                <div className="text-sm font-medium">{item.endTime}</div>
                               </div>
-                              <p className="text-sm text-muted-foreground mt-1">
-                                {item.date} • {item.location}
-                              </p>
-                              <p className="text-sm mt-2">{item.description}</p>
-                              <p className="text-sm mt-2">
-                                <span className="text-muted-foreground">Thành phần: </span>
-                                {item.participants.join(", ")}
-                              </p>
+                              <div className="flex-1">
+                                <div className="flex items-center justify-between">
+                                  <h3 className="font-medium">{item.title}</h3>
+                                  {getEventTypeBadge(item.type)}
+                                </div>
+                                <p className="text-sm text-muted-foreground mt-1">
+                                  {new Date(item.date).toLocaleDateString("vi-VN")} • {item.location}
+                                </p>
+                                <p className="text-sm mt-2">{item.description}</p>
+                                <p className="text-sm mt-2">
+                                  <span className="text-muted-foreground">Thành phần: </span>
+                                  {Array.isArray(item.participants)
+                                    ? item.participants.join(", ")
+                                    : typeof item.participants === "string"
+                                      ? item.participants
+                                      : "Không có thông tin"}
+                                </p>
+                              </div>
                             </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+                          </CardContent>
+                        </Card>
+                      ))
+                    ) : (
+                      <p className="text-sm text-muted-foreground">Không có sự kiện nào trong lịch công tác này</p>
+                    )}
                   </TabsContent>
                   <TabsContent value="calendar">
                     <div className="p-4 text-center text-muted-foreground">Xem lịch theo dạng lịch tuần/tháng</div>
@@ -200,12 +210,12 @@ export default function ScheduleDetailPage({ params }: { params: { id: Promise<s
               <Separator />
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Người tạo</p>
-                <p className="mt-1">{schedule.creator}</p>
+                <p className="mt-1">{schedule.creator?.name || "Không xác định"}</p>
               </div>
               <Separator />
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Ngày tạo</p>
-                <p className="mt-1">{schedule.createdAt}</p>
+                <p className="mt-1">{new Date(schedule.createdAt).toLocaleDateString("vi-VN")}</p>
               </div>
               <Separator />
               <div>
@@ -231,7 +241,7 @@ export default function ScheduleDetailPage({ params }: { params: { id: Promise<s
                   <Separator />
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Ngày duyệt</p>
-                    <p className="mt-1">{schedule.approvedAt}</p>
+                    <p className="mt-1">{new Date(schedule.approvedAt).toLocaleDateString("vi-VN")}</p>
                   </div>
                 </>
               )}
@@ -244,30 +254,24 @@ export default function ScheduleDetailPage({ params }: { params: { id: Promise<s
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="rounded-md border p-3">
-                  <div className="flex justify-between">
-                    <p className="font-medium">Lịch công tác tuần 16</p>
-                    <Badge variant="success">Đã duyệt</Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground">10/04 - 16/04/2023</p>
-                  <div className="mt-2 flex justify-end">
-                    <Button variant="ghost" size="sm" asChild>
-                      <Link href="/lich-cong-tac/2">Xem</Link>
-                    </Button>
-                  </div>
-                </div>
-                <div className="rounded-md border p-3">
-                  <div className="flex justify-between">
-                    <p className="font-medium">Lịch công tác tháng 4</p>
-                    <Badge variant="success">Đã duyệt</Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground">01/04 - 30/04/2023</p>
-                  <div className="mt-2 flex justify-end">
-                    <Button variant="ghost" size="sm" asChild>
-                      <Link href="/lich-cong-tac/4">Xem</Link>
-                    </Button>
-                  </div>
-                </div>
+                {schedule.relatedSchedules && schedule.relatedSchedules.length > 0 ? (
+                  schedule.relatedSchedules.map((relatedSchedule: any) => (
+                    <div key={relatedSchedule.id} className="rounded-md border p-3">
+                      <div className="flex justify-between">
+                        <p className="font-medium">{relatedSchedule.title}</p>
+                        <Badge variant="success">Đã duyệt</Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground">{relatedSchedule.period}</p>
+                      <div className="mt-2 flex justify-end">
+                        <Button variant="ghost" size="sm" asChild>
+                          <Link href={`/lich-cong-tac/${relatedSchedule.id}`}>Xem</Link>
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground">Không có lịch liên quan</p>
+                )}
               </div>
             </CardContent>
           </Card>

@@ -2,142 +2,138 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
-import { AlertCircle, Loader2 } from "lucide-react"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import Link from "next/link"
-import { useAuth } from "@/lib/auth-context"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { useToast } from "@/components/ui/use-toast"
+import { Loader2, AlertCircle } from "lucide-react"
+import { useAuth } from "@/lib/auth-context"
 
 export default function LoginPage() {
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [rememberMe, setRememberMe] = useState(false)
-  const [loading, setLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const callbackUrl = searchParams.get("callbackUrl") || "/"
   const { login } = useAuth()
   const { toast } = useToast()
 
-  // Tải thông tin đăng nhập đã lưu nếu có
-  useEffect(() => {
-    const savedUsername = localStorage.getItem("rememberedUsername")
-    if (savedUsername) {
-      setUsername(savedUsername)
-      setRememberMe(true)
-    }
-  }, [])
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-
-    if (!username || !password) {
-      setError("Vui lòng nhập tên đăng nhập và mật khẩu")
-      return
-    }
+    setError(null)
+    setIsLoading(true)
 
     try {
-      setLoading(true)
-      setError(null)
-      await login(username, password)
-
-      // Lưu username nếu chọn "Ghi nhớ đăng nhập"
-      if (rememberMe) {
-        localStorage.setItem("rememberedUsername", username)
-      } else {
-        localStorage.removeItem("rememberedUsername")
-      }
-
-      // Đăng nhập thành công sẽ chuyển hướng trong hàm login
-    } catch (error) {
-      console.error("Login error:", error)
-      setError("Tên đăng nhập hoặc mật khẩu không chính xác")
+      await login(username, password, rememberMe)
       toast({
-        title: "Đăng nhập thất bại",
-        description: "Tên đăng nhập hoặc mật khẩu không chính xác",
-        variant: "destructive",
+        title: "Đăng nhập thành công",
+        description: "Chào mừng bạn quay trở lại!",
       })
+      router.push(callbackUrl)
+    } catch (error: any) {
+      console.error("Login error:", error)
+      setError(error.response?.data?.message || "Đăng nhập thất bại. Vui lòng kiểm tra lại tên đăng nhập và mật khẩu.")
     } finally {
-      setLoading(false)
+      setIsLoading(false)
     }
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-accent/30 px-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1 text-center">
-          <CardTitle className="text-2xl font-bold">Đăng nhập</CardTitle>
-          <CardDescription>Nhập thông tin đăng nhập để truy cập hệ thống</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {error && (
-            <Alert variant="destructive" className="mb-4">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="username">Tên đăng nhập</Label>
-              <Input
-                id="username"
-                placeholder="Nhập tên đăng nhập"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                disabled={loading}
-              />
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password">Mật khẩu</Label>
-                <Link href="/quen-mat-khau" className="text-xs text-primary hover:underline">
-                  Quên mật khẩu?
-                </Link>
+    <div className="flex flex-col items-center justify-center min-h-screen">
+      <div className="w-full max-w-md">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-primary">Hệ thống quản lý văn bản</h1>
+          <p className="text-muted-foreground mt-2">Đăng nhập để tiếp tục</p>
+        </div>
+
+        <Card className="border-primary/10 shadow-md">
+          <CardHeader className="space-y-1">
+            <CardTitle className="text-2xl text-center">Đăng nhập</CardTitle>
+            <CardDescription className="text-center">
+              Nhập thông tin đăng nhập của bạn để truy cập hệ thống
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md flex items-center mb-4">
+                <AlertCircle className="h-4 w-4 mr-2" />
+                <span className="text-sm">{error}</span>
               </div>
-              <Input
-                id="password"
-                type="password"
-                placeholder="Nhập mật khẩu"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                disabled={loading}
-              />
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="username">Tên đăng nhập</Label>
+                <Input
+                  id="username"
+                  placeholder="Nhập tên đăng nhập"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  required
+                  disabled={isLoading}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Mật khẩu</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Nhập mật khẩu"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  disabled={isLoading}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="remember"
+                    checked={rememberMe}
+                    onCheckedChange={(checked) => setRememberMe(checked === true)}
+                  />
+                  <Label htmlFor="remember" className="text-sm cursor-pointer">
+                    Ghi nhớ đăng nhập
+                  </Label>
+                </div>
+                <Button variant="link" className="p-0 h-auto text-sm" asChild>
+                  <a href="/quen-mat-khau">Quên mật khẩu?</a>
+                </Button>
+              </div>
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Đang đăng nhập...
+                  </>
+                ) : (
+                  "Đăng nhập"
+                )}
+              </Button>
+            </form>
+          </CardContent>
+          <CardFooter>
+            <div className="w-full text-center text-sm text-muted-foreground">
+              <div className="mt-2 p-3 bg-muted/50 rounded-md">
+                <p className="font-medium text-foreground">Tài khoản mặc định:</p>
+                <p className="mt-1">
+                  Tên đăng nhập: <span className="font-medium">admin</span>
+                </p>
+                <p>
+                  Mật khẩu: <span className="font-medium">admin123</span>
+                </p>
+              </div>
             </div>
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="remember"
-                checked={rememberMe}
-                onCheckedChange={(checked) => setRememberMe(checked as boolean)}
-                disabled={loading}
-              />
-              <Label htmlFor="remember" className="text-sm font-normal">
-                Ghi nhớ đăng nhập
-              </Label>
-            </div>
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Đang đăng nhập...
-                </>
-              ) : (
-                "Đăng nhập"
-              )}
-            </Button>
-          </form>
-        </CardContent>
-        <CardFooter className="flex flex-col">
-          <div className="mt-2 text-center text-sm text-muted-foreground">
-            <p>Tài khoản mặc định:</p>
-            <p className="mt-1">
-              <strong>Admin:</strong> admin / admin123
-            </p>
-          </div>
-        </CardFooter>
-      </Card>
+          </CardFooter>
+        </Card>
+      </div>
     </div>
   )
 }

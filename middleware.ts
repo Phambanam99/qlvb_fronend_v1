@@ -1,34 +1,45 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 
-// Danh sách các đường dẫn không cần xác thực
-const publicPaths = ["/dang-nhap", "/quen-mat-khau", "/api"]
-
 export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl
-
-  // Kiểm tra xem đường dẫn hiện tại có phải là đường dẫn công khai không
-  const isPublicPath = publicPaths.some((path) => pathname.startsWith(path) || pathname.includes("/_next/"))
-
-  // Lấy token từ cookie hoặc localStorage
+  // Lấy token từ cookie
   const token = request.cookies.get("auth-token")?.value
 
+  // Đường dẫn hiện tại
+  const { pathname } = request.nextUrl
+
+  // Danh sách các đường dẫn công khai (không cần xác thực)
+  const publicPaths = ["/dang-nhap", "/quen-mat-khau"]
+
+  // Kiểm tra nếu đường dẫn là API hoặc các tài nguyên tĩnh
+  const isApiOrStaticPath = pathname.startsWith("/api") || pathname.startsWith("/_next") || pathname.includes(".")
+
+  // Nếu đường dẫn là công khai hoặc API/tài nguyên tĩnh, cho phép truy cập
+  if (publicPaths.some((path) => pathname.startsWith(path)) || isApiOrStaticPath) {
+    return NextResponse.next()
+  }
+
   // Nếu không có token và không phải đường dẫn công khai, chuyển hướng đến trang đăng nhập
-  if (!token && !isPublicPath) {
-    const loginUrl = new URL("/dang-nhap", request.url)
-    return NextResponse.redirect(loginUrl)
+  if (!token) {
+    const url = new URL("/dang-nhap", request.url)
+    url.searchParams.set("callbackUrl", encodeURI(pathname))
+    return NextResponse.redirect(url)
   }
 
-  // Nếu có token và đang ở trang đăng nhập, chuyển hướng đến trang chủ
-  if (token && pathname === "/dang-nhap") {
-    const homeUrl = new URL("/", request.url)
-    return NextResponse.redirect(homeUrl)
-  }
-
+  // Nếu có token, cho phép truy cập
   return NextResponse.next()
 }
 
-// Chỉ áp dụng middleware cho các đường dẫn sau
+// Cấu hình middleware chỉ chạy trên các đường dẫn cụ thể
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  matcher: [
+    /*
+     * Match all request paths except:
+     * 1. /api routes
+     * 2. /_next/static (static files)
+     * 3. /_next/image (image optimization files)
+     * 4. /favicon.ico, /sitemap.xml, /robots.txt (static files)
+     */
+    "/((?!api|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)",
+  ],
 }

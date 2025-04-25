@@ -1,16 +1,17 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Search, Filter, Loader2, AlertCircle } from 'lucide-react'
+import { Plus, Search, Filter, Loader2, AlertCircle } from "lucide-react"
 import Link from "next/link"
 import { outgoingDocumentsAPI } from "@/lib/api"
 import { useToast } from "@/components/ui/use-toast"
+import { useOutgoingDocuments } from "@/lib/store"
 
 interface OutgoingDocument {
   id: number | string
@@ -24,33 +25,31 @@ interface OutgoingDocument {
 export default function OutgoingDocumentsPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
-  const [documents, setDocuments] = useState<OutgoingDocument[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const { toast } = useToast()
+  const { outgoingDocuments, loading, setOutgoingDocuments, setLoading } = useOutgoingDocuments()
 
   useEffect(() => {
     const fetchDocuments = async () => {
       try {
         setLoading(true)
-        setError(null)
         const response = await outgoingDocumentsAPI.getAllDocuments()
-        
+
         if (response && response.documents) {
-          setDocuments(response.documents.map((doc: any) => ({
-            id: doc.id,
-            number: doc.number,
-            title: doc.title,
-            sentDate: new Date(doc.sentDate).toLocaleDateString("vi-VN"),
-            recipient: doc.recipient,
-            status: doc.status,
-          })))
+          setOutgoingDocuments(
+            response.documents.map((doc: any) => ({
+              id: doc.id,
+              number: doc.number,
+              title: doc.title,
+              sentDate: new Date(doc.sentDate).toLocaleDateString("vi-VN"),
+              recipient: doc.recipient,
+              status: doc.status,
+            })),
+          )
         } else {
           throw new Error("Không thể tải dữ liệu văn bản đi")
         }
       } catch (error) {
         console.error("Error fetching outgoing documents:", error)
-        setError("Không thể tải dữ liệu văn bản đi. Vui lòng thử lại sau.")
         toast({
           title: "Lỗi",
           description: "Không thể tải dữ liệu văn bản đi. Vui lòng thử lại sau.",
@@ -62,10 +61,10 @@ export default function OutgoingDocumentsPage() {
     }
 
     fetchDocuments()
-  }, [toast])
+  }, [toast, setOutgoingDocuments, setLoading])
 
   // Lọc dữ liệu
-  const filteredDocuments = documents.filter((doc) => {
+  const filteredDocuments = outgoingDocuments.filter((doc) => {
     // Lọc theo tìm kiếm
     const matchesSearch =
       doc.number.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -120,17 +119,19 @@ export default function OutgoingDocumentsPage() {
     )
   }
 
-  if (error) {
+  if (outgoingDocuments.length === 0) {
     return (
       <div className="flex h-[80vh] items-center justify-center">
         <div className="text-center">
-          <div className="rounded-full bg-red-100 p-3 mx-auto w-16 h-16 flex items-center justify-center">
-            <AlertCircle className="h-8 w-8 text-red-500" />
+          <div className="rounded-full bg-amber-100 p-3 mx-auto w-16 h-16 flex items-center justify-center">
+            <AlertCircle className="h-8 w-8 text-amber-500" />
           </div>
-          <h2 className="mt-4 text-xl font-semibold">Đã xảy ra lỗi</h2>
-          <p className="mt-2 text-sm text-muted-foreground">{error}</p>
-          <Button onClick={() => window.location.reload()} className="mt-4">
-            Thử lại
+          <h2 className="mt-4 text-xl font-semibold">Không có văn bản nào</h2>
+          <p className="mt-2 text-sm text-muted-foreground">Chưa có văn bản đi nào trong hệ thống</p>
+          <Button asChild className="mt-4">
+            <Link href="/van-ban-di/them-moi">
+              <Plus className="mr-2 h-4 w-4" /> Thêm mới
+            </Link>
           </Button>
         </div>
       </div>
@@ -220,7 +221,7 @@ export default function OutgoingDocumentsPage() {
               ) : (
                 <TableRow>
                   <TableCell colSpan={6} className="h-24 text-center">
-                    Không có văn bản nào
+                    Không có văn bản nào phù hợp với điều kiện tìm kiếm
                   </TableCell>
                 </TableRow>
               )}

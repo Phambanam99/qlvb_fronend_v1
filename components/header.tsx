@@ -30,7 +30,7 @@ export default function Header() {
               <Button variant="ghost" className="relative h-9 w-9 rounded-full hover:bg-primary/10">
                 <Avatar className="h-9 w-9 border border-primary/20">
                   <AvatarImage src="/placeholder.svg?height=36&width=36" alt="Avatar" />
-                  <AvatarFallback className="bg-primary/10 text-primary">{user?.avatar || "??"}</AvatarFallback>
+                  <AvatarFallback className="bg-primary/10 text-primary">{user?.fullName?.charAt(0) || "??"}</AvatarFallback>
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>

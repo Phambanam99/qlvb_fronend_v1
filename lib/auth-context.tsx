@@ -1,117 +1,83 @@
 "use client"
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
-import { useRouter } from "next/navigation"
 import { authAPI } from "./api"
 import Cookies from "js-cookie"
 
-export type UserRole = "admin" | "manager" | "department_head" | "staff" | "clerk"
-
-export interface User {
+interface User {
   id: string
   username: string
   fullName: string
   email: string
-  role: UserRole
+  role: string
   department: string
-  position: string
-  avatar: string
+  permissions?: string[]
 }
 
 interface AuthContextType {
   user: User | null
-  loading: boolean
-  login: (username: string, password: string) => Promise<void>
-  logout: () => void
+  isLoading: boolean
   isAuthenticated: boolean
-  hasPermission: (permission: string | null) => boolean
-  hasRole: (role: UserRole | UserRole[]) => boolean
-}
-
-// Define role permissions
-const rolePermissions: Record<UserRole, string[]> = {
-  admin: [
-    "manage_users",
-    "manage_settings",
-    "view_all_documents",
-    "manage_all_documents",
-    "approve_documents",
-    "assign_documents",
-    "create_documents",
-    "delete_documents",
-    "view_reports",
-    "manage_departments",
-  ],
-  manager: ["view_all_documents", "approve_documents", "view_reports", "assign_documents", "create_documents"],
-  department_head: [
-    "view_department_documents",
-    "assign_department_documents",
-    "review_department_documents",
-    "create_documents",
-    "view_department_reports",
-  ],
-  staff: ["view_assigned_documents", "process_assigned_documents", "create_documents"],
-  clerk: ["register_documents", "view_all_documents", "archive_documents", "create_documents"],
+  login: (username: string, password: string, rememberMe?: boolean) => Promise<void>
+  logout: () => void
+  hasPermission: (permission: string) => boolean
+  hasRole: (role: string | string[]) => boolean
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-export const AuthProvider = ({ children }: { children: ReactNode }) => {
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
-  const router = useRouter()
+  const [isLoading, setIsLoading] = useState(true)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
 
-  // Check if user is already logged in
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        // Only run in browser environment
-        if (typeof window === "undefined") {
-          setLoading(false)
-          return
-        }
-
-        const token = localStorage.getItem("token") || Cookies.get("auth-token")
+        const token = localStorage.getItem("token")
         if (token) {
-          try {
-            const userData = await authAPI.getCurrentUser()
-            setUser(userData.user)
-          } catch (error) {
-            console.error("Error fetching user data:", error)
-            localStorage.removeItem("token")
-            Cookies.remove("auth-token")
-          }
+          const userData = await authAPI.getCurrentUser()
+          setUser(userData.user)
+          setIsAuthenticated(true)
         }
       } catch (error) {
-        console.error("Auth check error:", error)
+        console.error("Authentication check failed:", error)
+        // Xóa token nếu không hợp lệ
+        localStorage.removeItem("token")
+        Cookies.remove("auth-token")
       } finally {
-        setLoading(false)
+        setIsLoading(false)
       }
     }
 
     checkAuth()
   }, [])
 
-  const login = async (username: string, password: string) => {
+  const login = async (username: string, password: string, rememberMe = false) => {
+    setIsLoading(true)
     try {
-      setLoading(true)
       const response = await authAPI.login(username, password)
+      const { token, user } = response
 
-      if (response.token && response.user) {
-        localStorage.setItem("token", response.token)
-        // Lưu token vào cookie để middleware có thể đọc
-        Cookies.set("auth-token", response.token, { expires: 7 })
-        setUser(response.user)
-        router.push("/")
-        return
+      // Lưu token vào localStorage và cookie
+      localStorage.setItem("token", token)
+
+      // Đặt cookie với thời hạn phù hợp
+      if (rememberMe) {
+        // 30 ngày nếu "Ghi nhớ đăng nhập"
+        Cookies.set("auth-token", token, { expires: 30, sameSite: "strict" })
+      } else {
+        // Session cookie nếu không "Ghi nhớ đăng nhập"
+        Cookies.set("auth-token", token, { sameSite: "strict" })
       }
 
-      throw new Error("Invalid login response")
+      setUser(user)
+      setIsAuthenticated(true)
     } catch (error) {
-      console.error("Login error:", error)
+      console.error("Login failed:", error)
       throw error
     } finally {
-      setLoading(false)
+      setIsLoading(false)
     }
   }
 
@@ -119,18 +85,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     localStorage.removeItem("token")
     Cookies.remove("auth-token")
     setUser(null)
-    router.push("/dang-nhap")
+    setIsAuthenticated(false)
+    window.location.href = "/dang-nhap"
   }
 
-  const hasPermission = (permission: string | null) => {
-    if (!user || !permission) return false
-    return rolePermissions[user.role as UserRole]?.includes(permission) || false
+  const hasPermission = (permission: string) => {
+    if (!user || !user.permissions) return false
+    return user.permissions.includes(permission)
   }
 
-  const hasRole = (role: UserRole | UserRole[]) => {
+  const hasRole = (role: string | string[]) => {
     if (!user) return false
     if (Array.isArray(role)) {
-      return role.includes(user.role as UserRole)
+      return role.includes(user.role)
     }
     return user.role === role
   }
@@ -139,10 +106,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     <AuthContext.Provider
       value={{
         user,
-        loading,
+        isLoading,
+        isAuthenticated,
         login,
         logout,
-        isAuthenticated: !!user,
         hasPermission,
         hasRole,
       }}

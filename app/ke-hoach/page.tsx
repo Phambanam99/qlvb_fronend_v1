@@ -1,59 +1,33 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Input } from "@/components/ui/input"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Search, Filter, Loader2, AlertCircle } from 'lucide-react'
+import { Plus, Search } from "lucide-react"
 import Link from "next/link"
+import { Input } from "@/components/ui/input"
 import { workPlansAPI } from "@/lib/api"
 import { useToast } from "@/components/ui/use-toast"
-
-interface WorkPlan {
-  id: number | string
-  title: string
-  department: string
-  startDate: string
-  endDate: string
-  status: string
-}
+import { useWorkPlans } from "@/lib/store"
+import { Skeleton } from "@/components/ui/skeleton"
 
 export default function WorkPlansPage() {
-  const [searchQuery, setSearchQuery] = useState("")
-  const [statusFilter, setStatusFilter] = useState("all")
-  const [workPlans, setWorkPlans] = useState<WorkPlan[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const { toast } = useToast()
+  const { workPlans, loading, setWorkPlans, setLoading } = useWorkPlans()
 
   useEffect(() => {
     const fetchWorkPlans = async () => {
       try {
         setLoading(true)
-        setError(null)
-        const response = await workPlansAPI.getAllWorkPlans()
-        
-        if (response && response.workPlans) {
-          setWorkPlans(response.workPlans.map((plan: any) => ({
-            id: plan.id,
-            title: plan.title,
-            department: plan.department,
-            startDate: new Date(plan.startDate).toLocaleDateString("vi-VN"),
-            endDate: new Date(plan.endDate).toLocaleDateString("vi-VN"),
-            status: plan.status,
-          })))
-        } else {
-          throw new Error("Không thể tải dữ liệu kế hoạch")
-        }
+        const data = await workPlansAPI.getAllWorkPlans()
+        setWorkPlans(data)
       } catch (error) {
         console.error("Error fetching work plans:", error)
-        setError("Không thể tải dữ liệu kế hoạch. Vui lòng thử lại sau.")
         toast({
           title: "Lỗi",
-          description: "Không thể tải dữ liệu kế hoạch. Vui lòng thử lại sau.",
+          description: "Không thể tải danh sách kế hoạch. Vui lòng thử lại sau.",
           variant: "destructive",
         })
       } finally {
@@ -62,148 +36,180 @@ export default function WorkPlansPage() {
     }
 
     fetchWorkPlans()
-  }, [toast])
-
-  // Lọc dữ liệu
-  const filteredWorkPlans = workPlans.filter((plan) => {
-    // Lọc theo tìm kiếm
-    const matchesSearch =
-      plan.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      plan.department.toLowerCase().includes(searchQuery.toLowerCase())
-
-    // Lọc theo trạng thái
-    const matchesStatus = statusFilter === "all" || plan.status === statusFilter
-
-    return matchesSearch && matchesStatus
-  })
+  }, [toast, setWorkPlans, setLoading])
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "planned":
-        return <Badge variant="outline">Kế hoạch</Badge>
-      case "in_progress":
-        return <Badge variant="secondary">Đang thực hiện</Badge>
+      case "draft":
+        return <Badge variant="outline">Dự thảo</Badge>
+      case "pending":
+        return <Badge variant="secondary">Chờ duyệt</Badge>
+      case "approved":
+        return <Badge variant="default">Đã duyệt</Badge>
+      case "rejected":
+        return <Badge variant="destructive">Từ chối</Badge>
       case "completed":
-        return <Badge variant="success">Hoàn thành</Badge>
+        return <Badge className="bg-green-500 hover:bg-green-600">Hoàn thành</Badge>
       default:
-        return <Badge variant="outline">Không xác định</Badge>
+        return <Badge variant="outline">Khác</Badge>
     }
-  }
-
-  if (loading) {
-    return (
-      <div className="flex h-[80vh] items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
-          <p className="mt-2 text-sm text-muted-foreground">Đang tải dữ liệu...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="flex h-[80vh] items-center justify-center">
-        <div className="text-center">
-          <div className="rounded-full bg-red-100 p-3 mx-auto w-16 h-16 flex items-center justify-center">
-            <AlertCircle className="h-8 w-8 text-red-500" />
-          </div>
-          <h2 className="mt-4 text-xl font-semibold">Đã xảy ra lỗi</h2>
-          <p className="mt-2 text-sm text-muted-foreground">{error}</p>
-          <Button onClick={() => window.location.reload()} className="mt-4">
-            Thử lại
-          </Button>
-        </div>
-      </div>
-    )
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight">Kế hoạch công tác</h1>
-        <p className="text-muted-foreground">Quản lý các kế hoạch công tác của đơn vị</p>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold tracking-tight">Kế hoạch công tác</h1>
+        <Button asChild>
+          <Link href="/ke-hoach/tao-moi">
+            <Plus className="mr-2 h-4 w-4" />
+            Tạo kế hoạch mới
+          </Link>
+        </Button>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-        <div className="flex w-full sm:w-auto items-center space-x-2">
-          <Input 
-            placeholder="Tìm kiếm kế hoạch..." 
-            className="w-full sm:w-[300px]" 
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-          <Button variant="outline" size="icon">
-            <Search className="h-4 w-4" />
-          </Button>
+      <div className="flex items-center space-x-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input type="search" placeholder="Tìm kiếm kế hoạch..." className="w-full bg-background pl-8" />
         </div>
-        <div className="flex w-full sm:w-auto items-center space-x-2">
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-full sm:w-[180px]">
-              <SelectValue placeholder="Trạng thái" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tất cả</SelectItem>
-              <SelectItem value="planned">Kế hoạch</SelectItem>
-              <SelectItem value="in_progress">Đang thực hiện</SelectItem>
-              <SelectItem value="completed">Hoàn thành</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button variant="outline" size="icon">
-            <Filter className="h-4 w-4" />
-          </Button>
-          <Button asChild>
-            <Link href="/ke-hoach/them-moi">
-              <Plus className="mr-2 h-4 w-4" /> Thêm mới
-            </Link>
-          </Button>
-        </div>
+        <Button variant="outline">Lọc</Button>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Danh sách kế hoạch công tác</CardTitle>
-          <CardDescription>Danh sách các kế hoạch công tác của đơn vị</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Tên kế hoạch</TableHead>
-                <TableHead className="hidden md:table-cell">Phòng ban</TableHead>
-                <TableHead className="hidden md:table-cell">Thời gian</TableHead>
-                <TableHead>Trạng thái</TableHead>
-                <TableHead className="text-right">Thao tác</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredWorkPlans.length > 0 ? (
-                filteredWorkPlans.map((plan) => (
-                  <TableRow key={plan.id}>
-                    <TableCell className="font-medium">{plan.title}</TableCell>
-                    <TableCell className="hidden md:table-cell">{plan.department}</TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      {plan.startDate} - {plan.endDate}
-                    </TableCell>
-                    <TableCell>{getStatusBadge(plan.status)}</TableCell>
-                    <TableCell className="text-right">
+      <Tabs defaultValue="all">
+        <TabsList>
+          <TabsTrigger value="all">Tất cả</TabsTrigger>
+          <TabsTrigger value="draft">Dự thảo</TabsTrigger>
+          <TabsTrigger value="pending">Chờ duyệt</TabsTrigger>
+          <TabsTrigger value="approved">Đã duyệt</TabsTrigger>
+          <TabsTrigger value="completed">Hoàn thành</TabsTrigger>
+        </TabsList>
+        <TabsContent value="all" className="mt-4">
+          {loading ? (
+            <WorkPlansSkeleton />
+          ) : workPlans.length > 0 ? (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {workPlans.map((workPlan) => (
+                <Card key={workPlan.id} className="overflow-hidden">
+                  <CardHeader className="p-4">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <CardTitle className="line-clamp-1">{workPlan.title}</CardTitle>
+                        <CardDescription>{workPlan.department}</CardDescription>
+                      </div>
+                      {getStatusBadge(workPlan.status)}
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-4 pt-0">
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div>
+                        <p className="text-muted-foreground">Bắt đầu</p>
+                        <p>{workPlan.startDate}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Kết thúc</p>
+                        <p>{workPlan.endDate}</p>
+                      </div>
+                    </div>
+                    <div className="mt-4 flex justify-end">
                       <Button variant="ghost" size="sm" asChild>
-                        <Link href={`/ke-hoach/${plan.id}`}>Chi tiết</Link>
+                        <Link href={`/ke-hoach/${workPlan.id}`}>Xem chi tiết</Link>
                       </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center">
-                    Không có kế hoạch nào
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-12">
+              <p className="text-muted-foreground mb-4">Chưa có kế hoạch nào</p>
+              <Button asChild>
+                <Link href="/ke-hoach/tao-moi">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Tạo kế hoạch mới
+                </Link>
+              </Button>
+            </div>
+          )}
+        </TabsContent>
+        <TabsContent value="draft" className="mt-4">
+          {loading ? (
+            <WorkPlansSkeleton />
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {workPlans
+                .filter((workPlan) => workPlan.status === "draft")
+                .map((workPlan) => (
+                  <Card key={workPlan.id} className="overflow-hidden">
+                    <CardHeader className="p-4">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <CardTitle className="line-clamp-1">{workPlan.title}</CardTitle>
+                          <CardDescription>{workPlan.department}</CardDescription>
+                        </div>
+                        {getStatusBadge(workPlan.status)}
+                      </div>
+                    </CardHeader>
+                    <CardContent className="p-4 pt-0">
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div>
+                          <p className="text-muted-foreground">Bắt đầu</p>
+                          <p>{workPlan.startDate}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Kết thúc</p>
+                          <p>{workPlan.endDate}</p>
+                        </div>
+                      </div>
+                      <div className="mt-4 flex justify-end">
+                        <Button variant="ghost" size="sm" asChild>
+                          <Link href={`/ke-hoach/${workPlan.id}`}>Xem chi tiết</Link>
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+            </div>
+          )}
+        </TabsContent>
+        {/* Các tab khác tương tự */}
+      </Tabs>
+    </div>
+  )
+}
+
+function WorkPlansSkeleton() {
+  return (
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      {Array(6)
+        .fill(0)
+        .map((_, i) => (
+          <Card key={i} className="overflow-hidden">
+            <CardHeader className="p-4">
+              <div className="flex items-start justify-between">
+                <div className="space-y-2">
+                  <Skeleton className="h-5 w-40" />
+                  <Skeleton className="h-4 w-32" />
+                </div>
+                <Skeleton className="h-5 w-16" />
+              </div>
+            </CardHeader>
+            <CardContent className="p-4 pt-0">
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-16" />
+                  <Skeleton className="h-4 w-20" />
+                </div>
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-16" />
+                  <Skeleton className="h-4 w-20" />
+                </div>
+              </div>
+              <div className="mt-4 flex justify-end">
+                <Skeleton className="h-8 w-24" />
+              </div>
+            </CardContent>
+          </Card>
+        ))}
     </div>
   )
 }

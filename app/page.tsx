@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { ArrowRight, FileText, Calendar, ClipboardList, Send, Loader2, AlertCircle } from 'lucide-react'
+import { ArrowRight, FileText, Calendar, ClipboardList, Send, Loader2, AlertCircle } from "lucide-react"
 import Link from "next/link"
 import { incomingDocumentsAPI, outgoingDocumentsAPI, workPlansAPI, schedulesAPI } from "@/lib/api"
 import { useToast } from "@/components/ui/use-toast"
@@ -61,14 +61,15 @@ export default function Home() {
 
         // Fetch incoming documents
         const incomingDocsResponse = await incomingDocumentsAPI.getAllDocuments()
+        console.log("Incoming documents response:", incomingDocsResponse)
         const pendingIncomingDocs = incomingDocsResponse.documents.filter(
-          (doc: any) => doc.status === "pending" || doc.status === "processing"
+          (doc: any) => doc.status === "pending" || doc.status === "processing",
         )
 
         // Fetch outgoing documents
         const outgoingDocsResponse = await outgoingDocumentsAPI.getAllDocuments()
         const pendingOutgoingDocs = outgoingDocsResponse.documents.filter(
-          (doc: any) => doc.status === "pending_approval" || doc.status === "draft"
+          (doc: any) => doc.status === "pending_approval" || doc.status === "draft",
         )
 
         // Fetch work plans
@@ -109,7 +110,7 @@ export default function Home() {
             id: doc.id,
             number: doc.number,
             title: doc.title,
-          }))
+          })),
         )
 
         // Set today's events
@@ -123,7 +124,7 @@ export default function Home() {
                 minute: "2-digit",
               }),
               location: event.location,
-            }))
+            })),
           )
         }
       } catch (error) {

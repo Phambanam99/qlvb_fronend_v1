@@ -1,7 +1,6 @@
 "use client"
 
-import { use } from "react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
@@ -21,60 +20,44 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { schedulesAPI } from "@/lib/api"
+import { useToast } from "@/components/ui/use-toast"
+import { useRouter } from "next/navigation"
 
-export default function ApproveSchedulePage({ params }: { params: { id: Promise<string> } }) {
-  // Sử dụng React.use để unwrap params
-  const id = use(params.id)
+export default function ApproveSchedulePage({ params }: { params: { id: string } }) {
+  const { id } = params
+  const scheduleId = Number.parseInt(id)
+  const router = useRouter()
+  const { toast } = useToast()
 
+  const [schedule, setSchedule] = useState<any>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [comments, setComments] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // Dữ liệu mẫu
-  const schedule = {
-    id: Number.parseInt(id),
-    title: `Lịch công tác tuần ${Number.parseInt(id) + 17} (24/04 - 30/04/2023)`,
-    department: "Phòng Kế hoạch - Tài chính",
-    creator: "Nguyễn Văn B",
-    createdAt: "20/04/2023",
-    period: "Tuần",
-    status: "pending",
-    description: "Lịch công tác tuần của Phòng Kế hoạch - Tài chính",
-    items: [
-      {
-        id: 1,
-        title: "Họp giao ban đầu tuần",
-        date: "24/04/2023",
-        startTime: "08:00",
-        endTime: "09:30",
-        location: "Phòng họp tầng 2",
-        type: "internal",
-        participants: ["Trưởng phòng", "Phó phòng", "Các chuyên viên"],
-        description: "Họp giao ban đầu tuần để đánh giá kết quả công việc tuần trước và triển khai nhiệm vụ tuần này.",
-      },
-      {
-        id: 2,
-        title: "Làm việc với Sở KH&ĐT",
-        date: "24/04/2023",
-        startTime: "14:00",
-        endTime: "16:30",
-        location: "Trụ sở Sở KH&ĐT",
-        type: "external",
-        participants: ["Trưởng phòng", "Chuyên viên Nguyễn Văn X"],
-        description: "Làm việc với Sở KH&ĐT về việc triển khai các dự án đầu tư công năm 2023.",
-      },
-      {
-        id: 3,
-        title: "Kiểm tra tiến độ dự án",
-        date: "26/04/2023",
-        startTime: "08:30",
-        endTime: "11:30",
-        location: "Hiện trường dự án",
-        type: "field",
-        participants: ["Phó phòng", "Chuyên viên Trần Thị Y", "Chuyên viên Lê Văn Z"],
-        description: "Kiểm tra tiến độ thực hiện dự án XYZ tại hiện trường.",
-      },
-    ],
-  }
+  useEffect(() => {
+    const fetchSchedule = async () => {
+      try {
+        setIsLoading(true)
+        const response = await schedulesAPI.getScheduleById(scheduleId)
+        setSchedule(response.data)
+        setError(null)
+      } catch (err: any) {
+        console.error("Error fetching schedule:", err)
+        setError(err.message || "Không thể tải thông tin lịch công tác")
+        toast({
+          title: "Lỗi",
+          description: "Không thể tải thông tin lịch công tác",
+          variant: "destructive",
+        })
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchSchedule()
+  }, [scheduleId, toast])
 
   const getEventTypeBadge = (type: string) => {
     switch (type) {
@@ -92,21 +75,70 @@ export default function ApproveSchedulePage({ params }: { params: { id: Promise<
   }
 
   const handleApprove = async () => {
-    setIsSubmitting(true)
-    // Giả lập gửi dữ liệu
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    setIsSubmitting(false)
-    alert("Đã phê duyệt lịch công tác thành công!")
-    // Trong thực tế sẽ chuyển hướng đến trang danh sách
+    try {
+      setIsSubmitting(true)
+      await schedulesAPI.approveSchedule(scheduleId, { comments })
+
+      toast({
+        title: "Thành công",
+        description: "Đã phê duyệt lịch công tác thành công!",
+      })
+
+      // Chuyển hướng về trang danh sách sau khi phê duyệt
+      router.push("/lich-cong-tac")
+    } catch (err: any) {
+      console.error("Error approving schedule:", err)
+      toast({
+        title: "Lỗi",
+        description: err.message || "Không thể phê duyệt lịch công tác",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const handleReject = async () => {
-    setIsSubmitting(true)
-    // Giả lập gửi dữ liệu
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    setIsSubmitting(false)
-    alert("Đã từ chối lịch công tác thành công!")
-    // Trong thực tế sẽ chuyển hướng đến trang danh sách
+    try {
+      setIsSubmitting(true)
+      await schedulesAPI.rejectSchedule(scheduleId, { comments })
+
+      toast({
+        title: "Thành công",
+        description: "Đã từ chối lịch công tác thành công!",
+      })
+
+      // Chuyển hướng về trang danh sách sau khi từ chối
+      router.push("/lich-cong-tac")
+    } catch (err: any) {
+      console.error("Error rejecting schedule:", err)
+      toast({
+        title: "Lỗi",
+        description: err.message || "Không thể từ chối lịch công tác",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-[calc(100vh-200px)]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    )
+  }
+
+  if (error || !schedule) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[calc(100vh-200px)]">
+        <p className="text-red-500 mb-4">{error || "Không tìm thấy lịch công tác"}</p>
+        <Button asChild>
+          <Link href="/lich-cong-tac">Quay lại danh sách</Link>
+        </Button>
+      </div>
+    )
   }
 
   return (
@@ -131,7 +163,8 @@ export default function ApproveSchedulePage({ params }: { params: { id: Promise<
             <CardHeader>
               <CardTitle className="text-xl">{schedule.title}</CardTitle>
               <CardDescription>
-                {schedule.department} • Người tạo: {schedule.creator} • Ngày tạo: {schedule.createdAt}
+                {schedule.department} • Người tạo: {schedule.creator?.name || "Không xác định"} • Ngày tạo:{" "}
+                {new Date(schedule.createdAt).toLocaleDateString("vi-VN")}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -158,37 +191,45 @@ export default function ApproveSchedulePage({ params }: { params: { id: Promise<
                     </TabsTrigger>
                   </TabsList>
                   <TabsContent value="list" className="space-y-4 mt-4">
-                    {schedule.items.map((item) => (
-                      <Card key={item.id} className="overflow-hidden hover:shadow-md transition-all card-hover">
-                        <CardContent className="p-4">
-                          <div className="flex items-start space-x-4">
-                            <div className="flex flex-col items-center">
-                              <div className="text-sm font-medium bg-accent rounded-full w-14 h-14 flex items-center justify-center">
-                                {item.startTime}
+                    {schedule.items && schedule.items.length > 0 ? (
+                      schedule.items.map((item: any) => (
+                        <Card key={item.id} className="overflow-hidden hover:shadow-md transition-all card-hover">
+                          <CardContent className="p-4">
+                            <div className="flex items-start space-x-4">
+                              <div className="flex flex-col items-center">
+                                <div className="text-sm font-medium bg-accent rounded-full w-14 h-14 flex items-center justify-center">
+                                  {item.startTime}
+                                </div>
+                                <div className="h-full w-px bg-border mt-1"></div>
+                                <div className="text-sm font-medium bg-accent rounded-full w-14 h-14 flex items-center justify-center">
+                                  {item.endTime}
+                                </div>
                               </div>
-                              <div className="h-full w-px bg-border mt-1"></div>
-                              <div className="text-sm font-medium bg-accent rounded-full w-14 h-14 flex items-center justify-center">
-                                {item.endTime}
+                              <div className="flex-1">
+                                <div className="flex items-center justify-between">
+                                  <h3 className="font-medium text-lg">{item.title}</h3>
+                                  {getEventTypeBadge(item.type)}
+                                </div>
+                                <p className="text-sm text-muted-foreground mt-1">
+                                  {new Date(item.date).toLocaleDateString("vi-VN")} • {item.location}
+                                </p>
+                                <p className="text-sm mt-3">{item.description}</p>
+                                <p className="text-sm mt-3">
+                                  <span className="text-muted-foreground">Thành phần: </span>
+                                  {Array.isArray(item.participants)
+                                    ? item.participants.join(", ")
+                                    : typeof item.participants === "string"
+                                      ? item.participants
+                                      : "Không có thông tin"}
+                                </p>
                               </div>
                             </div>
-                            <div className="flex-1">
-                              <div className="flex items-center justify-between">
-                                <h3 className="font-medium text-lg">{item.title}</h3>
-                                {getEventTypeBadge(item.type)}
-                              </div>
-                              <p className="text-sm text-muted-foreground mt-1">
-                                {item.date} • {item.location}
-                              </p>
-                              <p className="text-sm mt-3">{item.description}</p>
-                              <p className="text-sm mt-3">
-                                <span className="text-muted-foreground">Thành phần: </span>
-                                {item.participants.join(", ")}
-                              </p>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+                          </CardContent>
+                        </Card>
+                      ))
+                    ) : (
+                      <p className="text-sm text-muted-foreground">Không có sự kiện nào trong lịch công tác này</p>
+                    )}
                   </TabsContent>
                   <TabsContent value="calendar">
                     <div className="p-8 text-center text-muted-foreground bg-accent/30 rounded-lg mt-4">
@@ -221,11 +262,11 @@ export default function ApproveSchedulePage({ params }: { params: { id: Promise<
             </CardContent>
             <CardFooter className="flex flex-col space-y-3">
               <Button className="w-full rounded-full" onClick={handleApprove} disabled={isSubmitting}>
-                <Check className="mr-2 h-4 w-4" /> Phê duyệt
+                <Check className="mr-2 h-4 w-4" /> {isSubmitting ? "Đang xử lý..." : "Phê duyệt"}
               </Button>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="outline" className="w-full rounded-full">
+                  <Button variant="outline" className="w-full rounded-full" disabled={isSubmitting}>
                     <X className="mr-2 h-4 w-4" /> Từ chối
                   </Button>
                 </AlertDialogTrigger>
@@ -240,7 +281,7 @@ export default function ApproveSchedulePage({ params }: { params: { id: Promise<
                   <AlertDialogFooter>
                     <AlertDialogCancel className="rounded-full">Hủy</AlertDialogCancel>
                     <AlertDialogAction onClick={handleReject} className="rounded-full">
-                      Xác nhận từ chối
+                      {isSubmitting ? "Đang xử lý..." : "Xác nhận từ chối"}
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
@@ -255,12 +296,12 @@ export default function ApproveSchedulePage({ params }: { params: { id: Promise<
             <CardContent className="space-y-4">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Người tạo</p>
-                <p className="mt-1 font-medium">{schedule.creator}</p>
+                <p className="mt-1 font-medium">{schedule.creator?.name || "Không xác định"}</p>
               </div>
               <Separator />
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Ngày tạo</p>
-                <p className="mt-1">{schedule.createdAt}</p>
+                <p className="mt-1">{new Date(schedule.createdAt).toLocaleDateString("vi-VN")}</p>
               </div>
               <Separator />
               <div>
