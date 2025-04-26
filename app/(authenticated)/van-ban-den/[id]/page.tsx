@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { use, useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -15,10 +15,11 @@ import { incomingDocumentsAPI } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
 import { useToast } from "@/components/ui/use-toast"
 import { Skeleton } from "@/components/ui/skeleton"
+import { useParams } from "next/navigation"
 
 export default function DocumentDetailPage({ params }: { params: { id: string } }) {
-  const { id } = params
-  const documentId = Number.parseInt(id)
+  const param= useParams <{ id: string }>()
+  const documentId = param.id
   const { user, hasRole } = useAuth()
   const { toast } = useToast()
 
@@ -30,8 +31,13 @@ export default function DocumentDetailPage({ params }: { params: { id: string } 
     const fetchDocument = async () => {
       try {
         setIsLoading(true)
-        const response = await incomingDocumentsAPI.getIncomingDocumentById(documentId)
-        setDocument(response.data)
+        const response = await incomingDocumentsAPI.getDocumentById(documentId)
+        setDocument(response.document)
+        toast({
+          title: "Lỗi",
+          description: "Không thể tải thông tin văn bản",
+          variant: "destructive",
+        })
         setError(null)
       } catch (err: any) {
         console.error("Error fetching document:", err)
