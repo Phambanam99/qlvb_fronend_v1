@@ -1,57 +1,30 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { ArrowRight, FileText, Calendar, ClipboardList, Send, Loader2, AlertCircle } from "lucide-react"
 import Link from "next/link"
-import { incomingDocumentsAPI, outgoingDocumentsAPI, workPlansAPI, schedulesAPI } from "@/lib/api"
+import { dashboardAPI } from "@/lib/api"
+import { incomingDocumentsAPI } from "@/lib/api"
+import { schedulesAPI } from "@/lib/api"
 import { useToast } from "@/components/ui/use-toast"
-
-interface DashboardStats {
-  incomingDocuments: {
-    total: number
-    pending: number
-  }
-  outgoingDocuments: {
-    total: number
-    pending: number
-  }
-  workPlans: {
-    total: number
-    active: number
-  }
-  schedules: {
-    total: number
-    today: number
-  }
-}
-
-interface RecentDocument {
-  id: number | string
-  number: string
-  title: string
-}
-
-interface ScheduleEvent {
-  id: number | string
-  title: string
-  time: string
-  location: string
-}
+import { useDashboard } from "@/lib/store"
 
 export default function Home() {
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [stats, setStats] = useState<DashboardStats>({
-    incomingDocuments: { total: 0, pending: 0 },
-    outgoingDocuments: { total: 0, pending: 0 },
-    workPlans: { total: 0, active: 0 },
-    schedules: { total: 0, today: 0 },
-  })
-  const [recentDocuments, setRecentDocuments] = useState<RecentDocument[]>([])
-  const [todayEvents, setTodayEvents] = useState<ScheduleEvent[]>([])
   const { toast } = useToast()
+  const {
+    stats,
+    recentDocuments,
+    todayEvents,
+    loading,
+    error,
+    setStats,
+    setRecentDocuments,
+    setTodayEvents,
+    setLoading,
+    setError,
+  } = useDashboard()
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -59,74 +32,50 @@ export default function Home() {
         setLoading(true)
         setError(null)
 
-        // Fetch incoming documents
-        const incomingDocsResponse = await incomingDocumentsAPI.getAllDocuments()
-        console.log("Incoming documents response:", incomingDocsResponse)
-        const pendingIncomingDocs = incomingDocsResponse.documents.filter(
-          (doc: any) => doc.status === "pending" || doc.status === "processing",
-        )
+        // Fetch dashboard statistics
+        const dashboardStats = await dashboardAPI.getDashboardStatistics()
 
-        // Fetch outgoing documents
-        const outgoingDocsResponse = await outgoingDocumentsAPI.getAllDocuments()
-        const pendingOutgoingDocs = outgoingDocsResponse.documents.filter(
-          (doc: any) => doc.status === "pending_approval" || doc.status === "draft",
-        )
-
-        // Fetch work plans
-        const workPlansResponse = await workPlansAPI.getAllWorkPlans()
-        const activeWorkPlans = workPlansResponse.workPlans.filter((plan: any) => plan.status === "in_progress")
-
-        // Fetch schedules
-        const today = new Date()
-        const todayStr = today.toISOString().split("T")[0]
-        const schedulesResponse = await schedulesAPI.getScheduleEvents({
-          startDate: todayStr,
-          endDate: todayStr,
-        })
-
-        // Update stats
+        // Set stats from dashboard data
         setStats({
           incomingDocuments: {
-            total: incomingDocsResponse.documents.length,
-            pending: pendingIncomingDocs.length,
+            total: dashboardStats.incomingDocumentCount,
+            pending: dashboardStats.pendingDocumentCount,
           },
           outgoingDocuments: {
-            total: outgoingDocsResponse.documents.length,
-            pending: pendingOutgoingDocs.length,
+            total: dashboardStats.outgoingDocumentCount,
+            pending: 0, // This will need to be calculated from the data
           },
           workPlans: {
-            total: workPlansResponse.workPlans.length,
-            active: activeWorkPlans.length,
+            total: dashboardStats.workCaseCount,
+            active: 0, // This will need to be calculated from the data
           },
           schedules: {
-            total: schedulesResponse.events ? schedulesResponse.events.length : 0,
-            today: schedulesResponse.events ? schedulesResponse.events.length : 0,
+            total: 0, // This will need to be calculated from the data
+            today: 0, // This will need to be calculated from the data
           },
         })
 
-        // Set recent documents
+        // Fetch recent documents
+        const incomingDocs = await incomingDocumentsAPI.getAllDocuments()
         setRecentDocuments(
-          pendingIncomingDocs.slice(0, 3).map((doc: any) => ({
+          incomingDocs.documents.slice(0, 3).map((doc) => ({
             id: doc.id,
-            number: doc.number,
+            number: doc.documentNumber,
             title: doc.title,
           })),
         )
 
-        // Set today's events
-        if (schedulesResponse.events && schedulesResponse.events.length > 0) {
-          setTodayEvents(
-            schedulesResponse.events.slice(0, 2).map((event: any) => ({
-              id: event.id,
-              title: event.title,
-              time: new Date(event.startTime || event.date).toLocaleTimeString("vi-VN", {
-                hour: "2-digit",
-                minute: "2-digit",
-              }),
-              location: event.location,
-            })),
-          )
-        }
+        // Fetch today's events
+        const today = new Date().toISOString().split("T")[0]
+        const events = await schedulesAPI.getScheduleEvents({ date: today })
+        setTodayEvents(
+          events.slice(0, 2).map((event) => ({
+            id: event.id,
+            title: event.title,
+            time: event.startTime,
+            location: event.location,
+          })),
+        )
       } catch (error) {
         console.error("Error fetching dashboard data:", error)
         setError("Không thể tải dữ liệu bảng điều khiển. Vui lòng thử lại sau.")
@@ -141,7 +90,7 @@ export default function Home() {
     }
 
     fetchDashboardData()
-  }, [toast])
+  }, [toast, setStats, setRecentDocuments, setTodayEvents, setLoading, setError])
 
   if (loading) {
     return (

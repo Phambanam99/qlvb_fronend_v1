@@ -1,187 +1,123 @@
 import { create } from "zustand"
-import { persist } from "zustand/middleware"
+import { IncomingDocumentDTO } from "./api/incomingDocuments"
+import { OutgoingDocumentDTO } from "./api/outgoingDocuments"
+import { WorkPlanDTO } from "./api/workPlans"
+import { ScheduleDTO } from "./api/schedules"
 
-// Định nghĩa các interface cho dữ liệu
-interface User {
-  id: string
-  username: string
-  fullName: string
-  email: string
-  role: string
-  department: string
-  permissions?: string[]
+// Incoming Documents Store
+interface IncomingDocumentsState {
+  incomingDocuments: any[]
+  loading: boolean
+  setIncomingDocuments: (documents: any[]) => void
+  setLoading: (loading: boolean) => void
 }
 
-interface Document {
-  id: number
-  title: string
-  number: string
-  issuedDate: string
-  receivedDate: string
-  sender: string
-  type: string
-  priority: string
-  status: string
+export const useIncomingDocuments = create<IncomingDocumentsState>((set) => ({
+  incomingDocuments: [],
+  loading: false,
+  setIncomingDocuments: (documents) => set({ incomingDocuments: documents }),
+  setLoading: (loading) => set({ loading }),
+}))
+
+// Outgoing Documents Store
+interface OutgoingDocumentsState {
+  outgoingDocuments: any[]
+  loading: boolean
+  setOutgoingDocuments: (documents: any[]) => void
+  setLoading: (loading: boolean) => void
 }
 
-interface WorkPlan {
-  id: number
-  title: string
-  startDate: string
-  endDate: string
-  department: string
-  status: string
+export const useOutgoingDocuments = create<OutgoingDocumentsState>((set) => ({
+  outgoingDocuments: [],
+  loading: false,
+  setOutgoingDocuments: (documents) => set({ outgoingDocuments: documents }),
+  setLoading: (loading) => set({ loading }),
+}))
+
+// Work Plans Store
+interface WorkPlansState {
+  workPlans: WorkPlanDTO[]
+  loading: boolean
+  setWorkPlans: (workPlans: WorkPlanDTO[]) => void
+  setLoading: (loading: boolean) => void
 }
 
-interface Schedule {
-  id: number
-  title: string
-  date: string
-  department: string
-  status: string
+export const useWorkPlans = create<WorkPlansState>((set) => ({
+  workPlans: [],
+  loading: false,
+  setWorkPlans: (workPlans) => set({ workPlans }),
+  setLoading: (loading) => set({ loading }),
+}))
+
+// Schedules Store
+interface SchedulesState {
+  schedules: ScheduleDTO[]
+  loading: boolean
+  setSchedules: (schedules: ScheduleDTO[]) => void
+  setLoading: (loading: boolean) => void
 }
 
-// Định nghĩa state cho store
-interface AppState {
-  // Dữ liệu
-  incomingDocuments: Document[]
-  outgoingDocuments: Document[]
-  workPlans: WorkPlan[]
-  schedules: Schedule[]
-  users: User[]
+export const useSchedules = create<SchedulesState>((set) => ({
+  schedules: [],
+  loading: false,
+  setSchedules: (schedules) => set({ schedules }),
+  setLoading: (loading) => set({ loading }),
+}))
 
-  // Trạng thái loading
-  loadingIncomingDocuments: boolean
-  loadingOutgoingDocuments: boolean
-  loadingWorkPlans: boolean
-  loadingSchedules: boolean
-  loadingUsers: boolean
-
-  // Actions
-  setIncomingDocuments: (documents: Document[]) => void
-  setOutgoingDocuments: (documents: Document[]) => void
-  setWorkPlans: (workPlans: WorkPlan[]) => void
-  setSchedules: (schedules: Schedule[]) => void
-  setUsers: (users: User[]) => void
-
-  setLoadingIncomingDocuments: (loading: boolean) => void
-  setLoadingOutgoingDocuments: (loading: boolean) => void
-  setLoadingWorkPlans: (loading: boolean) => void
-  setLoadingSchedules: (loading: boolean) => void
-  setLoadingUsers: (loading: boolean) => void
-
-  // Cache management
-  clearCache: () => void
+// User Store
+interface UserState {
+  user: any | null
+  isAuthenticated: boolean
+  loading: boolean
+  setUser: (user: any | null) => void
+  setIsAuthenticated: (isAuthenticated: boolean) => void
+  setLoading: (loading: boolean) => void
+  logout: () => void
 }
 
-// Tạo store với zustand
-export const useAppStore = create<AppState>()(
-  persist(
-    (set) => ({
-      // Khởi tạo state
-      incomingDocuments: [],
-      outgoingDocuments: [],
-      workPlans: [],
-      schedules: [],
-      users: [],
+export const useUser = create<UserState>((set) => ({
+  user: null,
+  isAuthenticated: false,
+  loading: true,
+  setUser: (user) => set({ user, isAuthenticated: !!user }),
+  setIsAuthenticated: (isAuthenticated) => set({ isAuthenticated }),
+  setLoading: (loading) => set({ loading }),
+  logout: () => set({ user: null, isAuthenticated: false }),
+}))
 
-      loadingIncomingDocuments: false,
-      loadingOutgoingDocuments: false,
-      loadingWorkPlans: false,
-      loadingSchedules: false,
-      loadingUsers: false,
-
-      // Actions để cập nhật state
-      setIncomingDocuments: (documents) => set({ incomingDocuments: documents }),
-      setOutgoingDocuments: (documents) => set({ outgoingDocuments: documents }),
-      setWorkPlans: (workPlans) => set({ workPlans }),
-      setSchedules: (schedules) => set({ schedules }),
-      setUsers: (users) => set({ users }),
-
-      setLoadingIncomingDocuments: (loading) => set({ loadingIncomingDocuments: loading }),
-      setLoadingOutgoingDocuments: (loading) => set({ loadingOutgoingDocuments: loading }),
-      setLoadingWorkPlans: (loading) => set({ loadingWorkPlans: loading }),
-      setLoadingSchedules: (loading) => set({ loadingSchedules: loading }),
-      setLoadingUsers: (loading) => set({ loadingUsers: loading }),
-
-      // Xóa cache
-      clearCache: () =>
-        set({
-          incomingDocuments: [],
-          outgoingDocuments: [],
-          workPlans: [],
-          schedules: [],
-          users: [],
-        }),
-    }),
-    {
-      name: "document-management-store",
-      partialize: (state) => ({
-        // Chỉ lưu trữ dữ liệu, không lưu trạng thái loading
-        incomingDocuments: state.incomingDocuments,
-        outgoingDocuments: state.outgoingDocuments,
-        workPlans: state.workPlans,
-        schedules: state.schedules,
-        users: state.users,
-      }),
-    },
-  ),
-)
-
-// Hooks để sử dụng trong components
-export const useIncomingDocuments = () => {
-  const { incomingDocuments, loadingIncomingDocuments, setIncomingDocuments, setLoadingIncomingDocuments } =
-    useAppStore()
-
-  return {
-    incomingDocuments,
-    loading: loadingIncomingDocuments,
-    setIncomingDocuments,
-    setLoading: setLoadingIncomingDocuments,
+// Dashboard Store
+interface DashboardState {
+  stats: {
+    incomingDocuments: { total: number; pending: number }
+    outgoingDocuments: { total: number; pending: number }
+    workPlans: { total: number; active: number }
+    schedules: { total: number; today: number }
   }
+  recentDocuments: any[]
+  todayEvents: any[]
+  loading: boolean
+  error: string | null
+  setStats: (stats: any) => void
+  setRecentDocuments: (documents: any[]) => void
+  setTodayEvents: (events: any[]) => void
+  setLoading: (loading: boolean) => void
+  setError: (error: string | null) => void
 }
 
-export const useOutgoingDocuments = () => {
-  const { outgoingDocuments, loadingOutgoingDocuments, setOutgoingDocuments, setLoadingOutgoingDocuments } =
-    useAppStore()
-
-  return {
-    outgoingDocuments,
-    loading: loadingOutgoingDocuments,
-    setOutgoingDocuments,
-    setLoading: setLoadingOutgoingDocuments,
-  }
-}
-
-export const useWorkPlans = () => {
-  const { workPlans, loadingWorkPlans, setWorkPlans, setLoadingWorkPlans } = useAppStore()
-
-  return {
-    workPlans,
-    loading: loadingWorkPlans,
-    setWorkPlans,
-    setLoading: setLoadingWorkPlans,
-  }
-}
-
-export const useSchedules = () => {
-  const { schedules, loadingSchedules, setSchedules, setLoadingSchedules } = useAppStore()
-
-  return {
-    schedules,
-    loading: loadingSchedules,
-    setSchedules,
-    setLoading: setLoadingSchedules,
-  }
-}
-
-export const useUsers = () => {
-  const { users, loadingUsers, setUsers, setLoadingUsers } = useAppStore()
-
-  return {
-    users,
-    loading: loadingUsers,
-    setUsers,
-    setLoading: setLoadingUsers,
-  }
-}
+export const useDashboard = create<DashboardState>((set) => ({
+  stats: {
+    incomingDocuments: { total: 0, pending: 0 },
+    outgoingDocuments: { total: 0, pending: 0 },
+    workPlans: { total: 0, active: 0 },
+    schedules: { total: 0, today: 0 },
+  },
+  recentDocuments: [],
+  todayEvents: [],
+  loading: false,
+  error: null,
+  setStats: (stats) => set({ stats }),
+  setRecentDocuments: (documents) => set({ recentDocuments: documents }),
+  setTodayEvents: (events) => set({ todayEvents: events }),
+  setLoading: (loading) => set({ loading }),
+  setError: (error) => set({ error }),
+}))

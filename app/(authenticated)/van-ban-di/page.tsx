@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Plus, Search, Filter, Loader2, AlertCircle } from "lucide-react"
 import Link from "next/link"
-import { outgoingDocumentsAPI } from "@/lib/api"
+import { outgoingDocumentsAPI } from "@/lib/api/outgoingDocuments"
 import { useToast } from "@/components/ui/use-toast"
 import { useOutgoingDocuments } from "@/lib/store"
 
@@ -36,13 +36,13 @@ export default function OutgoingDocumentsPage() {
 
         if (response && response.documents) {
           setOutgoingDocuments(
-            response.documents.map((doc: any) => ({
+            response.documents.map((doc) => ({
               id: doc.id,
               number: doc.number,
               title: doc.title,
-              sentDate: new Date(doc.sentDate).toLocaleDateString("vi-VN"),
+              sentDate: doc.sentDate || "Chưa ban hành",
               recipient: doc.recipient,
-              status: doc.status,
+              status: doc.status || "draft",
             })),
           )
         } else {

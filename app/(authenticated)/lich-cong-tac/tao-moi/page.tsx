@@ -2,8 +2,8 @@
 
 import type React from "react"
 
-import { useState } from "react"
-import { useSearchParams } from "next/navigation"
+import { useState, useEffect } from "react"
+import { useSearchParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -17,6 +17,10 @@ import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { format } from "date-fns"
 import { vi } from "date-fns/locale"
+
+// Cập nhật import để sử dụng API từ thư mục lib/api
+import { schedulesAPI, departmentsAPI as departmentsApi } from "@/lib/api"
+import { useNotifications } from "@/lib/notifications-context"
 
 export default function CreateSchedulePage() {
   const searchParams = useSearchParams()
@@ -32,21 +36,14 @@ export default function CreateSchedulePage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Dữ liệu mẫu cho phòng ban
-  const departments = [
-    { id: "khtc", name: "Phòng Kế hoạch - Tài chính" },
-    { id: "tchc", name: "Phòng Tổ chức - Hành chính" },
-    { id: "cntt", name: "Phòng Công nghệ thông tin" },
-  ]
+  const [departments, setDepartments] = useState<any[]>([])
+  const [staffMembers, setStaffMembers] = useState<any[]>([])
+  const [isLoadingDepartments, setIsLoadingDepartments] = useState(false)
+  const [isLoadingStaff, setIsLoadingStaff] = useState(false)
 
-  // Dữ liệu mẫu cho cán bộ
-  const staffMembers = [
-    { id: 1, name: "Nguyễn Văn A", department: "khtc" },
-    { id: 2, name: "Trần Thị B", department: "khtc" },
-    { id: 3, name: "Lê Văn C", department: "tchc" },
-    { id: 4, name: "Phạm Thị D", department: "tchc" },
-    { id: 5, name: "Hoàng Văn E", department: "cntt" },
-    { id: 6, name: "Vũ Thị F", department: "cntt" },
-  ]
+  // Thêm các state và hooks cần thiết
+  const { addNotification } = useNotifications()
+  const router = useRouter()
 
   const addScheduleItem = () => {
     const newItem = {
@@ -71,28 +68,93 @@ export default function CreateSchedulePage() {
     setScheduleItems(scheduleItems.filter((item) => item.id !== id))
   }
 
+  // Cập nhật hàm handleSubmit để sử dụng API
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
 
-    // Giả lập gửi dữ liệu
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    try {
+      // Tạo đối tượng dữ liệu lịch công tác từ form
+      const scheduleData = {
+        title,
+        description,
+        department,
+        scheduleType,
+        startDate,
+        endDate,
+        scheduleItems,
+      }
 
-    // Trong thực tế, sẽ gửi dữ liệu lên server
-    console.log({
-      title,
-      description,
-      department,
-      scheduleType,
-      startDate,
-      endDate,
-      scheduleItems,
-    })
+      // Gọi API để tạo lịch công tác mới
+      await schedulesAPI.createSchedule(scheduleData)
 
-    setIsSubmitting(false)
-    alert("Đã tạo lịch công tác thành công!")
-    // Trong thực tế sẽ chuyển hướng đến trang danh sách hoặc chi tiết
+      // Thêm thông báo
+      addNotification({
+        title: "Đã tạo lịch công tác thành công!",
+        message: "Lịch công tác đã được tạo và chờ phê duyệt.",
+        type: "success",
+      })
+
+      // Reset form và chuyển hướng
+      setIsSubmitting(false)
+      router.push("/lich-cong-tac")
+    } catch (error) {
+      console.error("Error creating schedule:", error)
+      addNotification({
+        title: "Lỗi",
+        message: "Không thể tạo lịch công tác. Vui lòng thử lại sau.",
+        type: "error",
+      })
+      setIsSubmitting(false)
+    }
   }
+
+  // Fix the department data mapping
+  const fetchDepartments = async () => {
+    try {
+      const response = await departmentsApi.getAllDepartments()
+      // Map the departments to the expected format
+      const formattedDepartments = response.content
+        ? response.content.map((dept: any) => ({
+            id: dept.id,
+            name: dept.name,
+          }))
+        : []
+      setDepartments(formattedDepartments)
+    } catch (error) {
+      console.error("Error fetching departments:", error)
+    }
+  }
+
+  // Thêm useEffect để lấy dữ liệu phòng ban và cán bộ từ API
+  useEffect(() => {
+    const fetchDepartmentsAndStaff = async () => {
+      try {
+        setIsLoadingDepartments(true)
+        // const departmentsData = await departmentsAPI.getAllDepartments()
+        // setDepartments(departmentsData)
+        await fetchDepartments()
+        setIsLoadingDepartments(false)
+
+        setIsLoadingStaff(true)
+        const usersData = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users`)
+        const staffData = await usersData.json()
+        setStaffMembers(staffData)
+        setIsLoadingStaff(false)
+      } catch (error) {
+        console.error("Error fetching departments and staff:", error)
+        addNotification({
+          title: "Lỗi",
+          message: "Không thể tải dữ liệu phòng ban và cán bộ",
+          type: "error",
+        })
+        setIsLoadingDepartments(false)
+        setIsLoadingStaff(false)
+      }
+    }
+
+    fetchDepartmentsAndStaff()
+  }, [addNotification])
 
   return (
     <div className="space-y-8">
@@ -146,14 +208,25 @@ export default function CreateSchedulePage() {
                   </Label>
                   <Select value={department} onValueChange={setDepartment} required>
                     <SelectTrigger id="department" className="h-11">
-                      <SelectValue placeholder="Chọn phòng ban" />
+                      <SelectValue placeholder={isLoadingDepartments ? "Đang tải..." : "Chọn phòng ban"} />
                     </SelectTrigger>
                     <SelectContent>
-                      {departments.map((dept) => (
-                        <SelectItem key={dept.id} value={dept.id}>
-                          {dept.name}
+                      {isLoadingDepartments ? (
+                        <div className="p-2 text-center">
+                          <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full mx-auto"></div>
+                          <p className="mt-2 text-xs text-muted-foreground">Đang tải...</p>
+                        </div>
+                      ) : departments.length === 0 ? (
+                        <SelectItem value="none" disabled>
+                          Không có phòng ban nào
                         </SelectItem>
-                      ))}
+                      ) : (
+                        departments.map((dept) => (
+                          <SelectItem key={dept.id} value={dept.id}>
+                            {dept.name}
+                          </SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -370,16 +443,28 @@ export default function CreateSchedulePage() {
                               onValueChange={(value) => updateScheduleItem(item.id, "participants", [value])}
                             >
                               <SelectTrigger id={`item-participants-${item.id}`}>
-                                <SelectValue placeholder="Chọn người tham dự" />
+                                <SelectValue placeholder={isLoadingStaff ? "Đang tải..." : "Chọn người tham dự"} />
                               </SelectTrigger>
                               <SelectContent>
-                                {staffMembers
-                                  .filter((staff) => !department || staff.department === department)
-                                  .map((staff) => (
-                                    <SelectItem key={staff.id} value={staff.name}>
-                                      {staff.name}
-                                    </SelectItem>
-                                  ))}
+                                {isLoadingStaff ? (
+                                  <div className="p-2 text-center">
+                                    <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full mx-auto"></div>
+                                    <p className="mt-2 text-xs text-muted-foreground">Đang tải...</p>
+                                  </div>
+                                ) : staffMembers.filter((staff) => !department || staff.department === department)
+                                    .length === 0 ? (
+                                  <SelectItem value="none" disabled>
+                                    Không có cán bộ nào
+                                  </SelectItem>
+                                ) : (
+                                  staffMembers
+                                    .filter((staff) => !department || staff.department === department)
+                                    .map((staff) => (
+                                      <SelectItem key={staff.id} value={staff.name}>
+                                        {staff.name}
+                                      </SelectItem>
+                                    ))
+                                )}
                               </SelectContent>
                             </Select>
                           </div>

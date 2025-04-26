@@ -19,7 +19,7 @@ import { format } from "date-fns"
 import { vi } from "date-fns/locale"
 
 // Cập nhật import để sử dụng API từ thư mục lib/api
-import { schedulesAPI, departmentsAPI as departmentsApi } from "@/lib/api"
+import { schedulesAPI, departmentsAPI } from "@/lib/api"
 import { useNotifications } from "@/lib/notifications-context"
 
 export default function CreateSchedulePage() {
@@ -109,31 +109,13 @@ export default function CreateSchedulePage() {
     }
   }
 
-  // Fix the department data mapping
-  const fetchDepartments = async () => {
-    try {
-      const response = await departmentsApi.getAllDepartments()
-      // Map the departments to the expected format
-      const formattedDepartments = response.content
-        ? response.content.map((dept: any) => ({
-            id: dept.id,
-            name: dept.name,
-          }))
-        : []
-      setDepartments(formattedDepartments)
-    } catch (error) {
-      console.error("Error fetching departments:", error)
-    }
-  }
-
   // Thêm useEffect để lấy dữ liệu phòng ban và cán bộ từ API
   useEffect(() => {
     const fetchDepartmentsAndStaff = async () => {
       try {
         setIsLoadingDepartments(true)
-        // const departmentsData = await departmentsAPI.getAllDepartments()
-        // setDepartments(departmentsData)
-        await fetchDepartments()
+        const departmentsData = await departmentsAPI.getAllDepartments()
+        setDepartments(departmentsData.content)
         setIsLoadingDepartments(false)
 
         setIsLoadingStaff(true)

@@ -3,8 +3,8 @@ import type { NextRequest } from "next/server"
 
 export function middleware(request: NextRequest) {
   // Lấy token từ cookie
-  const token = request.cookies.get("auth-token")?.value
-
+  // const token = request.cookies.get("auth-token")?.value
+ const token = request.cookies.get("auth-token")?.value
   // Đường dẫn hiện tại
   const { pathname } = request.nextUrl
 

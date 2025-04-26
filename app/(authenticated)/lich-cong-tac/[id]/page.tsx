@@ -21,29 +21,50 @@ export default function ScheduleDetailPage({ params }: { params: { id: string } 
   const [schedule, setSchedule] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [relatedSchedules, setRelatedSchedules] = useState<any[]>([])
 
+  // Replace getRelatedSchedules with a custom function
+  const fetchRelatedSchedules = async () => {
+    try {
+      // Since getRelatedSchedules doesn't exist, we'll use getAllSchedules and filter
+      const allSchedules = await schedulesAPI.getAllSchedules()
+      // Filter schedules that might be related (this is a workaround)
+      const related = allSchedules
+        .filter(
+          (s) =>
+            s.id !== scheduleId &&
+            (s.title?.includes(schedule?.title || "") || s.description?.includes(schedule?.description || "")),
+        )
+        .slice(0, 5) // Limit to 5 related schedules
+      setRelatedSchedules(related)
+    } catch (error) {
+      console.error("Error fetching related schedules:", error)
+    }
+  }
+
+  // Fix the data property access
   useEffect(() => {
-    const fetchSchedule = async () => {
+    const fetchScheduleData = async () => {
       try {
         setIsLoading(true)
-        const response = await schedulesAPI.getScheduleById(id)
-        setSchedule(response.data)
-        setError(null)
-      } catch (err: any) {
-        console.error("Error fetching schedule:", err)
-        setError(err.message || "Không thể tải thông tin lịch công tác")
+        const scheduleData = await schedulesAPI.getScheduleById(scheduleId)
+        setSchedule(scheduleData)
+        setIsLoading(false)
+      } catch (error : any) {
+        console.error("Error fetching schedule:", error)
+        setError(error.message || "Không thể tải thông tin lịch công tác")
         toast({
           title: "Lỗi",
           description: "Không thể tải thông tin lịch công tác",
           variant: "destructive",
         })
-      } finally {
         setIsLoading(false)
       }
     }
 
-    fetchSchedule()
-  }, [scheduleId, toast])
+    fetchScheduleData()
+    fetchRelatedSchedules()
+  }, [scheduleId, toast, schedule?.title, schedule?.description])
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -120,7 +141,15 @@ export default function ScheduleDetailPage({ params }: { params: { id: string } 
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle>{schedule.title}</CardTitle>
-                {getStatusBadge(schedule.status)}
+                <Badge variant="outline" className="bg-green-100 text-green-800">
+                  {schedule.status === "APPROVED"
+                    ? "Đã duyệt"
+                    : schedule.status === "PENDING"
+                      ? "Chờ duyệt"
+                      : schedule.status === "REJECTED"
+                        ? "Từ chối"
+                        : "Khác"}
+                </Badge>
               </div>
               <CardDescription>
                 {schedule.department} • Người tạo: {schedule.creator?.name || "Không xác định"} • Ngày tạo:{" "}
@@ -205,7 +234,17 @@ export default function ScheduleDetailPage({ params }: { params: { id: string } 
             <CardContent className="space-y-4">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Trạng thái</p>
-                <div className="mt-1">{getStatusBadge(schedule.status)}</div>
+                <div className="mt-1">
+                  <Badge variant="outline" className="bg-green-100 text-green-800">
+                    {schedule.status === "APPROVED"
+                      ? "Đã duyệt"
+                      : schedule.status === "PENDING"
+                        ? "Chờ duyệt"
+                        : schedule.status === "REJECTED"
+                          ? "Từ chối"
+                          : "Khác"}
+                  </Badge>
+                </div>
               </div>
               <Separator />
               <div>
@@ -254,12 +293,20 @@ export default function ScheduleDetailPage({ params }: { params: { id: string } 
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {schedule.relatedSchedules && schedule.relatedSchedules.length > 0 ? (
-                  schedule.relatedSchedules.map((relatedSchedule: any) => (
+                {relatedSchedules && relatedSchedules.length > 0 ? (
+                  relatedSchedules.map((relatedSchedule: any) => (
                     <div key={relatedSchedule.id} className="rounded-md border p-3">
                       <div className="flex justify-between">
                         <p className="font-medium">{relatedSchedule.title}</p>
-                        <Badge variant="success">Đã duyệt</Badge>
+                        <Badge variant="outline" className="bg-green-100 text-green-800">
+                          {relatedSchedule.status === "APPROVED"
+                            ? "Đã duyệt"
+                            : relatedSchedule.status === "PENDING"
+                              ? "Chờ duyệt"
+                              : relatedSchedule.status === "REJECTED"
+                                ? "Từ chối"
+                                : "Khác"}
+                        </Badge>
                       </div>
                       <p className="text-sm text-muted-foreground">{relatedSchedule.period}</p>
                       <div className="mt-2 flex justify-end">

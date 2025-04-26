@@ -14,6 +14,8 @@ import { useAuth } from "@/lib/auth-context"
 import { useNotifications } from "@/lib/notifications-context"
 import { useRouter } from "next/navigation"
 import { Checkbox } from "@/components/ui/checkbox"
+// Cập nhật import để sử dụng API từ thư mục lib/api
+import { usersAPI } from "@/lib/api"
 
 export default function AddUserPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -21,24 +23,47 @@ export default function AddUserPage() {
   const { addNotification } = useNotifications()
   const router = useRouter()
 
-  // Cập nhật hàm handleSubmit để chuyển hướng sau khi thêm người dùng
+  // Cập nhật hàm handleSubmit để sử dụng API
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
 
-    // Giả lập gửi dữ liệu
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    try {
+      // Tạo đối tượng dữ liệu người dùng từ form
+      const userData = {
+        fullName: (document.getElementById("fullName") as HTMLInputElement).value,
+        email: (document.getElementById("email") as HTMLInputElement).value,
+        phone: (document.getElementById("phone") as HTMLInputElement).value,
+        department: (document.getElementById("department") as HTMLSelectElement).value,
+        position: (document.getElementById("position") as HTMLInputElement).value,
+        username: (document.getElementById("username") as HTMLInputElement).value,
+        password: (document.getElementById("password") as HTMLInputElement).value,
+        role: (document.getElementById("role") as HTMLSelectElement).value,
+        active: (document.getElementById("active") as HTMLInputElement).checked,
+      }
 
-    // Thêm thông báo
-    addNotification({
-      title: "Thêm người dùng thành công",
-      message: "Người dùng mới đã được thêm vào hệ thống.",
-      type: "success",
-    })
+      // Gọi API để tạo người dùng mới
+      await usersAPI.createUser(userData)
 
-    // Reset form và chuyển hướng (trong thực tế)
-    setIsSubmitting(false)
-    router.push("/nguoi-dung")
+      // Thêm thông báo
+      addNotification({
+        title: "Thêm người dùng thành công",
+        message: "Người dùng mới đã được thêm vào hệ thống.",
+        type: "success",
+      })
+
+      // Reset form và chuyển hướng
+      setIsSubmitting(false)
+      router.push("/nguoi-dung")
+    } catch (error) {
+      console.error("Error creating user:", error)
+      addNotification({
+        title: "Lỗi",
+        message: "Không thể thêm người dùng. Vui lòng thử lại sau.",
+        type: "error",
+      })
+      setIsSubmitting(false)
+    }
   }
 
   // Kiểm tra quyền hạn

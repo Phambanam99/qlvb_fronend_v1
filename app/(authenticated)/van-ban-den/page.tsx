@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Plus, Search, Filter, Loader2, AlertCircle } from "lucide-react"
 import Link from "next/link"
-import { incomingDocumentsAPI } from "@/lib/api"
+import { incomingDocumentsAPI } from "@/lib/api/incomingDocuments"
 import { useToast } from "@/components/ui/use-toast"
 import { useIncomingDocuments } from "@/lib/store"
 
@@ -36,13 +36,16 @@ export default function IncomingDocumentsPage() {
 
         if (response && response.documents) {
           setIncomingDocuments(
-            response.documents.map((doc: any) => ({
+            response.documents.map((doc) => ({
               id: doc.id,
-              number: doc.number,
+              number: doc.documentNumber,
               title: doc.title,
               receivedDate: new Date(doc.receivedDate).toLocaleDateString("vi-VN"),
-              sender: doc.sender,
-              status: doc.status,
+              sender: doc.sendingDepartmentName,
+              status: doc.processingStatus,
+              issuedDate: doc.deadline || "",
+              type: doc.documentType || "",
+              priority: doc.urgencyLevel || "normal",
             })),
           )
         } else {

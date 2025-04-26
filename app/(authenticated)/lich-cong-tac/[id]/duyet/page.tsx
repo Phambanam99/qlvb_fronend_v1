@@ -40,8 +40,10 @@ export default function ApproveSchedulePage({ params }: { params: { id: string }
     const fetchSchedule = async () => {
       try {
         setIsLoading(true)
+
+        // Fetch schedule details
         const response = await schedulesAPI.getScheduleById(scheduleId)
-        setSchedule(response.data)
+        setSchedule(response)
         setError(null)
       } catch (err: any) {
         console.error("Error fetching schedule:", err)
@@ -77,6 +79,8 @@ export default function ApproveSchedulePage({ params }: { params: { id: string }
   const handleApprove = async () => {
     try {
       setIsSubmitting(true)
+
+      // Gọi API để phê duyệt lịch công tác
       await schedulesAPI.approveSchedule(scheduleId, { comments })
 
       toast({
@@ -101,6 +105,8 @@ export default function ApproveSchedulePage({ params }: { params: { id: string }
   const handleReject = async () => {
     try {
       setIsSubmitting(true)
+
+      // Gọi API để từ chối lịch công tác
       await schedulesAPI.rejectSchedule(scheduleId, { comments })
 
       toast({

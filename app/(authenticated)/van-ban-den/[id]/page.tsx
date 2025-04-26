@@ -1,6 +1,6 @@
 "use client"
 
-import { use, useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -11,15 +11,15 @@ import Link from "next/link"
 import DocumentResponseForm from "@/components/document-response-form"
 import DocumentResponseList from "@/components/document-response-list"
 import DocumentProcessingHistory from "@/components/document-processing-history"
-import { incomingDocumentsAPI } from "@/lib/api"
+import { incomingDocumentsAPI } from "@/lib/api/incomingDocuments"
+import { workflowAPI } from "@/lib/api/workflow"
 import { useAuth } from "@/lib/auth-context"
 import { useToast } from "@/components/ui/use-toast"
 import { Skeleton } from "@/components/ui/skeleton"
-import { useParams } from "next/navigation"
 
 export default function DocumentDetailPage({ params }: { params: { id: string } }) {
-  const param= useParams <{ id: string }>()
-  const documentId = param.id
+  const { id } = params
+  const documentId = Number.parseInt(id)
   const { user, hasRole } = useAuth()
   const { toast } = useToast()
 
@@ -31,13 +31,29 @@ export default function DocumentDetailPage({ params }: { params: { id: string } 
     const fetchDocument = async () => {
       try {
         setIsLoading(true)
-        const response = await incomingDocumentsAPI.getDocumentById(documentId)
-        setDocument(response.document)
-        toast({
-          title: "Lỗi",
-          description: "Không thể tải thông tin văn bản",
-          variant: "destructive",
-        })
+        // Fetch document details
+        const response = await incomingDocumentsAPI.getIncomingDocumentById(documentId)
+
+        // Fetch document workflow status
+        const workflowStatus = await workflowAPI.getDocumentStatus(documentId)
+
+        // Fetch document history
+        const history = await workflowAPI.getDocumentHistory(documentId)
+
+        // Combine data
+        const documentData = {
+          ...response.data,
+          status: workflowStatus.status,
+          assignedToId: workflowStatus.assignedToId,
+          assignedToName: workflowStatus.assignedToName,
+          history: history,
+          // Add empty arrays for frontend compatibility
+          attachments: [],
+          relatedDocuments: [],
+          responses: [],
+        }
+
+        setDocument(documentData)
         setError(null)
       } catch (err: any) {
         console.error("Error fetching document:", err)
@@ -189,7 +205,7 @@ export default function DocumentDetailPage({ params }: { params: { id: string } 
           <Card className="border-primary/10 shadow-sm">
             <CardHeader className="bg-primary/5 border-b">
               <div className="flex items-center justify-between">
-                <CardTitle>{document.number}</CardTitle>
+                <CardTitle>{document.documentNumber}</CardTitle>
                 {getStatusBadge(document.status)}
               </div>
               <CardDescription>{document.title}</CardDescription>
@@ -202,22 +218,22 @@ export default function DocumentDetailPage({ params }: { params: { id: string } 
                 </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Đơn vị gửi</p>
-                  <p>{document.sender}</p>
+                  <p>{document.sendingDepartmentName}</p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Đơn vị xử lý</p>
-                  <p>{document.assignedTo || "Chưa phân công"}</p>
+                  <p>{document.assignedToName || "Chưa phân công"}</p>
                 </div>
               </div>
               <Separator className="bg-primary/10" />
               <div>
                 <p className="text-sm font-medium text-muted-foreground mb-2">Trích yếu nội dung</p>
-                <p className="text-sm">{document.content}</p>
+                <p className="text-sm">{document.summary}</p>
               </div>
               <Separator className="bg-primary/10" />
               <div>
                 <p className="text-sm font-medium text-muted-foreground mb-2">Ý kiến chỉ đạo của Thủ trưởng</p>
-                <p className="text-sm">{document.managerOpinion || "Chưa có ý kiến chỉ đạo"}</p>
+                <p className="text-sm">{document.notes || "Chưa có ý kiến chỉ đạo"}</p>
               </div>
               <Separator className="bg-primary/10" />
               <div>
@@ -291,7 +307,7 @@ export default function DocumentDetailPage({ params }: { params: { id: string } 
               <Separator className="bg-primary/10" />
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Đơn vị xử lý chính</p>
-                <p className="mt-1">{document.assignedTo || "Chưa phân công"}</p>
+                <p className="mt-1">{document.assignedToName || "Chưa phân công"}</p>
               </div>
               <Separator className="bg-primary/10" />
               <div>

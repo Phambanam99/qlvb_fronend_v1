@@ -16,7 +16,7 @@ import { useAuth } from "@/lib/auth-context"
 import NotificationsDropdown from "@/components/notifications-dropdown"
 import { ThemeToggle } from "@/components/theme-toggle"
 
-export default function Header() {
+export const Header = () => {
   const { user, logout } = useAuth()
 
   return (
@@ -30,7 +30,9 @@ export default function Header() {
               <Button variant="ghost" className="relative h-9 w-9 rounded-full hover:bg-primary/10">
                 <Avatar className="h-9 w-9 border border-primary/20">
                   <AvatarImage src="/placeholder.svg?height=36&width=36" alt="Avatar" />
-                  <AvatarFallback className="bg-primary/10 text-primary">{user?.fullName?.charAt(0) || "??"}</AvatarFallback>
+                  <AvatarFallback className="bg-primary/10 text-primary">
+                    {user?.fullName ? user.fullName.charAt(0) : "??"}
+                  </AvatarFallback>
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>

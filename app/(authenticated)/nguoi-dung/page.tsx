@@ -1,34 +1,48 @@
 "use client"
 
-import { useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Badge } from "@/components/ui/badge"
-import { Plus, Search, Mail, Phone } from "lucide-react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { usersAPI } from "@/lib/api"
-import { useToast } from "@/components/ui/use-toast"
-import { useUsers } from "@/lib/store"
-import { Skeleton } from "@/components/ui/skeleton"
-
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Loader2, Plus, Search, UserCog } from "lucide-react"
+import { usersAPI } from "@/lib/api/users"
+import { rolesAPI } from "@/lib/api/roles"
+import { departmentsAPI } from "@/lib/api/departments"
+import { toast } from "@/components/ui/use-toast"
+import { PageResponse, DepartmentDTO } from "@/lib/api"
 export default function UsersPage() {
-  const { toast } = useToast()
-  const { users, loading, setUsers, setLoading } = useUsers()
+  const [users, setUsers] = useState<any[]>([])
+  const [roles, setRoles] = useState<any[]>([])
+  // Update your state declaration to expect a paginated response
+const [departments, setDepartments] = useState<PageResponse<DepartmentDTO>>()
+  const [loading, setLoading] = useState(true)
+  const [searchTerm, setSearchTerm] = useState("")
+  const [roleFilter, setRoleFilter] = useState("all")
+  const [departmentFilter, setDepartmentFilter] = useState("all")
+  const [statusFilter, setStatusFilter] = useState("all")
 
   useEffect(() => {
-    const fetchUsers = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true)
-        const data = await usersAPI.getAllUsers()
-        setUsers(data)
+        const [usersData, rolesData, departmentsData] = await Promise.all([
+          usersAPI.getAllUsers(),
+          rolesAPI.getAllRoles(),
+          departmentsAPI.getAllDepartments(),
+        ])
+
+        setUsers(usersData)
+        setRoles(rolesData)
+        setDepartments(departmentsData)
       } catch (error) {
-        console.error("Error fetching users:", error)
+        console.error("Error fetching data:", error)
         toast({
           title: "Lỗi",
-          description: "Không thể tải danh sách người dùng. Vui lòng thử lại sau.",
+          description: "Không thể tải dữ liệu người dùng. Vui lòng thử lại sau.",
           variant: "destructive",
         })
       } finally {
@@ -36,203 +50,184 @@ export default function UsersPage() {
       }
     }
 
-    fetchUsers()
-  }, [toast, setUsers, setLoading])
+    fetchData()
+  }, [])
 
-  const getRoleBadge = (role: string) => {
-    switch (role) {
-      case "admin":
-        return <Badge variant="default">Quản trị viên</Badge>
-      case "manager":
-        return <Badge variant="secondary">Lãnh đạo</Badge>
-      case "department_head":
-        return <Badge className="bg-blue-500 hover:bg-blue-600">Trưởng phòng</Badge>
-      case "staff":
-        return <Badge variant="outline">Nhân viên</Badge>
-      default:
-        return <Badge variant="outline">Khác</Badge>
-    }
+  const filteredUsers = users.filter((user) => {
+    const matchesSearch =
+      user.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email.toLowerCase().includes(searchTerm.toLowerCase())
+
+    const matchesRole = roleFilter === "all" || user.roleId === roleFilter
+    const matchesDepartment = departmentFilter === "all" || user.departmentId === departmentFilter
+    const matchesStatus =
+      statusFilter === "all" ||
+      (statusFilter === "active" && user.isActive) ||
+      (statusFilter === "inactive" && !user.isActive)
+
+    return matchesSearch && matchesRole && matchesDepartment && matchesStatus
+  })
+
+  const getRoleName = (roleId: string) => {
+    const role = roles.find((r) => r.id === roleId)
+    return role ? role.name : "Không xác định"
   }
 
-  const getInitials = (fullName: string) => {
-    return fullName
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-      .substring(0, 2)
+  const getDepartmentName = (departmentId: string) => {
+    const department = departments?.content.find((d) => d.id === Number(departmentId))
+    return department ? department.name : "Không xác định"
+  }
+
+  if (loading) {
+    return (
+      <div className="flex h-[calc(100vh-4rem)] w-full items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Quản lý người dùng</h1>
-        <Button asChild>
-          <Link href="/nguoi-dung/them-moi">
+    <div className="container py-6">
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-2xl font-bold">Quản lý người dùng</h1>
+        <Link href="/nguoi-dung/them-moi">
+          <Button>
             <Plus className="mr-2 h-4 w-4" />
-            Thêm người dùng mới
-          </Link>
-        </Button>
+            Thêm người dùng
+          </Button>
+        </Link>
       </div>
 
-      <div className="flex items-center space-x-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input type="search" placeholder="Tìm kiếm người dùng..." className="w-full bg-background pl-8" />
-        </div>
-        <Button variant="outline">Lọc</Button>
-      </div>
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Bộ lọc</CardTitle>
+          <CardDescription>Lọc danh sách người dùng theo các tiêu chí</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Tìm kiếm</label>
+              <div className="relative">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Tìm theo tên, email..."
+                  className="pl-8"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+            </div>
 
-      <Tabs defaultValue="all">
-        <TabsList>
-          <TabsTrigger value="all">Tất cả</TabsTrigger>
-          <TabsTrigger value="admin">Quản trị viên</TabsTrigger>
-          <TabsTrigger value="manager">Lãnh đạo</TabsTrigger>
-          <TabsTrigger value="department_head">Trưởng phòng</TabsTrigger>
-          <TabsTrigger value="staff">Nhân viên</TabsTrigger>
-        </TabsList>
-        <TabsContent value="all" className="mt-4">
-          {loading ? (
-            <UsersSkeleton />
-          ) : users.length > 0 ? (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {users.map((user) => (
-                <Card key={user.id} className="overflow-hidden">
-                  <CardHeader className="p-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center space-x-3">
-                        <Avatar>
-                          <AvatarImage src={`/placeholder.svg?height=40&width=40&text=${getInitials(user.fullName)}`} />
-                          <AvatarFallback>{getInitials(user.fullName)}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <CardTitle className="text-base">{user.fullName}</CardTitle>
-                          <p className="text-sm text-muted-foreground">{user.department}</p>
-                        </div>
-                      </div>
-                      {getRoleBadge(user.role)}
-                    </div>
-                  </CardHeader>
-                  <CardContent className="p-4 pt-0">
-                    <div className="space-y-2 text-sm">
-                      <div className="flex items-center">
-                        <Mail className="mr-2 h-4 w-4 text-muted-foreground" />
-                        <span>{user.email}</span>
-                      </div>
-                      {user.phone && (
-                        <div className="flex items-center">
-                          <Phone className="mr-2 h-4 w-4 text-muted-foreground" />
-                          <span>{user.phone}</span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="mt-4 flex justify-end">
-                      <Button variant="ghost" size="sm" asChild>
-                        <Link href={`/nguoi-dung/${user.id}`}>Xem chi tiết</Link>
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Vai trò</label>
+              <Select value={roleFilter} onValueChange={setRoleFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Chọn vai trò" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tất cả vai trò</SelectItem>
+                  {roles.map((role) => (
+                    <SelectItem key={role.id} value={role.id}>
+                      {role.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-12">
-              <p className="text-muted-foreground mb-4">Chưa có người dùng nào</p>
-              <Button asChild>
-                <Link href="/nguoi-dung/them-moi">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Thêm người dùng mới
-                </Link>
-              </Button>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Phòng ban</label>
+              <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Chọn phòng ban" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tất cả phòng ban</SelectItem>
+                  {departments?.content.map((department) => (
+                    <SelectItem key={department.id} value={String(department.id)}>
+                      {department.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-          )}
-        </TabsContent>
-        <TabsContent value="admin" className="mt-4">
-          {loading ? (
-            <UsersSkeleton />
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {users
-                .filter((user) => user.role === "admin")
-                .map((user) => (
-                  <Card key={user.id} className="overflow-hidden">
-                    <CardHeader className="p-4">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center space-x-3">
-                          <Avatar>
-                            <AvatarImage
-                              src={`/placeholder.svg?height=40&width=40&text=${getInitials(user.fullName)}`}
-                            />
-                            <AvatarFallback>{getInitials(user.fullName)}</AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <CardTitle className="text-base">{user.fullName}</CardTitle>
-                            <p className="text-sm text-muted-foreground">{user.department}</p>
-                          </div>
-                        </div>
-                        {getRoleBadge(user.role)}
-                      </div>
-                    </CardHeader>
-                    <CardContent className="p-4 pt-0">
-                      <div className="space-y-2 text-sm">
-                        <div className="flex items-center">
-                          <Mail className="mr-2 h-4 w-4 text-muted-foreground" />
-                          <span>{user.email}</span>
-                        </div>
-                        {user.phone && (
-                          <div className="flex items-center">
-                            <Phone className="mr-2 h-4 w-4 text-muted-foreground" />
-                            <span>{user.phone}</span>
-                          </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Trạng thái</label>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Chọn trạng thái" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tất cả trạng thái</SelectItem>
+                  <SelectItem value="active">Đang hoạt động</SelectItem>
+                  <SelectItem value="inactive">Đã vô hiệu hóa</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Danh sách người dùng</CardTitle>
+          <CardDescription>Tổng số: {filteredUsers.length} người dùng</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Họ tên</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Vai trò</TableHead>
+                  <TableHead>Phòng ban</TableHead>
+                  <TableHead>Trạng thái</TableHead>
+                  <TableHead className="text-right">Thao tác</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredUsers.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="h-24 text-center">
+                      Không tìm thấy người dùng nào
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredUsers.map((user) => (
+                    <TableRow key={user.id}>
+                      <TableCell className="font-medium">{user.fullName}</TableCell>
+                      <TableCell>{user.email}</TableCell>
+                      <TableCell>{getRoleName(user.roleId)}</TableCell>
+                      <TableCell>{getDepartmentName(user.departmentId)}</TableCell>
+                      <TableCell>
+                        {user.isActive ? (
+                          <Badge variant="outline" className="bg-green-50 text-green-700">
+                            Đang hoạt động
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="bg-red-50 text-red-700">
+                            Đã vô hiệu hóa
+                          </Badge>
                         )}
-                      </div>
-                      <div className="mt-4 flex justify-end">
-                        <Button variant="ghost" size="sm" asChild>
-                          <Link href={`/nguoi-dung/${user.id}`}>Xem chi tiết</Link>
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-            </div>
-          )}
-        </TabsContent>
-        {/* Các tab khác tương tự */}
-      </Tabs>
-    </div>
-  )
-}
-
-function UsersSkeleton() {
-  return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-      {Array(6)
-        .fill(0)
-        .map((_, i) => (
-          <Card key={i} className="overflow-hidden">
-            <CardHeader className="p-4">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center space-x-3">
-                  <Skeleton className="h-10 w-10 rounded-full" />
-                  <div className="space-y-2">
-                    <Skeleton className="h-5 w-32" />
-                    <Skeleton className="h-4 w-24" />
-                  </div>
-                </div>
-                <Skeleton className="h-5 w-24" />
-              </div>
-            </CardHeader>
-            <CardContent className="p-4 pt-0">
-              <div className="space-y-2">
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-3/4" />
-              </div>
-              <div className="mt-4 flex justify-end">
-                <Skeleton className="h-8 w-24" />
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Link href={`/nguoi-dung/${user.id}`}>
+                          <Button variant="ghost" size="icon">
+                            <UserCog className="h-4 w-4" />
+                            <span className="sr-only">Xem chi tiết</span>
+                          </Button>
+                        </Link>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

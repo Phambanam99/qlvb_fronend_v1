@@ -36,7 +36,7 @@ export default function AddIncomingDocumentPage() {
         setIsLoadingUsers(true)
         const response = await usersAPI.getAllUsers()
         console.log("Danh sách cán bộ:", response)
-        setUsers(response.data || [])
+        setUsers(response || [])
       } catch (error) {
         console.error("Lỗi khi lấy danh sách cán bộ:", error)
         toast({

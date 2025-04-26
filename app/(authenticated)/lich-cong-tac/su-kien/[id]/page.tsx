@@ -5,76 +5,70 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { ArrowLeft, Calendar, Clock, MapPin, Users } from "lucide-react"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { ArrowLeft, Printer } from "lucide-react"
 import Link from "next/link"
 import { schedulesAPI } from "@/lib/api"
 import { useToast } from "@/components/ui/use-toast"
-import { Skeleton } from "@/components/ui/skeleton"
+import { useAuth } from "@/lib/auth-context"
 
-interface EventDocument {
-  name: string
-  size: string
-  url?: string
-}
-
-interface EventHistory {
-  action: string
-  user: string
-  timestamp: string
-}
-
-interface Event {
-  id: number
-  title: string
-  date: string
-  startTime: string
-  endTime: string
-  location: string
-  type: string
-  department: string
-  schedule: string
-  scheduleId: number
-  participants: string[]
-  description: string
-  documents: EventDocument[]
-  notes?: string
-  history?: EventHistory[]
-}
-
-export default function EventDetailPage({ params }: { params: { id: string } }) {
+export default function ScheduleDetailPage({ params }: { params: { id: string } }) {
+  const { id } = params
+  const scheduleId = Number.parseInt(id)
+  const { hasRole } = useAuth()
   const { toast } = useToast()
-  const [event, setEvent] = useState<Event | null>(null)
-  const [relatedEvents, setRelatedEvents] = useState<Event[]>([])
-  const [loading, setLoading] = useState(true)
+
+  const [schedule, setSchedule] = useState<any>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const fetchEventDetails = async () => {
+    const fetchSchedule = async () => {
       try {
-        setLoading(true)
-        // Fetch event details
-        const eventData = await schedulesAPI.getScheduleById(params.id)
-        setEvent(eventData)
+        setIsLoading(true)
 
-        // Fetch related events (events on the same day)
-        const eventsData = await schedulesAPI.getScheduleEvents({
-          date: eventData.date,
-          excludeId: params.id,
-        })
-        setRelatedEvents(eventsData.slice(0, 3)) // Limit to 3 related events
-      } catch (error) {
-        console.error("Error fetching event details:", error)
+        // Fetch schedule details
+        const response = await schedulesAPI.getScheduleById(scheduleId)
+
+        // Fetch related schedules
+        const relatedSchedulesData = await schedulesAPI.getRelatedSchedules(scheduleId)
+
+        // Combine data
+        const scheduleData = {
+          ...response,
+          relatedSchedules: relatedSchedulesData || [],
+        }
+
+        setSchedule(scheduleData)
+        setError(null)
+      } catch (err: any) {
+        console.error("Error fetching schedule:", err)
+        setError(err.message || "Không thể tải thông tin lịch công tác")
         toast({
           title: "Lỗi",
-          description: "Không thể tải thông tin sự kiện. Vui lòng thử lại sau.",
+          description: "Không thể tải thông tin lịch công tác",
           variant: "destructive",
         })
       } finally {
-        setLoading(false)
+        setIsLoading(false)
       }
     }
 
-    fetchEventDetails()
-  }, [params.id, toast])
+    fetchSchedule()
+  }, [scheduleId, toast])
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "pending":
+        return <Badge variant="outline">Chờ duyệt</Badge>
+      case "approved":
+        return <Badge variant="success">Đã duyệt</Badge>
+      case "rejected":
+        return <Badge variant="destructive">Từ chối</Badge>
+      default:
+        return <Badge variant="outline">Không xác định</Badge>
+    }
+  }
 
   const getEventTypeBadge = (type: string) => {
     switch (type) {
@@ -91,289 +85,205 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
     }
   }
 
-  if (loading) {
-    return <EventDetailSkeleton />
+  // Kiểm tra quyền chỉnh sửa
+  const canEdit = hasRole("creator") && schedule?.status === "pending"
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-[calc(100vh-200px)]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    )
   }
 
-  if (!event) {
+  if (error || !schedule) {
     return (
-      <div className="flex flex-col items-center justify-center h-[50vh]">
-        <h2 className="text-2xl font-bold mb-2">Không tìm thấy sự kiện</h2>
-        <p className="text-muted-foreground mb-4">Sự kiện này không tồn tại hoặc đã bị xóa</p>
+      <div className="flex flex-col items-center justify-center h-[calc(100vh-200px)]">
+        <p className="text-red-500 mb-4">{error || "Không tìm thấy lịch công tác"}</p>
         <Button asChild>
-          <Link href="/lich-cong-tac">Quay lại lịch công tác</Link>
+          <Link href="/lich-cong-tac">Quay lại danh sách</Link>
         </Button>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center space-x-2">
-        <Button variant="outline" size="icon" asChild>
-          <Link href="/lich-cong-tac">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-        </Button>
-        <h1 className="text-2xl font-bold tracking-tight">Chi tiết sự kiện</h1>
+    <div className="space-y-8">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-2">
+          <Button variant="outline" size="icon" className="rounded-full" asChild>
+            <Link href="/lich-cong-tac">
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          </Button>
+          <h1 className="text-3xl font-bold">Chi tiết lịch công tác</h1>
+        </div>
+        <div className="flex items-center space-x-2">
+          <Button variant="outline" size="sm" className="rounded-full">
+            <Printer className="mr-2 h-4 w-4" />
+            In lịch
+          </Button>
+        </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-3">
-        <div className="md:col-span-2 space-y-6">
+      <div className="grid gap-6 md:grid-cols-7">
+        <div className="md:col-span-5 space-y-6">
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle>{event.title}</CardTitle>
-                {getEventTypeBadge(event.type)}
+                <CardTitle>{schedule.title}</CardTitle>
+                {getStatusBadge(schedule.status)}
               </div>
               <CardDescription>
-                Thuộc lịch:{" "}
-                <Link href={`/lich-cong-tac/${event.scheduleId}`} className="hover:underline">
-                  {event.schedule}
-                </Link>
+                {schedule.department} • Người tạo: {schedule.creator?.name || "Không xác định"} • Ngày tạo:{" "}
+                {new Date(schedule.createdAt).toLocaleDateString("vi-VN")}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="flex items-start space-x-2">
-                  <Calendar className="h-5 w-5 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm font-medium">Ngày</p>
-                    <p>{event.date}</p>
-                  </div>
-                </div>
-                <div className="flex items-start space-x-2">
-                  <Clock className="h-5 w-5 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm font-medium">Thời gian</p>
-                    <p>
-                      {event.startTime} - {event.endTime}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-start space-x-2">
-                  <MapPin className="h-5 w-5 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm font-medium">Địa điểm</p>
-                    <p>{event.location}</p>
-                  </div>
-                </div>
-                <div className="flex items-start space-x-2">
-                  <Users className="h-5 w-5 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm font-medium">Phòng ban</p>
-                    <p>{event.department}</p>
-                  </div>
-                </div>
-              </div>
-              <Separator />
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Mô tả</p>
-                <p className="mt-1">{event.description}</p>
+                <p className="mt-1">{schedule.description}</p>
               </div>
+              {schedule.comments && (
+                <>
+                  <Separator />
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Nhận xét của người duyệt</p>
+                    <div className="mt-1 rounded-md bg-muted p-3">
+                      <p className="text-sm">{schedule.comments}</p>
+                    </div>
+                  </div>
+                </>
+              )}
               <Separator />
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Thành phần tham dự</p>
-                <p className="mt-1">{event.participants.join(", ")}</p>
+                <p className="text-sm font-medium text-muted-foreground mb-2">Chi tiết lịch công tác</p>
+                <Tabs defaultValue="list" className="mt-2">
+                  <TabsList>
+                    <TabsTrigger value="list">Danh sách</TabsTrigger>
+                    <TabsTrigger value="calendar">Lịch</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="list" className="space-y-4 mt-4">
+                    {schedule.items && schedule.items.length > 0 ? (
+                      schedule.items.map((item: any) => (
+                        <Card key={item.id}>
+                          <CardContent className="p-4">
+                            <div className="flex items-start space-x-4">
+                              <div className="flex flex-col items-center">
+                                <div className="text-sm font-medium">{item.startTime}</div>
+                                <div className="h-full w-px bg-border mt-1"></div>
+                                <div className="text-sm font-medium">{item.endTime}</div>
+                              </div>
+                              <div className="flex-1">
+                                <div className="flex items-center justify-between">
+                                  <h3 className="font-medium">{item.title}</h3>
+                                  {getEventTypeBadge(item.type)}
+                                </div>
+                                <p className="text-sm text-muted-foreground mt-1">
+                                  {new Date(item.date).toLocaleDateString("vi-VN")} • {item.location}
+                                </p>
+                                <p className="text-sm mt-2">{item.description}</p>
+                                <p className="text-sm mt-2">
+                                  <span className="text-muted-foreground">Thành phần: </span>
+                                  {Array.isArray(item.participants)
+                                    ? item.participants.join(", ")
+                                    : typeof item.participants === "string"
+                                      ? item.participants
+                                      : "Không có thông tin"}
+                                </p>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))
+                    ) : (
+                      <p className="text-sm text-muted-foreground">Không có sự kiện nào trong lịch công tác này</p>
+                    )}
+                  </TabsContent>
+                  <TabsContent value="calendar">
+                    <div className="p-4 text-center text-muted-foreground">Xem lịch theo dạng lịch tuần/tháng</div>
+                  </TabsContent>
+                </Tabs>
               </div>
-              {event.notes && (
-                <>
-                  <Separator />
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Ghi chú</p>
-                    <p className="mt-1">{event.notes}</p>
-                  </div>
-                </>
-              )}
-              {event.documents && event.documents.length > 0 && (
-                <>
-                  <Separator />
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground mb-2">Tài liệu đính kèm</p>
-                    <div className="space-y-2">
-                      {event.documents.map((doc, index) => (
-                        <div key={index} className="flex items-center justify-between rounded-md border p-2">
-                          <span className="text-sm">{doc.name}</span>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-muted-foreground">{doc.size}</span>
-                            {doc.url && (
-                              <Button variant="ghost" size="sm" asChild>
-                                <a href={doc.url} target="_blank" rel="noopener noreferrer">
-                                  Tải xuống
-                                </a>
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              )}
             </CardContent>
           </Card>
         </div>
 
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Các sự kiện khác trong ngày</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {relatedEvents.length > 0 ? (
-                <div className="space-y-4">
-                  {relatedEvents.map((relatedEvent) => (
-                    <div key={relatedEvent.id} className="rounded-md border p-3">
-                      <div className="flex justify-between">
-                        <p className="font-medium">{relatedEvent.title}</p>
-                        {getEventTypeBadge(relatedEvent.type)}
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        {relatedEvent.startTime} - {relatedEvent.endTime} • {relatedEvent.location}
-                      </p>
-                      <div className="mt-2 flex justify-end">
-                        <Button variant="ghost" size="sm" asChild>
-                          <Link href={`/lich-cong-tac/su-kien/${relatedEvent.id}`}>Xem</Link>
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">Không có sự kiện nào khác trong ngày này</p>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Lịch sử thay đổi</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {event.history && event.history.length > 0 ? (
-                <div className="space-y-4">
-                  {event.history.map((item, index) => (
-                    <div key={index} className="flex items-start space-x-2">
-                      <div className="h-2 w-2 mt-2 rounded-full bg-primary" />
-                      <div>
-                        <p className="text-sm">{item.action}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {item.user} • {item.timestamp}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="flex items-start space-x-2">
-                    <div className="h-2 w-2 mt-2 rounded-full bg-primary" />
-                    <div>
-                      <p className="text-sm">Tạo sự kiện</p>
-                      <p className="text-xs text-muted-foreground">
-                        Hệ thống • {new Date().toLocaleDateString("vi-VN")}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function EventDetailSkeleton() {
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center space-x-2">
-        <Skeleton className="h-10 w-10" />
-        <Skeleton className="h-8 w-48" />
-      </div>
-
-      <div className="grid gap-6 md:grid-cols-3">
         <div className="md:col-span-2 space-y-6">
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <Skeleton className="h-6 w-48" />
-                <Skeleton className="h-6 w-24" />
-              </div>
-              <Skeleton className="h-4 w-64 mt-2" />
+              <CardTitle>Thông tin lịch</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                {Array(4)
-                  .fill(0)
-                  .map((_, i) => (
-                    <div key={i} className="flex items-start space-x-2">
-                      <Skeleton className="h-5 w-5" />
-                      <div className="space-y-2">
-                        <Skeleton className="h-4 w-20" />
-                        <Skeleton className="h-4 w-32" />
-                      </div>
-                    </div>
-                  ))}
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Trạng thái</p>
+                <div className="mt-1">{getStatusBadge(schedule.status)}</div>
               </div>
               <Separator />
               <div>
-                <Skeleton className="h-4 w-20 mb-2" />
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-3/4 mt-2" />
+                <p className="text-sm font-medium text-muted-foreground">Người tạo</p>
+                <p className="mt-1">{schedule.creator?.name || "Không xác định"}</p>
               </div>
               <Separator />
               <div>
-                <Skeleton className="h-4 w-32 mb-2" />
-                <Skeleton className="h-4 w-full" />
+                <p className="text-sm font-medium text-muted-foreground">Ngày tạo</p>
+                <p className="mt-1">{new Date(schedule.createdAt).toLocaleDateString("vi-VN")}</p>
               </div>
+              <Separator />
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Phòng ban</p>
+                <p className="mt-1">{schedule.department}</p>
+              </div>
+              <Separator />
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Loại lịch</p>
+                <p className="mt-1">{schedule.period}</p>
+              </div>
+              {schedule.approver && (
+                <>
+                  <Separator />
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Người duyệt</p>
+                    <p className="mt-1">{schedule.approver}</p>
+                  </div>
+                </>
+              )}
+              {schedule.approvedAt && (
+                <>
+                  <Separator />
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Ngày duyệt</p>
+                    <p className="mt-1">{new Date(schedule.approvedAt).toLocaleDateString("vi-VN")}</p>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
-        </div>
 
-        <div className="space-y-6">
           <Card>
             <CardHeader>
-              <Skeleton className="h-6 w-48" />
+              <CardTitle>Lịch liên quan</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {Array(2)
-                  .fill(0)
-                  .map((_, i) => (
-                    <div key={i} className="rounded-md border p-3">
+                {schedule.relatedSchedules && schedule.relatedSchedules.length > 0 ? (
+                  schedule.relatedSchedules.map((relatedSchedule: any) => (
+                    <div key={relatedSchedule.id} className="rounded-md border p-3">
                       <div className="flex justify-between">
-                        <Skeleton className="h-5 w-32" />
-                        <Skeleton className="h-5 w-16" />
+                        <p className="font-medium">{relatedSchedule.title}</p>
+                        <Badge variant="success">Đã duyệt</Badge>
                       </div>
-                      <Skeleton className="h-4 w-48 mt-2" />
+                      <p className="text-sm text-muted-foreground">{relatedSchedule.period}</p>
                       <div className="mt-2 flex justify-end">
-                        <Skeleton className="h-8 w-16" />
+                        <Button variant="ghost" size="sm" asChild>
+                          <Link href={`/lich-cong-tac/${relatedSchedule.id}`}>Xem</Link>
+                        </Button>
                       </div>
                     </div>
-                  ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <Skeleton className="h-6 w-32" />
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {Array(3)
-                  .fill(0)
-                  .map((_, i) => (
-                    <div key={i} className="flex items-start space-x-2">
-                      <Skeleton className="h-2 w-2 mt-2 rounded-full" />
-                      <div>
-                        <Skeleton className="h-4 w-32" />
-                        <Skeleton className="h-3 w-48 mt-1" />
-                      </div>
-                    </div>
-                  ))}
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground">Không có lịch liên quan</p>
+                )}
               </div>
             </CardContent>
           </Card>

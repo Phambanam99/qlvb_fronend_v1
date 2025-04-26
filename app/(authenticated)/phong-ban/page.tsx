@@ -1,0 +1,213 @@
+"use client"
+
+import type React from "react"
+
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Badge } from "@/components/ui/badge"
+import { PlusIcon, SearchIcon, FilterIcon } from "lucide-react"
+import { useToast } from "@/components/ui/use-toast"
+import { useAuth } from "@/lib/auth-context"
+import { fetchData } from "@/lib/api"
+
+interface Department {
+  id: number
+  name: string
+  abbreviation: string
+  email: string
+  type: string
+  typeName: string
+  group: string
+  userCount: number
+}
+
+export default function DepartmentsPage() {
+  const [departments, setDepartments] = useState<Department[]>([])
+  const [loading, setLoading] = useState(true)
+  const [searchTerm, setSearchTerm] = useState("")
+  const [typeFilter, setTypeFilter] = useState("all")
+  const router = useRouter()
+  const { toast } = useToast()
+  const { user } = useAuth()
+
+  useEffect(() => {
+    const loadDepartments = async () => {
+      try {
+        const response = await fetchData("/api/departments")
+        if (response.success) {
+          setDepartments(response.data as Department[])
+        } else {
+          toast({
+            title: "Lỗi",
+            description: "Không thể tải danh sách phòng ban",
+            variant: "destructive",
+          })
+        }
+      } catch (error) {
+        console.error("Error loading departments:", error)
+        toast({
+          title: "Lỗi",
+          description: "Đã xảy ra lỗi khi tải dữ liệu",
+          variant: "destructive",
+        })
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadDepartments()
+  }, [toast])
+
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value)
+  }
+
+  const handleTypeFilterChange = (value: string) => {
+    setTypeFilter(value)
+  }
+
+  const filteredDepartments = departments.filter((dept) => {
+    const matchesSearch =
+      dept.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      dept.abbreviation.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      dept.email?.toLowerCase().includes(searchTerm.toLowerCase())
+
+    const matchesType = typeFilter === "all" || dept.type === typeFilter
+
+    return matchesSearch && matchesType
+  })
+
+  const handleAddNew = () => {
+    router.push("/phong-ban/them-moi")
+  }
+
+  const getTypeBadge = (type: string) => {
+    switch (type) {
+      case "ADMINISTRATIVE":
+        return <Badge variant="default">Hành chính</Badge>
+      case "PROFESSIONAL":
+        return <Badge variant="secondary">Chuyên môn</Badge>
+      case "SUPPORT":
+        return <Badge variant="outline">Hỗ trợ</Badge>
+      case "SUBSIDIARY":
+        return <Badge variant="destructive">Đơn vị trực thuộc</Badge>
+      case "LEADERSHIP":
+        return (
+          <Badge variant="default" className="bg-amber-500 hover:bg-amber-600">
+            Lãnh đạo
+          </Badge>
+        )
+      default:
+        return <Badge variant="outline">{type}</Badge>
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+      </div>
+    )
+  }
+
+  // Check if user has permission to view this page
+  if (user?.roles.includes("admin") && user?.roles.includes("manager")) {
+    router.push("/khong-co-quyen")
+    return null
+  }
+
+  return (
+    <div className="container mx-auto py-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold">Quản lý phòng ban</h1>
+        {user?.roles.includes("admin") && (
+          <Button onClick={handleAddNew}>
+            <PlusIcon className="mr-2 h-4 w-4" />
+            Thêm mới
+          </Button>
+        )}
+      </div>
+
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>Danh sách phòng ban</CardTitle>
+          <CardDescription>Quản lý tất cả phòng ban trong hệ thống</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="mb-4 flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
+            <div className="relative w-full md:w-1/3">
+              <SearchIcon className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+              <Input placeholder="Tìm kiếm phòng ban..." className="pl-8" value={searchTerm} onChange={handleSearch} />
+            </div>
+            <div className="flex items-center space-x-2">
+              <FilterIcon className="h-4 w-4 text-gray-500" />
+              <span className="text-sm">Loại phòng ban:</span>
+              <Select value={typeFilter} onValueChange={handleTypeFilterChange}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Tất cả loại" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tất cả</SelectItem>
+                  <SelectItem value="ADMINISTRATIVE">Hành chính</SelectItem>
+                  <SelectItem value="PROFESSIONAL">Chuyên môn</SelectItem>
+                  <SelectItem value="SUPPORT">Hỗ trợ</SelectItem>
+                  <SelectItem value="SUBSIDIARY">Đơn vị trực thuộc</SelectItem>
+                  <SelectItem value="LEADERSHIP">Lãnh đạo</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Tên phòng ban</TableHead>
+                  <TableHead>Viết tắt</TableHead>
+                  <TableHead className="hidden md:table-cell">Email</TableHead>
+                  <TableHead>Loại</TableHead>
+                  <TableHead className="hidden md:table-cell">Nhóm</TableHead>
+                  <TableHead className="text-right">Số nhân viên</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredDepartments.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                      Không tìm thấy phòng ban nào
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredDepartments.map((dept) => (
+                    <TableRow
+                      key={dept.id}
+                      className="cursor-pointer"
+                      onClick={() => router.push(`/phong-ban/${dept.id}`)}
+                    >
+                      <TableCell className="font-medium">{dept.name}</TableCell>
+                      <TableCell>{dept.abbreviation}</TableCell>
+                      <TableCell className="hidden md:table-cell">{dept.email || "—"}</TableCell>
+                      <TableCell>{getTypeBadge(dept.type)}</TableCell>
+                      <TableCell className="hidden md:table-cell">{dept.group || "—"}</TableCell>
+                      <TableCell className="text-right">{dept.userCount}</TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+        <CardFooter className="flex justify-between">
+          <div className="text-sm text-muted-foreground">
+            Hiển thị {filteredDepartments.length} / {departments.length} phòng ban
+          </div>
+        </CardFooter>
+      </Card>
+    </div>
+  )
+}
