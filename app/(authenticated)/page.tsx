@@ -39,7 +39,7 @@ export default function Home() {
         setStats({
           incomingDocuments: {
             total: dashboardStats.incomingDocumentCount,
-            pending: dashboardStats.pendingDocumentCount,
+            pending: dashboardStats.pendingDocumentCount || 0,
           },
           outgoingDocuments: {
             total: dashboardStats.outgoingDocumentCount,
@@ -67,15 +67,15 @@ export default function Home() {
 
         // Fetch today's events
         const today = new Date().toISOString().split("T")[0]
-        const events = await schedulesAPI.getScheduleEvents({ date: today })
-        setTodayEvents(
-          events.slice(0, 2).map((event) => ({
-            id: event.id,
-            title: event.title,
-            time: event.startTime,
-            location: event.location,
-          })),
-        )
+        // const events = await schedulesAPI.getScheduleEvents({ date: today })
+        // setTodayEvents(
+        //   events.slice(0, 2).map((event) => ({
+        //     id: event.id,
+        //     title: event.title,
+        //     time: event.startTime,
+        //     location: event.location,
+        //   })),
+        // )
       } catch (error) {
         console.error("Error fetching dashboard data:", error)
         setError("Không thể tải dữ liệu bảng điều khiển. Vui lòng thử lại sau.")

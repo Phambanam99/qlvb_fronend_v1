@@ -11,7 +11,15 @@ export const workflowAPI = {
     const response = await api.get(`/workflow/${documentId}/status`)
     return response.data
   },
-
+  /**
+   * Get document workflow details
+   * @param documentId Document ID
+   * @returns Document workflow details
+   */
+   registerIncomingDocument: async (documentId: number | string, workflowData: DocumentWorkflowDTO) => {
+    const response = await api.put(`/workflow/${documentId}/register`, workflowData)
+    return response.status
+  },
   /**
    * Change document status
    * @param documentId Document ID

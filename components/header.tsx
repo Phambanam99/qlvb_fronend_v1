@@ -10,7 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { LogOut, User } from "lucide-react"
+import { LogOut, User, FileText } from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth-context"
 import NotificationsDropdown from "@/components/notifications-dropdown"
@@ -21,7 +21,14 @@ export const Header = () => {
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background/95 backdrop-blur-sm px-6">
+      <div className="flex-1">
+        <Link href="/" className="flex items-center space-x-2">
+          <FileText className="h-6 w-6 text-primary" />
+          <span className="font-bold text-lg text-primary">Quản lý Văn bản</span>
+        </Link>
+      </div>
       <div className="flex flex-1 items-center justify-end">
+     
         <div className="flex items-center gap-3">
           <NotificationsDropdown />
           <ThemeToggle />

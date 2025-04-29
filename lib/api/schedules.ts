@@ -1,40 +1,40 @@
-import api from "./config"
+import api from "./config";
 
 export interface ScheduleEventDTO {
-  id: number
-  title: string
-  date: string
-  startTime: string
-  endTime: string
-  location: string
-  type: string
-  description?: string
-  participants: string[]
-  scheduleId: number
-  createdAt: string
-  updatedAt: string
+  id: number;
+  title: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  location: string;
+  type: string;
+  description?: string;
+  participants: string[];
+  scheduleId: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface ScheduleDTO {
-  id: number
-  title: string
-  description?: string
-  department: string
-  period: string
-  status: string
-  createdBy: string
-  approver?: string
-  approvedAt?: string
-  comments?: string
-  createdAt: string
-  updatedAt: string
-  items?: ScheduleEventDTO[]
+  id: number;
+  title: string;
+  description?: string;
+  department: string;
+  period: string;
+  status: string;
+  createdBy: string;
+  approver?: string;
+  approvedAt?: string;
+  comments?: string;
+  createdAt: string;
+  updatedAt: string;
+  items?: ScheduleEventDTO[];
 }
 
 export interface ScheduleEventParams {
-  date?: string
-  excludeId?: string
-  departmentId?: string
+  date?: string;
+  excludeId?: string;
+  departmentId?: string;
 }
 
 export const schedulesAPI = {
@@ -43,8 +43,9 @@ export const schedulesAPI = {
    * @returns List of all schedules
    */
   getAllSchedules: async (): Promise<ScheduleDTO[]> => {
-    const response = await api.get("/schedules")
-    return response.data
+    // const response = await api.get("/schedules")
+    // return response.data
+    return new Promise((resolve) => {});
   },
 
   /**
@@ -53,8 +54,9 @@ export const schedulesAPI = {
    * @returns Schedule data
    */
   getScheduleById: async (id: string | number): Promise<ScheduleDTO> => {
-    const response = await api.get(`/schedules/${id}`)
-    return response.data
+    // const response = await api.get(`/schedules/${id}`)
+    // return response.data
+    return new Promise((resolve) => {});
   },
 
   /**
@@ -62,9 +64,12 @@ export const schedulesAPI = {
    * @param params Query parameters
    * @returns List of schedule events
    */
-  getScheduleEvents: async (params: ScheduleEventParams): Promise<ScheduleEventDTO[]> => {
-    const response = await api.get("/schedules/events", { params })
-    return response.data
+  getScheduleEvents: async (
+    params: ScheduleEventParams
+  ): Promise<ScheduleEventDTO[]> => {
+    // const response = await api.get("/schedules/events", { params })
+    // return response.data
+    return new Promise((resolve) => {});
   },
 
   /**
@@ -73,8 +78,9 @@ export const schedulesAPI = {
    * @returns Event data
    */
   getEventById: async (id: string | number): Promise<ScheduleEventDTO> => {
-    const response = await api.get(`/schedules/events/${id}`)
-    return response.data
+    // const response = await api.get(`/schedules/events/${id}`)
+    // return response.data
+    return new Promise((resolve) => {});
   },
 
   /**
@@ -83,8 +89,9 @@ export const schedulesAPI = {
    * @returns Created schedule data
    */
   createSchedule: async (scheduleData: any): Promise<ScheduleDTO> => {
-    const response = await api.post("/schedules", scheduleData)
-    return response.data
+    // const response = await api.post("/schedules", scheduleData)
+    // return response.data
+    return new Promise((resolve) => {});
   },
 
   /**
@@ -93,9 +100,13 @@ export const schedulesAPI = {
    * @param scheduleData Schedule data to update
    * @returns Updated schedule data
    */
-  updateSchedule: async (id: string | number, scheduleData: any): Promise<ScheduleDTO> => {
-    const response = await api.put(`/schedules/${id}`, scheduleData)
-    return response.data
+  updateSchedule: async (
+    id: string | number,
+    scheduleData: any
+  ): Promise<ScheduleDTO> => {
+    // const response = await api.put(`/schedules/${id}`, scheduleData)
+    // return response.data
+    return new Promise((resolve) => {});
   },
 
   /**
@@ -104,8 +115,9 @@ export const schedulesAPI = {
    * @returns Success message
    */
   deleteSchedule: async (id: string | number): Promise<{ message: string }> => {
-    const response = await api.delete(`/schedules/${id}`)
-    return response.data
+    // const response = await api.delete(`/schedules/${id}`)
+    // return response.data
+    return new Promise((resolve) => {});
   },
 
   /**
@@ -114,9 +126,13 @@ export const schedulesAPI = {
    * @param data Approval data
    * @returns Updated schedule data
    */
-  approveSchedule: async (id: string | number, data: { comments?: string }): Promise<ScheduleDTO> => {
-    const response = await api.post(`/schedules/${id}/approve`, data)
-    return response.data
+  approveSchedule: async (
+    id: string | number,
+    data: { comments?: string }
+  ): Promise<ScheduleDTO> => {
+    // const response = await api.post(`/schedules/${id}/approve`, data)
+    // return response.data
+    return new Promise((resolve) => {});
   },
 
   /**
@@ -125,14 +141,19 @@ export const schedulesAPI = {
    * @param data Rejection data
    * @returns Updated schedule data
    */
-  rejectSchedule: async (id: string | number, data: { comments?: string }): Promise<ScheduleDTO> => {
-    const response = await api.post(`/schedules/${id}/reject`, data)
-    return response.data
+  rejectSchedule: async (
+    id: string | number,
+    data: { comments?: string }
+  ): Promise<ScheduleDTO> => {
+    // const response = await api.post(`/schedules/${id}/reject`, data)
+    // return response.data
+    return new Promise((resolve) => {});
   },
 
   // Thêm phương thức mới để tương thích với code hiện tại
   getRelatedSchedules: async (id: string | number): Promise<ScheduleDTO[]> => {
-    const response = await api.get(`/schedules/${id}/related`);
-    return response.data;
-  }
-}
+    // const response = await api.get(`/schedules/${id}/related`);
+    // return response.data;
+    return new Promise((resolve) => {});
+  },
+};

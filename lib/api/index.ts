@@ -18,6 +18,7 @@ export * from "./roles"
 
 export * from "./unified-documents"
 export * from "./types"
+export * from "./senders"
 
 // Re-export the API config
 export { default as apiConfig } from "./config"

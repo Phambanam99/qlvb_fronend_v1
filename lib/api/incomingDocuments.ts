@@ -1,41 +1,97 @@
-import api from "./config"
-import type { DocumentAttachmentDTO } from "./types"
+import api from "./config";
+import type { DocumentAttachmentDTO } from "./types";
+
+  // src/constants/document-status.ts
+
+export const DocumentProcessingStatus = {
+  // Initial statuses
+  DRAFT: { code: "draft", displayName: "Dự thảo" },
+  REGISTERED: { code: "registered", displayName: "Đã đăng ký" },
+
+  // 2. Văn thư phân phối statuses
+  DISTRIBUTED: { code: "distributed", displayName: "Đã phân phối" },
+
+  // 3. Trưởng phòng statuses
+  DEPT_ASSIGNED: { code: "dept_assigned", displayName: "Phòng đã phân công" },
+  PENDING_APPROVAL: { code: "pending_approval", displayName: "Chờ phê duyệt" },
+
+  // 4. Chuyên viên statuses
+  SPECIALIST_PROCESSING: { code: "specialist_processing", displayName: "Chuyên viên đang xử lý" },
+  SPECIALIST_SUBMITTED: { code: "specialist_submitted", displayName: "Chuyên viên đã trình" },
+
+  // 5. Lãnh đạo statuses
+  LEADER_REVIEWING: { code: "leader_reviewing", displayName: "Lãnh đạo đang xem xét" },
+  LEADER_APPROVED: { code: "leader_approved", displayName: "Lãnh đạo đã phê duyệt" },
+  LEADER_COMMENTED: { code: "leader_commented", displayName: "Lãnh đạo đã cho ý kiến" },
+
+  // Final statuses
+  PUBLISHED: { code: "published", displayName: "Đã ban hành" },
+  COMPLETED: { code: "completed", displayName: "Hoàn thành" },
+  REJECTED: { code: "rejected", displayName: "Từ chối" },
+  ARCHIVED: { code: "archived", displayName: "Lưu trữ" }
+} as const;
+
+// ------------------
+// 🔥 Type Definitions
+// ------------------
+export type StatusCode = (typeof DocumentProcessingStatus)[keyof typeof DocumentProcessingStatus]["code"];
+export type StatusDisplayName = (typeof DocumentProcessingStatus)[keyof typeof DocumentProcessingStatus]["displayName"];
+
+export interface Status {
+  code: StatusCode;
+  displayName: StatusDisplayName;
+}
+
+// ------------------
+// 🔥 Helper functions
+// ------------------
+
+export const getStatusByCode = (code: string): Status | undefined => {
+  return Object.values(DocumentProcessingStatus).find(status => status.code === code);
+};
+
+export const getStatusByDisplayName = (displayName: string): Status | undefined => {
+  return Object.values(DocumentProcessingStatus).find(status => status.displayName === displayName);
+};
+
+export const getAllStatuses = (): Status[] => Object.values(DocumentProcessingStatus);
 
 export interface IncomingDocumentDTO {
-  id: number
-  title: string
-  documentType: string
-  documentNumber: string
-  referenceNumber?: string
-  issuingAuthority: string
-  urgencyLevel: string
-  securityLevel: string
-  summary: string
-  notes?: string
-  signingDate: string
-  receivedDate: string
-  processingStatus: string
-  closureRequest: boolean
-  sendingDepartmentName: string
-  emailSource?: string
-  primaryProcessorId?: number
-  created: string
-  changed: string
-  attachmentFilename?: string
-  storageLocation?: string
+  id: number;
+  title: string;
+  documentType: string;
+  documentNumber: string;
+  referenceNumber?: string;
+  issuingAuthority: string;
+  urgencyLevel: string;
+  securityLevel: string;
+  summary: string;
+  notes?: string;
+  displayStatus: string
+  signingDate: string;
+  receivedDate: string;
+  processingStatus: string;
+  closureRequest: boolean;
+  sendingDepartmentName: string;
+  emailSource?: string;
+  primaryProcessorId?: number;
+  created: string;
+  changed: string;
+  attachmentFilename?: string;
+  storageLocation?: string;
 
   // Frontend compatibility fields
-  number?: string
-  sender?: string
-  content?: string
-  status?: string
-  assignedTo?: string
-  assignedUsers?: any[]
-  deadline?: string
-  managerOpinion?: string
-  attachments?: DocumentAttachmentDTO[]
-  relatedDocuments?: any[]
-  responses?: any[]
+  // number?: string
+  // sender?: string
+  // content?: string
+  // status?: string
+  // assignedTo?: string
+  // assignedUsers?: any[]
+  // deadline?: string
+  // managerOpinion?: string
+  // attachments?: DocumentAttachmentDTO[]
+  // relatedDocuments?: any[]
+  // responses?: any[]
 }
 
 export const incomingDocumentsAPI = {
@@ -45,29 +101,34 @@ export const incomingDocumentsAPI = {
    * @param size Page size
    * @returns Paginated list of incoming documents
    */
-  getAllDocuments: async (page = 0, size = 10): Promise<{ documents: IncomingDocumentDTO[] }> => {
+  getAllDocuments: async (
+    page = 0,
+    size = 10
+  ): Promise<{ documents: IncomingDocumentDTO[] }> => {
     try {
       const response = await api.get("/documents/incoming", {
         params: { page, size },
-      })
+      });
 
       // Map backend response to frontend expected format
-      const documents = response.data.content.map((doc: IncomingDocumentDTO) => ({
-        ...doc,
-        number: doc.documentNumber,
-        sender: doc.sendingDepartmentName,
-        content: doc.summary,
-        status: doc.processingStatus,
-        // Add empty arrays for frontend compatibility
-        attachments: [],
-        relatedDocuments: [],
-        responses: [],
-      }))
+      const documents = response.data.content.map(
+        (doc: IncomingDocumentDTO) => ({
+          ...doc,
+          number: doc.documentNumber,
+          sender: doc.issuingAuthority,
+          content: doc.summary,
+          status: doc.processingStatus,
+          // Add empty arrays for frontend compatibility
+          attachments: [],
+          relatedDocuments: [],
+          responses: [],
+        })
+      );
 
-      return { documents }
+      return { documents };
     } catch (error) {
-      console.error("Error fetching incoming documents:", error)
-      throw error
+      console.error("Error fetching incoming documents:", error);
+      throw error;
     }
   },
 
@@ -76,9 +137,11 @@ export const incomingDocumentsAPI = {
    * @param id Document ID
    * @returns Document data
    */
-  getIncomingDocumentById: async (id: string | number): Promise<{ data: IncomingDocumentDTO }> => {
+  getIncomingDocumentById: async (
+    id: string | number
+  ): Promise<{ data: IncomingDocumentDTO }> => {
     try {
-      const response = await api.get(`/documents/incoming/${id}`)
+      const response = await api.get(`/documents/incoming/${id}`);
 
       // Map backend response to frontend expected format
       const document = {
@@ -91,12 +154,12 @@ export const incomingDocumentsAPI = {
         attachments: [],
         relatedDocuments: [],
         responses: [],
-      }
+      };
 
-      return { data: document }
+      return { data: document };
     } catch (error) {
-      console.error("Error fetching incoming document:", error)
-      throw error
+      console.error("Error fetching incoming document:", error);
+      throw error;
     }
   },
 
@@ -105,9 +168,23 @@ export const incomingDocumentsAPI = {
    * @param documentData Document data
    * @returns Created document data
    */
-  createIncomingDocument: async (documentData: any) => {
-    const response = await api.post("/documents/incoming", documentData)
-    return response.data
+  createIncomingDocument: async (
+    documentData: any
+  ): Promise<{ data: IncomingDocumentDTO }> => {
+    const response = await api.post("/documents/incoming", documentData);
+    const document = {
+      ...response.data,
+      number: response.data.documentNumber,
+      sender: response.data.sendingDepartmentName,
+      content: response.data.summary,
+      status: response.data.processingStatus,
+      // Add empty arrays for frontend compatibility
+      attachments: response.data.attachments || [],
+      relatedDocuments: response.data.relatedDocuments || [],
+      responses: [],
+    };
+
+    return { data: document };
   },
 
   /**
@@ -117,8 +194,8 @@ export const incomingDocumentsAPI = {
    * @returns Updated document data
    */
   updateIncomingDocument: async (id: string | number, documentData: any) => {
-    const response = await api.put(`/documents/incoming/${id}`, documentData)
-    return response.data
+    const response = await api.put(`/documents/incoming/${id}`, documentData);
+    return response.data;
   },
 
   /**
@@ -127,8 +204,8 @@ export const incomingDocumentsAPI = {
    * @returns Success message
    */
   deleteIncomingDocument: async (id: string | number) => {
-    const response = await api.delete(`/documents/incoming/${id}`)
-    return response.data
+    const response = await api.delete(`/documents/incoming/${id}`);
+    return response.data;
   },
 
   /**
@@ -138,16 +215,20 @@ export const incomingDocumentsAPI = {
    * @returns Updated document data
    */
   uploadAttachment: async (id: string | number, file: File) => {
-    const formData = new FormData()
-    formData.append("file", file)
+    const formData = new FormData();
+    formData.append("file", file);
 
-    const response = await api.post(`/documents/incoming/${id}/attachment`, formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    })
+    const response = await api.post(
+      `/documents/incoming/${id}/attachment`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    );
 
-    return response.data
+    return response.data;
   },
 
   /**
@@ -157,18 +238,22 @@ export const incomingDocumentsAPI = {
    * @returns Success message
    */
   uploadMultipleAttachments: async (id: string | number, files: File[]) => {
-    const formData = new FormData()
+    const formData = new FormData();
     files.forEach((file) => {
-      formData.append("files", file)
-    })
+      formData.append("files", file);
+    });
 
-    const response = await api.post(`/documents/incoming/${id}/attachments`, formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    })
+    const response = await api.post(
+      `/documents/incoming/${id}/attachments`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    );
 
-    return response.data
+    return response.data;
   },
 
   /**
@@ -181,7 +266,26 @@ export const incomingDocumentsAPI = {
   searchDocuments: async (keyword: string, page = 0, size = 10) => {
     const response = await api.get("/documents/incoming/search", {
       params: { keyword, page, size },
-    })
-    return response.data
+    });
+    return response.data;
   },
-}
+  /**
+   * Get document attachments
+   * @param id Document ID
+   * @returns List of document attachments
+   */
+    downloadIncomingAttachment: async (id: number): Promise<Blob> => {
+    try {
+      const response = await api.get(`/documents/incoming/${id}/attachment`, {
+        responseType: 'blob',
+        headers: {
+          'Accept': 'application/hal+json'
+        }
+      });
+      return response.data;
+    } catch (error) {
+      console.error(`Error downloading attachment for incoming document ${id}:`, error);
+      throw error;
+    }
+  }
+};

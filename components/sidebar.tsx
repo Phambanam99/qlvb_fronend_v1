@@ -77,12 +77,7 @@ export default function Sidebar() {
         )}
       >
         <div className="flex flex-col h-full">
-          <div className="flex h-16 items-center border-b px-6 bg-primary/10">
-            <Link href="/" className="flex items-center space-x-2">
-              <FileText className="h-6 w-6 text-primary" />
-              <span className="font-bold text-lg text-primary">Quản lý Văn bản</span>
-            </Link>
-          </div>
+         
           <nav className="flex-1 overflow-auto py-6 px-4">
             <div className="space-y-1.5">
               {filteredNavItems.map((item) => (

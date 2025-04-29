@@ -9,41 +9,35 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Plus, Search, Filter, Loader2, AlertCircle } from "lucide-react"
 import Link from "next/link"
-import { incomingDocumentsAPI } from "@/lib/api/incomingDocuments"
+import { getStatusByCode, incomingDocumentsAPI, Status,getAllStatuses } from "@/lib/api/incomingDocuments"
 import { useToast } from "@/components/ui/use-toast"
 import { useIncomingDocuments } from "@/lib/store"
 
-interface IncomingDocument {
-  id: number | string
-  number: string
-  title: string
-  receivedDate: string
-  sender: string
-  status: string
-}
+
 
 export default function IncomingDocumentsPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const { toast } = useToast()
   const { incomingDocuments, loading, setIncomingDocuments, setLoading } = useIncomingDocuments()
-
+  const statuses = getAllStatuses(); 
   useEffect(() => {
     const fetchDocuments = async () => {
       try {
         setLoading(true)
         const response = await incomingDocumentsAPI.getAllDocuments()
-
+        console.log("response", response)
         if (response && response.documents) {
           setIncomingDocuments(
             response.documents.map((doc) => ({
               id: doc.id,
               number: doc.documentNumber,
               title: doc.title,
-              receivedDate: new Date(doc.receivedDate).toLocaleDateString("vi-VN"),
-              sender: doc.sendingDepartmentName,
+              receivedDate: new Date(doc.receivedDate),
+              sender: doc.issuingAuthority,
               status: doc.processingStatus,
-              issuedDate: doc.deadline || "",
+              displayStatus: doc.displayStatus,
+              issuedDate: doc.receivedDate,
               type: doc.documentType || "",
               priority: doc.urgencyLevel || "normal",
             })),
@@ -69,40 +63,21 @@ export default function IncomingDocumentsPage() {
   // Lọc dữ liệu
   const filteredDocuments = incomingDocuments.filter((doc) => {
     // Lọc theo tìm kiếm
-    const matchesSearch =
-      doc.number.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      doc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      doc.sender.toLowerCase().includes(searchQuery.toLowerCase())
-
+   // Lọc theo tìm kiếm
+const matchesSearch = searchQuery === '' || (
+  (doc.number?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+  (doc.title?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+  (doc.sender?.toLowerCase() || '').includes(searchQuery.toLowerCase())
+);
     // Lọc theo trạng thái
     const matchesStatus = statusFilter === "all" || doc.status === statusFilter
 
     return matchesSearch && matchesStatus
   })
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "pending":
-        return (
-          <Badge variant="outline" className="border-amber-500 bg-amber-50 text-amber-700">
-            Chờ xử lý
-          </Badge>
-        )
-      case "processing":
-        return (
-          <Badge variant="secondary" className="bg-primary/10 text-primary">
-            Đang xử lý
-          </Badge>
-        )
-      case "completed":
-        return (
-          <Badge variant="success" className="bg-green-50 text-green-700">
-            Đã xử lý
-          </Badge>
-        )
-      default:
-        return <Badge variant="outline">Không xác định</Badge>
-    }
+  const getStatusBadge = (status: string, displayStatus: string) => {
+        return <Badge variant={status}>{displayStatus}</Badge>
+    
   }
 
   if (loading) {
@@ -161,9 +136,11 @@ export default function IncomingDocumentsPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Tất cả</SelectItem>
-              <SelectItem value="pending">Chờ xử lý</SelectItem>
-              <SelectItem value="processing">Đang xử lý</SelectItem>
-              <SelectItem value="completed">Đã xử lý</SelectItem>
+              {statuses.map(status => (
+              <SelectItem key={status.code} value={status.code}>
+                {status.displayName}
+              </SelectItem>
+               ))}
             </SelectContent>
           </Select>
           <Button
@@ -203,10 +180,10 @@ export default function IncomingDocumentsPage() {
                 filteredDocuments.map((doc) => (
                   <TableRow key={doc.id} className="hover:bg-accent/30">
                     <TableCell className="font-medium">{doc.number}</TableCell>
-                    <TableCell className="hidden md:table-cell">{doc.receivedDate}</TableCell>
+                    <TableCell className="hidden md:table-cell">{doc.receivedDate.toLocaleDateString()}</TableCell>
                     <TableCell className="max-w-[300px] truncate">{doc.title}</TableCell>
                     <TableCell className="hidden md:table-cell">{doc.sender}</TableCell>
-                    <TableCell>{getStatusBadge(doc.status)}</TableCell>
+                    <TableCell>{getStatusBadge(doc.status, getStatusByCode(doc.status)?.displayName!)}</TableCell>
                     <TableCell className="text-right">
                       <Button variant="ghost" size="sm" className="hover:bg-primary/10 hover:text-primary" asChild>
                         <Link href={`/van-ban-den/${doc.id}`}>Chi tiết</Link>

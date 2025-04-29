@@ -1,6 +1,5 @@
 "use client"
 
-import type React from "react"
 import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -8,23 +7,48 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ArrowLeft, Paperclip, Save, X } from "lucide-react"
+import { ArrowLeft, Paperclip, Save, X, Plus } from "lucide-react"
 import Link from "next/link"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { useToast } from "@/components/ui/use-toast"
 import { useRouter } from "next/navigation"
-import { usersAPI, incomingDocumentsAPI } from "@/lib/api"
+import { 
+  usersAPI, 
+  incomingDocumentsAPI, 
+  workflowAPI, 
+  DocumentWorkflowDTO, 
+  senderApi,
+  UserDTO, 
+} from "@/lib/api"
+import { 
+  Dialog, 
+  DialogTrigger, 
+  DialogContent, 
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter
+} from "@/components/ui/dialog"
+import { Switch } from "@/components/ui/switch"
+import { User } from "@/lib/auth-context"
 
 export default function AddIncomingDocumentPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [files, setFiles] = useState<File[]>([])
   const [selectedUsers, setSelectedUsers] = useState<string[]>([])
-  const [users, setUsers] = useState<any[]>([])
+  const [users, setUsers] = useState<UserDTO[]>([])
   const [isLoadingUsers, setIsLoadingUsers] = useState(true)
-  const [existingAttachments, setExistingAttachments] = useState<any[]>([])
-  const [documentType, setDocumentType] = useState<string>("official")
+  const [documentType, setDocumentType] = useState<string>("OFFICIAL_LETTER")
+  const [departments, setDepartments] = useState<any[]>([])
+  const [isLoadingDepartments, setIsLoadingDepartments] = useState(true)
+  const [newSender, setNewSender] = useState("")
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [urgencyLevel, setUrgencyLevel] = useState("NORMAL")
+  const [securityLevel, setSecurityLevel] = useState("NORMAL")
+  const [closureRequest, setClosureRequest] = useState(false)
+  
   const router = useRouter()
   const { toast } = useToast()
   const formRef = useRef<HTMLFormElement>(null)
@@ -35,7 +59,6 @@ export default function AddIncomingDocumentPage() {
       try {
         setIsLoadingUsers(true)
         const response = await usersAPI.getAllUsers()
-        console.log("Danh sách cán bộ:", response)
         setUsers(response || [])
       } catch (error) {
         console.error("Lỗi khi lấy danh sách cán bộ:", error)
@@ -52,22 +75,37 @@ export default function AddIncomingDocumentPage() {
     fetchUsers()
   }, [toast])
 
+  // Lấy danh sách đơn vị gửi từ API
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      try {
+        setIsLoadingDepartments(true)
+        const senders = await senderApi.getAllSenders()
+        setDepartments(senders || [])
+      } catch (error) {
+        console.error("Lỗi khi lấy danh sách đơn vị gửi:", error)
+        toast({
+          title: "Lỗi",
+          description: "Không thể tải danh sách đơn vị gửi",
+          variant: "destructive"
+        })
+      } finally {
+        setIsLoadingDepartments(false)
+      }
+    }
+
+    fetchDepartments()
+  }, [toast])
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const newFiles = Array.from(e.target.files)
       setFiles(prevFiles => [...prevFiles, ...newFiles])
-      console.log("Tệp đã chọn:", newFiles)
     }
   }
 
-  // Xóa file đã chọn
   const handleRemoveFile = (index: number) => {
     setFiles(prevFiles => prevFiles.filter((_, i) => i !== index))
-  }
-
-  // Xóa file đính kèm hiện có
-  const handleRemoveExistingAttachment = (index: number) => {
-    setExistingAttachments(prev => prev.filter((_, i) => i !== index))
   }
 
   const handleUserSelect = (userId: string) => {
@@ -84,7 +122,43 @@ export default function AddIncomingDocumentPage() {
     setSelectedUsers((prev) => prev.filter((id) => id !== userId))
   }
 
-  // Cập nhật hàm handleSubmit để gửi dữ liệu đúng định dạng API yêu cầu
+  const handleAddDepartment = async () => {
+    if (!newSender.trim()) {
+      toast({
+        title: "Lỗi",
+        description: "Tên đơn vị gửi không được để trống",
+        variant: "destructive"
+      })
+      return
+    }
+    
+    try {
+      setIsSubmitting(true)
+      const response = await senderApi.createSender({ 
+        name: newSender,
+        description: "Đơn vị gửi mới được thêm từ trang tạo văn bản đến"
+      })
+      
+      setDepartments(prev => [...prev, response])
+      setNewSender("")
+      setDialogOpen(false)
+      
+      toast({
+        title: "Thành công",
+        description: "Đã thêm đơn vị gửi mới",
+      })
+    } catch (error) {
+      console.error("Lỗi khi thêm đơn vị gửi:", error)
+      toast({
+        title: "Lỗi",
+        description: "Không thể thêm đơn vị gửi mới",
+        variant: "destructive"
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
@@ -92,116 +166,68 @@ export default function AddIncomingDocumentPage() {
     try {
       const formData = new FormData(formRef.current!)
       
-      // Chuyển đổi tên trường từ UI sang tên trường API
-      const number = formData.get('documentNumber')
-      formData.delete('documentNumber')
-      formData.append('number', number as string)
+      // Chuẩn bị dữ liệu cho API
+      const documentData = {
+        title: formData.get('title') as string,
+        documentType: documentType,
+        documentNumber: formData.get('documentNumber') as string,
+        referenceNumber: formData.get('referenceNumber') as string,
+        issuingAuthority: formData.get('issuingAuthority') as string,
+        urgencyLevel: urgencyLevel,
+        securityLevel: securityLevel,
+        summary: formData.get('summary') as string,
+        notes: formData.get('notes') as string,
+        signingDate: formData.get('signingDate') as string,
+        receivedDate: formData.get('receivedDate') as string,
+        processingStatus: "PENDING",
+        closureRequest: closureRequest,
+        sendingDepartmentName: formData.get('sendingDepartmentName') as string,
+        emailSource: formData.get('emailSource') as string,
+        primaryProcessorId: selectedUsers.length > 0 ? selectedUsers[0] : null,
+      }
+      console.log("document", documentData)
+      // Thêm các file vào FormData
+      const apiFormData = new FormData()
       
-     // Đảm bảo định dạng ngày tháng đúng
-    const receivedDateInput = formData.get('receivedDate') as string;
-    if (receivedDateInput) {
-      // Chuyển đổi chuỗi ngày thành đối tượng Date
-      const receivedDate = new Date(receivedDateInput);
+      // Thêm dữ liệu văn bản vào FormData
+      Object.entries(documentData).forEach(([key, value]) => {
+        if (value !== null && value !== undefined) {
+          apiFormData.append(key, value.toString())
+        }
+      })
+      const response = await incomingDocumentsAPI.createIncomingDocument(apiFormData)
       
-      // Kiểm tra tính hợp lệ của ngày trước khi định dạng
-      if (!isNaN(receivedDate.getTime())) {
-        formData.set('receivedDate', receivedDate.toISOString());
-      } else {
-        // Xóa giá trị không hợp lệ thay vì gửi nó đến server
-        formData.delete('receivedDate');
+      if (response?.data?.id) {
+        // Tạo workflow cho văn bản
+        const workflowData: DocumentWorkflowDTO = {
+          documentId: response.data.id,
+          status: 'REGISTERED',
+          statusDisplayName: 'Đã đăng ký',
+          comments: formData.get('notes') as string
+        }
+        
+      await workflowAPI.registerIncomingDocument(response.data.id, workflowData)
+        
+        // Phân công người xử lý nếu có
+        // if (selectedUsers.length > 0) {
+        //   await workflowAPI.assignToSpecialist(response.data.id, {
+            
+        //     note: formData.get('notes') as string,
+        //     deadline: formData.get('deadline') as string
+        //   })
+        // }
+        if(files.length > 0) {
+          await incomingDocumentsAPI.uploadAttachment(response.data.id, files[0])
+        }
         toast({
-          title: "Cảnh báo",
-          description: "Ngày nhận không hợp lệ, đã bỏ qua trường này",
-          variant: "warning"
-        });
+          title: "Thành công",
+          description: "Văn bản đến đã được tạo thành công",
+        })
+        
+        router.push("/van-ban-den")
       }
-    }
-      
-      // Đảm bảo documentType được đặt từ state
-      formData.set('documentType', documentType)
-      
-      // Thêm trường status nếu chưa có
-      if (!formData.has('status')) {
-        formData.append('status', 'pending')
-      }
-      
-      // Xóa các file cũ và thêm các file mới đã chọn
-      formData.delete('attachments')
-      files.forEach(file => {
-        formData.append('attachments', file)
-      })
-      
-      // Thêm các tệp đính kèm hiện có
-      if (existingAttachments.length > 0) {
-        formData.append('attachmentsJson', JSON.stringify(existingAttachments))
-      }
-
-        // Xử lý tương tự cho deadline
-      const deadlineInput = formData.get('deadline') as string;
-      if (deadlineInput) {
-        const deadline = new Date(deadlineInput);
-        if (!isNaN(deadline.getTime())) {
-          formData.set('deadline', deadline.toISOString());
-        } else {
-          formData.delete('deadline');
-          toast({
-            title: "Cảnh báo",
-            description: "Thời hạn không hợp lệ, đã bỏ qua trường này",
-            variant: "warning"
-          });
-        }
-      }
-       console.log("Dữ liệu gửi đi:", Object.fromEntries(formData.entries()))
-      // Gọi API để tạo văn bản
-      const response = await incomingDocumentsAPI.createDocument(formData)
-      console.log("Dữ liệu phản hồi:", response)
-      if (!response.ok) {
-        const errorData = await response.document()
-        throw new Error(errorData.message || 'Có lỗi xảy ra khi tạo văn bản')
-      }
-      
-      const data = response;
-      
-      // Hiển thị thông báo thành công
-      toast({
-        title: "Thành công",
-        description: "Văn bản đến đã được tạo thành công",
-      })
-      
-      // Nếu có userIds và văn bản được tạo thành công, tiến hành phân công
-      if (selectedUsers.length > 0 && data.document?.id) {
-        try {
-          const noteElement = formRef.current?.querySelector('#note') as HTMLTextAreaElement
-          const note = noteElement?.value || ''
-          
-          const assignResponse = await incomingDocumentsAPI.assignDocument(data.document.id, {
-            userIds: selectedUsers.map(id => parseInt(id)),
-            note: note,
-            deadline: deadlineInput ? new Date(deadlineInput).toISOString() : undefined
-          })
-          
-          if (!assignResponse.ok) {
-            throw new Error('Có lỗi khi phân công văn bản')
-          }
-          
-          toast({
-            title: "Thành công",
-            description: "Văn bản đã được phân công cho cán bộ",
-          })
-        } catch (assignError) {
-          console.error('Lỗi khi phân công văn bản:', assignError)
-          toast({
-            title: "Chú ý",
-            description: "Văn bản đã được tạo nhưng có lỗi khi phân công",
-            variant: "warning"
-          })
-        }
-      }
-      
-      // Chuyển hướng về trang danh sách văn bản đến
-      router.push("/van-ban-den")
     } catch (error) {
-      console.error('Error submitting form:', error)
+      console.error('Lỗi khi tạo văn bản:', error)
       toast({
         title: "Lỗi",
         description: error instanceof Error ? error.message : "Có lỗi xảy ra khi tạo văn bản",
@@ -237,13 +263,81 @@ export default function AddIncomingDocumentPage() {
                   <Input id="documentNumber" name="documentNumber" placeholder="Nhập số văn bản" required />
                 </div>
                 <div className="space-y-2">
+                  <Label htmlFor="referenceNumber">Số tham chiếu</Label>
+                  <Input id="referenceNumber" name="referenceNumber" placeholder="Nhập số tham chiếu" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="signingDate">Ngày ký</Label>
+                  <Input id="signingDate" name="signingDate" type="date" required />
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="receivedDate">Ngày nhận</Label>
                   <Input id="receivedDate" name="receivedDate" type="date" required />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="sender">Đơn vị gửi</Label>
-                  <Input id="sender" name="sender" placeholder="Nhập tên đơn vị gửi" required />
+                  <Label htmlFor="issuingAuthority">Đơn vị gửi</Label>
+                  <div className="flex gap-2">
+                    <Select name="issuingAuthority" required>
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="Chọn đơn vị gửi" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {isLoadingDepartments ? (
+                          <SelectItem value="loading" disabled>Đang tải...</SelectItem>
+                        ) : departments.length === 0 ? (
+                          <SelectItem value="empty" disabled>Không có đơn vị nào</SelectItem>
+                        ) : (
+                          departments.map((dept) => (
+                            <SelectItem key={dept.id} value={dept.name}>
+                              {dept.name}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button variant="outline" size="icon" className="shrink-0">
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Thêm đơn vị gửi mới</DialogTitle>
+                          <DialogDescription>
+                            Nhập tên đơn vị gửi chưa có trong hệ thống
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4 py-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="newDepartment">Tên đơn vị gửi</Label>
+                            <Input
+                              id="newDepartment"
+                              value={newSender}
+                              onChange={(e) => setNewSender(e.target.value)}
+                              placeholder="Nhập tên đơn vị gửi mới"
+                            />
+                          </div>
+                        </div>
+                        <DialogFooter>
+                          <Button 
+                            variant="outline" 
+                            onClick={() => setDialogOpen(false)}
+                          >
+                            Hủy
+                          </Button>
+                          <Button 
+                            onClick={handleAddDepartment}
+                            disabled={isSubmitting || !newSender.trim()}
+                          >
+                            {isSubmitting ? "Đang thêm..." : "Thêm đơn vị"}
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
                 </div>
+                
                 <div className="space-y-2">
                   <Label htmlFor="documentType">Loại văn bản</Label>
                   <Select value={documentType} onValueChange={setDocumentType}>
@@ -251,28 +345,60 @@ export default function AddIncomingDocumentPage() {
                       <SelectValue placeholder="Chọn loại văn bản" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="official">Công văn</SelectItem>
-                      <SelectItem value="decision">Quyết định</SelectItem>
-                      <SelectItem value="directive">Chỉ thị</SelectItem>
-                      <SelectItem value="report">Báo cáo</SelectItem>
-                      <SelectItem value="plan">Kế hoạch</SelectItem>
-                      <SelectItem value="other">Khác</SelectItem>
+                      <SelectItem value="OFFICIAL_LETTER">Công văn</SelectItem>
+                      <SelectItem value="DECISION">Quyết định</SelectItem>
+                      <SelectItem value="DIRECTIVE">Chỉ thị</SelectItem>
+                      <SelectItem value="ANNOUNCEMENT">Thông báo</SelectItem>
+                      <SelectItem value="REPORT">Báo cáo</SelectItem>
+                      <SelectItem value="PLAN">Kế hoạch</SelectItem>
+                      <SelectItem value="OTHER">Khác</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-                
+                <div className="space-y-2">
+                  <Label htmlFor="urgencyLevel">Độ khẩn</Label>
+                  <Select value={urgencyLevel} onValueChange={setUrgencyLevel}>
+                    <SelectTrigger id="urgencyLevel" name="urgencyLevel">
+                      <SelectValue placeholder="Chọn độ khẩn" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="NORMAL">Bình thường</SelectItem>
+                      <SelectItem value="URGENT">Khẩn</SelectItem>
+                      <SelectItem value="IMMEDIATE">Hỏa tốc</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="securityLevel">Độ mật</Label>
+                  <Select value={securityLevel} onValueChange={setSecurityLevel}>
+                    <SelectTrigger id="securityLevel" name="securityLevel">
+                      <SelectValue placeholder="Chọn độ mật" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="NORMAL">Bình thường</SelectItem>
+                      <SelectItem value="CONFIDENTIAL">Mật</SelectItem>
+                      <SelectItem value="SECRET">Tối mật</SelectItem>
+                      <SelectItem value="TOP_SECRET">Tuyệt mật</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="title">Trích yếu</Label>
                 <Input id="title" name="title" placeholder="Nhập trích yếu văn bản" required />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="content">Nội dung</Label>
-                <Textarea id="content" name="content" placeholder="Nhập nội dung văn bản" rows={5} />
+                <Label htmlFor="summary">Tóm tắt nội dung</Label>
+                <Textarea id="summary" name="summary" placeholder="Nhập tóm tắt nội dung văn bản" rows={5} />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="assignedDepartment">Phòng ban xử lý</Label>
-                <Input id="assignedDepartment" name="assignedDepartment" placeholder="Nhập phòng ban xử lý" />
+            
+              <div className="flex items-center space-x-2">
+                <Switch 
+                  id="closureRequest"
+                  checked={closureRequest}
+                  onCheckedChange={setClosureRequest}
+                />
+                <Label htmlFor="closureRequest">Yêu cầu văn bản đóng lưu sau khi xử lý</Label>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="attachments">Tệp đính kèm</Label>
@@ -334,7 +460,7 @@ export default function AddIncomingDocumentPage() {
                   )}
 
                   {selectedUsers.map((userId) => {
-                    const user = users.find((u) => u.id === userId)
+                    const user = users.find((u) => u.id === Number(userId))
                     if (!user) return null
 
                     return (
@@ -343,7 +469,7 @@ export default function AddIncomingDocumentPage() {
                         variant="secondary"
                         className="pl-2 pr-1 py-1.5 flex items-center gap-1 bg-primary/10"
                       >
-                        <span>{user.fullName}</span>
+                        <span>{user.username}</span>
                         <Button
                           variant="ghost"
                           size="icon"
@@ -376,36 +502,32 @@ export default function AddIncomingDocumentPage() {
                     </div>
                     <div className="max-h-[300px] overflow-y-auto">
                       {isLoadingUsers ? (
-                        <div className="flex items-center justify-center p-4">
+                        <div key="loading" className="flex items-center justify-center p-4">
                           <p>Đang tải danh sách cán bộ...</p>
                         </div>
                       ) : users.length === 0 ? (
-                        <div className="flex items-center justify-center p-4">
+                        <div key="empty" className="flex items-center justify-center p-4">
                           <p>Không có cán bộ nào</p>
                         </div>
                       ) : (
-                        users.map((user) => (
-                          <div
-                            key={user.id}
+                        users.map((user, index) => (
+                          <div key={user.id || `user-${index}`}
                             className="flex items-center justify-between px-4 py-3 border-b last:border-b-0 hover:bg-accent/50"
                           >
                             <div className="flex items-center gap-3">
                               <Checkbox
                                 id={`user-${user.id}`}
-                                checked={selectedUsers.includes(user.id)}
-                                onCheckedChange={() => handleUserSelect(user.id)}
+                                checked={selectedUsers.includes(String(user.id))}
+                                onCheckedChange={() => handleUserSelect(String(user.id))}
                               />
                               <div className="flex items-center gap-2">
                                 <Avatar className="h-8 w-8 bg-primary/10">
                                   <AvatarFallback className="text-xs text-primary">
-                                    {user.fullName
-                                      .split(" ")
-                                      .map((n: string) => n[0])
-                                      .join("")}
+                                    {user.username.substring(0, 2).toUpperCase()}
                                   </AvatarFallback>
                                 </Avatar>
                                 <div>
-                                  <p className="text-sm font-medium">{user.fullName}</p>
+                                  <p className="text-sm font-medium">{user.username}</p>
                                   <p className="text-xs text-muted-foreground">{user.position}</p>
                                 </div>
                               </div>
@@ -421,11 +543,10 @@ export default function AddIncomingDocumentPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="note">Ghi chú</Label>
-                  <Textarea id="note" name="note" placeholder="Nhập ghi chú cho người nhận (nếu có)" rows={3} />
+                  <Label htmlFor="notes">Ghi chú</Label>
+                  <Textarea id="notes" name="notes" placeholder="Nhập ghi chú cho người nhận (nếu có)" rows={3} />
                 </div>
                 
-                {/* Thêm trường deadline nếu cần */}
                 <div className="space-y-2">
                   <Label htmlFor="deadline">Thời hạn xử lý</Label>
                   <Input id="deadline" name="deadline" type="date" placeholder="Chọn thời hạn xử lý" />
