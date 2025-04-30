@@ -23,7 +23,7 @@ export const departmentsAPI = {
    * @param size Page size
    * @returns Paginated list of departments
    */
-  getAllDepartments: async (page = 0, size = 10): Promise<PageResponse<DepartmentDTO>> => {
+  getAllDepartments: async (page = 0, size = 100): Promise<PageResponse<DepartmentDTO>> => {
     const response = await api.get("/departments", {
       params: { page, size },
     })

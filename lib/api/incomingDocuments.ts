@@ -142,7 +142,7 @@ export const incomingDocumentsAPI = {
   ): Promise<{ data: IncomingDocumentDTO }> => {
     try {
       const response = await api.get(`/documents/incoming/${id}`);
-
+      
       // Map backend response to frontend expected format
       const document = {
         ...response.data,
@@ -197,7 +197,10 @@ export const incomingDocumentsAPI = {
     const response = await api.put(`/documents/incoming/${id}`, documentData);
     return response.data;
   },
-
+  getDepartmentsByDocumentId: async (id: string | number) => {
+    const response = await api.get(`/documents/incoming/${id}/departments`);
+    return response.data;
+  },
   /**
    * Delete incoming document
    * @param id Document ID

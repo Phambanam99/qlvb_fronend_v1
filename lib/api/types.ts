@@ -63,6 +63,10 @@ export interface Pageable {
     assignedToId?: number
     assignedToName?: string
     comments?: string
+    primaryDepartmentId?: number
+    primaryDepartmentName?: string
+    collaboratingDepartmentIds?: number[]
+    collaboratingDepartmentNames?: string[]
   }
   
   export interface ActivityLogDTO {

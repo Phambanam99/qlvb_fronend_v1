@@ -50,10 +50,10 @@ export default function DocumentDetailPage({
         const response = await incomingDocumentsAPI.getIncomingDocumentById(
           documentId
         );
-
+        console.log("response", response);
         // Fetch document workflow status
         const workflowStatus = await workflowAPI.getDocumentStatus(documentId);
-
+   
         // Fetch document history
         const history = await workflowAPI.getDocumentHistory(documentId);
 
@@ -64,6 +64,8 @@ export default function DocumentDetailPage({
           assignedToId: workflowStatus.assignedToId,
           assignedToName: workflowStatus.assignedToName,
           history: history,
+          
+
           // Add empty arrays for frontend compatibility
           attachments: [],
           relatedDocuments: [],
