@@ -27,6 +27,8 @@ import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/components/ui/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { use } from "react";
+import { DepartmentDTO } from "@/lib/api";
+import { de } from "date-fns/locale";
 export default function DocumentDetailPage({
   params,
 }: {
@@ -41,7 +43,27 @@ export default function DocumentDetailPage({
   const [_document, setDocument] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // fetch all departments with document id using useEffect
 
+  const [departments, setDepartments] = useState<DepartmentDTO[]>([]);
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      try {
+        const response = await incomingDocumentsAPI.getAllDepartments(documentId);
+        setDepartments(response);
+      } catch (error) {
+        console.error("Error fetching departments:", error);
+        toast({
+          title: "Lỗi",
+          description: "Không thể tải danh sách đơn vị",
+          variant: "destructive",
+        });
+      }
+    };
+
+    fetchDepartments();
+  }, [documentId, toast]);
+  
   useEffect(() => {
     const fetchDocument = async () => {
       try {
@@ -64,14 +86,13 @@ export default function DocumentDetailPage({
           assignedToId: workflowStatus.assignedToId,
           assignedToName: workflowStatus.assignedToName,
           history: history,
-          
-
+    
           // Add empty arrays for frontend compatibility
           attachments: [],
           relatedDocuments: [],
           responses: [],
         };
-
+        console.log("documentData", documentData);
         setDocument(documentData);
         setError(null);
       } catch (err: any) {
@@ -158,7 +179,8 @@ export default function DocumentDetailPage({
       );
     }
 
-    if (hasRole("department_head")) {
+    if (hasRole(["ROLE_TRUONG_PHONG", "ROLE_PHO_PHONG", 
+      "ROLE_TRUONG_BAN", "ROLE_PHO_BAN"])) {
       return (
         <>
           <Button
@@ -189,7 +211,7 @@ export default function DocumentDetailPage({
       );
     }
 
-    if (hasRole("staff")) {
+    if (hasRole(["ROLE_TRO_LY","ROLE_NHAN_VIEN"])) {
       return (
         <Button
           size="sm"
@@ -202,7 +224,7 @@ export default function DocumentDetailPage({
       );
     }
 
-    if (hasRole("manager")) {
+    if (hasRole("ROLE_PHE_DUYET")) {
       return (
         _document.responses &&
         _document.responses.length > 0 && (
@@ -302,7 +324,28 @@ export default function DocumentDetailPage({
                   <p className="text-sm font-medium text-muted-foreground">
                     Đơn vị xử lý
                   </p>
-                  <p>{_document.assignedToName || "Chưa phân công"}</p>
+                 
+                  <div className="flex space-x-2 gap-1">
+                    {departments.length > 0 && departments.map((department) => (
+                      <div
+                        key={department.id}
+                        className="flex items-center space-x-2"
+                      >
+                        <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center text-xs font-medium text-primary">
+                          {department.name
+                            .split(" ")
+                            .map((n: string) => n[0])
+                            .join("")}
+                        </div>
+                       
+                      </div>
+                    ))}
+                    {departments.length === 0 && (
+                      <p className="text-sm text-muted-foreground">
+                        Chưa có đơn vị xử lý
+                      </p>
+                    )}  
+                  </div>
                 </div>
               </div>
               <Separator className="bg-primary/10" />
@@ -367,8 +410,6 @@ export default function DocumentDetailPage({
                             className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
                             onClick={() => handleDownloadAttachment()}
                           >
-                            {" "}
-                            onClick={() => handleDownloadAttachment()}
                             <Download className="h-4 w-4" />
                           </Button>
                         </div>
@@ -433,9 +474,32 @@ export default function DocumentDetailPage({
                 <p className="text-sm font-medium text-muted-foreground">
                   Đơn vị xử lý chính
                 </p>
-                <p className="mt-1">
-                  {_document.assignedToName || "Chưa phân công"}
-                </p>
+                <div className="flex items-center space-x-2">
+                {/* check if departments */}
+                  {departments.length > 0 &&
+                    departments.map((department) => (
+                    <div key={department.id} className="flex flex-col items-center">
+                      <div
+                        className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center text-xs font-medium text-primary"
+                      >
+                        {department.name
+                          .split(" ")
+                          .map((n: string) => n[0])
+                          .join("")}
+                      </div>
+                      <p className="mt-1">
+                        {department.name || "Chưa phân công"}
+                      </p>
+                    </div>
+                      
+                    ))}
+                    {departments.length === 0 && (
+                      <p className="text-sm text-muted-foreground"> 
+                        Chưa có đơn vị xử lý chính
+                        </p>)}
+               
+                
+                </div>
               </div>
               <Separator className="bg-primary/10" />
               <div>
@@ -443,28 +507,24 @@ export default function DocumentDetailPage({
                   Cán bộ được giao
                 </p>
                 <div className="mt-1">
-                  {_document.assignedUsers &&
-                  _document.assignedUsers.length > 0 ? (
+                  {_document.assignedToId &&
+                  _document.assignedToName ? (
                     <div className="flex items-center space-x-2">
                       <div className="flex -space-x-2">
-                        {_document.assignedUsers
-                          .slice(0, 3)
-                          .map((user: any, index: number) => (
+                        
                             <div
-                              key={index}
+                              key={_document.assignedToId}
                               className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary"
                             >
-                              {user.name
+                              {_document.assignedToName
                                 .split(" ")
                                 .map((n: string) => n[0])
                                 .join("")}
                             </div>
-                          ))}
+                         
                       </div>
                       <span className="text-sm">
-                        {_document.assignedUsers
-                          .map((user: any) => user.name)
-                          .join(", ")}
+                        {_document.assignedToName}
                       </span>
                     </div>
                   ) : (
@@ -480,14 +540,14 @@ export default function DocumentDetailPage({
                   Thời hạn xử lý
                 </p>
                 <p className="mt-1">
-                  {_document.deadline
-                    ? new Date(_document.deadline).toLocaleDateString("vi-VN")
+                  {_document.closureDeadline
+                    ? new Date(_document.closureDeadline).toLocaleDateString("vi-VN")
                     : "Chưa thiết lập thời hạn"}
                 </p>
               </div>
             </CardContent>
             <CardFooter className="bg-accent/30 border-t border-primary/10">
-              {hasRole("department_head") && (
+              {hasRole(["ROLE_TRUONG_PHONG", "ROLE_PHO_PHONG"]) && (
                 <Button
                   className="w-full bg-primary hover:bg-primary/90"
                   asChild
@@ -497,7 +557,7 @@ export default function DocumentDetailPage({
                   </Link>
                 </Button>
               )}
-              {!hasRole("department_head") && (
+              {hasRole(["ROLE_TRO_LY","ROLE_NHAN_VIEN"]) && (
                 <Button className="w-full bg-primary hover:bg-primary/90">
                   Cập nhật thông tin xử lý
                 </Button>

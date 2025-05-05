@@ -6,23 +6,11 @@ import { ScheduleDTO } from "./api/schedules"
 
 // Incoming Documents Store
 interface IncomingDocumentsState {
-  incomingDocuments: IncomingDocument[]
+  incomingDocuments: IncomingDocumentDTO[]
   loading: boolean
-  setIncomingDocuments: (documents: IncomingDocument[]) => void
+  setIncomingDocuments: (documents: IncomingDocumentDTO[]) => void
   setLoading: (loading: boolean) => void
 }
-export interface IncomingDocument {
-              id: number,
-              number: string,
-              title: string,
-              receivedDate: Date,
-              sender: string,
-              status: string,
-              displayStatus: string,
-              issuedDate: string,
-              type: string ,
-              priority: string
-            }
 
 export const useIncomingDocuments = create<IncomingDocumentsState>((set) => ({
   incomingDocuments: [],

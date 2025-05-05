@@ -58,7 +58,7 @@ export default function Home() {
         // Fetch recent documents
         const incomingDocs = await incomingDocumentsAPI.getAllDocuments()
         setRecentDocuments(
-          incomingDocs.documents.slice(0, 3).map((doc) => ({
+          incomingDocs.content.slice(0, 3).map((doc) => ({
             id: doc.id,
             number: doc.documentNumber,
             title: doc.title,

@@ -1,7 +1,7 @@
 import api from "./config";
 import type { DocumentAttachmentDTO } from "./types";
 
-  // src/constants/document-status.ts
+// src/constants/document-status.ts
 
 export const DocumentProcessingStatus = {
   // Initial statuses
@@ -16,26 +16,43 @@ export const DocumentProcessingStatus = {
   PENDING_APPROVAL: { code: "pending_approval", displayName: "Chờ phê duyệt" },
 
   // 4. Chuyên viên statuses
-  SPECIALIST_PROCESSING: { code: "specialist_processing", displayName: "Chuyên viên đang xử lý" },
-  SPECIALIST_SUBMITTED: { code: "specialist_submitted", displayName: "Chuyên viên đã trình" },
+  SPECIALIST_PROCESSING: {
+    code: "specialist_processing",
+    displayName: "Chuyên viên đang xử lý",
+  },
+  SPECIALIST_SUBMITTED: {
+    code: "specialist_submitted",
+    displayName: "Chuyên viên đã trình",
+  },
 
   // 5. Lãnh đạo statuses
-  LEADER_REVIEWING: { code: "leader_reviewing", displayName: "Lãnh đạo đang xem xét" },
-  LEADER_APPROVED: { code: "leader_approved", displayName: "Lãnh đạo đã phê duyệt" },
-  LEADER_COMMENTED: { code: "leader_commented", displayName: "Lãnh đạo đã cho ý kiến" },
+  LEADER_REVIEWING: {
+    code: "leader_reviewing",
+    displayName: "Lãnh đạo đang xem xét",
+  },
+  LEADER_APPROVED: {
+    code: "leader_approved",
+    displayName: "Lãnh đạo đã phê duyệt",
+  },
+  LEADER_COMMENTED: {
+    code: "leader_commented",
+    displayName: "Lãnh đạo đã cho ý kiến",
+  },
 
   // Final statuses
   PUBLISHED: { code: "published", displayName: "Đã ban hành" },
   COMPLETED: { code: "completed", displayName: "Hoàn thành" },
   REJECTED: { code: "rejected", displayName: "Từ chối" },
-  ARCHIVED: { code: "archived", displayName: "Lưu trữ" }
+  ARCHIVED: { code: "archived", displayName: "Lưu trữ" },
 } as const;
 
 // ------------------
 // 🔥 Type Definitions
 // ------------------
-export type StatusCode = (typeof DocumentProcessingStatus)[keyof typeof DocumentProcessingStatus]["code"];
-export type StatusDisplayName = (typeof DocumentProcessingStatus)[keyof typeof DocumentProcessingStatus]["displayName"];
+export type StatusCode =
+  (typeof DocumentProcessingStatus)[keyof typeof DocumentProcessingStatus]["code"];
+export type StatusDisplayName =
+  (typeof DocumentProcessingStatus)[keyof typeof DocumentProcessingStatus]["displayName"];
 
 export interface Status {
   code: StatusCode;
@@ -47,14 +64,21 @@ export interface Status {
 // ------------------
 
 export const getStatusByCode = (code: string): Status | undefined => {
-  return Object.values(DocumentProcessingStatus).find(status => status.code === code);
+  return Object.values(DocumentProcessingStatus).find(
+    (status) => status.code === code
+  );
 };
 
-export const getStatusByDisplayName = (displayName: string): Status | undefined => {
-  return Object.values(DocumentProcessingStatus).find(status => status.displayName === displayName);
+export const getStatusByDisplayName = (
+  displayName: string
+): Status | undefined => {
+  return Object.values(DocumentProcessingStatus).find(
+    (status) => status.displayName === displayName
+  );
 };
 
-export const getAllStatuses = (): Status[] => Object.values(DocumentProcessingStatus);
+export const getAllStatuses = (): Status[] =>
+  Object.values(DocumentProcessingStatus);
 
 export interface IncomingDocumentDTO {
   id: number;
@@ -67,9 +91,9 @@ export interface IncomingDocumentDTO {
   securityLevel: string;
   summary: string;
   notes?: string;
-  displayStatus: string
+  displayStatus: string;
   signingDate: string;
-  receivedDate: string;
+  receivedDate: Date;
   processingStatus: string;
   closureRequest: boolean;
   sendingDepartmentName: string;
@@ -79,19 +103,7 @@ export interface IncomingDocumentDTO {
   changed: string;
   attachmentFilename?: string;
   storageLocation?: string;
-
-  // Frontend compatibility fields
-  // number?: string
-  // sender?: string
-  // content?: string
-  // status?: string
-  // assignedTo?: string
-  // assignedUsers?: any[]
-  // deadline?: string
-  // managerOpinion?: string
-  // attachments?: DocumentAttachmentDTO[]
-  // relatedDocuments?: any[]
-  // responses?: any[]
+  primaryProcessDepartmentId?: number;
 }
 
 export const incomingDocumentsAPI = {
@@ -104,7 +116,7 @@ export const incomingDocumentsAPI = {
   getAllDocuments: async (
     page = 0,
     size = 10
-  ): Promise<{ documents: IncomingDocumentDTO[] }> => {
+  ): Promise<{ content: IncomingDocumentDTO[] }> => {
     try {
       const response = await api.get("/documents/incoming", {
         params: { page, size },
@@ -114,10 +126,6 @@ export const incomingDocumentsAPI = {
       const documents = response.data.content.map(
         (doc: IncomingDocumentDTO) => ({
           ...doc,
-          number: doc.documentNumber,
-          sender: doc.issuingAuthority,
-          content: doc.summary,
-          status: doc.processingStatus,
           // Add empty arrays for frontend compatibility
           attachments: [],
           relatedDocuments: [],
@@ -125,7 +133,7 @@ export const incomingDocumentsAPI = {
         })
       );
 
-      return { documents };
+      return { content: documents };
     } catch (error) {
       console.error("Error fetching incoming documents:", error);
       throw error;
@@ -142,7 +150,7 @@ export const incomingDocumentsAPI = {
   ): Promise<{ data: IncomingDocumentDTO }> => {
     try {
       const response = await api.get(`/documents/incoming/${id}`);
-      
+      console.log("response cc", response.data);
       // Map backend response to frontend expected format
       const document = {
         ...response.data,
@@ -186,7 +194,21 @@ export const incomingDocumentsAPI = {
 
     return { data: document };
   },
+  getDepartmentDocuments: async (
+    departmentId: string | number,
+    page = 0,
+    size = 10
+  ) => {
+    const response = await api.get(
+      `/documents/incoming/department/${departmentId}`,
+      {
+        params: { page, size },
+      }
+    );
+    console.log("response", response.data.content);
 
+    return response.data;
+  },
   /**
    * Update incoming document
    * @param id Document ID
@@ -210,7 +232,15 @@ export const incomingDocumentsAPI = {
     const response = await api.delete(`/documents/incoming/${id}`);
     return response.data;
   },
-
+  /**
+   * Get all Departments with document ID
+   * @param id Document ID
+   * @returns List of departments
+   */
+  getAllDepartments: async (id: string | number) => {
+    const response = await api.get(`/documents/incoming/${id}/departments`);
+    return response.data;
+  },
   /**
    * Upload document attachment
    * @param id Document ID
@@ -277,18 +307,21 @@ export const incomingDocumentsAPI = {
    * @param id Document ID
    * @returns List of document attachments
    */
-    downloadIncomingAttachment: async (id: number): Promise<Blob> => {
+  downloadIncomingAttachment: async (id: number): Promise<Blob> => {
     try {
       const response = await api.get(`/documents/incoming/${id}/attachment`, {
-        responseType: 'blob',
+        responseType: "blob",
         headers: {
-          'Accept': 'application/hal+json'
-        }
+          Accept: "application/hal+json",
+        },
       });
       return response.data;
     } catch (error) {
-      console.error(`Error downloading attachment for incoming document ${id}:`, error);
+      console.error(
+        `Error downloading attachment for incoming document ${id}:`,
+        error
+      );
       throw error;
     }
-  }
+  },
 };

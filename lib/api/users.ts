@@ -24,7 +24,12 @@ export const usersAPI = {
     const response = await api.get("/users", { params })
     return response.data
   },
-
+  //get users by Department Id
+  getUsersByDepartmentId: async (departmentId: number): Promise<UserDTO[]> => {
+    const response = await api.get(`/users/department/${departmentId}`)
+    console.log("response", response.data)
+    return response.data
+  },
   /**
    * Get user by ID
    * @param id User ID

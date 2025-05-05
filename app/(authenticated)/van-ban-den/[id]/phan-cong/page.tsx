@@ -5,33 +5,26 @@ import { Button } from "@/components/ui/button"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import DepartmentHeadAssignment from "@/components/department-head-assignment"
-import { incomingDocumentsAPI } from "@/lib/api"
+import { IncomingDocumentDTO, incomingDocumentsAPI } from "@/lib/api"
 import { useToast } from "@/components/ui/use-toast"
 import { Skeleton } from "@/components/ui/skeleton"
-
-interface Document {
-  id: number
-  title: string
-  number: string
-  issuedDate: string
-  receivedDate: string
-  sender: string
-  type: string
-  priority: string
-  status: string
-}
+import { use } from "react"
+import { useAuth } from "@/lib/auth-context"
 
 export default function DocumentAssignmentPage({ params }: { params: { id: string } }) {
-  const documentId = Number.parseInt(params.id)
+  // const documentId = Number.parseInt(params.id)
   const { toast } = useToast()
-  const [document, setDocument] = useState<Document | null>(null)
+  const [document, setDocument] = useState< any >(null)
   const [loading, setLoading] = useState(true)
-
+  const unwrappedParams = use(params);
+  const { id } = unwrappedParams;
+  const {user} = useAuth();
+  const documentId = Number.parseInt(id);;
   useEffect(() => {
     const fetchDocument = async () => {
       try {
         setLoading(true)
-        const documentData = await incomingDocumentsAPI.getDocumentById(params.id)
+        const documentData = await incomingDocumentsAPI.getIncomingDocumentById(documentId)
         setDocument(documentData)
       } catch (error) {
         console.error("Error fetching document:", error)
@@ -46,7 +39,7 @@ export default function DocumentAssignmentPage({ params }: { params: { id: strin
     }
 
     fetchDocument()
-  }, [params.id, toast])
+  }, [documentId, toast])
 
   if (loading) {
     return <DocumentAssignmentSkeleton />
@@ -77,7 +70,7 @@ export default function DocumentAssignmentPage({ params }: { params: { id: strin
 
       <div className="grid gap-6 md:grid-cols-7">
         <div className="md:col-span-4">
-          <DepartmentHeadAssignment documentId={documentId} />
+          <DepartmentHeadAssignment documentId={documentId} departmentId={Number(user?.departmentId!)} />
         </div>
         <div className="md:col-span-3">
           <div className="bg-primary/5 border rounded-md p-4">

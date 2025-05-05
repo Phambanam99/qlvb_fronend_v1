@@ -1,62 +1,102 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Textarea } from "@/components/ui/textarea"
-import { Label } from "@/components/ui/label"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Badge } from "@/components/ui/badge"
-import { CalendarIcon, Send } from "lucide-react"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Calendar } from "@/components/ui/calendar"
-import { cn } from "@/lib/utils"
-import { format } from "date-fns"
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import { CalendarIcon, Send } from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
+import { format } from "date-fns";
+import {
+  usersAPI,
+  incomingDocumentsAPI,
+  workflowAPI,
+  DocumentWorkflowDTO,
+  DocumentProcessingStatus,
+
+  UserDTO
+} from "@/lib/api";
 
 interface DepartmentHeadAssignmentProps {
-  documentId: number
+  documentId: number;
+  departmentId: number;
 }
 
-export default function DepartmentHeadAssignment({ documentId }: DepartmentHeadAssignmentProps) {
-  const [selectedStaff, setSelectedStaff] = useState<string[]>([])
-  const [comments, setComments] = useState("")
-  const [deadline, setDeadline] = useState<Date>()
-  const [isSubmitting, setIsSubmitting] = useState(false)
+export default function DepartmentHeadAssignment({
+  documentId,
+  departmentId,
+}: DepartmentHeadAssignmentProps) {
+  const [selectedStaff, setSelectedStaff] = useState<number[]>([]);
+  const [comments, setComments] = useState("");
+  const [deadline, setDeadline] = useState<Date>();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Dữ liệu mẫu cho danh sách cán bộ trong phòng
-  const departmentStaff = [
-    { id: "staff1", name: "Nguyễn Văn B", position: "Chuyên viên", avatar: "NB" },
-    { id: "staff2", name: "Trần Hương C", position: "Chuyên viên", avatar: "TC" },
-    { id: "staff3", name: "Lê Minh D", position: "Chuyên viên", avatar: "LD" },
-    { id: "staff4", name: "Phạm Thị E", position: "Chuyên viên", avatar: "PE" },
-  ]
+  // Trong thực tế, bạn sẽ lấy dữ liệu này từ API hoặc từ context
+  //Lấy danh sách cán bộ phòng từ API userAPI
+  const [departmentStaff, setDepartmentStaff] = useState<UserDTO[]>([]);
+  useEffect(() => {
+    const fetchDepartmentStaff = async () => {
+      try {
+        const staffData = await usersAPI.getUsersByDepartmentId(departmentId);
+        setDepartmentStaff(staffData);
+      } catch (error) {
+        console.error("Error fetching department staff:", error);
+      }
+    };
 
-  const handleStaffSelect = (staffId: string) => {
+    fetchDepartmentStaff();
+  }, [departmentId]);
+
+  const handleStaffSelect = (staffId: number) => {
     setSelectedStaff((prev) => {
       if (prev.includes(staffId)) {
-        return prev.filter((id) => id !== staffId)
+        return prev.filter((id) => id !== staffId);
       } else {
-        return [...prev, staffId]
+        return [...prev, staffId];
       }
-    })
-  }
+    });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsSubmitting(true)
+    e.preventDefault();
+    setIsSubmitting(true);
 
-    // Giả lập gửi dữ liệu
-    await new Promise((resolve) => setTimeout(resolve, 1000))
 
     // Reset form
-    setIsSubmitting(false)
-
+    setIsSubmitting(false);
+    console.log("Đã phân công xử lý văn bản thành công! ", selectedStaff[0]);
     // Thông báo thành công (trong thực tế sẽ sử dụng toast hoặc notification)
-    alert("Đã phân công xử lý văn bản thành công!")
-  }
+    alert("Đã phân công xử lý văn bản thành công!");
+    const documentAssign: DocumentWorkflowDTO = {
+      status: DocumentProcessingStatus.DEPT_ASSIGNED.code,
+      statusDisplayName: DocumentProcessingStatus.DEPT_ASSIGNED.displayName,
+      comments,
+      closureDeadline: deadline,
+      assignedToId: selectedStaff[0],
+      documentId: documentId,
+    };
+    // Gửi dữ liệu phân công xử lý văn bản đến API
+    await workflowAPI.assignToSpecialist(documentId, documentAssign);
+  };
 
   return (
     <Card>
@@ -69,7 +109,9 @@ export default function DepartmentHeadAssignment({ documentId }: DepartmentHeadA
             <Label>Chọn cán bộ xử lý</Label>
             <div className="border rounded-md overflow-hidden">
               <div className="bg-primary/5 px-4 py-2 border-b">
-                <span className="text-sm font-medium">Danh sách cán bộ trong phòng</span>
+                <span className="text-sm font-medium">
+                  Danh sách cán bộ trong phòng
+                </span>
               </div>
               <div className="max-h-[200px] overflow-y-auto">
                 {departmentStaff.map((staff) => (
@@ -85,11 +127,15 @@ export default function DepartmentHeadAssignment({ documentId }: DepartmentHeadA
                       />
                       <div className="flex items-center gap-2">
                         <Avatar className="h-8 w-8 bg-primary/10">
-                          <AvatarFallback className="text-xs text-primary">{staff.avatar}</AvatarFallback>
+                          <AvatarFallback className="text-xs text-primary">
+                            AV
+                          </AvatarFallback>
                         </Avatar>
                         <div>
-                          <p className="text-sm font-medium">{staff.name}</p>
-                          <p className="text-xs text-muted-foreground">{staff.position}</p>
+                          <p className="text-sm font-medium">{staff.username}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {staff.fullName}
+                          </p>
                         </div>
                       </div>
                     </div>
@@ -107,14 +153,18 @@ export default function DepartmentHeadAssignment({ documentId }: DepartmentHeadA
             )}
 
             {selectedStaff.map((staffId) => {
-              const staff = departmentStaff.find((s) => s.id === staffId)
-              if (!staff) return null
+              const staff = departmentStaff.find((s) => s.id === staffId);
+              if (!staff) return null;
 
               return (
-                <Badge key={staffId} variant="secondary" className="pl-2 pr-2 py-1.5 bg-primary/10">
+                <Badge
+                  key={staffId}
+                  variant="secondary"
+                  className="pl-2 pr-2 py-1.5 bg-primary/10"
+                >
                   <span>{staff.name}</span>
                 </Badge>
-              )
+              );
             })}
           </div>
 
@@ -124,14 +174,22 @@ export default function DepartmentHeadAssignment({ documentId }: DepartmentHeadA
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
-                  className={cn("w-full justify-start text-left font-normal", !deadline && "text-muted-foreground")}
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !deadline && "text-muted-foreground"
+                  )}
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
                   {deadline ? format(deadline, "dd/MM/yyyy") : "Chọn thời hạn"}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0">
-                <Calendar mode="single" selected={deadline} onSelect={setDeadline} initialFocus />
+                <Calendar
+                  mode="single"
+                  selected={deadline}
+                  onSelect={setDeadline}
+                  initialFocus
+                />
               </PopoverContent>
             </Popover>
           </div>
@@ -151,7 +209,10 @@ export default function DepartmentHeadAssignment({ documentId }: DepartmentHeadA
           <Button type="button" variant="outline">
             Hủy
           </Button>
-          <Button type="submit" disabled={isSubmitting || selectedStaff.length === 0 || !deadline}>
+          <Button
+            type="submit"
+            disabled={isSubmitting || selectedStaff.length === 0 || !deadline}
+          >
             {isSubmitting ? (
               "Đang gửi..."
             ) : (
@@ -163,5 +224,5 @@ export default function DepartmentHeadAssignment({ documentId }: DepartmentHeadA
         </CardFooter>
       </form>
     </Card>
-  )
+  );
 }

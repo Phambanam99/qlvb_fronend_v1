@@ -9,6 +9,7 @@ export const workflowAPI = {
    */
   getDocumentStatus: async (documentId: number | string): Promise<DocumentWorkflowDTO> => {
     const response = await api.get(`/workflow/${documentId}/status`)
+    console.log("response getDocumentStatus", response.data)
     return response.data
   },
   /**

@@ -63,6 +63,7 @@ export interface Pageable {
     assignedToId?: number
     assignedToName?: string
     comments?: string
+    closureDeadline?: Date
     primaryDepartmentId?: number
     primaryDepartmentName?: string
     collaboratingDepartmentIds?: number[]
