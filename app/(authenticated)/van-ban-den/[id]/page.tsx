@@ -49,7 +49,9 @@ export default function DocumentDetailPage({
   useEffect(() => {
     const fetchDepartments = async () => {
       try {
-        const response = await incomingDocumentsAPI.getAllDepartments(documentId);
+        const response = await incomingDocumentsAPI.getAllDepartments(
+          documentId
+        );
         setDepartments(response);
       } catch (error) {
         console.error("Error fetching departments:", error);
@@ -63,7 +65,7 @@ export default function DocumentDetailPage({
 
     fetchDepartments();
   }, [documentId, toast]);
-  
+
   useEffect(() => {
     const fetchDocument = async () => {
       try {
@@ -75,7 +77,7 @@ export default function DocumentDetailPage({
         console.log("response", response);
         // Fetch document workflow status
         const workflowStatus = await workflowAPI.getDocumentStatus(documentId);
-   
+
         // Fetch document history
         const history = await workflowAPI.getDocumentHistory(documentId);
 
@@ -86,7 +88,8 @@ export default function DocumentDetailPage({
           assignedToId: workflowStatus.assignedToId,
           assignedToName: workflowStatus.assignedToName,
           history: history,
-    
+          assignedToIds: workflowStatus.assignedToIds,
+          assignedToNames: workflowStatus.assignedToNames,
           // Add empty arrays for frontend compatibility
           attachments: [],
           relatedDocuments: [],
@@ -166,6 +169,47 @@ export default function DocumentDetailPage({
   const renderActionButtons = () => {
     if (!user || !_document) return null;
 
+    // Kiểm tra nếu văn bản chưa được chuyển xử lý (processingStatus là "PENDING" hoặc "REGISTERED")
+    const isPendingProcessing = ["PENDING", "registered"].includes(
+      _document.processingStatus
+    );
+
+    if (
+      hasRole([
+        "ROLE_ADMIN",
+        "ROLE_VAN_THU",
+        "ROLE_CUC_TRUONG",
+        "ROLE_CUC_PHO",
+      ]) &&
+      isPendingProcessing
+    ) {
+      return (
+        <>
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-primary/20 hover:bg-primary/10 hover:text-primary"
+            onClick={handleDownloadAttachment}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Tải xuống
+          </Button>
+
+          <Button
+            variant="default"
+            size="sm"
+            className="bg-primary hover:bg-primary/90"
+            asChild
+          >
+            <Link href={`/van-ban-den/${_document.id}/chuyen-xu-ly`}>
+              <Send className="mr-2 h-4 w-4" />
+              Chuyển xử lý
+            </Link>
+          </Button>
+        </>
+      );
+    }
+
     if (hasRole("clerk")) {
       return (
         <Button
@@ -179,8 +223,14 @@ export default function DocumentDetailPage({
       );
     }
 
-    if (hasRole(["ROLE_TRUONG_PHONG", "ROLE_PHO_PHONG", 
-      "ROLE_TRUONG_BAN", "ROLE_PHO_BAN"])) {
+    if (
+      hasRole([
+        "ROLE_TRUONG_PHONG",
+        "ROLE_PHO_PHONG",
+        "ROLE_TRUONG_BAN",
+        "ROLE_PHO_BAN",
+      ])
+    ) {
       return (
         <>
           <Button
@@ -211,7 +261,7 @@ export default function DocumentDetailPage({
       );
     }
 
-    if (hasRole(["ROLE_TRO_LY","ROLE_NHAN_VIEN"])) {
+    if (hasRole(["ROLE_TRO_LY", "ROLE_NHAN_VIEN"])) {
       return (
         <Button
           size="sm"
@@ -324,27 +374,27 @@ export default function DocumentDetailPage({
                   <p className="text-sm font-medium text-muted-foreground">
                     Đơn vị xử lý
                   </p>
-                 
+
                   <div className="flex space-x-2 gap-1">
-                    {departments.length > 0 && departments.map((department) => (
-                      <div
-                        key={department.id}
-                        className="flex items-center space-x-2"
-                      >
-                        <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center text-xs font-medium text-primary">
-                          {department.name
-                            .split(" ")
-                            .map((n: string) => n[0])
-                            .join("")}
+                    {departments.length > 0 &&
+                      departments.map((department) => (
+                        <div
+                          key={department.id}
+                          className="flex items-center space-x-2"
+                        >
+                          <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center text-xs font-medium text-primary">
+                            {department.name
+                              .split(" ")
+                              .map((n: string) => n[0])
+                              .join("")}
+                          </div>
                         </div>
-                       
-                      </div>
-                    ))}
+                      ))}
                     {departments.length === 0 && (
                       <p className="text-sm text-muted-foreground">
                         Chưa có đơn vị xử lý
                       </p>
-                    )}  
+                    )}
                   </div>
                 </div>
               </div>
@@ -475,30 +525,28 @@ export default function DocumentDetailPage({
                   Đơn vị xử lý chính
                 </p>
                 <div className="flex items-center space-x-2">
-                {/* check if departments */}
-                  {departments.length > 0 &&
-                    departments.map((department) => (
-                    <div key={department.id} className="flex flex-col items-center">
-                      <div
-                        className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center text-xs font-medium text-primary"
-                      >
-                        {department.name
+                  {/* check if departments */}
+                  {departments.length > 0 && (
+                    <div
+                      key={departments[0].id}
+                      className="flex space-x-2 items-center"
+                    >
+                      <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center text-xs font-medium text-primary">
+                        {departments[0].name
                           .split(" ")
                           .map((n: string) => n[0])
                           .join("")}
                       </div>
                       <p className="mt-1">
-                        {department.name || "Chưa phân công"}
+                        {departments[0].name || "Chưa phân công"}
                       </p>
                     </div>
-                      
-                    ))}
-                    {departments.length === 0 && (
-                      <p className="text-sm text-muted-foreground"> 
-                        Chưa có đơn vị xử lý chính
-                        </p>)}
-               
-                
+                  )}
+                  {departments.length === 0 && (
+                    <p className="text-sm text-muted-foreground">
+                      Chưa có đơn vị xử lý chính
+                    </p>
+                  )}
                 </div>
               </div>
               <Separator className="bg-primary/10" />
@@ -507,26 +555,26 @@ export default function DocumentDetailPage({
                   Cán bộ được giao
                 </p>
                 <div className="mt-1">
-                  {_document.assignedToId &&
-                  _document.assignedToName ? (
-                    <div className="flex items-center space-x-2">
-                      <div className="flex -space-x-2">
-                        
-                            <div
-                              key={_document.assignedToId}
-                              className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary"
-                            >
-                              {_document.assignedToName
-                                .split(" ")
-                                .map((n: string) => n[0])
-                                .join("")}
-                            </div>
-                         
+                  {_document.assignedToIds && _document.assignedToNames ? (
+                    _document.assignedToNames.map((name, indexName) => (
+                      <div
+                        key={indexName}
+                        className="flex items-center space-x-2"
+                      >
+                        <div className="flex -space-x-2">
+                          <div
+                            key={indexName}
+                            className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary"
+                          >
+                            {name
+                              .split(" ")
+                              .map((n: string) => n[0])
+                              .join("")}
+                          </div>
+                        </div>
+                        <span className="text-sm">{name}</span>
                       </div>
-                      <span className="text-sm">
-                        {_document.assignedToName}
-                      </span>
-                    </div>
+                    ))
                   ) : (
                     <p className="text-sm text-muted-foreground">
                       Chưa có cán bộ được phân công
@@ -541,7 +589,9 @@ export default function DocumentDetailPage({
                 </p>
                 <p className="mt-1">
                   {_document.closureDeadline
-                    ? new Date(_document.closureDeadline).toLocaleDateString("vi-VN")
+                    ? new Date(_document.closureDeadline).toLocaleDateString(
+                        "vi-VN"
+                      )
                     : "Chưa thiết lập thời hạn"}
                 </p>
               </div>
@@ -557,7 +607,7 @@ export default function DocumentDetailPage({
                   </Link>
                 </Button>
               )}
-              {hasRole(["ROLE_TRO_LY","ROLE_NHAN_VIEN"]) && (
+              {hasRole(["ROLE_TRO_LY", "ROLE_NHAN_VIEN"]) && (
                 <Button className="w-full bg-primary hover:bg-primary/90">
                   Cập nhật thông tin xử lý
                 </Button>

@@ -1,5 +1,5 @@
-import api from "./config"
-import type { DocumentWorkflowDTO, DocumentHistoryDTO } from "./types"
+import api from "./config";
+import type { DocumentWorkflowDTO, DocumentHistoryDTO } from "./types";
 
 export const workflowAPI = {
   /**
@@ -7,19 +7,27 @@ export const workflowAPI = {
    * @param documentId Document ID
    * @returns Document workflow status
    */
-  getDocumentStatus: async (documentId: number | string): Promise<DocumentWorkflowDTO> => {
-    const response = await api.get(`/workflow/${documentId}/status`)
-    console.log("response getDocumentStatus", response.data)
-    return response.data
+  getDocumentStatus: async (
+    documentId: number | string
+  ): Promise<DocumentWorkflowDTO> => {
+    const response = await api.get(`/workflow/${documentId}/status`);
+    console.log("response getDocumentStatus", response.data);
+    return response.data;
   },
   /**
    * Get document workflow details
    * @param documentId Document ID
    * @returns Document workflow details
    */
-   registerIncomingDocument: async (documentId: number | string, workflowData: DocumentWorkflowDTO) => {
-    const response = await api.put(`/workflow/${documentId}/register`, workflowData)
-    return response.status
+  registerIncomingDocument: async (
+    documentId: number | string,
+    workflowData: DocumentWorkflowDTO
+  ) => {
+    const response = await api.put(
+      `/workflow/${documentId}/register`,
+      workflowData
+    );
+    return response.status;
   },
   /**
    * Change document status
@@ -27,9 +35,15 @@ export const workflowAPI = {
    * @param workflowData Workflow data
    * @returns Updated workflow status
    */
-  changeDocumentStatus: async (documentId: number | string, workflowData: DocumentWorkflowDTO) => {
-    const response = await api.put(`/workflow/${documentId}/status`, workflowData)
-    return response.data
+  changeDocumentStatus: async (
+    documentId: number | string,
+    workflowData: DocumentWorkflowDTO
+  ) => {
+    const response = await api.put(
+      `/workflow/${documentId}/status`,
+      workflowData
+    );
+    return response.data;
   },
 
   /**
@@ -38,9 +52,15 @@ export const workflowAPI = {
    * @param workflowData Workflow data with assignedToId
    * @returns Updated workflow status
    */
-  assignToSpecialist: async (documentId: number | string, workflowData: DocumentWorkflowDTO) => {
-    const response = await api.post(`/workflow/${documentId}/assign-specialist`, workflowData)
-    return response.data
+  assignToSpecialist: async (
+    documentId: number | string,
+    workflowData: DocumentWorkflowDTO
+  ) => {
+    const response = await api.post(
+      `/workflow/${documentId}/assign-specialist`,
+      workflowData
+    );
+    return response.data;
   },
 
   /**
@@ -49,9 +69,15 @@ export const workflowAPI = {
    * @param workflowData Workflow data
    * @returns Updated workflow status
    */
-  startProcessingDocument: async (documentId: number | string, workflowData: DocumentWorkflowDTO) => {
-    const response = await api.put(`/workflow/${documentId}/start-processing`, workflowData)
-    return response.data
+  startProcessingDocument: async (
+    documentId: number | string,
+    workflowData: DocumentWorkflowDTO
+  ) => {
+    const response = await api.put(
+      `/workflow/${documentId}/start-processing`,
+      workflowData
+    );
+    return response.data;
   },
 
   /**
@@ -60,9 +86,15 @@ export const workflowAPI = {
    * @param workflowData Workflow data
    * @returns Updated workflow status
    */
-  submitToLeadership: async (documentId: number | string, workflowData: DocumentWorkflowDTO) => {
-    const response = await api.put(`/workflow/${documentId}/submit`, workflowData)
-    return response.data
+  submitToLeadership: async (
+    documentId: number | string,
+    workflowData: DocumentWorkflowDTO
+  ) => {
+    const response = await api.put(
+      `/workflow/${documentId}/submit`,
+      workflowData
+    );
+    return response.data;
   },
 
   /**
@@ -71,9 +103,15 @@ export const workflowAPI = {
    * @param workflowData Workflow data
    * @returns Updated workflow status
    */
-  forwardToLeadership: async (documentId: number | string, workflowData: DocumentWorkflowDTO) => {
-    const response = await api.put(`/workflow/${documentId}/forward-to-leadership`, workflowData)
-    return response.data
+  forwardToLeadership: async (
+    documentId: number | string,
+    workflowData: DocumentWorkflowDTO
+  ) => {
+    const response = await api.put(
+      `/workflow/${documentId}/forward-to-leadership`,
+      workflowData
+    );
+    return response.data;
   },
 
   /**
@@ -82,9 +120,15 @@ export const workflowAPI = {
    * @param workflowData Workflow data
    * @returns Updated workflow status
    */
-  approveDocument: async (documentId: number | string, workflowData: DocumentWorkflowDTO) => {
-    const response = await api.put(`/workflow/${documentId}/approve`, workflowData)
-    return response.data
+  approveDocument: async (
+    documentId: number | string,
+    workflowData: DocumentWorkflowDTO
+  ) => {
+    const response = await api.put(
+      `/workflow/${documentId}/approve`,
+      workflowData
+    );
+    return response.data;
   },
 
   /**
@@ -93,9 +137,15 @@ export const workflowAPI = {
    * @param workflowData Workflow data with comments
    * @returns Updated workflow status
    */
-  provideDocumentFeedback: async (documentId: number | string, workflowData: DocumentWorkflowDTO) => {
-    const response = await api.put(`/workflow/${documentId}/provide-feedback`, workflowData)
-    return response.data
+  provideDocumentFeedback: async (
+    documentId: number | string,
+    workflowData: DocumentWorkflowDTO
+  ) => {
+    const response = await api.put(
+      `/workflow/${documentId}/provide-feedback`,
+      workflowData
+    );
+    return response.data;
   },
 
   /**
@@ -103,9 +153,11 @@ export const workflowAPI = {
    * @param documentId Document ID
    * @returns Document history entries
    */
-  getDocumentHistory: async (documentId: number | string): Promise<DocumentHistoryDTO[]> => {
-    const response = await api.get(`/workflow/${documentId}/history`)
-    return response.data
+  getDocumentHistory: async (
+    documentId: number | string
+  ): Promise<DocumentHistoryDTO[]> => {
+    const response = await api.get(`/workflow/${documentId}/history`);
+    return response.data;
   },
 
   /**
@@ -114,8 +166,31 @@ export const workflowAPI = {
    * @param distributionData Distribution details
    * @returns Success message
    */
-  distributeDocument: async (documentId: number | string, distributionData: any) => {
-    const response = await api.put(`/workflow/${documentId}/distribute`, distributionData)
-    return response.data
+  distributeDocument: async (
+    documentId: number | string,
+    distributionData: any
+  ) => {
+    const response = await api.put(
+      `/workflow/${documentId}/distribute`,
+      distributionData
+    );
+    return response.data;
   },
-}
+  createFullDocument: async (data: any, file: File) => {
+    const formData = new FormData();
+    if (file) {
+      formData.append("attachments", file);
+    }
+    formData.append(
+      "data",
+      new Blob([JSON.stringify(data)], { type: "application/json" })
+    );
+
+    const response = await api.post("/workflow/full", formData,{
+      headers: {
+        "Content-Type": undefined, // Để Axios tự động xử lý với FormData
+      },
+    });
+    return response.data;
+  },
+};

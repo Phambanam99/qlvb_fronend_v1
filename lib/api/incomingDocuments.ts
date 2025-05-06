@@ -81,7 +81,7 @@ export const getAllStatuses = (): Status[] =>
   Object.values(DocumentProcessingStatus);
 
 export interface IncomingDocumentDTO {
-  id: number;
+  id?: number;
   title: string;
   documentType: string;
   documentNumber: string;
@@ -91,7 +91,7 @@ export interface IncomingDocumentDTO {
   securityLevel: string;
   summary: string;
   notes?: string;
-  displayStatus: string;
+  displayStatus?: string;
   signingDate: string;
   receivedDate: Date;
   processingStatus: string;
@@ -99,8 +99,8 @@ export interface IncomingDocumentDTO {
   sendingDepartmentName: string;
   emailSource?: string;
   primaryProcessorId?: number;
-  created: string;
-  changed: string;
+  created?: string;
+  changed?: string;
   attachmentFilename?: string;
   storageLocation?: string;
   primaryProcessDepartmentId?: number;

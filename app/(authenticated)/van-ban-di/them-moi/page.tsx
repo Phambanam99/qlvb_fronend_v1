@@ -14,6 +14,7 @@ import Link from "next/link"
 import { useAuth } from "@/lib/auth-context"
 import { useNotifications } from "@/lib/notifications-context"
 import { useRouter } from "next/navigation"
+import { outgoingDocumentsAPI } from "@/lib/api"
 
 export default function AddOutgoingDocumentPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -28,45 +29,95 @@ export default function AddOutgoingDocumentPage() {
     }
   }
 
-  // Cập nhật hàm handleSubmit để chuyển hướng sau khi thêm văn bản
+  // Cập nhật hàm handleSubmit để sử dụng API
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
 
-    // Giả lập gửi dữ liệu
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    try {
+      // Tạo đối tượng dữ liệu văn bản từ form
+      const documentData = {
+        documentNumber: (document.getElementById("documentNumber") as HTMLInputElement).value,
+        sentDate: (document.getElementById("sentDate") as HTMLInputElement).value,
+        recipient: (document.getElementById("recipient") as HTMLInputElement).value,
+        documentType: (document.getElementById("documentType") as HTMLSelectElement).value,
+        title: (document.getElementById("title") as HTMLInputElement).value,
+        content: (document.getElementById("content") as HTMLTextAreaElement).value,
+        approver: (document.getElementById("approver") as HTMLSelectElement).value,
+        priority: (document.getElementById("priority") as HTMLSelectElement).value,
+        note: (document.getElementById("note") as HTMLTextAreaElement).value,
+        files: files,
+        status: "pending_approval",
+      }
 
-    // Thêm thông báo
-    addNotification({
-      title: "Văn bản đi đã được tạo",
-      message: "Văn bản đã được lưu dưới dạng bản nháp và chờ phê duyệt.",
-      type: "success",
-      link: "/van-ban-di/1",
-    })
+      // Gọi API để tạo văn bản đi mới
+      await outgoingDocumentsAPI.createOutgoingDocument(documentData)
 
-    // Reset form và chuyển hướng (trong thực tế)
-    setIsSubmitting(false)
-    router.push("/van-ban-di")
+      // Thêm thông báo
+      addNotification({
+        title: "Văn bản đi đã được tạo",
+        message: "Văn bản đã được lưu và chờ phê duyệt.",
+        type: "success",
+        link: "/van-ban-di",
+      })
+
+      // Reset form và chuyển hướng
+      setIsSubmitting(false)
+      router.push("/van-ban-di")
+    } catch (error) {
+      console.error("Error creating document:", error)
+      addNotification({
+        title: "Lỗi",
+        message: "Không thể tạo văn bản đi. Vui lòng thử lại sau.",
+        type: "error",
+      })
+      setIsSubmitting(false)
+    }
   }
 
-  // Cập nhật hàm handleSaveDraft để chuyển hướng sau khi lưu nháp
+  // Cập nhật hàm handleSaveDraft để sử dụng API
   const handleSaveDraft = async () => {
     setIsSubmitting(true)
 
-    // Giả lập gửi dữ liệu
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    try {
+      // Tạo đối tượng dữ liệu văn bản từ form
+      const documentData = {
+        documentNumber: (document.getElementById("documentNumber") as HTMLInputElement).value,
+        sentDate: (document.getElementById("sentDate") as HTMLInputElement).value,
+        recipient: (document.getElementById("recipient") as HTMLInputElement).value,
+        documentType: (document.getElementById("documentType") as HTMLSelectElement).value,
+        title: (document.getElementById("title") as HTMLInputElement).value,
+        content: (document.getElementById("content") as HTMLTextAreaElement).value,
+        approver: (document.getElementById("approver") as HTMLSelectElement).value,
+        priority: (document.getElementById("priority") as HTMLSelectElement).value,
+        note: (document.getElementById("note") as HTMLTextAreaElement).value,
+        files: files,
+        status: "draft",
+      }
 
-    // Thêm thông báo
-    addNotification({
-      title: "Bản nháp đã được lưu",
-      message: "Văn bản đã được lưu dưới dạng bản nháp.",
-      type: "info",
-      link: "/van-ban-di/1",
-    })
+      // Gọi API để lưu bản nháp
+      await outgoingDocumentsAPI.saveDraft(documentData)
 
-    // Reset form và chuyển hướng (trong thực tế)
-    setIsSubmitting(false)
-    router.push("/van-ban-di")
+      // Thêm thông báo
+      addNotification({
+        title: "Bản nháp đã được lưu",
+        message: "Văn bản đã được lưu dưới dạng bản nháp.",
+        type: "info",
+        link: "/van-ban-di",
+      })
+
+      // Reset form và chuyển hướng
+      setIsSubmitting(false)
+      router.push("/van-ban-di")
+    } catch (error) {
+      console.error("Error saving draft:", error)
+      addNotification({
+        title: "Lỗi",
+        message: "Không thể lưu bản nháp. Vui lòng thử lại sau.",
+        type: "error",
+      })
+      setIsSubmitting(false)
+    }
   }
 
   return (

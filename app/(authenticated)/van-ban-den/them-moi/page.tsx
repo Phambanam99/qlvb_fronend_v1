@@ -33,6 +33,8 @@ import {
   senderApi,
   departmentsAPI,
   UserDTO,
+
+  IncomingDocumentDTO,
 } from "@/lib/api";
 import {
   Dialog,
@@ -44,6 +46,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
+
 
 export default function AddIncomingDocumentPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -59,12 +62,14 @@ export default function AddIncomingDocumentPage() {
   const [urgencyLevel, setUrgencyLevel] = useState("NORMAL");
   const [securityLevel, setSecurityLevel] = useState("NORMAL");
   const [closureRequest, setClosureRequest] = useState(false);
-  const [primaryDepartment, setPrimaryDepartment] = useState<string | null>(
+  const [primaryDepartment, setPrimaryDepartment] = useState<number | null>(
     null
   );
-  const [secondaryDepartments, setSecondaryDepartments] = useState<string[]>(
+  const [secondaryDepartments, setSecondaryDepartments] = useState<number[]>(
     []
   );
+// Thêm state cho việc hiển thị hoặc ẩn phần chuyển xử lý
+const [showProcessingSection, setShowProcessingSection] = useState<boolean>(false);
 
   const router = useRouter();
   const { toast } = useToast();
@@ -126,7 +131,7 @@ export default function AddIncomingDocumentPage() {
     setFiles((prevFiles) => prevFiles.filter((_, i) => i !== index));
   };
 
-  const handleSelectPrimaryDepartment = (deptId: string) => {
+  const handleSelectPrimaryDepartment = (deptId: number) => {
     setPrimaryDepartment((prevId) => (prevId === deptId ? null : deptId));
 
     if (secondaryDepartments.includes(deptId)) {
@@ -134,7 +139,7 @@ export default function AddIncomingDocumentPage() {
     }
   };
 
-  const handleSelectSecondaryDepartment = (deptId: string) => {
+  const handleSelectSecondaryDepartment = (deptId: number) => {
     if (deptId === primaryDepartment) return;
 
     setSecondaryDepartments((prev) => {
@@ -150,7 +155,7 @@ export default function AddIncomingDocumentPage() {
     setPrimaryDepartment(null);
   };
 
-  const handleRemoveSecondaryDepartment = (deptId: string) => {
+  const handleRemoveSecondaryDepartment = (deptId: number) => {
     setSecondaryDepartments((prev) => prev.filter((id) => id !== deptId));
   };
 
@@ -210,7 +215,7 @@ export default function AddIncomingDocumentPage() {
         summary: formData.get("summary") as string,
         notes: formData.get("notes") as string,
         signingDate: formData.get("signingDate") as string,
-        receivedDate: formData.get("receivedDate") as string,
+        receivedDate: formData.get("receivedDate") as string ? new Date(formData.get("receivedDate") as string) : new Date(),
         processingStatus: "PENDING",
         closureRequest: closureRequest,
         sendingDepartmentName: formData.get("sendingDepartmentName") as string,
@@ -224,43 +229,41 @@ export default function AddIncomingDocumentPage() {
           apiFormData.append(key, value.toString());
         }
       });
+       
+     
+      const incomingDTO : IncomingDocumentDTO = {
+        ...documentData,
+        processingStatus: "PENDING",
+        closureRequest: closureRequest,
+        sendingDepartmentName: formData.get("issuingAuthority") as string,
+        emailSource: formData.get("emailSource") as string,
 
-      const response = await incomingDocumentsAPI.createIncomingDocument(
-        apiFormData
-      );
 
-      if (response?.data?.id) {
+      }
+        const closureDeadline = formData.get("deadline") as string;
+        const deadlineDate = closureDeadline ? new Date(closureDeadline) : new Date();
         const workflowData: DocumentWorkflowDTO = {
-          documentId: response.data.id,
           status: "REGISTERED",
           statusDisplayName: "Đã đăng ký",
           comments: formData.get("notes") as string,
+          primaryDepartmentId: primaryDepartment!,
+          collaboratingDepartmentIds: secondaryDepartments,
+          closureDeadline: deadlineDate,
         };
 
-        await workflowAPI.registerIncomingDocument(
-          response.data.id,
-          workflowData
-        );
-
-        if (primaryDepartment || secondaryDepartments.length > 0) {
-        const data =   await workflowAPI.distributeDocument(response.data.id, {
-            primaryDepartmentId: primaryDepartment,
-            collaboratingDepartmentIds: secondaryDepartments,
-            comments: formData.get("notes") as string,
-            deadline: formData.get("deadline") as string,
-          });
-
+       
         
+        const data = {
+          document: incomingDTO,
+          workflow: workflowData
         }
-        
-
         if (files.length > 0) {
-          await incomingDocumentsAPI.uploadAttachment(
-            response.data.id,
-            files[0]
+          await workflowAPI.createFullDocument(
+           data,
+          files[0]
           );
         }
-
+        
         toast({
           title: "Thành công",
           description: "Văn bản đến đã được tạo thành công",
@@ -268,7 +271,7 @@ export default function AddIncomingDocumentPage() {
 
         router.push("/van-ban-den");
       }
-    } catch (error) {
+     catch (error) {
       console.error("Lỗi khi tạo văn bản:", error);
       toast({
         title: "Lỗi",
@@ -364,7 +367,7 @@ export default function AddIncomingDocumentPage() {
                           ))
                         )}
                       </SelectContent>
-                    </Select>
+                    </Select> 
                     <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                       <DialogTrigger asChild>
                         <Button
@@ -494,7 +497,7 @@ export default function AddIncomingDocumentPage() {
                 />
               </div>
 
-              <div className="flex items-center space-x-2">
+              {/* <div className="flex items-center space-x-2">
                 <Switch
                   id="closureRequest"
                   checked={closureRequest}
@@ -503,7 +506,7 @@ export default function AddIncomingDocumentPage() {
                 <Label htmlFor="closureRequest">
                   Yêu cầu văn bản đóng lưu sau khi xử lý
                 </Label>
-              </div>
+              </div> */}
               <div className="space-y-2">
                 <Label htmlFor="attachments">Tệp đính kèm</Label>
                 <div className="flex items-center gap-2">
@@ -589,7 +592,7 @@ export default function AddIncomingDocumentPage() {
                     ) : (
                       (() => {
                         const dept = departmentList.find(
-                          (d) => String(d.id) === primaryDepartment
+                          (d) => d.id === primaryDepartment
                         );
                         if (!dept)
                           return (
@@ -646,7 +649,7 @@ export default function AddIncomingDocumentPage() {
                     ) : (
                       secondaryDepartments.map((deptId) => {
                         const dept = departmentList.find(
-                          (d) => String(d.id) === deptId
+                          (d) =>d.id === deptId
                         );
                         if (!dept) return null;
 
@@ -699,7 +702,7 @@ export default function AddIncomingDocumentPage() {
                         </div>
                       ) : (
                         departmentList.map((dept) => {
-                          const deptId = String(dept.id);
+                          const deptId = dept.id;
                           const isPrimary = primaryDepartment === deptId;
                           const isSecondary =
                             secondaryDepartments.includes(deptId);
