@@ -38,6 +38,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { useIncomingDocuments } from "@/lib/store";
 import { useAuth } from "@/lib/auth-context";
 import { IncomingDocumentDTO } from "@/lib/api";
+import { useRouter } from "next/navigation";
 
 // Role có quyền xem toàn bộ văn bản
 const FULL_ACCESS_ROLES = [
@@ -58,6 +59,8 @@ export default function IncomingDocumentsPage() {
   const statuses = getAllStatuses();
   const { user, hasRole } = useAuth();
   const [documentSource, setDocumentSource] = useState<string>("all"); // all, department, assigned
+  const [isAddLoading, setIsAddLoading] = useState(false);
+  const router = useRouter();
 
   // Kiểm tra người dùng có quyền xem tất cả không
   const hasFullAccess = FULL_ACCESS_ROLES.some((role) => hasRole(role));
@@ -66,8 +69,30 @@ export default function IncomingDocumentsPage() {
   const hasDepartmentAccess =
     hasRole("ROLE_TRUONG_PHONG") ||
     hasRole("ROLE_PHO_PHONG") ||
-    hasRole("ROLE_TRO_LY") ||
-    hasRole("ROLE_NHAN_VIEN");
+    hasRole("ROLE_TRUONG_BAN") ||
+    hasRole("ROLE_PHO_BAN");
+
+  // Cập nhật documentSource mặc định dựa trên vai trò người dùng khi thông tin user thay đổi
+  useEffect(() => {
+    if (user) {
+      // Nếu là trưởng phòng/phó phòng, đặt mặc định là văn bản của phòng ban
+      if (hasDepartmentAccess) {
+        console.log("Setting default document source to 'department' based on user role");
+        setDocumentSource("department");
+      } 
+      // Nếu là nhân viên/trợ lý, đặt mặc định là văn bản được giao
+      else if (hasRole("ROLE_NHAN_VIEN") || hasRole("ROLE_TRO_LY")) {
+        console.log("Setting default document source to 'assigned' based on user role");
+        setDocumentSource("assigned");
+      }
+      // Người dùng có quyền xem tất cả, giữ mặc định là 'all'
+      else if (hasFullAccess) {
+        console.log("Setting default document source to 'all' based on admin role");
+        setDocumentSource("all");
+      }
+    }
+  }, [user, hasRole, hasFullAccess, hasDepartmentAccess]);
+
   // Thêm source filter cho các role có quyền cao
   const documentSources = [
     { value: "all", label: "Tất cả văn bản" },
@@ -75,32 +100,49 @@ export default function IncomingDocumentsPage() {
     { value: "assigned", label: "Văn bản được giao" },
   ];
 
+  // Xử lý khi click vào thêm mới văn bản đến
+  const handleAddDocument = () => {
+    setIsAddLoading(true);
+    router.push("/van-ban-den/them-moi");
+  };
+
   useEffect(() => {
     const fetchDocuments = async () => {
       try {
         setLoading(true);
         let response;
 
-        // Lấy văn bản theo quyền
-        if (hasFullAccess && documentSource === "all") {
-          // Xem tất cả văn bản
+        console.log("Current user data:", { 
+          user, 
+          hasFullAccess, 
+          hasDepartmentAccess, 
+          documentSource,
+          departmentId: user?.departmentId
+        });
 
-          console.log("Fetching all documents");
+        // Xác định cách tải văn bản dựa trên các điều kiện
+        if (hasFullAccess && documentSource === "all") {
+          // Người dùng có quyền xem tất cả và đã chọn hiển thị tất cả
+          console.log("Fetching all documents as admin");
           response = await incomingDocumentsAPI.getAllDocuments();
+          
         } else if (hasDepartmentAccess || documentSource === "department") {
-          // Văn bản của đơn vị (cho quản lý cao cấp)
-          console.log("Responsexxx:");
-          response = await incomingDocumentsAPI.getDepartmentDocuments(
-            user?.departmentId!
-          );
-        } else if (documentSource === "assigned" || !hasFullAccess) {
-          // Văn bản được giao cá nhân/phòng ban
-          // response = await incomingDocumentsAPI.getUserAssignedDocuments(
-          //   user?.id
-          // );
+          // Văn bản của phòng ban
+          if (!user?.departmentId) {
+            // Nếu không có departmentId, tải tất cả tài liệu
+            console.warn("Department ID is undefined, loading all documents instead");
+            response = await incomingDocumentsAPI.getAllDocuments();
+          } else {
+            // Có departmentId hợp lệ, tải tài liệu của phòng ban
+            console.log("Fetching department documents for ID:", user.departmentId);
+            response = await incomingDocumentsAPI.getDepartmentDocuments(user.departmentId);
+          }
+          
         } else {
+          // Mặc định tải tất cả văn bản
+          console.log("Fetching all documents (default)");
           response = await incomingDocumentsAPI.getAllDocuments();
-        }
+        }  
 
         if (response && response.content) {
           setIncomingDocuments(
@@ -159,7 +201,6 @@ export default function IncomingDocumentsPage() {
   };
 
   const getAssignmentBadge = (primaryId: string) => {
-    
     if (user?.departmentId == primaryId) {
       return (
         <Badge
@@ -207,10 +248,20 @@ export default function IncomingDocumentsPage() {
               : "Không có văn bản nào được giao cho bạn"}
           </p>
           {hasRole("ROLE_VAN_THU") && (
-            <Button asChild className="mt-4">
-              <Link href="/van-ban-den/them-moi">
-                <Plus className="mr-2 h-4 w-4" /> Thêm mới
-              </Link>
+            <Button
+              onClick={handleAddDocument}
+              disabled={isAddLoading}
+              className="mt-4"
+            >
+              {isAddLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Đang tải...
+                </>
+              ) : (
+                <>
+                  <Plus className="mr-2 h-4 w-4" /> Thêm mới
+                </>
+              )}
             </Button>
           )}
         </div>
@@ -281,10 +332,20 @@ export default function IncomingDocumentsPage() {
 
           {/* Chỉ văn thư mới có quyền thêm mới */}
           {hasRole("ROLE_VAN_THU") && (
-            <Button asChild className="bg-primary hover:bg-primary/90">
-              <Link href="/van-ban-den/them-moi" className="flex items-center">
-                <Plus className="mr-2 h-4 w-4" /> Thêm mới
-              </Link>
+            <Button
+              onClick={handleAddDocument}
+              disabled={isAddLoading}
+              className="bg-primary hover:bg-primary/90"
+            >
+              {isAddLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Đang tải...
+                </>
+              ) : (
+                <>
+                  <Plus className="mr-2 h-4 w-4" /> Thêm mới
+                </>
+              )}
             </Button>
           )}
         </div>

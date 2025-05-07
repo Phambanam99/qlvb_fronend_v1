@@ -31,10 +31,10 @@ import {
   workflowAPI,
   DocumentWorkflowDTO,
   DocumentProcessingStatus,
-
-  UserDTO
+  UserDTO,
 } from "@/lib/api";
-
+import { useToast } from "@/components/ui/use-toast";
+import { useRouter } from "next/navigation";
 interface DepartmentHeadAssignmentProps {
   documentId: number;
   departmentId: number;
@@ -48,23 +48,41 @@ export default function DepartmentHeadAssignment({
   const [comments, setComments] = useState("");
   const [deadline, setDeadline] = useState<Date>();
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Dữ liệu mẫu cho danh sách cán bộ trong phòng
-  // Trong thực tế, bạn sẽ lấy dữ liệu này từ API hoặc từ context
-  //Lấy danh sách cán bộ phòng từ API userAPI
+  const router = useRouter();
+  // State cho danh sách cán bộ trong phòng
   const [departmentStaff, setDepartmentStaff] = useState<UserDTO[]>([]);
+  const [isLoadingStaff, setIsLoadingStaff] = useState(true);
+  const { toast } = useToast();
+  
+  // Tải danh sách cán bộ phòng ngay khi component được mount
   useEffect(() => {
     const fetchDepartmentStaff = async () => {
+      if (!departmentId) {
+        console.error("Missing departmentId");
+        setIsLoadingStaff(false);
+        return;
+      }
+
       try {
+        setIsLoadingStaff(true);
+        console.log("Fetching staff for department:", departmentId);
         const staffData = await usersAPI.getUsersByDepartmentId(departmentId);
+        console.log("Staff data received:", staffData);
         setDepartmentStaff(staffData);
       } catch (error) {
         console.error("Error fetching department staff:", error);
+        toast({
+          title: "Lỗi",
+          description: "Không thể tải danh sách cán bộ trong phòng",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoadingStaff(false);
       }
     };
 
     fetchDepartmentStaff();
-  }, [departmentId]);
+  }, [departmentId, toast]);
 
   const handleStaffSelect = (staffId: number) => {
     setSelectedStaff((prev) => {
@@ -80,12 +98,11 @@ export default function DepartmentHeadAssignment({
     e.preventDefault();
     setIsSubmitting(true);
 
-
     // Reset form
     setIsSubmitting(false);
     console.log("Đã phân công xử lý văn bản thành công! ", selectedStaff[0]);
     // Thông báo thành công (trong thực tế sẽ sử dụng toast hoặc notification)
-    alert("Đã phân công xử lý văn bản thành công!");
+    // alert("Đã phân công xử lý văn bản thành công!");
     const documentAssign: DocumentWorkflowDTO = {
       status: DocumentProcessingStatus.DEPT_ASSIGNED.code,
       statusDisplayName: DocumentProcessingStatus.DEPT_ASSIGNED.displayName,
@@ -96,6 +113,7 @@ export default function DepartmentHeadAssignment({
     };
     // Gửi dữ liệu phân công xử lý văn bản đến API
     await workflowAPI.assignToSpecialist(documentId, documentAssign);
+    router.push(`/van-ban-den/${documentId}`)
   };
 
   return (
@@ -132,7 +150,9 @@ export default function DepartmentHeadAssignment({
                           </AvatarFallback>
                         </Avatar>
                         <div>
-                          <p className="text-sm font-medium">{staff.username}</p>
+                          <p className="text-sm font-medium">
+                            {staff.username}
+                          </p>
                           <p className="text-xs text-muted-foreground">
                             {staff.fullName}
                           </p>

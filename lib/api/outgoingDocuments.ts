@@ -2,28 +2,28 @@ import api from "./config"
 import type { DocumentAttachmentDTO } from "./types"
 
 export interface OutgoingDocumentDTO {
-  id: number
+  id?: number
   title: string
   documentType: string
-  documentNumber: number
+  documentNumber: string
   referenceNumber?: string
   signerId?: number
   signerName?: string
-  signingDate?: string
+  signingDate?: Date
   draftingDepartment?: number
   relatedDocuments?: string
   storageLocation?: number
   documentVolume?: string
   emailAddress?: string
   receivingDepartmentText?: string
-  created: string
-  changed: string
+  created?: string
+  changed?: string
   attachmentFilename?: string
 
   // Frontend compatibility fields
   number?: string
   recipient?: string
-  content?: string
+  summary?: string
   status?: string
   sentDate?: string
   creator?: any
@@ -233,4 +233,13 @@ export const outgoingDocumentsAPI = {
     })
     return response.data
   },
+  downloadAttachmentDocument: async (documentId: number) => {
+    const response = await api.get(`/documents/outgoing/${documentId}/attachment`, {
+      responseType: "blob",
+      headers: {
+        Accept: "application/hal+json",
+      },
+    })
+    return response.data
+  }
 }

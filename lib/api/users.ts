@@ -1,18 +1,19 @@
-import api from "./config"
+import api from "./config";
 
 export interface UserDTO {
-  id: number
-  username: string
-  email: string
-  fullName: string
-  phone?: string
-  department?: string
-  position?: string
-  avatar?: string
-  isActive: boolean
-  roles: string[]
-  createdAt: string
-  updatedAt: string
+  id: number;
+  username: string;
+  email: string;
+  fullName: string;
+  phone?: string;
+  department?: string;
+  position?: string;
+  avatar?: string;
+  isActive: boolean;
+  roles: string[];
+  createdAt: string;
+  updatedAt: string;
+  roleDisplayNames?: string;
 }
 
 export const usersAPI = {
@@ -21,14 +22,14 @@ export const usersAPI = {
    * @returns List of all users
    */
   getAllUsers: async (params?: any): Promise<UserDTO[]> => {
-    const response = await api.get("/users", { params })
-    return response.data
+    const response = await api.get("/users", { params });
+    return response.data;
   },
   //get users by Department Id
   getUsersByDepartmentId: async (departmentId: number): Promise<UserDTO[]> => {
-    const response = await api.get(`/users/department/${departmentId}`)
-    console.log("response", response.data)
-    return response.data
+    const response = await api.get(`/users/department/${departmentId}`);
+    console.log("response", response.data);
+    return response.data;
   },
   /**
    * Get user by ID
@@ -36,8 +37,8 @@ export const usersAPI = {
    * @returns User data
    */
   getUserById: async (id: string | number): Promise<UserDTO> => {
-    const response = await api.get(`/users/${id}`)
-    return response.data
+    const response = await api.get(`/users/${id}`);
+    return response.data;
   },
 
   /**
@@ -46,8 +47,8 @@ export const usersAPI = {
    * @returns Created user data
    */
   createUser: async (userData: Partial<UserDTO>): Promise<UserDTO> => {
-    const response = await api.post("/users", userData)
-    return response.data
+    const response = await api.post("/users", userData);
+    return response.data;
   },
 
   /**
@@ -56,9 +57,12 @@ export const usersAPI = {
    * @param userData User data to update
    * @returns Updated user data
    */
-  updateUser: async (id: string | number, userData: Partial<UserDTO>): Promise<UserDTO> => {
-    const response = await api.put(`/users/${id}`, userData)
-    return response.data
+  updateUser: async (
+    id: string | number,
+    userData: Partial<UserDTO>
+  ): Promise<UserDTO> => {
+    const response = await api.put(`/users/${id}`, userData);
+    return response.data;
   },
 
   /**
@@ -67,8 +71,8 @@ export const usersAPI = {
    * @returns Success message
    */
   deleteUser: async (id: string | number): Promise<{ message: string }> => {
-    const response = await api.delete(`/users/${id}`)
-    return response.data
+    const response = await api.delete(`/users/${id}`);
+    return response.data;
   },
 
   /**
@@ -81,15 +85,35 @@ export const usersAPI = {
   changePassword: async (
     id: string | number,
     oldPassword: string,
-    newPassword: string,
+    newPassword: string
   ): Promise<{ message: string }> => {
-    const response = await api.post(`/users/${id}/change-password`, { oldPassword, newPassword })
-    return response.data
+    const response = await api.post(`/users/${id}/change-password`, {
+      oldPassword,
+      newPassword,
+    });
+    return response.data;
   },
 
   // Thêm phương thức mới để tương thích với code hiện tại
-  resetPassword: async (id: string | number, newPassword: string): Promise<{ message: string }> => {
-    const response = await api.post(`/users/${id}/reset-password`, { newPassword })
-    return response.data
+  resetPassword: async (
+    id: string | number,
+    newPassword: string
+  ): Promise<{ message: string }> => {
+    const response = await api.post(`/users/${id}/reset-password`, {
+      newPassword,
+    });
+    return response.data;
   },
-}
+  getUsersByRoleAndDepartment: async (
+    roles: string[],
+    departmentId: number
+  ): Promise<UserDTO[]> => {
+    const response = await api.get(`/users/department/${departmentId}/roles`, {
+      params: { roles },
+      paramsSerializer: {
+        indexes: null, // <- điểm mấu chốt: bỏ [] khi serialize array
+      },
+    });
+    return response.data;
+  },
+};

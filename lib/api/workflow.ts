@@ -186,11 +186,49 @@ export const workflowAPI = {
       new Blob([JSON.stringify(data)], { type: "application/json" })
     );
 
-    const response = await api.post("/workflow/full", formData,{
+    const response = await api.post("/workflow/full", formData, {
       headers: {
         "Content-Type": undefined, // Để Axios tự động xử lý với FormData
       },
     });
+    return response.data;
+  },
+
+  /**
+   * Tạo văn bản đi trả lời cho văn bản đến
+   * @param incomingDocId ID của văn bản đến cần trả lời
+   * @param documentData Dữ liệu văn bản và workflow
+   * @param attachment Tệp đính kèm (nếu có)
+   * @returns Kết quả tạo văn bản đi và thông tin liên quan
+   */
+  createResponseDocument: async (
+    documentData: any,
+    incomingDocId: number | string,
+    attachment?: File | null
+  ) => {
+    const formData = new FormData();
+
+    // Thêm dữ liệu văn bản đi và workflow
+    formData.append(
+      "data",
+      new Blob([JSON.stringify(documentData)], { type: "application/json" })
+    );
+
+    // Thêm tệp đính kèm nếu có
+    if (attachment) {
+      formData.append("attachments", attachment);
+    }
+
+    const response = await api.post(
+      `/incoming/${incomingDocId}/reply`,
+      formData,
+      {
+        headers: {
+          "Content-Type": undefined,
+        },
+      }
+    );
+
     return response.data;
   },
 };

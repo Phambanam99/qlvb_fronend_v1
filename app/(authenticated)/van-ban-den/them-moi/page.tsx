@@ -33,7 +33,6 @@ import {
   senderApi,
   departmentsAPI,
   UserDTO,
-
   IncomingDocumentDTO,
 } from "@/lib/api";
 import {
@@ -46,7 +45,6 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
-
 
 export default function AddIncomingDocumentPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -68,8 +66,9 @@ export default function AddIncomingDocumentPage() {
   const [secondaryDepartments, setSecondaryDepartments] = useState<number[]>(
     []
   );
-// Thêm state cho việc hiển thị hoặc ẩn phần chuyển xử lý
-const [showProcessingSection, setShowProcessingSection] = useState<boolean>(false);
+  // Thêm state cho việc hiển thị hoặc ẩn phần chuyển xử lý
+  const [showProcessingSection, setShowProcessingSection] =
+    useState<boolean>(false);
 
   const router = useRouter();
   const { toast } = useToast();
@@ -103,7 +102,7 @@ const [showProcessingSection, setShowProcessingSection] = useState<boolean>(fals
       try {
         setIsLoadingDepartments(true);
         const senders = await senderApi.getAllSenders();
-       
+
         setDepartments(senders || []);
       } catch (error) {
         console.error("Lỗi khi lấy danh sách đơn vị gửi:", error);
@@ -121,9 +120,9 @@ const [showProcessingSection, setShowProcessingSection] = useState<boolean>(fals
   }, [toast]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const newFiles = Array.from(e.target.files);
-      setFiles((prevFiles) => [...prevFiles, ...newFiles]);
+    if (e.target.files && e.target.files.length > 0) {
+      // Only take the first selected file
+      setFiles([e.target.files[0]]);
     }
   };
 
@@ -215,7 +214,9 @@ const [showProcessingSection, setShowProcessingSection] = useState<boolean>(fals
         summary: formData.get("summary") as string,
         notes: formData.get("notes") as string,
         signingDate: formData.get("signingDate") as string,
-        receivedDate: formData.get("receivedDate") as string ? new Date(formData.get("receivedDate") as string) : new Date(),
+        receivedDate: (formData.get("receivedDate") as string)
+          ? new Date(formData.get("receivedDate") as string)
+          : new Date(),
         processingStatus: "PENDING",
         closureRequest: closureRequest,
         sendingDepartmentName: formData.get("sendingDepartmentName") as string,
@@ -229,49 +230,42 @@ const [showProcessingSection, setShowProcessingSection] = useState<boolean>(fals
           apiFormData.append(key, value.toString());
         }
       });
-       
-     
-      const incomingDTO : IncomingDocumentDTO = {
+
+      const incomingDTO: IncomingDocumentDTO = {
         ...documentData,
         processingStatus: "PENDING",
         closureRequest: closureRequest,
         sendingDepartmentName: formData.get("issuingAuthority") as string,
         emailSource: formData.get("emailSource") as string,
+      };
+      const closureDeadline = formData.get("deadline") as string;
+      const deadlineDate = closureDeadline
+        ? new Date(closureDeadline)
+        : new Date();
+      const workflowData: DocumentWorkflowDTO = {
+        status: "REGISTERED",
+        statusDisplayName: "Đã đăng ký",
+        comments: formData.get("notes") as string,
+        primaryDepartmentId: primaryDepartment!,
+        collaboratingDepartmentIds: secondaryDepartments,
+        closureDeadline: deadlineDate,
+      };
 
-
+      const data = {
+        document: incomingDTO,
+        workflow: workflowData,
+      };
+      if (files.length > 0) {
+        await workflowAPI.createFullDocument(data, files[0]);
       }
-        const closureDeadline = formData.get("deadline") as string;
-        const deadlineDate = closureDeadline ? new Date(closureDeadline) : new Date();
-        const workflowData: DocumentWorkflowDTO = {
-          status: "REGISTERED",
-          statusDisplayName: "Đã đăng ký",
-          comments: formData.get("notes") as string,
-          primaryDepartmentId: primaryDepartment!,
-          collaboratingDepartmentIds: secondaryDepartments,
-          closureDeadline: deadlineDate,
-        };
 
-       
-        
-        const data = {
-          document: incomingDTO,
-          workflow: workflowData
-        }
-        if (files.length > 0) {
-          await workflowAPI.createFullDocument(
-           data,
-          files[0]
-          );
-        }
-        
-        toast({
-          title: "Thành công",
-          description: "Văn bản đến đã được tạo thành công",
-        });
+      toast({
+        title: "Thành công",
+        description: "Văn bản đến đã được tạo thành công",
+      });
 
-        router.push("/van-ban-den");
-      }
-     catch (error) {
+      router.push("/van-ban-den");
+    } catch (error) {
       console.error("Lỗi khi tạo văn bản:", error);
       toast({
         title: "Lỗi",
@@ -367,7 +361,7 @@ const [showProcessingSection, setShowProcessingSection] = useState<boolean>(fals
                           ))
                         )}
                       </SelectContent>
-                    </Select> 
+                    </Select>
                     <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                       <DialogTrigger asChild>
                         <Button
@@ -513,7 +507,6 @@ const [showProcessingSection, setShowProcessingSection] = useState<boolean>(fals
                   <Input
                     id="attachments"
                     type="file"
-                    multiple
                     onChange={handleFileChange}
                     className="hidden"
                   />
@@ -649,7 +642,7 @@ const [showProcessingSection, setShowProcessingSection] = useState<boolean>(fals
                     ) : (
                       secondaryDepartments.map((deptId) => {
                         const dept = departmentList.find(
-                          (d) =>d.id === deptId
+                          (d) => d.id === deptId
                         );
                         if (!dept) return null;
 

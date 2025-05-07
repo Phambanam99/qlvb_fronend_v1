@@ -29,6 +29,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { use } from "react";
 import { DepartmentDTO } from "@/lib/api";
 import { de } from "date-fns/locale";
+import { useRouter } from "next/navigation";
+
 export default function DocumentDetailPage({
   params,
 }: {
@@ -39,10 +41,13 @@ export default function DocumentDetailPage({
   const documentId = Number.parseInt(id);
   const { user, hasRole } = useAuth();
   const { toast } = useToast();
+  const router = useRouter();
 
   const [_document, setDocument] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // State để theo dõi trạng thái loading khi chuyển trang
+  const [isNavigating, setIsNavigating] = useState(false);
   // fetch all departments with document id using useEffect
 
   const [departments, setDepartments] = useState<DepartmentDTO[]>([]);
@@ -117,7 +122,7 @@ export default function DocumentDetailPage({
   const getStatusBadge = (status: string, displayStatus: string) => {
     return <Badge variant={status}>{displayStatus}</Badge>;
   };
-  // Thêm hàm handleDownloadAttachment vào component DocumentDetailPage
+
   const handleDownloadAttachment = async () => {
     if (!_document.attachmentFilename) {
       toast({
@@ -129,24 +134,19 @@ export default function DocumentDetailPage({
     }
 
     try {
-      // Gọi API để tải tệp đính kèm
       const blob = await incomingDocumentsAPI.downloadIncomingAttachment(
         documentId
       );
 
-      // Tạo URL tạm thời để tải xuống
       const url = window.URL.createObjectURL(blob);
 
-      // Tạo thẻ a ẩn để thực hiện tải xuống
       const a = document.createElement("a");
       a.href = url;
 
-      // Lấy tên file từ đường dẫn đầy đủ
       const filename =
         _document.attachmentFilename.split("/").pop() || "document.pdf";
       a.download = filename;
 
-      // Thêm thẻ a vào DOM, kích hoạt click và xóa
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
@@ -165,14 +165,94 @@ export default function DocumentDetailPage({
       });
     }
   };
-  // Hiển thị các nút hành động dựa trên vai trò người dùng
+
+  const handleResponse = async () => {
+    if (!_document || !user) return;
+
+    try {
+      const documentStatus = _document.processingStatus;
+      const isAssignedToCurrentUser = _document.assignedToIds?.includes(
+        user.id
+      );
+
+      if (
+        documentStatus === "SPECIALIST_PROCESSING" &&
+        isAssignedToCurrentUser
+      ) {
+        router.push(`/van-ban-di/du-thao?docId=${_document.id}`);
+        return;
+      }
+
+      setIsLoading(true);
+      await workflowAPI.startProcessingDocument(documentId, {
+        documentId: documentId,
+        status: "SPECIALIST_PROCESSING",
+        statusDisplayName: "Chuyên viên đang xử lý",
+        assignedToId: Number(user.id),
+        comments: "Bắt đầu xử lý văn bản",
+      });
+
+      toast({
+        title: "Thành công",
+        description: "Đã bắt đầu xử lý văn bản",
+      });
+
+      router.push(`/van-ban-di/them-moi?replyToId=${_document.id}`);
+    } catch (error) {
+      console.error("Lỗi khi bắt đầu xử lý văn bản:", error);
+      toast({
+        title: "Lỗi",
+        description: "Không thể bắt đầu xử lý văn bản. Vui lòng thử lại sau.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const renderActionButtons = () => {
     if (!user || !_document) return null;
 
-    // Kiểm tra nếu văn bản chưa được chuyển xử lý (processingStatus là "PENDING" hoặc "REGISTERED")
     const isPendingProcessing = ["PENDING", "registered"].includes(
       _document.processingStatus
     );
+
+    // Kiểm tra xem phòng ban hiện tại có được gán cho văn bản này không
+    const currentDeptId = Number(user?.departmentId);
+    const isCurrentDepartmentAssigned =
+      Array.isArray(departments) &&
+      departments.some((dept) => dept.id === currentDeptId);
+
+    // Kiểm tra xem chính xác phòng ban hiện tại đã có nhân viên nào được phân công chưa
+    // Bất kỳ phòng ban nào cũng có thể phân công cho nhân viên của mình
+
+    // Kiểm tra trạng thái văn bản và thông tin phân công
+    console.log("Document assignment info:", {
+      document: _document,
+      user: user,
+      departments: departments,
+      currentDeptId: currentDeptId,
+      isCurrentDepartmentAssigned: isCurrentDepartmentAssigned,
+    });
+
+    // Sử dụng tiếp cận đơn giản hơn: tạo key riêng để theo dõi xem phòng đã phân công chưa
+    const processKey = `document_${_document.id}_dept_${currentDeptId}_assigned`;
+
+    // Kiểm tra trong localStorage xem phòng đã phân công cho văn bản này chưa
+    const isDeptAssigned =
+      typeof window !== "undefined"
+        ? localStorage.getItem(processKey) === "true"
+        : false;
+
+    // Lưu thông tin phân công vào localStorage khi user đi đến trang phân công
+    const markDeptAsAssigned = () => {
+      if (typeof window !== "undefined") {
+        localStorage.setItem(processKey, "true");
+      }
+    };
+
+    // Phòng ban hiện tại có thể phân công nếu được giao xử lý văn bản và chưa được đánh dấu là đã phân công
+    const canAssignToUsers = isCurrentDepartmentAssigned && !isDeptAssigned;
 
     if (
       hasRole([
@@ -199,12 +279,23 @@ export default function DocumentDetailPage({
             variant="default"
             size="sm"
             className="bg-primary hover:bg-primary/90"
-            asChild
+            disabled={isNavigating}
+            onClick={() => {
+              setIsNavigating(true);
+              router.push(`/van-ban-den/${_document.id}/chuyen-xu-ly`);
+            }}
           >
-            <Link href={`/van-ban-den/${_document.id}/chuyen-xu-ly`}>
-              <Send className="mr-2 h-4 w-4" />
-              Chuyển xử lý
-            </Link>
+            {isNavigating ? (
+              <>
+                <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
+                Đang chuyển trang...
+              </>
+            ) : (
+              <>
+                <Send className="mr-2 h-4 w-4" />
+                Chuyển xử lý
+              </>
+            )}
           </Button>
         </>
       );
@@ -216,6 +307,7 @@ export default function DocumentDetailPage({
           variant="outline"
           size="sm"
           className="border-primary/20 hover:bg-primary/10 hover:text-primary"
+          onClick={handleDownloadAttachment}
         >
           <Download className="mr-2 h-4 w-4" />
           Tải xuống
@@ -233,28 +325,63 @@ export default function DocumentDetailPage({
     ) {
       return (
         <>
-          <Button
-            variant="outline"
-            size="sm"
-            className="border-primary/20 hover:bg-primary/10 hover:text-primary"
-            asChild
-          >
-            <Link href={`/van-ban-den/${_document.id}/phan-cong`}>
-              <UserCheck className="mr-2 h-4 w-4" />
-              Phân công
-            </Link>
-          </Button>
+          {/* Hiển thị nút Phân công nếu phòng ban được giao xử lý văn bản và đang ở trạng thái phù hợp */}
+          {canAssignToUsers &&
+            [
+              "PENDING",
+              "DEPT_ASSIGNED",
+              "registered",
+              "dept_assigned",
+              "distributed",
+            ].includes(_document.processingStatus || _document.status) && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-primary/20 hover:bg-primary/10 hover:text-primary"
+                disabled={isNavigating}
+                onClick={() => {
+                  setIsNavigating(true);
+                  // Lưu trạng thái đã phân công vào localStorage
+                  markDeptAsAssigned();
+                  router.push(`/van-ban-den/${_document.id}/phan-cong`);
+                }}
+              >
+                {isNavigating ? (
+                  <>
+                    <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-primary/50 border-t-transparent"></span>
+                    Đang chuyển trang...
+                  </>
+                ) : (
+                  <>
+                    <UserCheck className="mr-2 h-4 w-4" />
+                    Phân công
+                  </>
+                )}
+              </Button>
+            )}
+
           {_document.responses && _document.responses.length > 0 && (
             <Button
               variant="outline"
               size="sm"
               className="border-primary/20 hover:bg-primary/10 hover:text-primary"
-              asChild
+              disabled={isNavigating}
+              onClick={() => {
+                setIsNavigating(true);
+                router.push(`/van-ban-den/${_document.id}/xem-xet/1`);
+              }}
             >
-              <Link href={`/van-ban-den/${_document.id}/xem-xet/1`}>
-                <Send className="mr-2 h-4 w-4" />
-                Xem xét
-              </Link>
+              {isNavigating ? (
+                <>
+                  <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-primary/50 border-t-transparent"></span>
+                  Đang chuyển trang...
+                </>
+              ) : (
+                <>
+                  <Send className="mr-2 h-4 w-4" />
+                  Xem xét
+                </>
+              )}
             </Button>
           )}
         </>
@@ -263,14 +390,35 @@ export default function DocumentDetailPage({
 
     if (hasRole(["ROLE_TRO_LY", "ROLE_NHAN_VIEN"])) {
       return (
-        <Button
-          size="sm"
-          className="bg-primary hover:bg-primary/90"
-          onClick={() => handleDownloadAttachment()}
-        >
-          <Send className="mr-2 h-4 w-4" />
-          Trả lời
-        </Button>
+        <>
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-primary/20 hover:bg-primary/10 hover:text-primary"
+            onClick={handleDownloadAttachment}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Tải xuống
+          </Button>
+          <Button
+            size="sm"
+            className="bg-primary hover:bg-primary/90"
+            onClick={handleResponse}
+            disabled={isNavigating}
+          >
+            {isNavigating ? (
+              <>
+                <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
+                Đang chuyển trang...
+              </>
+            ) : (
+              <>
+                <Send className="mr-2 h-4 w-4" />
+                Trả lời
+              </>
+            )}
+          </Button>
+        </>
       );
     }
 
@@ -278,11 +426,26 @@ export default function DocumentDetailPage({
       return (
         _document.responses &&
         _document.responses.length > 0 && (
-          <Button size="sm" className="bg-primary hover:bg-primary/90" asChild>
-            <Link href={`/van-ban-den/${_document.id}/phe-duyet/1`}>
-              <Send className="mr-2 h-4 w-4" />
-              Phê duyệt
-            </Link>
+          <Button
+            size="sm"
+            className="bg-primary hover:bg-primary/90"
+            disabled={isNavigating}
+            onClick={() => {
+              setIsNavigating(true);
+              router.push(`/van-ban-den/${_document.id}/phe-duyet/1`);
+            }}
+          >
+            {isNavigating ? (
+              <>
+                <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
+                Đang chuyển trang...
+              </>
+            ) : (
+              <>
+                <Send className="mr-2 h-4 w-4" />
+                Phê duyệt
+              </>
+            )}
           </Button>
         )
       );
@@ -292,7 +455,7 @@ export default function DocumentDetailPage({
       <Button
         variant="outline"
         size="sm"
-        onClick={() => handleDownloadAttachment()}
+        onClick={handleDownloadAttachment}
         className="border-primary/20 hover:bg-primary/10 hover:text-primary"
       >
         <Download className="mr-2 h-4 w-4" />
@@ -597,19 +760,82 @@ export default function DocumentDetailPage({
               </div>
             </CardContent>
             <CardFooter className="bg-accent/30 border-t border-primary/10">
-              {hasRole(["ROLE_TRUONG_PHONG", "ROLE_PHO_PHONG"]) && (
+              {hasRole(["ROLE_TRUONG_PHONG", "ROLE_PHO_PHONG"]) &&
+                // Chỉ kiểm tra phân công trong phòng của trưởng phòng hiện tại
+                (() => {
+                  // Sử dụng trường hợp đơn giản nhất: kiểm tra xem phòng ban hiện tại có được liệt kê trong danh sách các phòng ban được phân công xử lý văn bản này hay không
+                  const currentDeptId = Number(user?.departmentId);
+
+                  // Kiểm tra xem phòng ban hiện tại có trong danh sách các phòng ban xử lý văn bản hay không
+                  const hasAssignedToCurrentDepartment =
+                    Array.isArray(departments) &&
+                    departments.some((dept) => dept.id === currentDeptId);
+
+                  // Kiểm tra bổ sung: có nhân viên nào trong phòng đã được giao trực tiếp không
+                  const hasAssignedToUserInCurrentDept =
+                    _document.assignedToIds &&
+                    Array.isArray(_document.assignedToIds) &&
+                    _document.assignedToIds.length > 0 &&
+                    hasAssignedToCurrentDepartment; // Đã có phòng được phân công
+
+                  // Nếu chưa có ai trong phòng được phân công hoặc văn bản đang ở trạng thái chờ xử lý
+                  if (
+                    !hasAssignedToUserInCurrentDept &&
+                    [
+                      "PENDING",
+                      "DEPT_ASSIGNED",
+                      "registered",
+                      "dept_assigned",
+                      "distributed",
+                    ].includes(_document.processingStatus || _document.status)
+                  ) {
+                    return (
+                      <Button
+                        className="w-full bg-primary hover:bg-primary/90"
+                        disabled={isNavigating}
+                        onClick={() => {
+                          setIsNavigating(true);
+                          router.push(`/van-ban-den/${_document.id}/phan-cong`);
+                        }}
+                      >
+                        {isNavigating ? (
+                          <>
+                            <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
+                            Đang chuyển trang...
+                          </>
+                        ) : (
+                          "Cập nhật thông tin xử lý"
+                        )}
+                      </Button>
+                    );
+                  } else {
+                    return (
+                      <div className="w-full text-center text-amber-600 text-sm py-1">
+                        Văn bản đã được phân công cho cán bộ của{" "}
+                        {user?.department} xử lý
+                      </div>
+                    );
+                  }
+                })()}
+              {hasRole(["ROLE_TRO_LY", "ROLE_NHAN_VIEN"]) && (
                 <Button
                   className="w-full bg-primary hover:bg-primary/90"
-                  asChild
+                  disabled={isNavigating}
+                  onClick={() => {
+                    setIsNavigating(true);
+                    router.push(
+                      `/van-ban-den/${_document.id}/cap-nhat-thong-tin`
+                    );
+                  }}
                 >
-                  <Link href={`/van-ban-den/${_document.id}/phan-cong`}>
-                    Cập nhật thông tin xử lý
-                  </Link>
-                </Button>
-              )}
-              {hasRole(["ROLE_TRO_LY", "ROLE_NHAN_VIEN"]) && (
-                <Button className="w-full bg-primary hover:bg-primary/90">
-                  Cập nhật thông tin xử lý
+                  {isNavigating ? (
+                    <>
+                      <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
+                      Đang chuyển trang...
+                    </>
+                  ) : (
+                    "Cập nhật thông tin xử lý"
+                  )}
                 </Button>
               )}
             </CardFooter>
