@@ -14,9 +14,9 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
-import { CalendarIcon, Send } from "lucide-react";
+import { CalendarIcon, Send, UserCheck } from "lucide-react";
 import {
   Popover,
   PopoverContent,
@@ -27,7 +27,6 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import {
   usersAPI,
-  incomingDocumentsAPI,
   workflowAPI,
   DocumentWorkflowDTO,
   DocumentProcessingStatus,
@@ -35,6 +34,7 @@ import {
 } from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
 import { useRouter } from "next/navigation";
+
 interface DepartmentHeadAssignmentProps {
   documentId: number;
   departmentId: number;
@@ -44,7 +44,8 @@ export default function DepartmentHeadAssignment({
   documentId,
   departmentId,
 }: DepartmentHeadAssignmentProps) {
-  const [selectedStaff, setSelectedStaff] = useState<number[]>([]);
+  // Sử dụng số duy nhất cho người được chọn
+  const [selectedStaff, setSelectedStaff] = useState<number | null>(null);
   const [comments, setComments] = useState("");
   const [deadline, setDeadline] = useState<Date>();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -84,115 +85,174 @@ export default function DepartmentHeadAssignment({
     fetchDepartmentStaff();
   }, [departmentId, toast]);
 
+  // Xử lý khi chọn người xử lý
   const handleStaffSelect = (staffId: number) => {
-    setSelectedStaff((prev) => {
-      if (prev.includes(staffId)) {
-        return prev.filter((id) => id !== staffId);
-      } else {
-        return [...prev, staffId];
-      }
-    });
+    setSelectedStaff(staffId);
   };
 
+  // Xử lý khi submit form
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
-
-    // Reset form
-    setIsSubmitting(false);
-    console.log("Đã phân công xử lý văn bản thành công! ", selectedStaff[0]);
-    // Thông báo thành công (trong thực tế sẽ sử dụng toast hoặc notification)
-    // alert("Đã phân công xử lý văn bản thành công!");
-    const documentAssign: DocumentWorkflowDTO = {
-      status: DocumentProcessingStatus.DEPT_ASSIGNED.code,
-      statusDisplayName: DocumentProcessingStatus.DEPT_ASSIGNED.displayName,
-      comments,
-      closureDeadline: deadline,
-      assignedToId: selectedStaff[0],
-      documentId: documentId,
-    };
-    // Gửi dữ liệu phân công xử lý văn bản đến API
-    await workflowAPI.assignToSpecialist(documentId, documentAssign);
-    router.push(`/van-ban-den/${documentId}`)
+    
+    // Đảm bảo selectedStaff có giá trị
+    if (selectedStaff === null) {
+      toast({
+        title: "Lỗi",
+        description: "Vui lòng chọn cán bộ để phân công xử lý",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (!deadline) {
+      toast({
+        title: "Lỗi",
+        description: "Vui lòng chọn thời hạn xử lý",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    try {
+      setIsSubmitting(true);
+      
+      // Tạo đối tượng phân công xử lý
+      const documentAssign: DocumentWorkflowDTO = {
+        status: DocumentProcessingStatus.DEPT_ASSIGNED.code,
+        statusDisplayName: DocumentProcessingStatus.DEPT_ASSIGNED.displayName,
+        comments,
+        closureDeadline: deadline,
+        assignedToId: selectedStaff,
+        documentId: documentId,
+      };
+      
+      // Gửi dữ liệu phân công xử lý văn bản đến API
+      await workflowAPI.assignToSpecialist(documentId, documentAssign);
+      
+      toast({
+        title: "Thành công",
+        description: "Đã phân công xử lý văn bản thành công",
+      });
+      
+      // Chuyển về trang chi tiết
+      router.push(`/van-ban-den/${documentId}`);
+    } catch (error) {
+      console.error("Lỗi khi phân công xử lý:", error);
+      toast({
+        title: "Lỗi",
+        description: "Không thể phân công xử lý. Vui lòng thử lại sau.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Phân công xử lý văn bản</CardTitle>
+        <CardTitle className="flex items-center gap-2">
+          <UserCheck className="h-5 w-5" /> 
+          Phân công xử lý văn bản
+        </CardTitle>
       </CardHeader>
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-4">
+          {/* Phần chọn cán bộ xử lý */}
           <div className="space-y-2">
             <Label>Chọn cán bộ xử lý</Label>
-            <div className="border rounded-md overflow-hidden">
+            <div className="border rounded-md">
               <div className="bg-primary/5 px-4 py-2 border-b">
                 <span className="text-sm font-medium">
                   Danh sách cán bộ trong phòng
                 </span>
               </div>
-              <div className="max-h-[200px] overflow-y-auto">
-                {departmentStaff.map((staff) => (
-                  <div
-                    key={staff.id}
-                    className="flex items-center justify-between px-4 py-3 border-b last:border-b-0 hover:bg-accent/50"
+              
+              {isLoadingStaff ? (
+                <div className="py-8 text-center text-muted-foreground">
+                  Đang tải danh sách cán bộ...
+                </div>
+              ) : departmentStaff.length === 0 ? (
+                <div className="py-8 text-center text-muted-foreground">
+                  Không có cán bộ nào trong phòng
+                </div>
+              ) : (
+                <div className="max-h-[300px] overflow-y-auto">
+                  <RadioGroup
+                    value={selectedStaff?.toString() || ""}
+                    onValueChange={(value) => handleStaffSelect(Number(value))}
+                    className="space-y-0"
                   >
-                    <div className="flex items-center gap-3">
-                      <Checkbox
-                        id={`staff-${staff.id}`}
-                        checked={selectedStaff.includes(staff.id)}
-                        onCheckedChange={() => handleStaffSelect(staff.id)}
-                      />
-                      <div className="flex items-center gap-2">
-                        <Avatar className="h-8 w-8 bg-primary/10">
-                          <AvatarFallback className="text-xs text-primary">
-                            AV
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="text-sm font-medium">
-                            {staff.username}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {staff.fullName}
-                          </p>
-                        </div>
+                    {departmentStaff.map((staff) => (
+                      <div
+                        key={staff.id}
+                        className="flex items-center px-4 py-3 border-b last:border-b-0 hover:bg-accent/50"
+                      >
+                        <RadioGroupItem
+                          id={`staff-${staff.id}`}
+                          value={staff.id.toString()}
+                          className="mr-3"
+                        />
+                        <label
+                          htmlFor={`staff-${staff.id}`}
+                          className="flex items-center gap-2 cursor-pointer flex-1"
+                        >
+                          <Avatar className="h-8 w-8 bg-primary/10">
+                            <AvatarFallback className="text-xs text-primary">
+                              {staff.fullName?.substring(0, 2) || "NV"}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="text-sm font-medium">
+                              {staff.fullName}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {staff.position || "Nhân viên"}
+                            </p>
+                          </div>
+                        </label>
                       </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                    ))}
+                  </RadioGroup>
+                </div>
+              )}
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2 min-h-[60px] p-2 border rounded-md bg-accent/50">
-            {selectedStaff.length === 0 && (
-              <div className="w-full h-full flex items-center justify-center text-sm text-muted-foreground">
-                Chưa có cán bộ nào được chọn
-              </div>
-            )}
+          {/* Hiển thị người được chọn */}
+          <div className="space-y-2">
+            <Label>Cán bộ được phân công</Label>
+            <div className="flex flex-wrap gap-2 min-h-[50px] p-3 border rounded-md bg-accent/20">
+              {selectedStaff === null ? (
+                <div className="w-full h-full flex items-center justify-center text-sm text-muted-foreground">
+                  Chưa có cán bộ nào được chọn
+                </div>
+              ) : (
+                (() => {
+                  const staff = departmentStaff.find((s) => s.id === selectedStaff);
+                  if (!staff) return null;
 
-            {selectedStaff.map((staffId) => {
-              const staff = departmentStaff.find((s) => s.id === staffId);
-              if (!staff) return null;
-
-              return (
-                <Badge
-                  key={staffId}
-                  variant="secondary"
-                  className="pl-2 pr-2 py-1.5 bg-primary/10"
-                >
-                  <span>{staff.name}</span>
-                </Badge>
-              );
-            })}
+                  return (
+                    <Badge
+                      key={selectedStaff}
+                      variant="secondary"
+                      className="pl-2 pr-2 py-1.5 bg-primary/10"
+                    >
+                      <span>{staff.fullName}</span>
+                    </Badge>
+                  );
+                })()
+              )}
+            </div>
           </div>
 
+          {/* Thiết lập thời hạn xử lý */}
           <div className="space-y-2">
             <Label htmlFor="deadline">Thời hạn xử lý</Label>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
+                  id="deadline"
                   variant="outline"
                   className={cn(
                     "w-full justify-start text-left font-normal",
@@ -214,6 +274,7 @@ export default function DepartmentHeadAssignment({
             </Popover>
           </div>
 
+          {/* Nhập ý kiến chỉ đạo */}
           <div className="space-y-2">
             <Label htmlFor="comments">Ý kiến chỉ đạo</Label>
             <Textarea
@@ -225,16 +286,23 @@ export default function DepartmentHeadAssignment({
             />
           </div>
         </CardContent>
-        <CardFooter className="flex justify-between">
-          <Button type="button" variant="outline">
+        <CardFooter className="flex justify-end space-x-2">
+          <Button 
+            type="button" 
+            variant="outline"
+            onClick={() => router.push(`/van-ban-den/${documentId}`)}
+          >
             Hủy
           </Button>
           <Button
             type="submit"
-            disabled={isSubmitting || selectedStaff.length === 0 || !deadline}
+            disabled={isSubmitting || selectedStaff === null || !deadline}
           >
             {isSubmitting ? (
-              "Đang gửi..."
+              <>
+                <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
+                Đang gửi...
+              </>
             ) : (
               <>
                 <Send className="mr-2 h-4 w-4" /> Phân công

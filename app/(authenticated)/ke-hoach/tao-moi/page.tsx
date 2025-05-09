@@ -17,7 +17,7 @@ import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { format } from "date-fns"
 import { vi } from "date-fns/locale"
-
+import { usersAPI } from "@/lib/api/users"
 // Cập nhật import để sử dụng API từ thư mục lib/api
 import { schedulesAPI, departmentsAPI } from "@/lib/api"
 import { useNotifications } from "@/lib/notifications-context"
@@ -113,16 +113,22 @@ export default function CreateSchedulePage() {
   useEffect(() => {
     const fetchDepartmentsAndStaff = async () => {
       try {
-        setIsLoadingDepartments(true)
-        const departmentsData = await departmentsAPI.getAllDepartments()
-        setDepartments(departmentsData.content)
-        setIsLoadingDepartments(false)
+        // Kiểm tra trước khi gọi API lấy phòng ban
+        if (departments.length === 0) {
+          setIsLoadingDepartments(true)
+          const departmentsData = await departmentsAPI.getAllDepartments()
+          setDepartments(departmentsData.content)
+          setIsLoadingDepartments(false)
+        }
 
-        setIsLoadingStaff(true)
-        const usersData = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users`)
-        const staffData = await usersData.json()
-        setStaffMembers(staffData)
-        setIsLoadingStaff(false)
+        // Kiểm tra trước khi gọi API lấy danh sách cán bộ
+        if (staffMembers.length === 0) {
+          setIsLoadingStaff(true)
+          const usersData = await usersAPI.getAllUsers()
+          // usersAPI.getAllUsers() đã trả về dữ liệu đã được xử lý, không cần gọi .json()
+          setStaffMembers(usersData)
+          setIsLoadingStaff(false)
+        }
       } catch (error) {
         console.error("Error fetching departments and staff:", error)
         addNotification({

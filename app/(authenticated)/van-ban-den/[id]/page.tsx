@@ -18,10 +18,8 @@ import Link from "next/link";
 import DocumentResponseForm from "@/components/document-response-form";
 import DocumentResponseList from "@/components/document-response-list";
 import DocumentProcessingHistory from "@/components/document-processing-history";
-import {
-  incomingDocumentsAPI,
-  getStatusByCode,
-} from "@/lib/api/incomingDocuments";
+import { getStatusByCode, incomingDocumentsAPI } from "@/lib/api/incomingDocuments";
+import { getStatusBadgeInfo } from "@/lib/utils";
 import { workflowAPI } from "@/lib/api/workflow";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/components/ui/use-toast";
@@ -71,20 +69,49 @@ export default function DocumentDetailPage({
     fetchDepartments();
   }, [documentId, toast]);
 
+  // State để theo dõi trạng thái loading của nhiều loại dữ liệu
+  const [isDocumentLoading, setIsDocumentLoading] = useState(true);
+  const [isWorkflowLoading, setIsWorkflowLoading] = useState(true);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(true);
+  
+  // Tracking overall loading status
+  useEffect(() => {
+    // Chỉ đặt isLoading = false khi tất cả dữ liệu đã tải xong
+    setIsLoading(isDocumentLoading || isWorkflowLoading || isHistoryLoading || !user);
+  }, [isDocumentLoading, isWorkflowLoading, isHistoryLoading, user]);
+  
   useEffect(() => {
     const fetchDocument = async () => {
+      if (!documentId || !user) {
+        return; // Tránh gọi API khi không có ID hoặc user
+      }
+      
       try {
-        setIsLoading(true);
+        console.log("Bắt đầu tải dữ liệu văn bản:", {
+          documentId,
+          timestamp: new Date().toISOString(),
+          user: user?.fullName
+        });
+        
+        // Bắt đầu tải document
+        setIsDocumentLoading(true);
+        setIsWorkflowLoading(true);
+        setIsHistoryLoading(true);
+        
         // Fetch document details
-        const response = await incomingDocumentsAPI.getIncomingDocumentById(
-          documentId
-        );
-        console.log("response", response);
+        const response = await incomingDocumentsAPI.getIncomingDocumentById(documentId);
+        console.log("1. Tải văn bản thành công:", response);
+        setIsDocumentLoading(false);
+        
         // Fetch document workflow status
         const workflowStatus = await workflowAPI.getDocumentStatus(documentId);
+        console.log("2. Tải workflow status thành công:", workflowStatus);
+        setIsWorkflowLoading(false);
 
         // Fetch document history
         const history = await workflowAPI.getDocumentHistory(documentId);
+        console.log("3. Tải history thành công:", history);
+        setIsHistoryLoading(false);
 
         // Combine data
         const documentData = {
@@ -100,11 +127,11 @@ export default function DocumentDetailPage({
           relatedDocuments: [],
           responses: [],
         };
-        console.log("documentData", documentData);
+        console.log("✅ Tất cả dữ liệu đã tải xong, bắt đầu render", documentData);
         setDocument(documentData);
         setError(null);
       } catch (err: any) {
-        console.error("Error fetching document:", err);
+        console.error("❌ Lỗi khi tải dữ liệu văn bản:", err);
         setError(err.message || "Không thể tải thông tin văn bản");
         toast({
           title: "Lỗi",
@@ -112,15 +139,20 @@ export default function DocumentDetailPage({
           variant: "destructive",
         });
       } finally {
-        setIsLoading(false);
+        // Đảm bảo tất cả loại dữ liệu đều được đánh dấu là đã hoàn thành,
+        // tránh kẹt ở trạng thái loading vĩnh viễn
+        setIsDocumentLoading(false);
+        setIsWorkflowLoading(false);
+        setIsHistoryLoading(false);
       }
     };
 
     fetchDocument();
-  }, [documentId, toast]);
+  }, [documentId, toast, user]);
 
-  const getStatusBadge = (status: string, displayStatus: string) => {
-    return <Badge variant={status}>{displayStatus}</Badge>;
+  const getStatusBadge = (status: string, displayName?: string) => {
+    const badgeInfo = getStatusBadgeInfo(status, displayName);
+    return <Badge variant={badgeInfo.variant}>{badgeInfo.text}</Badge>;
   };
 
   const handleDownloadAttachment = async () => {
@@ -234,7 +266,7 @@ export default function DocumentDetailPage({
       currentDeptId: currentDeptId,
       isCurrentDepartmentAssigned: isCurrentDepartmentAssigned,
     });
-
+    
     // Sử dụng tiếp cận đơn giản hơn: tạo key riêng để theo dõi xem phòng đã phân công chưa
     const processKey = `document_${_document.id}_dept_${currentDeptId}_assigned`;
 
@@ -389,17 +421,40 @@ export default function DocumentDetailPage({
     }
 
     if (hasRole(["ROLE_TRO_LY", "ROLE_NHAN_VIEN"])) {
-      return (
-        <>
-          <Button
-            variant="outline"
-            size="sm"
-            className="border-primary/20 hover:bg-primary/10 hover:text-primary"
-            onClick={handleDownloadAttachment}
-          >
-            <Download className="mr-2 h-4 w-4" />
-            Tải xuống
-          </Button>
+    // Kiểm tra xem người dùng hiện tại có được phân công xử lý văn bản này không
+    const isAssignedToCurrentUser = _document.assignedToIds && 
+      Array.isArray(_document.assignedToIds) && 
+      _document.assignedToIds.includes(user.id);
+    
+    // Log thông tin để debug
+    console.log("Trợ lý/nhân viên quyền trả lời:", {
+      userId: user.id, 
+      userName: user.fullName,
+      assignedToIds: _document.assignedToIds,
+      isAssignedToCurrentUser: isAssignedToCurrentUser
+    });
+    
+    // Kiểm tra trong nhiều vị trí khác có thể chứa thông tin phân công
+    const isUserAssigned = 
+      isAssignedToCurrentUser ||
+      (_document.assignedToId && _document.assignedToId == user.id) ||
+      (_document.workflowStatus && _document.workflowStatus.assignedToId == user.id) ||
+      (_document.primaryProcessor && _document.primaryProcessor == user.id);
+    
+    return (
+      <>
+        <Button
+          variant="outline"
+          size="sm"
+          className="border-primary/20 hover:bg-primary/10 hover:text-primary"
+          onClick={handleDownloadAttachment}
+        >
+          <Download className="mr-2 h-4 w-4" />
+          Tải xuống
+        </Button>
+        
+        {/* Chỉ hiển thị nút Trả lời khi người dùng được phân công xử lý */}
+        {isUserAssigned && (
           <Button
             size="sm"
             className="bg-primary hover:bg-primary/90"
@@ -418,9 +473,10 @@ export default function DocumentDetailPage({
               </>
             )}
           </Button>
-        </>
-      );
-    }
+        )}
+      </>
+    );
+  }  
 
     if (hasRole("ROLE_PHE_DUYET")) {
       return (
@@ -719,7 +775,7 @@ export default function DocumentDetailPage({
                 </p>
                 <div className="mt-1">
                   {_document.assignedToIds && _document.assignedToNames ? (
-                    _document.assignedToNames.map((name, indexName) => (
+                    _document.assignedToNames.map((name: string, indexName: number) => (
                       <div
                         key={indexName}
                         className="flex items-center space-x-2"
@@ -817,81 +873,63 @@ export default function DocumentDetailPage({
                     );
                   }
                 })()}
+              {/* Chỉ hiển thị nút Cập nhật thông tin xử lý cho nhân viên/trợ lý được phân công xử lý */}
               {hasRole(["ROLE_TRO_LY", "ROLE_NHAN_VIEN"]) && (
-                <Button
-                  className="w-full bg-primary hover:bg-primary/90"
-                  disabled={isNavigating}
-                  onClick={() => {
-                    setIsNavigating(true);
-                    router.push(
-                      `/van-ban-den/${_document.id}/cap-nhat-thong-tin`
-                    );
-                  }}
-                >
-                  {isNavigating ? (
-                    <>
-                      <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
-                      Đang chuyển trang...
-                    </>
-                  ) : (
-                    "Cập nhật thông tin xử lý"
-                  )}
-                </Button>
+                <>
+                  {/* Kiểm tra người dùng có được phân công xử lý văn bản này không */}
+                  {(() => {
+                    // Giống như cách kiểm tra ở nút Trả lời
+                    const isAssignedToCurrentUser = _document.assignedToIds && 
+                      Array.isArray(_document.assignedToIds) && 
+                      _document.assignedToIds.includes(user?.id);
+                    
+                    // Kiểm tra trong nhiều vị trí khác có thể chứa thông tin phân công
+                    const isUserAssigned = 
+                      isAssignedToCurrentUser ||
+                      (_document.assignedToId && _document.assignedToId == user?.id) ||
+                      (_document.workflowStatus && _document.workflowStatus.assignedToId == user?.id) ||
+                      (_document.primaryProcessor && _document.primaryProcessor == user?.id);
+                    
+                    console.log("Kiểm tra quyền cập nhật thông tin xử lý:", {
+                      userId: user?.id,
+                      assignedToIds: _document.assignedToIds,
+                      isAssignedToCurrentUser,
+                      isUserAssigned
+                    });
+                    
+                    // Chỉ hiển thị nút nếu người dùng được phân công xử lý
+                    if (isUserAssigned) {
+                      return (
+                        <Button
+                          className="w-full bg-primary hover:bg-primary/90"
+                          disabled={isNavigating}
+                          onClick={() => {
+                            setIsNavigating(true);
+                            router.push(
+                              `/van-ban-den/${_document.id}/cap-nhat-thong-tin`
+                            );
+                          }}
+                        >
+                          {isNavigating ? (
+                            <>
+                              <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
+                              Đang chuyển trang...
+                            </>
+                          ) : (
+                            "Cập nhật thông tin xử lý"
+                          )}
+                        </Button>
+                      );
+                    } else {
+                      // Nếu không được phân công, không hiển thị nút
+                      return null;
+                    }
+                  })()}
+                </>
               )}
             </CardFooter>
           </Card>
 
-          <Card className="border-primary/10 shadow-sm">
-            <CardHeader className="bg-primary/5 border-b">
-              <CardTitle>Văn bản liên quan</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <div className="space-y-4">
-                {_document.relatedDocuments &&
-                _document.relatedDocuments.length > 0 ? (
-                  _document.relatedDocuments.map((relatedDoc: any) => (
-                    <div
-                      key={relatedDoc.id}
-                      className="rounded-md border border-primary/10 p-3 bg-accent/30"
-                    >
-                      <div className="flex justify-between">
-                        <p className="font-medium text-primary">
-                          {relatedDoc.number}
-                        </p>
-                        <Badge
-                          variant="success"
-                          className="bg-green-50 text-green-700"
-                        >
-                          {relatedDoc.status === "completed"
-                            ? "Đã xử lý"
-                            : "Đang xử lý"}
-                        </Badge>
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        {relatedDoc.title}
-                      </p>
-                      <div className="mt-2 flex justify-end">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="hover:bg-primary/10 hover:text-primary"
-                          asChild
-                        >
-                          <Link href={`/van-ban-den/${relatedDoc.id}`}>
-                            Xem
-                          </Link>
-                        </Button>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    Không có văn bản liên quan
-                  </p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
         </div>
       </div>
     </div>

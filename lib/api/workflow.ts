@@ -19,6 +19,16 @@ export const workflowAPI = {
    * @param documentId Document ID
    * @returns Document workflow details
    */
+  leaderStartReviewing: async (
+    documentId: number | string,
+    comment: string
+  ) => {
+    const response = await api.put(
+      `/workflow/${documentId}/start-reviewing`,
+      comment
+    );
+    return response.data;
+  },
   registerIncomingDocument: async (
     documentId: number | string,
     workflowData: DocumentWorkflowDTO
@@ -124,9 +134,23 @@ export const workflowAPI = {
     documentId: number | string,
     workflowData: DocumentWorkflowDTO
   ) => {
+    // Sử dụng FormData thay vì gửi JSON trực tiếp
+    const formData = new FormData();
+    
+    // Thêm dữ liệu workflow vào FormData
+    formData.append(
+      "data",
+      new Blob([JSON.stringify(workflowData)], { type: "application/json" })
+    );
+    
     const response = await api.put(
       `/workflow/${documentId}/approve`,
-      workflowData
+      formData,
+      {
+        headers: {
+          "Content-Type": undefined, // Để browser tự động xác định boundary cho multipart/form-data
+        },
+      }
     );
     return response.data;
   },
@@ -220,7 +244,7 @@ export const workflowAPI = {
     }
 
     const response = await api.post(
-      `/incoming/${incomingDocId}/reply`,
+      `/workflow/incoming/${incomingDocId}/reply`,
       formData,
       {
         headers: {
@@ -229,6 +253,49 @@ export const workflowAPI = {
       }
     );
 
+    return response.data;
+  },
+
+  /**
+   * Lấy danh sách văn bản liên quan
+   * @param documentId ID văn bản cần lấy danh sách liên quan
+   * @returns Danh sách văn bản liên quan
+   */
+  getDocumentResponses: async (documentId: string) => {
+    const response = await api.get(`/documents/outgoing/related`, {
+      params: { relatedDocuments: documentId }
+    });
+    console.log("response getDocumentResponses", response.data)
+    return response.data;
+  },
+  
+  /**
+   * Chấp nhận văn bản phản hồi
+   * @param responseId ID văn bản phản hồi cần chấp nhận
+   * @param data Dữ liệu bổ sung (nếu có)
+   * @returns Kết quả xử lý
+   */
+  approveDocumentResponse: async (responseId: number, data: { comment?: string }) => {
+    const response = await api.put(`/workflow/${responseId}/approve`, {
+      responseId,
+      status: "approved",
+      ...data
+    })
+    return response.data;
+  },
+  
+  /**
+   * Từ chối văn bản phản hồi
+   * @param responseId ID văn bản phản hồi cần từ chối
+   * @param data Dữ liệu bổ sung (lý do từ chối)
+   * @returns Kết quả xử lý
+   */
+  rejectDocumentResponse: async (responseId: number, data: { comment: string }) => {
+    const response = await api.put(`/workflow/${responseId}/provide-feedback`, {
+      responseId,
+      status: "rejected",
+      ...data
+    });
     return response.data;
   },
 };

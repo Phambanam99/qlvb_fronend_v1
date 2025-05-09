@@ -4,6 +4,7 @@ import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/toaster"
+import { ToastProvider } from "@/components/ui/use-toast"
 import { AuthProvider } from "@/lib/auth-context"
 import { Providers } from "./providers"
 
@@ -25,10 +26,12 @@ export default function RootLayout({
       <body className={inter.className}>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
           <Providers>
-            <AuthProvider>
-              {children}
-              <Toaster />
-            </AuthProvider>
+            <ToastProvider>
+              <AuthProvider>
+                {children}
+                <Toaster />
+              </AuthProvider>
+            </ToastProvider>
           </Providers>
         </ThemeProvider>
       </body>

@@ -1,23 +1,37 @@
-"use client"
+// app/(authenticated)/van-ban-di/[id]/chinh-sua/page.tsx
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useEffect, useState } from "react"
-import { useParams, useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { DatePicker } from "@/components/ui/date-picker"
-import { Checkbox } from "@/components/ui/checkbox"
-import { ArrowLeft, Loader2, Save, Trash } from "lucide-react"
-import Link from "next/link"
-import { outgoingDocumentsAPI } from "@/lib/api/outgoingDocuments"
-import { departmentsAPI } from "@/lib/api/departments"
-import { useToast } from "@/components/ui/use-toast"
-import { useAuth } from "@/lib/auth-context"
+import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  CardFooter,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { DatePicker } from "@/components/ui/date-picker";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ArrowLeft, Loader2, Save, Trash } from "lucide-react";
+import Link from "next/link";
+import { outgoingDocumentsAPI, workflowAPI } from "@/lib/api/";
+import { departmentsAPI } from "@/lib/api/departments";
+import { useToast } from "@/components/ui/use-toast";
+import { useAuth } from "@/lib/auth-context";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,22 +42,23 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+} from "@/components/ui/alert-dialog";
 
 export default function EditOutgoingDocumentPage() {
-  const params = useParams()
-  const router = useRouter()
-  const { toast } = useToast()
-  const { hasRole } = useAuth()
-  const documentId = params.id as string
+  const params = useParams();
+  const router = useRouter();
+  const { toast } = useToast();
+  const { hasRole } = useAuth();
+  const documentId = params.id as string;
 
-  const [document, setDocument] = useState<any>(null)
-  const [departments, setDepartments] = useState<any[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [isSaving, setIsSaving] = useState(false)
-  const [isDeleting, setIsDeleting] = useState(false)
-  const [attachments, setAttachments] = useState<File[]>([])
-  const [existingAttachments, setExistingAttachments] = useState<any[]>([])
+  const [document, setDocument] = useState<any>(null);
+  const [departments, setDepartments] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [attachments, setAttachments] = useState<File[]>([]);
+  const [existingAttachments, setExistingAttachments] = useState<any[]>([]);
+  const [canEdit, setCanEdit] = useState(true); // State để lưu kết quả kiểm tra quyền
 
   // Form state
   const [formData, setFormData] = useState({
@@ -51,183 +66,261 @@ export default function EditOutgoingDocumentPage() {
     title: "",
     content: "",
     recipient: "",
-    recipientDepartmentId: "",
     signer: "",
     signerPosition: "",
     sentDate: new Date(),
-    isUrgent: false,
-    isConfidential: false,
     notes: "",
-  })
+  });
+
+  // Hàm kiểm tra quyền chỉnh sửa văn bản
+  const checkEditPermission = (documentData: any) => {
+    // Nếu không có dữ liệu văn bản
+    if (!documentData || !documentData.data) return false;
+
+    const doc = documentData.data;
+
+    // Nếu là người tạo văn bản và văn bản đang ở trạng thái nháp hoặc đã bị từ chối
+    if (
+      hasRole(["ROLE_DRAF", "ROLE_TRO_LY"]) &&
+      (doc.status === "draft" || doc.status === "leader_commented")
+    ) {
+      return true;
+    }
+
+    // Kiểm tra xem văn bản có bị từ chối không
+    const wasRejected = doc.history?.some(
+      (item: any) =>
+        item.newStatus === "leader_commented" ||
+        (item.comments && item.comments.toLowerCase().includes("từ chối")) ||
+        (item.description && item.description.toLowerCase().includes("từ chối"))
+    );
+    
+    // Nếu là trợ lý và văn bản đã bị từ chối
+    if (hasRole("ROLE_TRO_LY") && wasRejected) {
+      return true;
+    }
+
+    // Mặc định không có quyền chỉnh sửa
+    return false;
+  };
 
   useEffect(() => {
+    // Biến để kiểm tra component còn mounted hay không
+    let isMounted = true;
+
     const fetchData = async () => {
       try {
-        setIsLoading(true)
+        setIsLoading(true);
 
-        // Fetch document details
-        const documentData = await outgoingDocumentsAPI.getOutgoingDocumentById(documentId)
-        setDocument(documentData)
+        // Fetch document details và history cùng lúc để tránh render nhiều lần
+        const [documentData, history] = await Promise.all([
+          outgoingDocumentsAPI.getOutgoingDocumentById(documentId),
+          workflowAPI.getDocumentHistory(documentId),
+        ]);
+
+        // Kiểm tra component còn mounted không trước khi cập nhật state
+        if (!isMounted) return;
+
+        // Tạo document mới với cả dữ liệu và history
+        const documentWithHistory = {
+          ...documentData,
+          history: history,
+        };
+
+        // Cập nhật state
+        setDocument(documentWithHistory);
+
+        // Kiểm tra quyền truy cập sử dụng dữ liệu mới
+        const hasEditPermission = checkEditPermission(documentWithHistory);
+        
+        // Cập nhật state canEdit
+        setCanEdit(hasEditPermission);
+        
+        if (!hasEditPermission) {
+          toast({
+            title: "Không có quyền chỉnh sửa",
+            description: "Bạn không có quyền chỉnh sửa văn bản này.",
+            variant: "destructive",
+          });
+          router.push(`/van-ban-di/${documentId}`);
+          return;
+        }
 
         // Set form data from document
+        // Đảm bảo các trường dữ liệu được định dạng đúng
+        const doc = documentData.data;
         setFormData({
-          number: documentData.number || "",
-          title: documentData.title || "",
-          content: documentData.content || "",
-          recipient: documentData.recipient || "",
-          recipientDepartmentId: documentData.recipientDepartmentId || "",
-          signer: documentData.signer || "",
-          signerPosition: documentData.signerPosition || "",
-          sentDate: documentData.sentDate ? new Date(documentData.sentDate) : new Date(),
-          isUrgent: documentData.isUrgent || false,
-          isConfidential: documentData.isConfidential || false,
-          notes: documentData.notes || "",
-        })
+          number: doc.number || "",
+          title: doc.title || "",
+          content: doc.summary || "",
+          recipient: doc.recipient || "",
+          signer: doc.signerName || "",
+          signerPosition: doc.signerPosition || "",
+          sentDate: doc.signingDate ? new Date(doc.signingDate) : new Date(),
+          notes: doc.notes || "",
+        });
 
         // Fetch existing attachments
-        if (documentData.attachments) {
-          setExistingAttachments(documentData.attachments)
+        if (documentData.data.attachments) {
+          setExistingAttachments(documentData.data.attachments);
         }
 
         // Fetch departments for dropdown
-        const departmentsData = await departmentsAPI.getAllDepartments()
-        setDepartments(departmentsData)
+        const departmentsData = await departmentsAPI.getAllDepartments();
+        // Sử dụng dữ liệu phòng ban từ API
+        setDepartments(departmentsData.content as any);
       } catch (error) {
-        console.error("Error fetching document data:", error)
-        toast({
-          title: "Lỗi",
-          description: "Không thể tải thông tin văn bản. Vui lòng thử lại sau.",
-          variant: "destructive",
-        })
+        console.error("Error fetching document data:", error);
+        if (isMounted) {
+          toast({
+            title: "Lỗi",
+            description:
+              "Không thể tải thông tin văn bản. Vui lòng thử lại sau.",
+            variant: "destructive",
+          });
+        }
       } finally {
-        setIsLoading(false)
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
-    }
+    };
 
-    fetchData()
-  }, [documentId, toast])
+    fetchData();
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
-  }
+    // Cleanup function để tránh cập nhật state khi component đã unmounted
+    return () => {
+      isMounted = false;
+    };
+  }, [documentId, toast, router, hasRole]);
+
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
 
   const handleSelectChange = (name: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [name]: value }))
-  }
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
 
   const handleCheckboxChange = (name: string, checked: boolean) => {
-    setFormData((prev) => ({ ...prev, [name]: checked }))
-  }
+    setFormData((prev) => ({ ...prev, [name]: checked }));
+  };
 
   const handleDateChange = (date: Date | undefined) => {
     if (date) {
-      setFormData((prev) => ({ ...prev, sentDate: date }))
+      setFormData((prev) => ({ ...prev, sentDate: date }));
     }
-  }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      const newFiles = Array.from(e.target.files)
-      setAttachments((prev) => [...prev, ...newFiles])
+      const newFiles = Array.from(e.target.files);
+      setAttachments((prev) => [...prev, ...newFiles]);
     }
-  }
+  };
 
   const removeAttachment = (index: number) => {
-    setAttachments((prev) => prev.filter((_, i) => i !== index))
-  }
+    setAttachments((prev) => prev.filter((_, i) => i !== index));
+  };
 
   const removeExistingAttachment = (id: string) => {
-    setExistingAttachments((prev) => prev.filter((attachment) => attachment.id !== id))
-  }
+    setExistingAttachments((prev) =>
+      prev.filter((attachment) => attachment.id !== id)
+    );
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
 
     try {
-      setIsSaving(true)
+      setIsSaving(true);
 
       // Prepare form data for API
       const updateData = {
         ...formData,
         sentDate: formData.sentDate.toISOString(),
-        removedAttachmentIds: document.attachments
-          ?.filter((att: any) => !existingAttachments.some((exAtt) => exAtt.id === att.id))
+        removedAttachmentIds: document.data.attachments
+          ?.filter(
+            (att: any) =>
+              !existingAttachments.some((exAtt) => exAtt.id === att.id)
+          )
           .map((att: any) => att.id),
-      }
+      };
 
       // Update document
-      await outgoingDocumentsAPI.updateOutgoingDocument(documentId, updateData)
+      await outgoingDocumentsAPI.updateOutgoingDocument(documentId, updateData);
 
       // Upload new attachments if any
       if (attachments.length > 0) {
-        const formData = new FormData()
+        const formData = new FormData();
         attachments.forEach((file) => {
-          formData.append("files", file)
-        })
+          formData.append("files", file);
+        });
 
-        await outgoingDocumentsAPI.addAttachments(documentId, formData)
+        await outgoingDocumentsAPI.updateOutgoingDocument(documentId, formData);
       }
 
       toast({
         title: "Thành công",
         description: "Văn bản đã được cập nhật thành công",
-      })
+      });
 
       // Navigate back to document details
-      router.push(`/van-ban-di/${documentId}`)
+      router.push(`/van-ban-di/${documentId}`);
     } catch (error) {
-      console.error("Error updating document:", error)
+      console.error("Error updating document:", error);
       toast({
         title: "Lỗi",
         description: "Không thể cập nhật văn bản. Vui lòng thử lại sau.",
         variant: "destructive",
-      })
+      });
     } finally {
-      setIsSaving(false)
+      setIsSaving(false);
     }
-  }
+  };
 
   const handleDelete = async () => {
     try {
-      setIsDeleting(true)
-      await outgoingDocumentsAPI.deleteOutgoingDocument(documentId)
+      setIsDeleting(true);
+      await outgoingDocumentsAPI.deleteOutgoingDocument(documentId);
 
       toast({
         title: "Thành công",
         description: "Văn bản đã được xóa thành công",
-      })
+      });
 
       // Navigate back to documents list
-      router.push("/van-ban-di")
+      router.push("/van-ban-di");
     } catch (error) {
-      console.error("Error deleting document:", error)
+      console.error("Error deleting document:", error);
       toast({
         title: "Lỗi",
         description: "Không thể xóa văn bản. Vui lòng thử lại sau.",
         variant: "destructive",
-      })
+      });
     } finally {
-      setIsDeleting(false)
+      setIsDeleting(false);
     }
-  }
-
-  // Check if user has permission to edit
-  const canEdit = hasRole(["admin", "clerk", "manager"]) && document?.status !== "sent"
+  };
 
   if (isLoading) {
     return (
       <div className="flex h-[calc(100vh-4rem)] w-full items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
-    )
+    );
   }
 
   if (!document) {
     return (
       <div className="flex h-[calc(100vh-4rem)] w-full flex-col items-center justify-center gap-2">
         <h2 className="text-xl font-semibold">Không tìm thấy văn bản</h2>
-        <p className="text-muted-foreground">Văn bản không tồn tại hoặc đã bị xóa</p>
+        <p className="text-muted-foreground">
+          Văn bản không tồn tại hoặc đã bị xóa
+        </p>
         <Button variant="outline" asChild>
           <Link href="/van-ban-di">
             <ArrowLeft className="mr-2 h-4 w-4" />
@@ -235,14 +328,16 @@ export default function EditOutgoingDocumentPage() {
           </Link>
         </Button>
       </div>
-    )
+    );
   }
 
   if (!canEdit) {
     return (
       <div className="flex h-[calc(100vh-4rem)] w-full flex-col items-center justify-center gap-2">
         <h2 className="text-xl font-semibold">Không có quyền chỉnh sửa</h2>
-        <p className="text-muted-foreground">Bạn không có quyền chỉnh sửa văn bản này hoặc văn bản đã được gửi</p>
+        <p className="text-muted-foreground">
+          Bạn không có quyền chỉnh sửa văn bản này hoặc văn bản đã được gửi
+        </p>
         <Button variant="outline" asChild>
           <Link href={`/van-ban-di/${documentId}`}>
             <ArrowLeft className="mr-2 h-4 w-4" />
@@ -250,7 +345,7 @@ export default function EditOutgoingDocumentPage() {
           </Link>
         </Button>
       </div>
-    )
+    );
   }
 
   return (
@@ -284,13 +379,17 @@ export default function EditOutgoingDocumentPage() {
             <AlertDialogHeader>
               <AlertDialogTitle>Xác nhận xóa văn bản</AlertDialogTitle>
               <AlertDialogDescription>
-                Bạn có chắc chắn muốn xóa văn bản này? Hành động này không thể hoàn tác.
+                Bạn có chắc chắn muốn xóa văn bản này? Hành động này không thể
+                hoàn tác.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Hủy</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">
-                Xác nhận xóa
+              <AlertDialogAction
+                onClick={handleDelete}
+                className="bg-destructive text-destructive-foreground"
+              >
+                {isDeleting ? "Đang xóa..." : "Xác nhận xóa"}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -342,30 +441,12 @@ export default function EditOutgoingDocumentPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="sentDate">Ngày ban hành</Label>
-                  <DatePicker date={formData.sentDate} setDate={handleDateChange} />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="recipientDepartmentId">Nơi nhận</Label>
-                  <Select
-                    value={formData.recipientDepartmentId}
-                    onValueChange={(value) => handleSelectChange("recipientDepartmentId", value)}
-                  >
-                    <SelectTrigger id="recipientDepartmentId">
-                      <SelectValue placeholder="Chọn nơi nhận" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {departments.map((department) => (
-                        <SelectItem key={department.id} value={department.id}>
-                          {department.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="sentDate">Ngày ban hành</Label>
+                <DatePicker
+                  date={formData.sentDate}
+                  setDate={handleDateChange}
+                />
               </div>
 
               <div className="space-y-2">
@@ -424,37 +505,27 @@ export default function EditOutgoingDocumentPage() {
                   />
                 </div>
 
-                <div className="flex flex-col gap-4">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="isUrgent"
-                      checked={formData.isUrgent}
-                      onCheckedChange={(checked) => handleCheckboxChange("isUrgent", checked as boolean)}
-                    />
-                    <Label htmlFor="isUrgent">Văn bản khẩn</Label>
-                  </div>
 
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="isConfidential"
-                      checked={formData.isConfidential}
-                      onCheckedChange={(checked) => handleCheckboxChange("isConfidential", checked as boolean)}
-                    />
-                    <Label htmlFor="isConfidential">Văn bản mật</Label>
-                  </div>
-                </div>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader>
                 <CardTitle>Tệp đính kèm</CardTitle>
-                <CardDescription>Quản lý tệp đính kèm của văn bản</CardDescription>
+                <CardDescription>
+                  Quản lý tệp đính kèm của văn bản
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="attachments">Thêm tệp đính kèm mới</Label>
-                  <Input id="attachments" type="file" multiple onChange={handleFileChange} className="cursor-pointer" />
+                  <Input
+                    id="attachments"
+                    type="file"
+                    multiple
+                    onChange={handleFileChange}
+                    className="cursor-pointer"
+                  />
                 </div>
 
                 {attachments.length > 0 && (
@@ -462,7 +533,10 @@ export default function EditOutgoingDocumentPage() {
                     <Label>Tệp mới</Label>
                     <div className="space-y-2">
                       {attachments.map((file, index) => (
-                        <div key={index} className="flex items-center justify-between rounded-md border p-2">
+                        <div
+                          key={index}
+                          className="flex items-center justify-between rounded-md border p-2"
+                        >
                           <span className="text-sm">{file.name}</span>
                           <Button
                             type="button"
@@ -484,13 +558,18 @@ export default function EditOutgoingDocumentPage() {
                     <Label>Tệp hiện có</Label>
                     <div className="space-y-2">
                       {existingAttachments.map((attachment) => (
-                        <div key={attachment.id} className="flex items-center justify-between rounded-md border p-2">
+                        <div
+                          key={attachment.id}
+                          className="flex items-center justify-between rounded-md border p-2"
+                        >
                           <span className="text-sm">{attachment.name}</span>
                           <Button
                             type="button"
                             variant="ghost"
                             size="sm"
-                            onClick={() => removeExistingAttachment(attachment.id)}
+                            onClick={() =>
+                              removeExistingAttachment(attachment.id)
+                            }
                             className="h-8 w-8 p-0 text-muted-foreground"
                           >
                             <Trash className="h-4 w-4" />
@@ -525,5 +604,5 @@ export default function EditOutgoingDocumentPage() {
         </div>
       </form>
     </div>
-  )
+  );
 }

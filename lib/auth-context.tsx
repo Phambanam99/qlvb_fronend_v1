@@ -28,6 +28,7 @@ export interface User {
 interface AuthContextType {
   user: User | null;
   loading: boolean;
+  dataLoading: boolean;
   error: string | null;
   isAuthenticated: boolean;
 
@@ -40,6 +41,7 @@ interface AuthContextType {
   checkAuth: () => Promise<void>;
   hasRole: (role: string | string[]) => boolean;
   hasPermission: (permission: string) => boolean;
+  setDataLoaded: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -47,6 +49,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [dataLoading, setDataLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -85,6 +88,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   ) => {
     try {
       setLoading(true);
+      // Reset data loading state on login
+      setDataLoading(true);
       setError(null);
       console.log("Login successful");
       const userData = await authAPI.login(username, password);
@@ -165,6 +170,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return user.roles.includes(permission);
   };
 
+  // Add method to set data as loaded
+  const setDataLoaded = () => {
+    setDataLoading(false);
+  };
+  
   return (
     <AuthContext.Provider
       value={{
@@ -173,10 +183,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         logout,
         loading,
+        dataLoading,
         error,
         hasRole,
         hasPermission,
         checkAuth,
+        setDataLoaded,
       }}
     >
       {children}

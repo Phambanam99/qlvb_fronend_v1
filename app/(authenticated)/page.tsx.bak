@@ -1,30 +1,17 @@
-"use client";
+"use client"
 
-import { useEffect, useState } from "react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import {
-  ArrowRight,
-  FileText,
-  Calendar,
-  ClipboardList,
-  Send,
-  Loader2,
-  AlertCircle,
-} from "lucide-react";
-import Link from "next/link";
-import { dashboardAPI } from "@/lib/api";
-import { incomingDocumentsAPI } from "@/lib/api";
-import { schedulesAPI } from "@/lib/api";
-import { useToast } from "@/components/ui/use-toast";
-import { useDashboard } from "@/lib/store";
-import { useAuth } from "@/lib/auth-context";
+import { useEffect, useState } from "react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { ArrowRight, FileText, Calendar, ClipboardList, Send, Loader2, AlertCircle } from "lucide-react"
+import Link from "next/link"
+import { dashboardAPI } from "@/lib/api"
+import { incomingDocumentsAPI } from "@/lib/api"
+import { schedulesAPI } from "@/lib/api"
+import { useToast } from "@/components/ui/use-toast"
+import { useDashboard } from "@/lib/store"
+import { useAuth } from "@/lib/auth-context"
+import { useRefreshableData } from "@/lib/data-refresh"
 
 // Danh sách vai trò có quyền xem bảng điều khiển đầy đủ
 const FULL_ACCESS_ROLES = [
@@ -45,11 +32,15 @@ const DEPARTMENT_ACCESS_ROLES = [
 ];
 
 // Danh sách vai trò có quyền xem dữ liệu cá nhân
-const PERSONAL_ACCESS_ROLES = ["ROLE_NHAN_VIEN", "ROLE_TRO_LY"];
+const PERSONAL_ACCESS_ROLES = [
+  "ROLE_NHAN_VIEN",
+  "ROLE_TRO_LY",
+];
 
 export default function Home() {
-  const { toast } = useToast();
-  const { user, hasRole, setDataLoaded } = useAuth();
+  const { toast } = useToast()
+  const { user, hasRole, setDataLoaded } = useAuth()
+  const { refreshTrigger, isAppReady } = useRefreshableData()
   const {
     stats,
     recentDocuments,
@@ -61,25 +52,22 @@ export default function Home() {
     setTodayEvents,
     setLoading,
     setError,
-  } = useDashboard();
-
+  } = useDashboard()
+  
   // State để theo dõi trạng thái loading chi tiết
-  const [isStatsLoading, setIsStatsLoading] = useState(true);
-  const [isDocumentsLoading, setIsDocumentsLoading] = useState(true);
-  const [isEventsLoading, setIsEventsLoading] = useState(true);
-  const [isUserLoaded, setIsUserLoaded] = useState(false);
-
+  const [isStatsLoading, setIsStatsLoading] = useState(true)
+  const [isDocumentsLoading, setIsDocumentsLoading] = useState(true)
+  const [isEventsLoading, setIsEventsLoading] = useState(true)
+  const [isUserLoaded, setIsUserLoaded] = useState(false)
+  
   // Xác định quyền truy cập của người dùng
-  const hasFullAccess = FULL_ACCESS_ROLES.some((role) => hasRole(role));
-  const hasDepartmentAccess = DEPARTMENT_ACCESS_ROLES.some((role) =>
-    hasRole(role)
-  );
-  const hasPersonalAccess = PERSONAL_ACCESS_ROLES.some((role) => hasRole(role));
-
+  const hasFullAccess = FULL_ACCESS_ROLES.some((role) => hasRole(role))
+  const hasDepartmentAccess = DEPARTMENT_ACCESS_ROLES.some((role) => hasRole(role))
+  const hasPersonalAccess = PERSONAL_ACCESS_ROLES.some((role) => hasRole(role))
+  
   // Xác định xem người dùng có quyền xem bảng điều khiển không
-  const canViewDashboard =
-    hasFullAccess || hasDepartmentAccess || hasPersonalAccess;
-
+  const canViewDashboard = hasFullAccess || hasDepartmentAccess || hasPersonalAccess
+  
   // Cập nhật trạng thái user loaded sau khi user được fetch
   useEffect(() => {
     if (user) {
@@ -87,99 +75,96 @@ export default function Home() {
         id: user.id,
         name: user.fullName,
         roles: user.roles,
-        department: user.departmentId,
-      });
-      setIsUserLoaded(true);
+        department: user.departmentId
+      })
+      setIsUserLoaded(true)
     }
-  }, [user]);
-
+  }, [user])
+  
   // Cập nhật trạng thái loading tổng thể
   useEffect(() => {
     // Chỉ đặt loading = false khi tất cả dữ liệu đã tải xong
-    const isFullyLoaded =
-      isUserLoaded &&
-      !isStatsLoading &&
-      !isDocumentsLoading &&
-      !isEventsLoading;
-
+    const isFullyLoaded = isUserLoaded && !isStatsLoading && !isDocumentsLoading && !isEventsLoading
+    
     console.log("Trạng thái loading của dashboard:", {
       isUserLoaded,
       isStatsLoading,
-      isDocumentsLoading,
+      isDocumentsLoading, 
       isEventsLoading,
-      isFullyLoaded,
-    });
-
-    setLoading(!isFullyLoaded);
-
+      isFullyLoaded
+    })
+    
+    setLoading(!isFullyLoaded)
+    
     // Thông báo cho AuthContext khi dữ liệu đã tải xong
     if (isFullyLoaded) {
       // Đánh dấu dữ liệu đã tải xong trong AuthContext
-      setDataLoaded();
+      setDataLoaded()
     }
-  }, [
-    isStatsLoading,
-    isDocumentsLoading,
-    isEventsLoading,
-    isUserLoaded,
-    setLoading,
-    setDataLoaded,
-  ]);
+  }, [isStatsLoading, isDocumentsLoading, isEventsLoading, isUserLoaded, setLoading, setDataLoaded])
 
+  // Tạo fetchDashboardData function với useCallback để tránh tạo lại function mỗi khi component re-render
+  const fetchDashboardData = useCallback(async () => {
+    try {
+      // Nếu người dùng không có quyền xem bảng điều khiển, không tải dữ liệu
+      if (!canViewDashboard) {
+        console.log("User does not have permission to view dashboard")
+        setIsStatsLoading(false)
+        setIsDocumentsLoading(false)
+        setIsEventsLoading(false)
+        setError("Bạn không có quyền xem bảng điều khiển")
+        return
+      }
+      
+      if (!user) {
+        console.log("Đang đợi thông tin người dùng...");
+        return; // Chờ cho đến khi user được tải xong
+      }
+      
+      console.log(`🔄 Tải lại dữ liệu dashboard - refresh trigger: ${refreshTrigger} - App ready: ${isAppReady}`);
+    }, [user, canViewDashboard, refreshTrigger, isAppReady, setIsStatsLoading, setIsDocumentsLoading, setIsEventsLoading, setError])
+  
+  // Effect để tải dữ liệu khi component mount hoặc refresh trigger thay đổi
   useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        // Nếu người dùng không có quyền xem bảng điều khiển, không tải dữ liệu
-        if (!canViewDashboard) {
-          console.log("User does not have permission to view dashboard");
-          setIsStatsLoading(false);
-          setIsDocumentsLoading(false);
-          setIsEventsLoading(false);
-          setError("Bạn không có quyền xem bảng điều khiển");
-          return;
-        }
-
-        if (!user) {
-          console.log("Đang đợi thông tin người dùng...");
-          return; // Chờ cho đến khi user được tải xong
-        }
-
+    // Chỉ tải dữ liệu khi đã authenticate và có user
+    if (user) {
+        
         console.log("Bắt đầu tải dữ liệu dashboard:", new Date().toISOString());
         // Đặt tất cả các thành phần thành trạng thái loading
-        setIsStatsLoading(true);
-        setIsDocumentsLoading(true);
-        setIsEventsLoading(true);
-        setError(null);
+        setIsStatsLoading(true)
+        setIsDocumentsLoading(true)
+        setIsEventsLoading(true)
+        setError(null)
 
         // Fetch dashboard statistics dựa trên quyền truy cập
-        let dashboardStats;
-        let incomingDocs;
-
+        let dashboardStats
+        let incomingDocs
+        
         // 1. TẢI THỐNG KÊ BẢNG ĐIỀU KHIỂN
-        console.log("1️⃣ Đang tải thống kê bảng điều khiển...");
+        console.log("1️⃣ Đang tải thống kê bảng điều khiển...")
         if (hasFullAccess) {
           // Admin, văn thư, cục trưởng: xem tất cả dữ liệu
-          console.log("Tải thống kê đầy đủ cho admin/cục trưởng");
-          dashboardStats = await dashboardAPI.getDashboardStatistics();
+          console.log("Tải thống kê đầy đủ cho admin/cục trưởng")
+          dashboardStats = await dashboardAPI.getDashboardStatistics()
         } else if (hasDepartmentAccess && user?.departmentId) {
           // Trưởng phòng, phó phòng: chỉ xem dữ liệu của phòng ban
-          console.log("Tải thống kê cho phòng ban:", user.departmentId);
+          console.log("Tải thống kê cho phòng ban:", user.departmentId)
           // Hiện tại chưa có API riêng nên vẫn dùng API chung
-          dashboardStats = await dashboardAPI.getDashboardStatistics();
+          dashboardStats = await dashboardAPI.getDashboardStatistics()
         } else if (hasPersonalAccess && user?.id) {
           // Nhân viên, trợ lý: chỉ xem dữ liệu cá nhân
-          console.log("Tải thống kê cho nhân viên ID:", user.id);
-          dashboardStats = await dashboardAPI.getDashboardStatistics();
+          console.log("Tải thống kê cho nhân viên ID:", user.id)
+          dashboardStats = await dashboardAPI.getDashboardStatistics()
         } else {
           // Fallback - trả về dữ liệu rỗng
           dashboardStats = {
             incomingDocumentCount: 0,
             pendingDocumentCount: 0,
             outgoingDocumentCount: 0,
-            workCaseCount: 0,
-          };
+            workCaseCount: 0
+          }
         }
-        console.log("✅ Hoàn tất tải thống kê:", dashboardStats);
+        console.log("✅ Hoàn tất tải thống kê:", dashboardStats)
         // Cập nhật thống kê dựa trên dữ liệu đã lọc
         setStats({
           incomingDocuments: {
@@ -188,7 +173,7 @@ export default function Home() {
           },
           outgoingDocuments: {
             total: dashboardStats.outgoingDocumentCount,
-            pending: 0,
+            pending: 0, 
           },
           workPlans: {
             total: dashboardStats.workCaseCount,
@@ -198,59 +183,54 @@ export default function Home() {
             total: 0,
             today: 0,
           },
-        });
+        })
         // Đánh dấu thống kê đã tải xong
-        setIsStatsLoading(false);
-
+        setIsStatsLoading(false)
+        
         // 2. TẢI DANH SÁCH VĂN BẢN GẦN ĐÂY
-        console.log("2️⃣ Đang tải danh sách văn bản...");
+        console.log("2️⃣ Đang tải danh sách văn bản...")
         if (hasFullAccess) {
-          incomingDocs = await incomingDocumentsAPI.getAllDocuments();
+          incomingDocs = await incomingDocumentsAPI.getAllDocuments()
         } else if (hasDepartmentAccess && user?.departmentId) {
-          incomingDocs = await incomingDocumentsAPI.getDepartmentDocuments(
-            user.departmentId
-          );
+          incomingDocs = await incomingDocumentsAPI.getDepartmentDocuments(user.departmentId)  
         } else if (hasPersonalAccess && user?.id) {
           // Lấy danh sách văn bản được phân công cho nhân viên
           if (user.departmentId) {
-            incomingDocs = await incomingDocumentsAPI.getDepartmentDocuments(
-              user.departmentId
-            );
+            incomingDocs = await incomingDocumentsAPI.getDepartmentDocuments(user.departmentId)
             // Lọc chỉ văn bản được phân công cho user
             if (incomingDocs && incomingDocs.content) {
-              incomingDocs.content = incomingDocs.content.filter(
-                (doc: any) =>
-                  doc.assignedToIds &&
-                  Array.isArray(doc.assignedToIds) &&
-                  doc.assignedToIds.includes(user.id)
-              );
+              incomingDocs.content = incomingDocs.content.filter((doc: any) => 
+                doc.assignedToIds && 
+                Array.isArray(doc.assignedToIds) && 
+                doc.assignedToIds.includes(user.id)
+              )
             }
           } else {
             // Nếu không có departmentId, trả về danh sách rỗng
-            incomingDocs = { content: [] };
+            incomingDocs = { content: [] }
           }
         } else {
-          incomingDocs = { content: [] };
+          incomingDocs = { content: [] }
         }
-
+        
         console.log("✅ Hoàn tất tải văn bản mới:", {
-          total: incomingDocs?.content?.length || 0,
-        });
-
+          total: incomingDocs?.content?.length || 0
+        })
+        
         // Cập nhật danh sách văn bản gần đây
         setRecentDocuments(
           (incomingDocs.content || []).slice(0, 3).map((doc: any) => ({
             id: doc.id,
             number: doc.documentNumber,
             title: doc.title,
-          }))
-        );
+          })),
+        )
         // Đánh dấu văn bản đã tải xong
-        setIsDocumentsLoading(false);
+        setIsDocumentsLoading(false)
 
         // 3. TẢI SỰ KIỆN TRONG NGÀY
-        console.log("3️⃣ Đang tải sự kiện trong ngày...");
-        const today = new Date().toISOString().split("T")[0];
+        console.log("3️⃣ Đang tải sự kiện trong ngày...")
+        const today = new Date().toISOString().split("T")[0]
         try {
           // Giả lập tải sự kiện
           // const events = await schedulesAPI.getScheduleEvents({ date: today })
@@ -263,63 +243,44 @@ export default function Home() {
           //   })),
           // )
           // Mặc định để trống
-          setTodayEvents([]);
+          setTodayEvents([])
         } catch (eventError) {
-          console.error("Không thể tải sự kiện:", eventError);
-          setTodayEvents([]);
+          console.error("Không thể tải sự kiện:", eventError)
+          setTodayEvents([])
         }
         // Đánh dấu sự kiện đã tải xong
-        setIsEventsLoading(false);
-
-        console.log(
-          "✅ Đã tải xong tất cả dữ liệu dashboard",
-          new Date().toISOString()
-        );
+        setIsEventsLoading(false)
+        
+        console.log("✅ Đã tải xong tất cả dữ liệu dashboard", new Date().toISOString())
       } catch (error) {
-        console.error("❌ Lỗi khi tải dữ liệu dashboard:", error);
-        setError(
-          "Không thể tải dữ liệu bảng điều khiển. Vui lòng thử lại sau."
-        );
+        console.error("❌ Lỗi khi tải dữ liệu dashboard:", error)
+        setError("Không thể tải dữ liệu bảng điều khiển. Vui lòng thử lại sau.")
         toast({
           title: "Lỗi",
-          description:
-            "Không thể tải dữ liệu bảng điều khiển. Vui lòng thử lại sau.",
+          description: "Không thể tải dữ liệu bảng điều khiển. Vui lòng thử lại sau.",
           variant: "destructive",
-        });
+        })
       } finally {
         // Đảm bảo tất cả đều được đánh dấu là đã hoàn thành, kể cả khi có lỗi
-        setIsStatsLoading(false);
-        setIsDocumentsLoading(false);
-        setIsEventsLoading(false);
+        setIsStatsLoading(false)
+        setIsDocumentsLoading(false)
+        setIsEventsLoading(false)
       }
-    };
+    }
 
-    fetchDashboardData();
+    fetchDashboardData()
     // Gọi lại hàm fetch nếu user thay đổi
-  }, [
-    canViewDashboard,
-    hasFullAccess,
-    hasDepartmentAccess,
-    hasPersonalAccess,
-    setError,
-    setRecentDocuments,
-    setStats,
-    setTodayEvents,
-    toast,
-    user,
-  ]);
+  }, [canViewDashboard, hasFullAccess, hasDepartmentAccess, hasPersonalAccess, setError, setRecentDocuments, setStats, setTodayEvents, toast, user])
 
   if (loading) {
     return (
       <div className="flex h-[80vh] items-center justify-center">
         <div className="text-center">
           <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
-          <p className="mt-2 text-sm text-muted-foreground">
-            Đang tải dữ liệu...
-          </p>
+          <p className="mt-2 text-sm text-muted-foreground">Đang tải dữ liệu...</p>
         </div>
       </div>
-    );
+    )
   }
 
   if (error) {
@@ -336,16 +297,14 @@ export default function Home() {
           </Button>
         </div>
       </div>
-    );
+    )
   }
 
   return (
     <div className="space-y-8">
       <div className="flex flex-col space-y-2">
         <h1 className="text-3xl font-bold">Bảng điều khiển</h1>
-        <p className="text-muted-foreground">
-          Quản lý văn bản và công tác của đơn vị
-        </p>
+        <p className="text-muted-foreground">Quản lý văn bản và công tác của đơn vị</p>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
@@ -355,12 +314,8 @@ export default function Home() {
             <FileText className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {stats.incomingDocuments.total}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {stats.incomingDocuments.pending} văn bản chưa xử lý
-            </p>
+            <div className="text-2xl font-bold">{stats.incomingDocuments.total}</div>
+            <p className="text-xs text-muted-foreground mt-1">{stats.incomingDocuments.pending} văn bản chưa xử lý</p>
           </CardContent>
         </Card>
         <Card className="card-hover">
@@ -369,12 +324,8 @@ export default function Home() {
             <Send className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {stats.outgoingDocuments.total}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {stats.outgoingDocuments.pending} văn bản chờ duyệt
-            </p>
+            <div className="text-2xl font-bold">{stats.outgoingDocuments.total}</div>
+            <p className="text-xs text-muted-foreground mt-1">{stats.outgoingDocuments.pending} văn bản chờ duyệt</p>
           </CardContent>
         </Card>
         <Card className="card-hover">
@@ -384,9 +335,7 @@ export default function Home() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.workPlans.total}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {stats.workPlans.active} kế hoạch đang thực hiện
-            </p>
+            <p className="text-xs text-muted-foreground mt-1">{stats.workPlans.active} kế hoạch đang thực hiện</p>
           </CardContent>
         </Card>
         <Card className="card-hover">
@@ -396,9 +345,7 @@ export default function Home() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.schedules.total}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {stats.schedules.today} lịch công tác hôm nay
-            </p>
+            <p className="text-xs text-muted-foreground mt-1">{stats.schedules.today} lịch công tác hôm nay</p>
           </CardContent>
         </Card>
       </div>
@@ -407,30 +354,18 @@ export default function Home() {
         <Card className="col-span-1 md:col-span-2">
           <CardHeader>
             <CardTitle>Văn bản cần xử lý</CardTitle>
-            <CardDescription>
-              Danh sách văn bản đến cần được xử lý
-            </CardDescription>
+            <CardDescription>Danh sách văn bản đến cần được xử lý</CardDescription>
           </CardHeader>
           <CardContent>
             {recentDocuments.length > 0 ? (
               <div className="space-y-6">
                 {recentDocuments.map((doc) => (
-                  <div
-                    key={doc.id}
-                    className="flex items-center justify-between border-b pb-4"
-                  >
+                  <div key={doc.id} className="flex items-center justify-between border-b pb-4">
                     <div>
                       <p className="font-medium">{doc.number}</p>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {doc.title}
-                      </p>
+                      <p className="text-sm text-muted-foreground mt-1">{doc.title}</p>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="rounded-full"
-                      asChild
-                    >
+                    <Button variant="ghost" size="sm" className="rounded-full" asChild>
                       <Link href={`/van-ban-den/${doc.id}`}>
                         <ArrowRight className="h-4 w-4" />
                       </Link>
@@ -439,9 +374,7 @@ export default function Home() {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">
-                Không có văn bản nào cần xử lý
-              </p>
+              <p className="text-sm text-muted-foreground">Không có văn bản nào cần xử lý</p>
             )}
           </CardContent>
         </Card>
@@ -454,10 +387,7 @@ export default function Home() {
             {todayEvents.length > 0 ? (
               <div className="space-y-6">
                 {todayEvents.map((event) => (
-                  <div
-                    key={event.id}
-                    className="flex items-start space-x-4 border-b pb-4"
-                  >
+                  <div key={event.id} className="flex items-start space-x-4 border-b pb-4">
                     <div className="flex flex-col items-center">
                       <div className="text-sm font-medium bg-accent rounded-full w-12 h-12 flex items-center justify-center">
                         {event.time}
@@ -466,21 +396,17 @@ export default function Home() {
                     </div>
                     <div>
                       <p className="font-medium">{event.title}</p>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {event.location}
-                      </p>
+                      <p className="text-sm text-muted-foreground mt-1">{event.location}</p>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">
-                Không có sự kiện nào hôm nay
-              </p>
+              <p className="text-sm text-muted-foreground">Không có sự kiện nào hôm nay</p>
             )}
           </CardContent>
         </Card>
       </div>
     </div>
-  );
+  )
 }

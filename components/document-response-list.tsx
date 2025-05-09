@@ -1,11 +1,18 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
-import { Download, FileText, Pencil, Trash } from "lucide-react"
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import {
+  FileText,
+  Download,
+  Pencil,
+  Trash,
+  ThumbsUp,
+  ThumbsDown,
+} from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,56 +23,204 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+} from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { workflowAPI } from "@/lib/api/workflow";
+import { outgoingDocumentsAPI } from "@/lib/api";
+import { useToast } from "@/components/ui/use-toast";
+import { useAuth } from "@/lib/auth-context";
+import { getStatusBadgeInfo } from "@/lib/utils";
 
-interface DocumentResponseListProps {
-  documentId: number
+// Định nghĩa kiểu dữ liệu cho Response
+interface DocumentResponse {
+  id: number;
+  title: string;
+  content: string;
+  created?: string;
+  creator: {
+    id: number;
+    fullName: string;
+  };
+  status: string;
+  attachmentFilename?: string;
+  managerComment?: string;
 }
 
-export default function DocumentResponseList({ documentId }: DocumentResponseListProps) {
-  // Dữ liệu mẫu
-  const [responses, setResponses] = useState([
-    {
-      id: 1,
-      content:
-        "Kính gửi UBND tỉnh, Phòng Kế hoạch - Tài chính đã nghiên cứu và xây dựng kế hoạch triển khai thực hiện các nhiệm vụ được giao theo Kế hoạch số 123/KH-UBND. Kính đề nghị UBND tỉnh xem xét và cho ý kiến chỉ đạo.",
-      createdAt: "20/04/2023",
-      createdBy: "Nguyễn Văn B",
-      status: "pending_approval",
-      attachments: [
-        { name: "Kế hoạch triển khai.docx", size: "1.8MB" },
-        { name: "Phụ lục kèm theo.xlsx", size: "0.9MB" },
-      ],
-      managerComment: "",
-    },
-    {
-      id: 2,
-      content:
-        "Kính gửi UBND tỉnh, Phòng Kế hoạch - Tài chính xin báo cáo tiến độ thực hiện các nhiệm vụ được giao theo Kế hoạch số 123/KH-UBND. Hiện tại, chúng tôi đã hoàn thành 70% khối lượng công việc và dự kiến sẽ hoàn thành đúng tiến độ.",
-      createdAt: "25/04/2023",
-      createdBy: "Nguyễn Văn B",
-      status: "rejected",
-      attachments: [{ name: "Báo cáo tiến độ.docx", size: "1.5MB" }],
-      managerComment: "Cần bổ sung thêm thông tin về kinh phí thực hiện và đánh giá hiệu quả.",
-    },
-  ])
+interface DocumentResponseListProps {
+  documentId: number;
+}
+
+export default function DocumentResponseList({
+  documentId,
+}: DocumentResponseListProps) {
+  // States và context
+  const { toast } = useToast();
+  const { user, hasRole } = useAuth();
+  const [responses, setResponses] = useState<DocumentResponse[]>([]);
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [selectedResponseId, setSelectedResponseId] = useState<number | null>(
+    null
+  );
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Kiểm tra xem người dùng có quyền chấp nhận/từ chối hay không
+  const canApproveReject =
+    hasRole("ROLE_ADMIN") ||
+    hasRole("ROLE_VAN_THU") ||
+    hasRole("ROLE_CUC_TRUONG") ||
+    hasRole("ROLE_CUC_PHO") ||
+    hasRole("ROLE_CHINH_UY") ||
+    hasRole("ROLE_PHO_CHINH_UY");
+  useEffect(() => {
+    const fetchResponses = async () => {
+      try {
+        console.log("documentId", documentId);
+        const response = await workflowAPI.getDocumentResponses(
+          String(documentId)
+        );
+        setResponses(response as DocumentResponse[]);
+      } catch (error) {
+        console.error("Error fetching responses:", error);
+      }
+    };
+    fetchResponses();
+  }, [documentId]);
+
+  const handleDownloadAttachment = async (responses: any) => {
+    if (!responses.attachmentFilename) {
+      toast({
+        title: "Lỗi",
+        description: "Không có tệp đính kèm để tải",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const blob = await outgoingDocumentsAPI.downloadAttachmentDocument(
+        responses.id
+      );
+
+      const url = window.URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = url;
+
+      const filename =
+        responses.attachmentFilename.split("/").pop() || "document.pdf";
+      a.download = filename;
+
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast({
+        title: "Thành công",
+        description: "Đang tải tệp xuống",
+      });
+    } catch (error) {
+      console.error("Lỗi khi tải tệp đính kèm:", error);
+      toast({
+        title: "Lỗi",
+        description: "Không thể tải tệp đính kèm. Vui lòng thử lại sau.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "pending_approval":
-        return <Badge variant="outline">Chờ phê duyệt</Badge>
-      case "approved":
-        return <Badge variant="success">Đã phê duyệt</Badge>
-      case "rejected":
-        return <Badge variant="destructive">Yêu cầu chỉnh sửa</Badge>
-      default:
-        return <Badge variant="outline">Không xác định</Badge>
-    }
-  }
+    const badgeInfo = getStatusBadgeInfo(status);
+    return <Badge variant={badgeInfo.variant}>{badgeInfo.text}</Badge>;
+  };
 
   const handleDelete = (id: number) => {
-    setResponses(responses.filter((response) => response.id !== id))
-  }
+    setResponses(responses.filter((response) => response.id !== id));
+  };
+
+  const handleApproveResponse = async (responseId: number) => {
+    setIsSubmitting(true);
+    try {
+      await workflowAPI.approveDocumentResponse(responseId, { comment: "" });
+
+      // Cập nhật danh sách văn bản
+      setResponses(
+        responses.map((response) => {
+          if (response.id === responseId) {
+            return { ...response, status: "approved" };
+          }
+          return response;
+        })
+      );
+
+      toast({
+        title: "Thành công",
+        description: "Đã chấp nhận văn bản trả lời",
+      });
+    } catch (error) {
+      console.error("Error approving response:", error);
+      toast({
+        title: "Lỗi",
+        description: "Không thể chấp nhận văn bản. Vui lòng thử lại sau.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleRejectResponse = async () => {
+    if (!selectedResponseId) return;
+
+    setIsSubmitting(true);
+    try {
+      await workflowAPI.rejectDocumentResponse(selectedResponseId, {
+        comment: rejectionReason,
+      });
+
+      // Cập nhật danh sách văn bản
+      setResponses(
+        responses.map((response) => {
+          if (response.id === selectedResponseId) {
+            return {
+              ...response,
+              status: "rejected",
+              managerComment: rejectionReason,
+            };
+          }
+          return response;
+        })
+      );
+
+      toast({
+        title: "Thành công",
+        description: "Đã từ chối văn bản trả lời",
+      });
+
+      // Reset form
+      setRejectionReason("");
+      setSelectedResponseId(null);
+    } catch (error) {
+      console.error("Error rejecting response:", error);
+      toast({
+        title: "Lỗi",
+        description: "Không thể từ chối văn bản. Vui lòng thử lại sau.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -80,44 +235,45 @@ export default function DocumentResponseList({ documentId }: DocumentResponseLis
           <Card key={response.id}>
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-base">Văn bản trả lời #{response.id}</CardTitle>
+                <CardTitle className="text-base">
+                  Văn bản trả lời #{response.id}
+                </CardTitle>
                 {getStatusBadge(response.status)}
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex justify-between text-sm">
                 <span>
-                  <span className="text-muted-foreground">Người tạo:</span> {response.createdBy}
+                  <span className="text-muted-foreground">Người tạo:</span>{" "}
+                  {response.creator.fullName}
                 </span>
                 <span>
-                  <span className="text-muted-foreground">Ngày tạo:</span> {response.createdAt}
+                  <span className="text-muted-foreground">Ngày tạo:</span>{" "}
+                  {response.created}
                 </span>
               </div>
               <Separator />
               <div>
                 <p className="whitespace-pre-line">{response.content}</p>
               </div>
-              {response.attachments.length > 0 && (
+              {response.attachmentFilename && (
                 <>
-                  <Separator />
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground mb-2">Tệp đính kèm</p>
-                    <div className="space-y-2">
-                      {response.attachments.map((file, index) => (
-                        <div key={index} className="flex items-center justify-between rounded-md border p-2">
-                          <div className="flex items-center space-x-2">
-                            <FileText className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm">{file.name}</span>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <span className="text-xs text-muted-foreground">{file.size}</span>
-                            <Button variant="ghost" size="icon">
-                              <Download className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
+                  <div className="flex items-center justify-between rounded-md border border-primary/10 p-2 bg-accent/30">
+                    <div className="flex items-center space-x-2">
+                      <FileText className="h-4 w-4 text-primary" />
+                      <span className="text-sm">
+                        {response.attachmentFilename.split("/").pop() ||
+                          "Tài liệu đính kèm"}
+                      </span>
                     </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
+                      onClick={() => handleDownloadAttachment(response)}
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
                   </div>
                 </>
               )}
@@ -125,12 +281,77 @@ export default function DocumentResponseList({ documentId }: DocumentResponseLis
                 <>
                   <Separator />
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground mb-2">Ý kiến của Thủ trưởng</p>
-                    <div className="rounded-md bg-muted p-3">
-                      <p className="text-sm">{response.managerComment}</p>
+                    <p className="text-sm font-medium text-muted-foreground mb-2">
+                      Phản hồi của lãnh đạo
+                    </p>
+                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-md">
+                      <p className="text-sm italic text-amber-700">
+                        {response.managerComment}
+                      </p>
                     </div>
                   </div>
                 </>
+              )}
+
+              {/* Buttons for Approve/Reject - Only visible to managers/admin */}
+              {canApproveReject && response.status === "leader_reviewing" && (
+                <div className="flex justify-end space-x-2 mt-3">
+                  {/* Approve Button */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-green-500 hover:bg-green-50 text-green-600"
+                    onClick={() => handleApproveResponse(response.id)}
+                    disabled={isSubmitting}
+                  >
+                    <ThumbsUp className="mr-2 h-4 w-4" />
+                    Chấp nhận
+                  </Button>
+
+                  {/* Reject Button - Opens Dialog */}
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="border-red-500 hover:bg-red-50 text-red-600"
+                        onClick={() => setSelectedResponseId(response.id)}
+                        disabled={isSubmitting}
+                      >
+                        <ThumbsDown className="mr-2 h-4 w-4" />
+                        Từ chối
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Từ chối văn bản trả lời</DialogTitle>
+                        <DialogDescription>
+                          Vui lòng nhập lý do từ chối văn bản trả lời này.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <Textarea
+                        value={rejectionReason}
+                        onChange={(e) => setRejectionReason(e.target.value)}
+                        placeholder="Nhập lý do từ chối..."
+                        className="min-h-[100px]"
+                      />
+                      <DialogFooter>
+                        <DialogClose asChild>
+                          <Button variant="outline">Hủy</Button>
+                        </DialogClose>
+                        <DialogClose asChild>
+                          <Button
+                            variant="destructive"
+                            onClick={handleRejectResponse}
+                            disabled={!rejectionReason.trim() || isSubmitting}
+                          >
+                            Từ chối
+                          </Button>
+                        </DialogClose>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                </div>
               )}
               <Separator />
               <div className="flex justify-end space-x-2">
@@ -151,12 +372,17 @@ export default function DocumentResponseList({ documentId }: DocumentResponseLis
                     <AlertDialogHeader>
                       <AlertDialogTitle>Xác nhận xóa</AlertDialogTitle>
                       <AlertDialogDescription>
-                        Bạn có chắc chắn muốn xóa văn bản trả lời này? Hành động này không thể hoàn tác.
+                        Bạn có chắc chắn muốn xóa văn bản phản hồi này không?
+                        Hành động này không thể hoàn tác.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Hủy</AlertDialogCancel>
-                      <AlertDialogAction onClick={() => handleDelete(response.id)}>Xóa</AlertDialogAction>
+                      <AlertDialogAction
+                        onClick={() => handleDelete(response.id)}
+                      >
+                        Xóa
+                      </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
@@ -166,5 +392,5 @@ export default function DocumentResponseList({ documentId }: DocumentResponseLis
         ))
       )}
     </div>
-  )
+  );
 }

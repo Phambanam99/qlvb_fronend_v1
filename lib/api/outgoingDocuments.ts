@@ -1,36 +1,36 @@
-import api from "./config"
-import type { DocumentAttachmentDTO } from "./types"
+import api from "./config";
+import type { DocumentAttachmentDTO } from "./types";
 
 export interface OutgoingDocumentDTO {
-  id?: number
-  title: string
-  documentType: string
-  documentNumber: string
-  referenceNumber?: string
-  signerId?: number
-  signerName?: string
-  signingDate?: Date
-  draftingDepartment?: number
-  relatedDocuments?: string
-  storageLocation?: number
-  documentVolume?: string
-  emailAddress?: string
-  receivingDepartmentText?: string
-  created?: string
-  changed?: string
-  attachmentFilename?: string
+  id?: number;
+  title: string;
+  documentType: string;
+  documentNumber: string;
+  referenceNumber?: string;
+  signerId?: number;
+  signerName?: string;
+  signingDate?: Date;
+  draftingDepartment?: number;
+  relatedDocuments?: string;
+  storageLocation?: number;
+  documentVolume?: string;
+  emailAddress?: string;
+  receivingDepartmentText?: string;
+  created?: string;
+  changed?: string;
+  attachmentFilename?: string;
 
   // Frontend compatibility fields
-  number?: string
-  recipient?: string
-  summary?: string
-  status?: string
-  sentDate?: string
-  creator?: any
-  approver?: any
-  submittedAt?: string
-  attachments?: DocumentAttachmentDTO[]
-  history?: any[]
+  number?: string;
+  recipient?: string;
+  summary?: string;
+  status?: string;
+  sentDate?: string;
+  creator?: any;
+  approver?: any;
+  submittedAt?: string;
+  attachments?: DocumentAttachmentDTO[];
+  history?: any[];
 }
 
 export const outgoingDocumentsAPI = {
@@ -40,28 +40,31 @@ export const outgoingDocumentsAPI = {
    * @param size Page size
    * @returns Paginated list of outgoing documents
    */
-  getAllDocuments: async (page = 0, size = 10): Promise<{ documents: OutgoingDocumentDTO[] }> => {
+  getAllDocuments: async (
+    page = 0,
+    size = 10
+  ): Promise<{ documents: OutgoingDocumentDTO[] }> => {
     try {
       const response = await api.get("/documents/outgoing", {
         params: { page, size },
-      })
+      });
 
       // Map backend response to frontend expected format
-      const documents = response.data.content.map((doc: OutgoingDocumentDTO) => ({
-        ...doc,
-        number: doc.documentNumber.toString(),
-        recipient: doc.receivingDepartmentText || "N/A",
-        sentDate: doc.signingDate,
-        status: "draft", // Default status for frontend compatibility
-        // Add empty arrays for frontend compatibility
-        attachments: [],
-        history: [],
-      }))
+      const documents = response.data.content.map(
+        (doc: OutgoingDocumentDTO) => ({
+          ...doc,
+          number: doc.documentNumber.toString(),
+          recipient: doc.receivingDepartmentText || "N/A",
+          sentDate: doc.signingDate,
+          attachments: [],
+          history: [],
+        })
+      );
 
-      return { documents }
+      return { documents };
     } catch (error) {
-      console.error("Error fetching outgoing documents:", error)
-      throw error
+      console.error("Error fetching outgoing documents:", error);
+      throw error;
     }
   },
 
@@ -70,9 +73,11 @@ export const outgoingDocumentsAPI = {
    * @param id Document ID
    * @returns Document data
    */
-  getOutgoingDocumentById: async (id: string | number): Promise<{ data: OutgoingDocumentDTO }> => {
+  getOutgoingDocumentById: async (
+    id: string | number
+  ): Promise<{ data: OutgoingDocumentDTO }> => {
     try {
-      const response = await api.get(`/documents/outgoing/${id}`)
+      const response = await api.get(`/documents/outgoing/${id}`);
 
       // Map backend response to frontend expected format
       const document = {
@@ -80,16 +85,14 @@ export const outgoingDocumentsAPI = {
         number: response.data.documentNumber.toString(),
         recipient: response.data.receivingDepartmentText || "N/A",
         sentDate: response.data.signingDate,
-        status: "draft", // Default status for frontend compatibility
-        // Add empty arrays for frontend compatibility
         attachments: [],
         history: [],
-      }
+      };
 
-      return { data: document }
+      return { data: document };
     } catch (error) {
-      console.error("Error fetching outgoing document:", error)
-      throw error
+      console.error("Error fetching outgoing document:", error);
+      throw error;
     }
   },
 
@@ -99,8 +102,8 @@ export const outgoingDocumentsAPI = {
    * @returns Created document data
    */
   createOutgoingDocument: async (documentData: any) => {
-    const response = await api.post("/documents/outgoing", documentData)
-    return response.data
+    const response = await api.post("/documents/outgoing", documentData);
+    return response.data;
   },
 
   /**
@@ -110,8 +113,8 @@ export const outgoingDocumentsAPI = {
    * @returns Updated document data
    */
   updateOutgoingDocument: async (id: string | number, documentData: any) => {
-    const response = await api.put(`/documents/outgoing/${id}`, documentData)
-    return response.data
+    const response = await api.put(`/documents/outgoing/${id}`, documentData);
+    return response.data;
   },
 
   /**
@@ -120,8 +123,8 @@ export const outgoingDocumentsAPI = {
    * @returns Success message
    */
   deleteOutgoingDocument: async (id: string | number) => {
-    const response = await api.delete(`/documents/outgoing/${id}`)
-    return response.data
+    const response = await api.delete(`/documents/outgoing/${id}`);
+    return response.data;
   },
 
   /**
@@ -131,16 +134,20 @@ export const outgoingDocumentsAPI = {
    * @returns Updated document data
    */
   uploadAttachment: async (id: string | number, file: File) => {
-    const formData = new FormData()
-    formData.append("file", file)
+    const formData = new FormData();
+    formData.append("file", file);
 
-    const response = await api.post(`/documents/outgoing/${id}/attachment`, formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    })
+    const response = await api.post(
+      `/documents/outgoing/${id}/attachment`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    );
 
-    return response.data
+    return response.data;
   },
 
   /**
@@ -150,18 +157,22 @@ export const outgoingDocumentsAPI = {
    * @returns Success message
    */
   uploadMultipleAttachments: async (id: string | number, files: File[]) => {
-    const formData = new FormData()
+    const formData = new FormData();
     files.forEach((file) => {
-      formData.append("files", file)
-    })
+      formData.append("files", file);
+    });
 
-    const response = await api.post(`/documents/outgoing/${id}/attachments`, formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    })
+    const response = await api.post(
+      `/documents/outgoing/${id}/attachments`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    );
 
-    return response.data
+    return response.data;
   },
 
   /**
@@ -173,8 +184,8 @@ export const outgoingDocumentsAPI = {
     const response = await api.put(`/workflow/${id}/submit`, {
       documentId: id,
       status: "pending_approval",
-    })
-    return response.data
+    });
+    return response.data;
   },
 
   /**
@@ -183,13 +194,16 @@ export const outgoingDocumentsAPI = {
    * @param data Approval data
    * @returns Updated document data
    */
-  approveOutgoingDocument: async (id: string | number, data: { comment?: string }) => {
+  approveOutgoingDocument: async (
+    id: string | number,
+    data: { comment?: string }
+  ) => {
     const response = await api.put(`/workflow/${id}/approve`, {
       documentId: id,
       status: "approved",
       comments: data.comment,
-    })
-    return response.data
+    });
+    return response.data;
   },
 
   /**
@@ -198,13 +212,16 @@ export const outgoingDocumentsAPI = {
    * @param data Rejection data
    * @returns Updated document data
    */
-  rejectOutgoingDocument: async (id: string | number, data: { comment?: string }) => {
+  rejectOutgoingDocument: async (
+    id: string | number,
+    data: { comment?: string }
+  ) => {
     const response = await api.put(`/workflow/${id}/provide-feedback`, {
       documentId: id,
       status: "draft",
       comments: data.comment,
-    })
-    return response.data
+    });
+    return response.data;
   },
 
   /**
@@ -216,8 +233,8 @@ export const outgoingDocumentsAPI = {
     const response = await api.put(`/workflow/${id}/publish`, {
       documentId: id,
       status: "sent",
-    })
-    return response.data
+    });
+    return response.data;
   },
 
   /**
@@ -230,16 +247,19 @@ export const outgoingDocumentsAPI = {
   searchDocuments: async (keyword: string, page = 0, size = 10) => {
     const response = await api.get("/documents/outgoing/search", {
       params: { keyword, page, size },
-    })
-    return response.data
+    });
+    return response.data;
   },
   downloadAttachmentDocument: async (documentId: number) => {
-    const response = await api.get(`/documents/outgoing/${documentId}/attachment`, {
-      responseType: "blob",
-      headers: {
-        Accept: "application/hal+json",
-      },
-    })
-    return response.data
-  }
-}
+    const response = await api.get(
+      `/documents/outgoing/${documentId}/attachment`,
+      {
+        responseType: "blob",
+        headers: {
+          Accept: "application/hal+json",
+        },
+      }
+    );
+    return response.data;
+  },
+};

@@ -76,42 +76,24 @@ export default function OutgoingDocumentDetailPage({
   const [historyLoaded, setHistoryLoaded] = useState(false);
 
   useEffect(() => {
-    // Biến để kiểm tra component còn mounted hay không
-    let isMounted = true;
-    
     const fetchDocument = async () => {
       try {
         setIsLoading(true);
-        
-        // Gọi các API song song để tăng hiệu suất
-        const [documentResponse, history] = await Promise.all([
-          outgoingDocumentsAPI.getOutgoingDocumentById(documentId),
-          workflowAPI.getDocumentHistory(documentId)
-        ]);
-        
-        // Kiểm tra component còn mounted không trước khi cập nhật state
-        if (!isMounted) return;
-        
-        const documentData = documentResponse.data;
-        
-        // Cập nhật document một lần duy nhất với đầy đủ thông tin
-        setDocument({
-          ...documentData,
-          history: history
-        });
-        
-        setHistoryLoaded(true);
-        
+        // Fetch document details
+        const response = await outgoingDocumentsAPI.getOutgoingDocumentById(
+          documentId
+        );
+        setDocument(response.data);
+         console.log("Document:", response.data);
         // Nếu có văn bản liên quan (văn bản đến được trả lời)
-        if (documentData.relatedDocuments) {
+        if (response.data.relatedDocuments) {
           try {
-            const relatedIds = documentData.relatedDocuments;
-            const relatedDocsData = await incomingDocumentsAPI.getIncomingDocumentById(relatedIds);
-            
-            // Kiểm tra component còn mounted không
-            if (!isMounted) return;
-            
+            const relatedIds = response.data.relatedDocuments;
+             
+            const relatedDocsData = await  incomingDocumentsAPI.getIncomingDocumentById(relatedIds);
+          
             setRelatedDocuments(relatedDocsData.data);
+            
           } catch (error) {
             console.error("Error fetching related documents:", error);
           }
@@ -120,28 +102,19 @@ export default function OutgoingDocumentDetailPage({
         setError(null);
       } catch (err: any) {
         console.error("Error fetching document:", err);
-        if (isMounted) {
-          setError(err.message || "Không thể tải thông tin văn bản");
-          toast({
-            title: "Lỗi",
-            description: "Không thể tải thông tin văn bản",
-            variant: "destructive",
-          });
-        }
+        setError(err.message || "Không thể tải thông tin văn bản");
+        toast({
+          title: "Lỗi",
+          description: "Không thể tải thông tin văn bản",
+          variant: "destructive",
+        });
       } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
+        setIsLoading(false);
       }
     };
 
     fetchDocument();
-    
-    // Cleanup function để tránh cập nhật state khi component đã unmounted
-    return () => {
-      isMounted = false;
-    };
-  }, [documentId, toast, router, hasRole, incomingDocumentsAPI, outgoingDocumentsAPI, workflowAPI]);
+  }, [documentId, toast]);
 
   const getStatusBadge = (status: string) => {
     const badgeInfo = getStatusBadgeInfo(status);
@@ -151,12 +124,7 @@ export default function OutgoingDocumentDetailPage({
   // Hàm tải lịch sử xử lý khi click vào tab
   const loadDocumentHistory = async () => {
     try {
-      // Nếu lịch sử đã được tải trước đó, không cần tải lại
-      if (historyLoaded) {
-        return;
-      }
-      
-      if (_document) {
+      if (!historyLoaded && _document) {
         setIsLoading(true);
         // Fetch document workflow history
         const history = await workflowAPI.getDocumentHistory(documentId);
@@ -172,8 +140,8 @@ export default function OutgoingDocumentDetailPage({
         
         setHistoryLoaded(true);
       }
-    } catch (err) {
-      console.error("Error fetching document history:", err);
+    } catch (error) {
+      console.error("Error fetching document history:", error);
       toast({
         title: "Lỗi",
         description: "Không thể tải lịch sử xử lý văn bản",
@@ -282,7 +250,6 @@ export default function OutgoingDocumentDetailPage({
         comment: rejectionComment,
       });
 
-      // Thông báo chung
       addNotification({
         title: "Văn bản đã bị từ chối",
         message:
@@ -295,37 +262,20 @@ export default function OutgoingDocumentDetailPage({
         documentId
       );
       setDocument(response.data);
-      
-      // Fetch document workflow history
-      const history = await workflowAPI.getDocumentHistory(documentId);
+// Fetch document workflow history
+        const history = await workflowAPI.getDocumentHistory(documentId);
 
-      // Cập nhật document với history
-      setDocument((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          history: history,
-        };
-      }); 
-      
-      // Thông báo cho người tạo văn bản
-      if (response.data.creator?.id) {
-        // Gửi thông báo cho người tạo văn bản
-        // Lưu ý: Nếu API thông báo không hỗ trợ gửi cho người dùng cụ thể,
-        // có thể cần cập nhật API hoặc sử dụng cách khác để thông báo
-        addNotification({
-          title: "Văn bản bị từ chối",
-          message: `Văn bản ${response.data.documentNumber || response.data.number} đã bị từ chối và cần được chỉnh sửa`,
-          type: "warning",
-          link: `/van-ban-di/${response.data.id}/chinh-sua`
+        // Cập nhật document với history
+        setDocument((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            history: history,
+          };
         });
-      }
-
-      // Hiển thị thông báo thành công
       toast({
         title: "Thành công",
-        description: "Văn bản đã được gửi trả lại để chỉnh sửa",
-        variant: "success",
+        description: "Văn bản đã được từ chối và trả lại người soạn thảo",
       });
     } catch (err: any) {
       console.error("Error rejecting document:", err);
@@ -342,35 +292,11 @@ export default function OutgoingDocumentDetailPage({
   // Hiển thị các nút hành động dựa trên vai trò người dùng và trạng thái văn bản
   const renderActionButtons = () => {
     if (!user || !_document) return null;
-    
-    // Kiểm tra xem văn bản có bị từ chối không
-    const wasRejected = _document.history?.some((item: any) => 
-      item.newStatus === "leader_commented" || 
-      (item.comments && item.comments.toLowerCase().includes("từ chối")) || 
-      (item.description && item.description.toLowerCase().includes("từ chối"))
-    );
 
     // Nếu là người soạn thảo và văn bản đang ở trạng thái nháp
-    if (hasRole(["ROLE_DRAF", "ROLE_TRO_LY"]) && (_document.status === "draft" || wasRejected)) {
+    if (hasRole(["ROLE_DRAF", "ROLE_TRO_LY"]) && _document.status === "draft") {
       return (
         <>
-          {wasRejected && (
-            <div className="rounded-md bg-red-50 p-2 border border-red-200 mr-3">
-              <div className="flex items-start">
-                <XCircle className="h-4 w-4 text-red-600 mt-0.5 mr-2" />
-                <div>
-                  <p className="text-sm font-medium text-red-800">Văn bản đã bị từ chối</p>
-                  <p className="text-xs text-red-700 mt-1">
-                    {_document.history?.find((item: any) => 
-                      item.action === "REJECT_DOCUMENT" || 
-                      (item.comments && item.comments.toLowerCase().includes("từ chối")) || 
-                      (item.description && item.description.toLowerCase().includes("từ chối"))
-                    )?.comments || "Vui lòng chỉnh sửa và gửi lại"}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
           <Button
             variant="outline"
             size="sm"
@@ -379,7 +305,7 @@ export default function OutgoingDocumentDetailPage({
           >
             <Link href={`/van-ban-di/${_document.id}/chinh-sua`}>
               <Edit className="mr-2 h-4 w-4" />
-              {wasRejected ? "Chỉnh sửa và gửi lại" : "Chỉnh sửa"}
+              Chỉnh sửa
             </Link>
           </Button>
           <Button

@@ -28,12 +28,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Search, Filter, Loader2, AlertCircle } from "lucide-react";
 import Link from "next/link";
-import {
-  getStatusByCode,
-  incomingDocumentsAPI,
-  Status,
-  getAllStatuses,
-} from "@/lib/api/incomingDocuments";
+import { getStatusByCode, incomingDocumentsAPI, Status, getAllStatuses } from "@/lib/api/incomingDocuments";
+import { getStatusBadgeInfo } from "@/lib/utils";
 import { useToast } from "@/components/ui/use-toast";
 import { useIncomingDocuments } from "@/lib/store";
 import { useAuth } from "@/lib/auth-context";
@@ -61,6 +57,12 @@ export default function IncomingDocumentsPage() {
   const [documentSource, setDocumentSource] = useState<string>("all"); // all, department, assigned
   const [isAddLoading, setIsAddLoading] = useState(false);
   const router = useRouter();
+  
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState<number>(0);
+  const [pageSize, setPageSize] = useState<number>(10);
+  const [totalPages, setTotalPages] = useState<number>(0);
+  const [totalItems, setTotalItems] = useState<number>(0);
 
   // Kiểm tra người dùng có quyền xem tất cả không
   const hasFullAccess = FULL_ACCESS_ROLES.some((role) => hasRole(role));
@@ -106,43 +108,132 @@ export default function IncomingDocumentsPage() {
     router.push("/van-ban-den/them-moi");
   };
 
-  useEffect(() => {
-    const fetchDocuments = async () => {
+  // Xử lý khi thay đổi bộ lọc trạng thái
+  const handleStatusFilterChange = (value: string) => {
+    setStatusFilter(value);
+    setCurrentPage(0); // Reset về trang đầu khi thay đổi bộ lọc
+  };
+  
+  // Xử lý khi thay đổi từ khóa tìm kiếm
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+    setCurrentPage(0); // Reset về trang đầu khi thay đổi từ khóa tìm kiếm
+  };
+
+  // Kiểm tra xem người dùng có quyền xem văn bản đến không
+  const canViewDocuments = 
+    hasFullAccess || // Admin, văn thư, cục trưởng, cục phó
+    hasDepartmentAccess || // Trưởng phòng, phó phòng, trưởng ban, phó ban
+    hasRole("ROLE_NHAN_VIEN") || // Nhân viên (chỉ xem văn bản được phân công)
+    hasRole("ROLE_TRO_LY"); // Trợ lý (chỉ xem văn bản được phân công)
+
+  // Hàm tải danh sách văn bản đến - định nghĩa ngoài useEffect để có thể gọi ở nhiều nơi
+  const fetchDocuments = async (page = currentPage, size = pageSize) => {
       try {
+        // Nếu không có quyền xem văn bản, không tải dữ liệu
+        if (!canViewDocuments) {
+          console.log("User does not have permission to view documents");
+          setIncomingDocuments([]);
+          setLoading(false);
+          return;
+        }
+        
         setLoading(true);
         let response;
-
+        
         console.log("Current user data:", { 
           user, 
           hasFullAccess, 
           hasDepartmentAccess, 
           documentSource,
-          departmentId: user?.departmentId
+          departmentId: user?.departmentId,
+          page,
+          size
         });
 
         // Xác định cách tải văn bản dựa trên các điều kiện
         if (hasFullAccess && documentSource === "all") {
           // Người dùng có quyền xem tất cả và đã chọn hiển thị tất cả
-          console.log("Fetching all documents as admin");
-          response = await incomingDocumentsAPI.getAllDocuments();
+          console.log("Fetching all documents as admin with pagination:", { page, size });
+          response = await incomingDocumentsAPI.getAllDocuments(page, size);
           
-        } else if (hasDepartmentAccess || documentSource === "department") {
-          // Văn bản của phòng ban
+        } else if (hasDepartmentAccess && documentSource === "department") {
+          // Văn bản của phòng ban - chỉ dành cho trưởng/phó phòng
           if (!user?.departmentId) {
-            // Nếu không có departmentId, tải tất cả tài liệu
-            console.warn("Department ID is undefined, loading all documents instead");
-            response = await incomingDocumentsAPI.getAllDocuments();
+            console.warn("Department ID is undefined, cannot load documents");
+            setIncomingDocuments([]);
+            setLoading(false);
+            return;
           } else {
-            // Có departmentId hợp lệ, tải tài liệu của phòng ban
-            console.log("Fetching department documents for ID:", user.departmentId);
-            response = await incomingDocumentsAPI.getDepartmentDocuments(user.departmentId);
+            console.log("Fetching department documents for ID:", user.departmentId, "with pagination:", { page, size });
+            response = await incomingDocumentsAPI.getDepartmentDocuments(user.departmentId, page, size);
           }
           
+        } else if (documentSource === "assigned" || 
+                  (hasRole("ROLE_NHAN_VIEN") || hasRole("ROLE_TRO_LY"))) {
+          // Văn bản được phân công - chỉ dành cho nhân viên/trợ lý
+          if (!user?.id) {
+            console.warn("User ID is undefined, cannot load assigned documents");
+            setIncomingDocuments([]);
+            setLoading(false);
+            return;
+          }
+          
+          // Sử dụng getUserAssignedDocuments nếu có trong API
+          console.log("Trying to get assigned documents for user ID:", user.id, "with pagination:", { page, size });
+          
+          try {
+            // Sử dụng API workflow để lấy danh sách văn bản được phân công
+            // Vì không thấy thông tin người được phân công trong document, 
+            // chúng ta cần khảo sát API workflow để lấy thông tin này
+            
+            // Giải pháp 1: Vẫn lấy tất cả văn bản của phòng, nhưng chỉ như một giải pháp tạm thời
+            if (user?.departmentId) {
+              response = await incomingDocumentsAPI.getDepartmentDocuments(user.departmentId, page, size);
+              console.log("Got department documents:", response?.content?.length || 0);
+              
+              // Thêm debug log nếu có document
+              if (response?.content?.length > 0) {
+                const sampleDoc = response.content[0];
+                console.log("Sample document:", {
+                  id: sampleDoc.id,
+                  documentNumber: sampleDoc.documentNumber,
+                  processingStatus: sampleDoc.processingStatus,
+                  displayStatus: sampleDoc.displayStatus,
+                  department: user.departmentId
+                });
+              }
+              
+              // Cải thiện: Thay vì lọc, tạm thời hiển thị tất cả văn bản của phòng, vì thông tin phân công chi tiết 
+              // có thể nằm ở database khác hoặc API workflow
+            } else {
+              // Không có department ID, trả về danh sách rỗng
+              setIncomingDocuments([]);
+              setLoading(false);
+              return;
+            }
+          } catch (error) {
+            console.error("Error fetching assigned documents:", error);
+            // Fallback: Nếu không lấy được từ API workflow, thử lấy từ API phòng ban
+            if (user?.departmentId) {
+              response = await incomingDocumentsAPI.getDepartmentDocuments(user.departmentId, page, size);
+            } else {
+              setIncomingDocuments([]);
+              setLoading(false);
+              return;
+            }
+          }
+        } else if (hasFullAccess) {
+          // Fallback cho admin nếu không rơi vào case nào ở trên
+          console.log("Fallback: Fetching all documents for admin with pagination:", { page, size });
+          response = await incomingDocumentsAPI.getAllDocuments(page, size);
         } else {
-          // Mặc định tải tất cả văn bản
-          console.log("Fetching all documents (default)");
-          response = await incomingDocumentsAPI.getAllDocuments();
-        }  
+          // Không có quyền xem bất kỳ văn bản nào
+          console.log("User does not have specific permission to view documents");
+          setIncomingDocuments([]);
+          setLoading(false);
+          return;
+        }
 
         if (response && response.content) {
           setIncomingDocuments(
@@ -150,7 +241,37 @@ export default function IncomingDocumentsPage() {
               ...doc,
             }))
           );
+          
+          // Cập nhật thông tin phân trang
+          console.log("API Response:", response);
+          
+          // Kiểm tra và cập nhật totalElements từ response
+          if (response.totalElements !== undefined) {
+            setTotalItems(response.totalElements);
+          } else if (response.numberOfElements !== undefined) {
+            setTotalItems(response.numberOfElements);
+          } else {
+            // Nếu không có thông tin, ước tính từ size và page
+            setTotalItems(response.content.length + page * size);
+          }
+          
+          // Kiểm tra và cập nhật totalPages từ response
+          if (response.totalPages !== undefined) {
+            setTotalPages(response.totalPages);
+          } else {
+            // Nếu không có thông tin, tính toán dựa trên dữ liệu hiện có
+            // Nếu số lượng item hiện tại < pageSize, có thể đây là trang cuối
+            const estimatedTotalPages = response.content.length < size ? page + 1 : page + 2;
+            setTotalPages(estimatedTotalPages);
+          }
+          
           console.log("Fetched documents:", response.content);
+          console.log("Pagination info:", {
+            page,
+            size,
+            totalItems: response.totalElements || response.numberOfElements || (response.content.length + page * size),
+            totalPages: response.totalPages || (response.content.length < size ? page + 1 : page + 2)
+          });
         } else {
           throw new Error("Không thể tải dữ liệu văn bản đến");
         }
@@ -166,16 +287,12 @@ export default function IncomingDocumentsPage() {
         setLoading(false);
       }
     };
-
-    fetchDocuments();
-  }, [
-    toast,
-    setIncomingDocuments,
-    setLoading,
-    hasFullAccess,
-    documentSource,
-    user,
-  ]);
+  // Fetch documents on mount and on filter changes
+  useEffect(() => {    
+    // Khi thay đổi bộ lọc, reset về trang đầu tiên
+    setCurrentPage(0); 
+    fetchDocuments(0, pageSize);
+  }, [statusFilter, documentSource, user, pageSize]);
 
   // Lọc dữ liệu
   const filteredDocuments = incomingDocuments.filter((doc) => {
@@ -197,7 +314,8 @@ export default function IncomingDocumentsPage() {
   });
 
   const getStatusBadge = (status: string, displayStatus: string) => {
-    return <Badge variant={status}>{displayStatus}</Badge>;
+    const badgeInfo = getStatusBadgeInfo(status, displayStatus);
+    return <Badge variant={badgeInfo.variant}>{badgeInfo.text}</Badge>;
   };
 
   const getAssignmentBadge = (primaryId: string) => {
@@ -288,7 +406,7 @@ export default function IncomingDocumentsPage() {
               placeholder="Tìm kiếm văn bản..."
               className="pl-10 w-full border-primary/20 focus:border-primary"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={handleSearchChange}
             />
           </div>
 
@@ -309,7 +427,7 @@ export default function IncomingDocumentsPage() {
           )}
         </div>
         <div className="flex w-full sm:w-auto items-center space-x-3">
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
             <SelectTrigger className="w-full sm:w-[180px] border-primary/20">
               <SelectValue placeholder="Trạng thái" />
             </SelectTrigger>
@@ -390,7 +508,11 @@ export default function IncomingDocumentsPage() {
                       {doc.documentNumber}
                     </TableCell>
                     <TableCell className="hidden md:table-cell">
-                      {doc.receivedDate}
+                      {doc.receivedDate ? (
+                        typeof doc.receivedDate === 'object' && doc.receivedDate instanceof Date
+                          ? doc.receivedDate.toLocaleDateString('vi-VN')
+                          : String(doc.receivedDate)
+                      ) : '-'}
                     </TableCell>
                     <TableCell className="max-w-[300px] truncate">
                       {doc.title}
@@ -437,6 +559,65 @@ export default function IncomingDocumentsPage() {
             </TableBody>
           </Table>
         </CardContent>
+        {/* Pagination Controls */}
+        {incomingDocuments.length > 0 && (
+          <div className="flex items-center justify-between px-4 py-4 border-t">
+            <div className="text-sm text-muted-foreground">
+              Hiển thị {incomingDocuments.length} / {totalItems || 0} văn bản
+            </div>
+            <div className="flex items-center space-x-6 lg:space-x-8">
+              <div className="flex items-center space-x-2">
+                <p className="text-sm font-medium">Số văn bản mỗi trang</p>
+                <Select
+                  value={String(pageSize)}
+                  onValueChange={(value) => {
+                    setPageSize(Number(value));
+                    setCurrentPage(0); // Reset về trang đầu khi thay đổi pageSize
+                  }}
+                >
+                  <SelectTrigger className="h-8 w-[70px]">
+                    <SelectValue placeholder={pageSize} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="5">5</SelectItem>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="20">20</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex w-[100px] items-center justify-center text-sm font-medium">
+                Trang {currentPage + 1} / {Math.max(totalPages, 1)}
+              </div>
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const newPage = Math.max(0, currentPage - 1);
+                    setCurrentPage(newPage);
+                    fetchDocuments(newPage, pageSize);
+                  }}
+                  disabled={currentPage <= 0 || loading}
+                >
+                  Trước
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const newPage = currentPage + 1;
+                    setCurrentPage(newPage);
+                    fetchDocuments(newPage, pageSize);
+                  }}
+                  disabled={(incomingDocuments.length < pageSize) || loading}
+                >
+                  Tiếp
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </Card>
     </div>
   );
