@@ -1,56 +1,83 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { useToast } from "@/components/ui/use-toast"
-import { Loader2, AlertCircle } from "lucide-react"
-import { useAuth } from "@/lib/auth-context"
+import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { useToast } from "@/components/ui/use-toast";
+import { Loader2, AlertCircle } from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
 
 export default function LoginPage() {
-  const [username, setUsername] = useState("")
-  const [password, setPassword] = useState("")
-  const [rememberMe, setRememberMe] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const callbackUrl = searchParams.get("callbackUrl") || "/"
-  const { login } = useAuth()
-  const { toast } = useToast()
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams.get("callbackUrl") || "/";
+  const { login } = useAuth();
+  const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError(null)
-    setIsLoading(true)
+    e.preventDefault();
+    setError(null);
+    setIsLoading(true);
 
     try {
-      await login(username, password, rememberMe)
-      toast({
-        title: "Đăng nhập thành công",
-        description: "Chào mừng bạn quay trở lại!",
-      })
-      router.push(callbackUrl)
+      // Đăng nhập và đợi cho đến khi hoàn tất
+      const loginResult = await login(username, password, rememberMe);
+
+      if (loginResult === true) {
+        toast({
+          title: "Đăng nhập thành công",
+          description: "Chào mừng bạn quay trở lại!",
+        });
+
+        // Đợi một chút để đảm bảo token được lưu trữ đúng cách
+        // và các state trong AuthContext được cập nhật
+        setTimeout(() => {
+          console.log("🚀 Đang chuyển hướng sau khi đăng nhập thành công...");
+          router.push(callbackUrl);
+        }, 500);
+      } else {
+        // Xử lý trường hợp loginResult không phải true (có thể undefined hoặc false)
+        setError(
+          "Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin đăng nhập."
+        );
+      }
     } catch (error: any) {
-      console.error("Login error:", error)
-      setError(error.response?.data?.message || "Đăng nhập thất bại. Vui lòng kiểm tra lại tên đăng nhập và mật khẩu.")
+      console.error("Login error:", error);
+      setError(
+        error.response?.data?.message ||
+          "Đăng nhập thất bại. Vui lòng kiểm tra lại tên đăng nhập và mật khẩu."
+      );
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-primary">Hệ thống quản lý văn bản</h1>
+          <h1 className="text-3xl font-bold text-primary">
+            Hệ thống quản lý văn bản
+          </h1>
           <p className="text-muted-foreground mt-2">Đăng nhập để tiếp tục</p>
         </div>
 
@@ -98,7 +125,9 @@ export default function LoginPage() {
                   <Checkbox
                     id="remember"
                     checked={rememberMe}
-                    onCheckedChange={(checked) => setRememberMe(checked === true)}
+                    onCheckedChange={(checked) =>
+                      setRememberMe(checked === true)
+                    }
                   />
                   <Label htmlFor="remember" className="text-sm cursor-pointer">
                     Ghi nhớ đăng nhập
@@ -111,7 +140,8 @@ export default function LoginPage() {
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Đang đăng nhập...
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Đang đăng
+                    nhập...
                   </>
                 ) : (
                   "Đăng nhập"
@@ -122,7 +152,9 @@ export default function LoginPage() {
           <CardFooter>
             <div className="w-full text-center text-sm text-muted-foreground">
               <div className="mt-2 p-3 bg-muted/50 rounded-md">
-                <p className="font-medium text-foreground">Tài khoản mặc định:</p>
+                <p className="font-medium text-foreground">
+                  Tài khoản mặc định:
+                </p>
                 <p className="mt-1">
                   Tên đăng nhập: <span className="font-medium">admin</span>
                 </p>
@@ -135,5 +167,5 @@ export default function LoginPage() {
         </Card>
       </div>
     </div>
-  )
+  );
 }

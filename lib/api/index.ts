@@ -15,7 +15,7 @@ export * from "./reports"
 export * from "./audit"
 export * from "./cases"
 export * from "./roles"
-
+export * from "./departments"
 export * from "./unified-documents"
 export * from "./types"
 export * from "./senders"

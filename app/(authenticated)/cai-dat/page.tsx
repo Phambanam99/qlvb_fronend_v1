@@ -1,25 +1,32 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Textarea } from "@/components/ui/textarea"
-import { Separator } from "@/components/ui/separator"
-import { useAuth } from "@/lib/auth-context"
-import { useNotifications } from "@/lib/notifications-context"
-import { Loader2, Save } from "lucide-react"
-import { settingsAPI } from "@/lib/api/settings"
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/components/ui/separator";
+import { useAuth } from "@/lib/auth-context";
+import { useNotifications } from "@/lib/notifications-context";
+import { Loader2, Save } from "lucide-react";
+import { settingsAPI } from "@/lib/api/settings";
 
 export default function SettingsPage() {
-  const { hasPermission } = useAuth()
-  const { addNotification } = useNotifications()
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
+  const { hasPermission } = useAuth();
+  const { addNotification } = useNotifications();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [settings, setSettings] = useState({
     general: {
       systemName: "",
@@ -49,80 +56,82 @@ export default function SettingsPage() {
       twoFactorAuth: false,
       sessionTimeout: 30,
     },
-  })
+  });
 
   // Fetch settings from API
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        setIsLoading(true)
-        const response = await settingsAPI.getSettings()
-        setSettings(response)
+        setIsLoading(true);
+        const response = await settingsAPI.getSettings();
+        setSettings(response);
       } catch (error) {
-        console.error("Error fetching settings:", error)
+        console.error("Error fetching settings:", error);
         addNotification({
           title: "Lỗi",
           message: "Không thể tải cài đặt hệ thống",
           type: "error",
-        })
+        });
       } finally {
-        setIsLoading(false)
+        setIsLoading(false);
       }
-    }
+    };
 
-    fetchSettings()
-  }, [addNotification])
+    fetchSettings();
+  }, []);
 
   const handleSaveGeneralSettings = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsSubmitting(true)
+    e.preventDefault();
+    setIsSubmitting(true);
 
     try {
       // Lấy dữ liệu từ form
-      const formData = new FormData(e.target as HTMLFormElement)
+      const formData = new FormData(e.target as HTMLFormElement);
       const updatedSettings = {
         systemName: formData.get("system-name") as string,
         organizationName: formData.get("organization-name") as string,
         adminEmail: formData.get("admin-email") as string,
         systemDescription: formData.get("system-description") as string,
         documentPrefix: formData.get("document-prefix") as string,
-        documentCounter: Number.parseInt(formData.get("document-counter") as string),
-      }
+        documentCounter: Number.parseInt(
+          formData.get("document-counter") as string
+        ),
+      };
 
       // Gọi API để cập nhật cài đặt
-      await settingsAPI.updateGeneralSettings(updatedSettings)
+      await settingsAPI.updateGeneralSettings(updatedSettings);
 
       // Cập nhật state
       setSettings((prev) => ({
         ...prev,
         general: updatedSettings,
-      }))
+      }));
 
       // Thêm thông báo
       addNotification({
         title: "Cài đặt đã được lưu",
         message: "Các cài đặt chung đã được cập nhật thành công.",
         type: "success",
-      })
+      });
     } catch (error) {
-      console.error("Error saving settings:", error)
+      console.error("Error saving settings:", error);
       addNotification({
         title: "Lỗi",
         message: "Không thể lưu cài đặt. Vui lòng thử lại sau.",
         type: "error",
-      })
+      });
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   const handleSaveNotificationSettings = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsSubmitting(true)
+    e.preventDefault();
+    setIsSubmitting(true);
 
     try {
       // Lấy dữ liệu từ form
-      const formData = new FormData(e.target as HTMLFormElement)
+      const formData = new FormData(e.target as HTMLFormElement);
       const updatedSettings = {
         incomingDocuments: formData.get("notify-incoming") === "on",
         approvals: formData.get("notify-approval") === "on",
@@ -133,88 +142,94 @@ export default function SettingsPage() {
         emailSecurity: formData.get("email-security") as string,
         emailUsername: formData.get("email-username") as string,
         emailPassword: formData.get("email-password") as string,
-      }
+      };
 
       // Gọi API để cập nhật cài đặt
-      await settingsAPI.updateNotificationSettings(updatedSettings)
+      await settingsAPI.updateNotificationSettings(updatedSettings);
 
       // Cập nhật state
       setSettings((prev) => ({
         ...prev,
         notifications: updatedSettings,
-      }))
+      }));
 
       // Thêm thông báo
       addNotification({
         title: "Cài đặt thông báo đã được lưu",
         message: "Các cài đặt thông báo đã được cập nhật thành công.",
         type: "success",
-      })
+      });
     } catch (error) {
-      console.error("Error saving notification settings:", error)
+      console.error("Error saving notification settings:", error);
       addNotification({
         title: "Lỗi",
         message: "Không thể lưu cài đặt thông báo. Vui lòng thử lại sau.",
         type: "error",
-      })
+      });
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   const handleSaveSecuritySettings = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsSubmitting(true)
+    e.preventDefault();
+    setIsSubmitting(true);
 
     try {
       // Lấy dữ liệu từ form
-      const formData = new FormData(e.target as HTMLFormElement)
+      const formData = new FormData(e.target as HTMLFormElement);
       const updatedSettings = {
-        passwordMinLength: Number.parseInt(formData.get("password-min-length") as string),
+        passwordMinLength: Number.parseInt(
+          formData.get("password-min-length") as string
+        ),
         requireUppercase: formData.get("require-uppercase") === "on",
         requireNumbers: formData.get("require-numbers") === "on",
         requireSpecialChars: formData.get("require-special") === "on",
         lockAccountAfterFailures: formData.get("lock-account") === "on",
         twoFactorAuth: formData.get("two-factor") === "on",
-        sessionTimeout: Number.parseInt(formData.get("session-timeout") as string),
-      }
+        sessionTimeout: Number.parseInt(
+          formData.get("session-timeout") as string
+        ),
+      };
 
       // Gọi API để cập nhật cài đặt
-      await settingsAPI.updateSecuritySettings(updatedSettings)
+      await settingsAPI.updateSecuritySettings(updatedSettings);
 
       // Cập nhật state
       setSettings((prev) => ({
         ...prev,
         security: updatedSettings,
-      }))
+      }));
 
       // Thêm thông báo
       addNotification({
         title: "Cài đặt bảo mật đã được lưu",
         message: "Các cài đặt bảo mật đã được cập nhật thành công.",
         type: "success",
-      })
+      });
     } catch (error) {
-      console.error("Error saving security settings:", error)
+      console.error("Error saving security settings:", error);
       addNotification({
         title: "Lỗi",
         message: "Không thể lưu cài đặt bảo mật. Vui lòng thử lại sau.",
         type: "error",
-      })
+      });
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   // Kiểm tra quyền hạn
-  const canManageSettings = hasPermission("manage_settings")
+  const canManageSettings = hasPermission("manage_settings");
 
   if (isLoading) {
     return (
       <div className="space-y-6">
         <div className="flex flex-col space-y-2">
           <h1 className="text-3xl font-bold text-primary">Cài đặt hệ thống</h1>
-          <p className="text-muted-foreground">Quản lý các cài đặt của hệ thống</p>
+          <p className="text-muted-foreground">
+            Quản lý các cài đặt của hệ thống
+          </p>
         </div>
         <div className="flex items-center justify-center h-[400px]">
           <div className="flex flex-col items-center">
@@ -223,14 +238,16 @@ export default function SettingsPage() {
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col space-y-2">
         <h1 className="text-3xl font-bold text-primary">Cài đặt hệ thống</h1>
-        <p className="text-muted-foreground">Quản lý các cài đặt của hệ thống</p>
+        <p className="text-muted-foreground">
+          Quản lý các cài đặt của hệ thống
+        </p>
       </div>
 
       <Tabs defaultValue="general" className="space-y-4">
@@ -246,7 +263,9 @@ export default function SettingsPage() {
             <form onSubmit={handleSaveGeneralSettings}>
               <CardHeader>
                 <CardTitle>Cài đặt chung</CardTitle>
-                <CardDescription>Quản lý các cài đặt chung của hệ thống</CardDescription>
+                <CardDescription>
+                  Quản lý các cài đặt chung của hệ thống
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-2">
@@ -312,7 +331,8 @@ export default function SettingsPage() {
                   <Button type="submit" disabled={isSubmitting}>
                     {isSubmitting ? (
                       <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Đang lưu...
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Đang
+                        lưu...
                       </>
                     ) : (
                       <>
@@ -329,5 +349,5 @@ export default function SettingsPage() {
         {/* Các tab khác giữ nguyên */}
       </Tabs>
     </div>
-  )
+  );
 }

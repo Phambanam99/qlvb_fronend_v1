@@ -99,3 +99,134 @@ export const notificationsAPI = {
     return response.data
   },
 }
+
+// ===== Realtime Notifications WebSocket client =====
+
+export interface RealTimeNotification {
+  id: number;
+  type: string;
+  content: string;
+  document?: {
+    id: number;
+    title: string;
+  };
+  createdAt: string;
+  read: boolean;
+  metadata?: Record<string, unknown>;
+}
+
+type NotificationHandler = (notification: RealTimeNotification) => void;
+
+class NotificationsRealtimeClient {
+  private ws: WebSocket | null = null;
+  private handlers: Map<string, NotificationHandler[]> = new Map();
+  private reconnectAttempts = 0;
+  private heartbeatInterval: ReturnType<typeof setInterval> | null = null;
+  private token: string | null = null;
+  private wsUrl: string;
+  private static instance: NotificationsRealtimeClient;
+
+  private constructor() {
+    // Lấy URL từ biến môi trường, hoặc mặc định ws://localhost:4000/notifications/ws
+    this.wsUrl =
+      (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_WS_URL) ||
+      (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_API_URL
+        ? `wss://${process.env.NEXT_PUBLIC_API_URL}/notifications/ws`
+        : 'ws://localhost:4000/notifications/ws');
+  }
+
+  public static getInstance() {
+    if (!NotificationsRealtimeClient.instance) {
+      NotificationsRealtimeClient.instance = new NotificationsRealtimeClient();
+    }
+    return NotificationsRealtimeClient.instance;
+  }
+
+  public connect(token: string) {
+    if (this.ws) return;
+    this.token = token;
+    this.ws = new window.WebSocket(this.wsUrl);
+
+    this.ws.onopen = () => {
+      this.reconnectAttempts = 0;
+      this.sendAuth(token);
+      this.startHeartbeat();
+    };
+
+    this.ws.onmessage = (event) => {
+      try {
+        const message = JSON.parse(event.data);
+        if (message.type === 'HEARTBEAT') return;
+        this.handleMessage(message);
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error('Error parsing notification message:', error);
+      }
+    };
+
+    this.ws.onclose = (event) => {
+      this.cleanup();
+      if (!event.wasClean && this.reconnectAttempts < 5) {
+        setTimeout(() => this.connect(token), this.getReconnectDelay());
+        this.reconnectAttempts++;
+      }
+    };
+  }
+
+  public disconnect() {
+    this.ws?.close();
+    this.cleanup();
+  }
+
+  public onMessage(type: string, handler: NotificationHandler) {
+    if (!this.handlers.has(type)) {
+      this.handlers.set(type, []);
+    }
+    this.handlers.get(type)?.push(handler);
+  }
+
+  public offMessage(type: string, handler: NotificationHandler) {
+    const handlers = this.handlers.get(type);
+    if (handlers) {
+      this.handlers.set(
+        type,
+        handlers.filter((h) => h !== handler)
+      );
+    }
+  }
+
+  private sendAuth(token: string) {
+    this.ws?.send(
+      JSON.stringify({
+        type: 'AUTH',
+        payload: token,
+      })
+    );
+  }
+
+  private handleMessage(message: any) {
+    const handlers = this.handlers.get(message.type);
+    handlers?.forEach((handler) => handler(message));
+  }
+
+  private startHeartbeat() {
+    this.heartbeatInterval = setInterval(() => {
+      this.ws?.send(JSON.stringify({ type: 'HEARTBEAT' }));
+    }, 30000);
+  }
+
+  private cleanup() {
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
+    }
+    this.ws = null;
+  }
+
+  private getReconnectDelay() {
+    return Math.min(1000 * 2 ** this.reconnectAttempts, 30000);
+  }
+}
+
+export const notificationsRealtime = NotificationsRealtimeClient.getInstance();
+

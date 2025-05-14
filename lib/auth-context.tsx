@@ -53,28 +53,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+
   useEffect(() => {
     const checkAuth = async () => {
       try {
+        console.log("AuthContext: Checking authentication status...");
         const token = localStorage.getItem("token");
         if (token) {
+          console.log("AuthContext: Token found, fetching current user...");
           const userData = await authAPI.getCurrentUser();
           if (userData) {
+            console.log(
+              "AuthContext: User data retrieved successfully:",
+              userData
+            );
             // Đảm bảo fullName được thiết lập
             setUser({
               ...userData,
               fullName: userData.fullName || userData.name,
             });
             setIsAuthenticated(true);
+          } else {
+            console.warn("AuthContext: User data is empty or invalid");
+            setIsAuthenticated(false);
           }
+        } else {
+          console.log("AuthContext: No token found");
+          setIsAuthenticated(false);
         }
       } catch (err) {
-        console.error("Auth check failed:", err);
+        console.error("AuthContext: Auth check failed:", err);
         // Xóa token nếu không hợp lệ
         localStorage.removeItem("token");
         Cookies.remove("auth-token");
+        setIsAuthenticated(false);
       } finally {
         setLoading(false);
+        // Nếu không xác thực được, đánh dấu dữ liệu đã tải xong để tránh vòng lặp loading
+        if (!isAuthenticated) {
+          setDataLoading(false);
+        }
       }
     };
 
@@ -91,7 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Reset data loading state on login
       setDataLoading(true);
       setError(null);
-      console.log("Login successful");
+      console.log("Đang thực hiện đăng nhập cho tài khoản:", username);
       const userData = await authAPI.login(username, password);
       // Đảm bảo fullName được thiết lập
       const { token, user } = userData;
@@ -105,20 +123,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Session cookie nếu không "Ghi nhớ đăng nhập"
         Cookies.set("auth-token", token, { sameSite: "strict" });
       }
-      setUser({
+
+      // Thiết lập thông tin người dùng
+      const userInfo = {
         id: String(userData.user.id),
         name: userData.user.name,
         username: userData.user.username,
         email: userData.user.email,
         roles: userData.user.roles,
-        fullName: userData.user.name || userData.fullName,
-      });
+        departmentId: userData.user.departmentId,
+        fullName: userData.user.name || userData.user.fullName,
+      };
+
+      console.log("Login successful", userInfo);
+      setUser(userInfo);
       setIsAuthenticated(true);
+
+      // Tải trước một số dữ liệu cần thiết nếu có
+      try {
+        // Bạn có thể thêm các lời gọi API quan trọng vào đây
+        // Ví dụ: tải thông tin người dùng chi tiết hơn, quyền, v.v.
+      } catch (preloadError) {
+        console.error("Không thể tải trước dữ liệu quan trọng:", preloadError);
+      }
+
       // Trả về true để báo hiệu đăng nhập thành công
       return true;
     } catch (err: any) {
       console.error("Login failed:", err);
       setError(err.message || "Đăng nhập thất bại. Vui lòng thử lại.");
+      return false;
     } finally {
       setLoading(false);
     }
@@ -174,7 +208,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const setDataLoaded = () => {
     setDataLoading(false);
   };
-  
+
   return (
     <AuthContext.Provider
       value={{

@@ -19,7 +19,7 @@ import { format } from "date-fns"
 import { vi } from "date-fns/locale"
 
 // Cập nhật import để sử dụng API từ thư mục lib/api
-import { schedulesAPI, departmentsAPI as departmentsApi } from "@/lib/api"
+import { schedulesAPI, departmentsAPI } from "@/lib/api"
 import { useNotifications } from "@/lib/notifications-context"
 
 export default function CreateSchedulePage() {
@@ -112,7 +112,7 @@ export default function CreateSchedulePage() {
   // Fix the department data mapping
   const fetchDepartments = async () => {
     try {
-      const response = await departmentsApi.getAllDepartments()
+      const response = await departmentsAPI.getAllDepartments()
       // Map the departments to the expected format
       const formattedDepartments = response.content
         ? response.content.map((dept: any) => ({
@@ -131,14 +131,14 @@ export default function CreateSchedulePage() {
     const fetchDepartmentsAndStaff = async () => {
       try {
         setIsLoadingDepartments(true)
-        // const departmentsData = await departmentsAPI.getAllDepartments()
-        // setDepartments(departmentsData)
+        const departmentsData = await departmentsAPI.getAllDepartments()
+        setDepartments(departmentsData)
         await fetchDepartments()
         setIsLoadingDepartments(false)
 
         setIsLoadingStaff(true)
-        const usersData = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users`)
-        const staffData = await usersData.json()
+        // const usersData = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users`)
+        // const staffData = await usersData.json()
         setStaffMembers(staffData)
         setIsLoadingStaff(false)
       } catch (error) {

@@ -28,7 +28,12 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Search, Filter, Loader2, AlertCircle } from "lucide-react";
 import Link from "next/link";
-import { getStatusByCode, incomingDocumentsAPI, Status, getAllStatuses } from "@/lib/api/incomingDocuments";
+import {
+  getStatusByCode,
+  incomingDocumentsAPI,
+  Status,
+  getAllStatuses,
+} from "@/lib/api/incomingDocuments";
 import { getStatusBadgeInfo } from "@/lib/utils";
 import { useToast } from "@/components/ui/use-toast";
 import { useIncomingDocuments } from "@/lib/store";
@@ -57,7 +62,7 @@ export default function IncomingDocumentsPage() {
   const [documentSource, setDocumentSource] = useState<string>("all"); // all, department, assigned
   const [isAddLoading, setIsAddLoading] = useState(false);
   const router = useRouter();
-  
+
   // Pagination states
   const [currentPage, setCurrentPage] = useState<number>(0);
   const [pageSize, setPageSize] = useState<number>(10);
@@ -79,17 +84,23 @@ export default function IncomingDocumentsPage() {
     if (user) {
       // Nếu là trưởng phòng/phó phòng, đặt mặc định là văn bản của phòng ban
       if (hasDepartmentAccess) {
-        console.log("Setting default document source to 'department' based on user role");
+        console.log(
+          "Setting default document source to 'department' based on user role"
+        );
         setDocumentSource("department");
-      } 
+      }
       // Nếu là nhân viên/trợ lý, đặt mặc định là văn bản được giao
       else if (hasRole("ROLE_NHAN_VIEN") || hasRole("ROLE_TRO_LY")) {
-        console.log("Setting default document source to 'assigned' based on user role");
+        console.log(
+          "Setting default document source to 'assigned' based on user role"
+        );
         setDocumentSource("assigned");
       }
       // Người dùng có quyền xem tất cả, giữ mặc định là 'all'
       else if (hasFullAccess) {
-        console.log("Setting default document source to 'all' based on admin role");
+        console.log(
+          "Setting default document source to 'all' based on admin role"
+        );
         setDocumentSource("all");
       }
     }
@@ -113,7 +124,7 @@ export default function IncomingDocumentsPage() {
     setStatusFilter(value);
     setCurrentPage(0); // Reset về trang đầu khi thay đổi bộ lọc
   };
-  
+
   // Xử lý khi thay đổi từ khóa tìm kiếm
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
@@ -121,7 +132,7 @@ export default function IncomingDocumentsPage() {
   };
 
   // Kiểm tra xem người dùng có quyền xem văn bản đến không
-  const canViewDocuments = 
+  const canViewDocuments =
     hasFullAccess || // Admin, văn thư, cục trưởng, cục phó
     hasDepartmentAccess || // Trưởng phòng, phó phòng, trưởng ban, phó ban
     hasRole("ROLE_NHAN_VIEN") || // Nhân viên (chỉ xem văn bản được phân công)
@@ -129,170 +140,165 @@ export default function IncomingDocumentsPage() {
 
   // Hàm tải danh sách văn bản đến - định nghĩa ngoài useEffect để có thể gọi ở nhiều nơi
   const fetchDocuments = async (page = currentPage, size = pageSize) => {
-      try {
-        // Nếu không có quyền xem văn bản, không tải dữ liệu
-        if (!canViewDocuments) {
-          console.log("User does not have permission to view documents");
+    try {
+      if (!canViewDocuments) {
+        console.log("User does not have permission to view documents");
+        setIncomingDocuments([]);
+        return;
+      }
+
+      // Đặt loading trước khi gọi API
+      setLoading(true);
+      let response;
+
+      console.log("Current user data:", {
+        user,
+        hasFullAccess,
+        hasDepartmentAccess,
+        documentSource,
+      });
+
+      // Xác định cách tải văn bản dựa trên các điều kiện
+      if (hasFullAccess && documentSource === "all") {
+        console.log("Fetching all documents as admin with pagination:", {
+          page,
+          size,
+        });
+        response = await incomingDocumentsAPI.getAllDocuments(page, size);
+      } else if (hasDepartmentAccess && documentSource === "department") {
+        if (!user?.departmentId) {
+          console.warn("Department ID is undefined, cannot load documents");
+          setIncomingDocuments([]);
+          setLoading(false);
+          return;
+        } else {
+          console.log(
+            "Fetching department documents for ID:",
+            user.departmentId,
+            "with pagination:",
+            { page, size }
+          );
+          response = await incomingDocumentsAPI.getDepartmentDocuments(
+            user.departmentId,
+            page,
+            size
+          );
+        }
+      } else if (
+        documentSource === "assigned" ||
+        hasRole("ROLE_NHAN_VIEN") ||
+        hasRole("ROLE_TRO_LY")
+      ) {
+        if (!user?.departmentId) {
+          console.warn("Department ID is undefined, cannot load documents");
           setIncomingDocuments([]);
           setLoading(false);
           return;
         }
-        
-        setLoading(true);
-        let response;
-        
-        console.log("Current user data:", { 
-          user, 
-          hasFullAccess, 
-          hasDepartmentAccess, 
-          documentSource,
-          departmentId: user?.departmentId,
+        response = await incomingDocumentsAPI.getDepartmentDocuments(
+          user.departmentId,
           page,
           size
-        });
-
-        // Xác định cách tải văn bản dựa trên các điều kiện
-        if (hasFullAccess && documentSource === "all") {
-          // Người dùng có quyền xem tất cả và đã chọn hiển thị tất cả
-          console.log("Fetching all documents as admin with pagination:", { page, size });
-          response = await incomingDocumentsAPI.getAllDocuments(page, size);
-          
-        } else if (hasDepartmentAccess && documentSource === "department") {
-          // Văn bản của phòng ban - chỉ dành cho trưởng/phó phòng
-          if (!user?.departmentId) {
-            console.warn("Department ID is undefined, cannot load documents");
-            setIncomingDocuments([]);
-            setLoading(false);
-            return;
-          } else {
-            console.log("Fetching department documents for ID:", user.departmentId, "with pagination:", { page, size });
-            response = await incomingDocumentsAPI.getDepartmentDocuments(user.departmentId, page, size);
-          }
-          
-        } else if (documentSource === "assigned" || 
-                  (hasRole("ROLE_NHAN_VIEN") || hasRole("ROLE_TRO_LY"))) {
-          // Văn bản được phân công - chỉ dành cho nhân viên/trợ lý
-          if (!user?.id) {
-            console.warn("User ID is undefined, cannot load assigned documents");
-            setIncomingDocuments([]);
-            setLoading(false);
-            return;
-          }
-          
-          // Sử dụng getUserAssignedDocuments nếu có trong API
-          console.log("Trying to get assigned documents for user ID:", user.id, "with pagination:", { page, size });
-          
-          try {
-            // Sử dụng API workflow để lấy danh sách văn bản được phân công
-            // Vì không thấy thông tin người được phân công trong document, 
-            // chúng ta cần khảo sát API workflow để lấy thông tin này
-            
-            // Giải pháp 1: Vẫn lấy tất cả văn bản của phòng, nhưng chỉ như một giải pháp tạm thời
-            if (user?.departmentId) {
-              response = await incomingDocumentsAPI.getDepartmentDocuments(user.departmentId, page, size);
-              console.log("Got department documents:", response?.content?.length || 0);
-              
-              // Thêm debug log nếu có document
-              if (response?.content?.length > 0) {
-                const sampleDoc = response.content[0];
-                console.log("Sample document:", {
-                  id: sampleDoc.id,
-                  documentNumber: sampleDoc.documentNumber,
-                  processingStatus: sampleDoc.processingStatus,
-                  displayStatus: sampleDoc.displayStatus,
-                  department: user.departmentId
-                });
-              }
-              
-              // Cải thiện: Thay vì lọc, tạm thời hiển thị tất cả văn bản của phòng, vì thông tin phân công chi tiết 
-              // có thể nằm ở database khác hoặc API workflow
-            } else {
-              // Không có department ID, trả về danh sách rỗng
-              setIncomingDocuments([]);
-              setLoading(false);
-              return;
-            }
-          } catch (error) {
-            console.error("Error fetching assigned documents:", error);
-            // Fallback: Nếu không lấy được từ API workflow, thử lấy từ API phòng ban
-            if (user?.departmentId) {
-              response = await incomingDocumentsAPI.getDepartmentDocuments(user.departmentId, page, size);
-            } else {
-              setIncomingDocuments([]);
-              setLoading(false);
-              return;
-            }
-          }
-        } else if (hasFullAccess) {
-          // Fallback cho admin nếu không rơi vào case nào ở trên
-          console.log("Fallback: Fetching all documents for admin with pagination:", { page, size });
-          response = await incomingDocumentsAPI.getAllDocuments(page, size);
-        } else {
-          // Không có quyền xem bất kỳ văn bản nào
-          console.log("User does not have specific permission to view documents");
-          setIncomingDocuments([]);
-          setLoading(false);
-          return;
-        }
-
-        if (response && response.content) {
-          setIncomingDocuments(
-            response.content.map((doc: IncomingDocumentDTO) => ({
-              ...doc,
-            }))
-          );
-          
-          // Cập nhật thông tin phân trang
-          console.log("API Response:", response);
-          
-          // Kiểm tra và cập nhật totalElements từ response
-          if (response.totalElements !== undefined) {
-            setTotalItems(response.totalElements);
-          } else if (response.numberOfElements !== undefined) {
-            setTotalItems(response.numberOfElements);
-          } else {
-            // Nếu không có thông tin, ước tính từ size và page
-            setTotalItems(response.content.length + page * size);
-          }
-          
-          // Kiểm tra và cập nhật totalPages từ response
-          if (response.totalPages !== undefined) {
-            setTotalPages(response.totalPages);
-          } else {
-            // Nếu không có thông tin, tính toán dựa trên dữ liệu hiện có
-            // Nếu số lượng item hiện tại < pageSize, có thể đây là trang cuối
-            const estimatedTotalPages = response.content.length < size ? page + 1 : page + 2;
-            setTotalPages(estimatedTotalPages);
-          }
-          
-          console.log("Fetched documents:", response.content);
-          console.log("Pagination info:", {
-            page,
-            size,
-            totalItems: response.totalElements || response.numberOfElements || (response.content.length + page * size),
-            totalPages: response.totalPages || (response.content.length < size ? page + 1 : page + 2)
-          });
-        } else {
-          throw new Error("Không thể tải dữ liệu văn bản đến");
-        }
-      } catch (error) {
-        console.error("Error fetching incoming documents:", error);
-        toast({
-          title: "Lỗi",
-          description:
-            "Không thể tải dữ liệu văn bản đến. Vui lòng thử lại sau.",
-          variant: "destructive",
-        });
-      } finally {
+        );
+      } else if (hasFullAccess) {
+        console.log(
+          "Fallback: Fetching all documents for admin with pagination:",
+          { page, size }
+        );
+        response = await incomingDocumentsAPI.getAllDocuments(page, size);
+      } else {
+        console.log("User does not have specific permission to view documents");
+        setIncomingDocuments([]);
         setLoading(false);
+        return;
       }
-    };
-  // Fetch documents on mount and on filter changes
-  useEffect(() => {    
-    // Khi thay đổi bộ lọc, reset về trang đầu tiên
-    setCurrentPage(0); 
-    fetchDocuments(0, pageSize);
-  }, [statusFilter, documentSource, user, pageSize]);
+
+      if (response && response.content) {
+        console.log("Raw API response:", response);
+
+        // Chuyển đổi documents rõ ràng và gán vào state
+        const documents = response.content.map((doc: IncomingDocumentDTO) => ({
+          ...doc,
+        }));
+
+        console.log("Processed documents for UI:", documents);
+        setIncomingDocuments(documents);
+
+        // Cập nhật thông tin phân trang
+        if (response.totalElements !== undefined) {
+          setTotalItems(response.totalElements);
+        } else if (response.numberOfElements !== undefined) {
+          setTotalItems(response.numberOfElements);
+        } else {
+          setTotalItems(response.content.length + page * size);
+        }
+
+        if (response.totalPages !== undefined) {
+          setTotalPages(response.totalPages);
+        } else {
+          const estimatedTotalPages =
+            response.content.length < size ? page + 1 : page + 2;
+          setTotalPages(estimatedTotalPages);
+        }
+      } else {
+        console.error("Invalid response format:", response);
+        throw new Error("Không thể tải dữ liệu văn bản đến");
+      }
+    } catch (error) {
+      console.error("Error fetching incoming documents:", error);
+      toast({
+        title: "Lỗi",
+        description: "Không thể tải dữ liệu văn bản đến. Vui lòng thử lại sau.",
+        variant: "destructive",
+      });
+      // Đảm bảo giao diện được cập nhật ngay cả khi có lỗi
+      setIncomingDocuments([]);
+    } finally {
+      // Đảm bảo luôn tắt loading
+      setLoading(false);
+    }
+  };
+
+  // Tăng cường việc tải dữ liệu
+  useEffect(() => {
+    // Không thực hiện gọi API nếu chưa có thông tin người dùng
+    if (!user) {
+      console.log("Văn bản đến: Chưa có thông tin người dùng, chờ tải...");
+      return;
+    }
+
+    console.log("Văn bản đến: User đã tải xong, có thể tải dữ liệu văn bản", {
+      userId: user.id,
+      departmentId: user.departmentId,
+      roles: user.roles,
+      canViewDocuments,
+    });
+
+    // Đặt trang về 0 khi tải lần đầu hoặc khi thay đổi bộ lọc
+    setCurrentPage(0);
+
+    // Gọi hàm tải văn bản với phân trang page=0
+    console.log("Văn bản đến: Đang tải dữ liệu văn bản lần đầu...");
+
+    // Tăng thời gian timeout để chờ state cập nhật
+    setTimeout(() => {
+      fetchDocuments(0, pageSize);
+    }, 50);
+  }, [user?.id, statusFilter, documentSource]);
+
+  // Xử lý thay đổi trang riêng biệt
+  useEffect(() => {
+    // Chỉ gọi khi thay đổi trang hoặc pageSize và không phải là lần đầu tải
+    if (user && (currentPage > 0 || pageSize !== 10)) {
+      console.log("Văn bản đến: Đang tải dữ liệu theo trang...", {
+        currentPage,
+        pageSize,
+      });
+      const controller = new AbortController();
+      fetchDocuments(currentPage, pageSize);
+      return () => controller.abort();
+    }
+  }, [currentPage, pageSize, user?.id]);
 
   // Lọc dữ liệu
   const filteredDocuments = incomingDocuments.filter((doc) => {
@@ -508,11 +514,12 @@ export default function IncomingDocumentsPage() {
                       {doc.documentNumber}
                     </TableCell>
                     <TableCell className="hidden md:table-cell">
-                      {doc.receivedDate ? (
-                        typeof doc.receivedDate === 'object' && doc.receivedDate instanceof Date
-                          ? doc.receivedDate.toLocaleDateString('vi-VN')
+                      {doc.receivedDate
+                        ? typeof doc.receivedDate === "object" &&
+                          doc.receivedDate instanceof Date
+                          ? doc.receivedDate.toLocaleDateString("vi-VN")
                           : String(doc.receivedDate)
-                      ) : '-'}
+                        : "-"}
                     </TableCell>
                     <TableCell className="max-w-[300px] truncate">
                       {doc.title}
@@ -610,7 +617,7 @@ export default function IncomingDocumentsPage() {
                     setCurrentPage(newPage);
                     fetchDocuments(newPage, pageSize);
                   }}
-                  disabled={(incomingDocuments.length < pageSize) || loading}
+                  disabled={incomingDocuments.length < pageSize || loading}
                 >
                   Tiếp
                 </Button>

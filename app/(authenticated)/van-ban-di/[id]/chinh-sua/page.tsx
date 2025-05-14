@@ -149,6 +149,7 @@ export default function EditOutgoingDocumentPage() {
         // Set form data from document
         // Đảm bảo các trường dữ liệu được định dạng đúng
         const doc = documentData.data;
+        console.log("Document data:", doc);
         setFormData({
           number: doc.number || "",
           title: doc.title || "",

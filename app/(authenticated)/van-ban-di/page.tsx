@@ -32,6 +32,7 @@ import { outgoingDocumentsAPI } from "@/lib/api/outgoingDocuments";
 import { useToast } from "@/components/ui/use-toast";
 import { useOutgoingDocuments } from "@/lib/store";
 import { getStatusBadgeInfo } from "@/lib/utils";
+import { useAuth } from "@/lib/auth-context";
 
 interface OutgoingDocument {
   id: number | string;
@@ -45,46 +46,126 @@ interface OutgoingDocument {
 export default function OutgoingDocumentsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [currentPage, setCurrentPage] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
   const { toast } = useToast();
   const { outgoingDocuments, loading, setOutgoingDocuments, setLoading } =
     useOutgoingDocuments();
+  const { user, isAuthenticated } = useAuth();
 
-  useEffect(() => {
-    const fetchDocuments = async () => {
-      try {
-        setLoading(true);
-        const response = await outgoingDocumentsAPI.getAllDocuments();
+  // Tách hàm fetchDocuments ra khỏi useEffect để có thể gọi ở nhiều nơi
+  const fetchDocuments = async (page = currentPage, size = pageSize) => {
+    try {
+      // Luôn đặt trạng thái loading trước khi gọi API
+      setLoading(true);
+      console.log("Fetching outgoing documents with pagination:", {
+        page,
+        size,
+      });
 
-        if (response && response.documents) {
-          setOutgoingDocuments(
-            response.documents.map((doc) => ({
-              id: doc.id,
-              number: doc.number,
-              title: doc.title,
-              sentDate: doc.sentDate || "Chưa ban hành",
-              recipient: doc.recipient,
-              status: doc.status || "draft",
-            }))
-          );
-          console.log("outgoingDocuments", response);
+      // Gọi API với tham số phân trang
+      const response = await outgoingDocumentsAPI.getAllDocuments(page, size);
+
+      // Kiểm tra và xử lý dữ liệu một cách rõ ràng
+      if (response && response.documents) {
+        console.log("Raw API response:", response);
+
+        // Chuyển đổi documents rõ ràng và gán vào state
+        const formattedDocuments = response.documents.map((doc) => ({
+          id: doc.id,
+          number: doc.number || "Chưa có số",
+          title: doc.title || "Không có tiêu đề",
+          sentDate: doc.sentDate || "Chưa ban hành",
+          recipient: doc.recipient || "Chưa xác định",
+          status: doc.status || "draft",
+        }));
+
+        console.log("Processed documents for UI:", formattedDocuments);
+
+        // Gọi action set documents
+        setOutgoingDocuments(formattedDocuments);
+
+        // Cập nhật thông tin phân trang
+        if (response.totalElements !== undefined) {
+          setTotalItems(response.totalElements);
+        } else if (response.numberOfElements !== undefined) {
+          setTotalItems(response.numberOfElements);
         } else {
-          throw new Error("Không thể tải dữ liệu văn bản đi");
+          setTotalItems(response.documents.length + page * size);
         }
-      } catch (error) {
-        console.error("Error fetching outgoing documents:", error);
-        toast({
-          title: "Lỗi",
-          description:
-            "Không thể tải dữ liệu văn bản đi. Vui lòng thử lại sau.",
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
 
-    fetchDocuments();
-  }, [toast, setOutgoingDocuments, setLoading]);
+        if (response.totalPages !== undefined) {
+          setTotalPages(response.totalPages);
+        } else {
+          const estimatedTotalPages =
+            response.documents.length < size ? page + 1 : page + 2;
+          setTotalPages(estimatedTotalPages);
+        }
+
+        console.log(
+          "Fetched documents:",
+          response.documents.length,
+          "Total items:",
+          totalItems
+        );
+      } else {
+        console.error("Invalid response format:", response);
+        throw new Error("Không thể tải dữ liệu văn bản đi");
+      }
+    } catch (error) {
+      console.error("Error fetching outgoing documents:", error);
+      toast({
+        title: "Lỗi",
+        description: "Không thể tải dữ liệu văn bản đi. Vui lòng thử lại sau.",
+        variant: "destructive",
+      });
+      // Đảm bảo giao diện được cập nhật ngay cả khi có lỗi
+      setOutgoingDocuments([]);
+    } finally {
+      // Đảm bảo luôn tắt loading
+      setLoading(false);
+    }
+  };
+
+  // Tăng cường việc tải dữ liệu
+  useEffect(() => {
+    // Không thực hiện gọi API nếu chưa có thông tin người dùng
+    if (!user) {
+      console.log("Văn bản đi: Chưa có thông tin người dùng, chờ tải...");
+      return;
+    }
+
+    console.log("Văn bản đi: User đã tải xong, có thể tải dữ liệu", {
+      userId: user.id,
+      isAuthenticated,
+      roles: user?.roles,
+    });
+
+    // Đặt trang về 0 khi lọc thay đổi
+    setCurrentPage(0);
+
+    // Thêm timeout nhỏ để đảm bảo state đã được cập nhật
+    setTimeout(() => {
+      console.log("Văn bản đi: Đang tải dữ liệu lần đầu...");
+      fetchDocuments(0, pageSize);
+    }, 50);
+  }, [user?.id, statusFilter]); // Phụ thuộc vào user.id thay vì toàn bộ user để tránh render lại không cần thiết
+
+  // Xử lý khi thay đổi trang
+  useEffect(() => {
+    // Chỉ gọi khi thay đổi trang và không phải là lần đầu tải
+    if (user && (currentPage > 0 || pageSize !== 10)) {
+      console.log("Văn bản đi: Đang tải dữ liệu theo trang...", {
+        currentPage,
+        pageSize,
+      });
+      const controller = new AbortController();
+      fetchDocuments(currentPage, pageSize);
+      return () => controller.abort();
+    }
+  }, [currentPage, pageSize, user?.id]);
 
   // Lọc dữ liệu
   const filteredDocuments = outgoingDocuments.filter((doc) => {

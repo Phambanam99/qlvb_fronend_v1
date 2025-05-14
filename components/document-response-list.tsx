@@ -81,6 +81,7 @@ export default function DocumentResponseList({
     hasRole("ROLE_CUC_PHO") ||
     hasRole("ROLE_CHINH_UY") ||
     hasRole("ROLE_PHO_CHINH_UY");
+  const ruleDoc = ["leader_approved", "published", "completed"];
   useEffect(() => {
     const fetchResponses = async () => {
       try {
@@ -88,7 +89,8 @@ export default function DocumentResponseList({
         const response = await workflowAPI.getDocumentResponses(
           String(documentId)
         );
-        setResponses(response as DocumentResponse[]);
+        const res = response.filter((item: any) => ruleDoc.includes(item.status));
+        setResponses(res as DocumentResponse[]);
       } catch (error) {
         console.error("Error fetching responses:", error);
       }
