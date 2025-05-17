@@ -28,7 +28,12 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowLeft, Loader2, Save, Trash } from "lucide-react";
 import Link from "next/link";
-import { outgoingDocumentsAPI, workflowAPI } from "@/lib/api/";
+import {
+  outgoingDocumentsAPI,
+  workflowAPI,
+  OutgoingDocumentDTO,
+  DocumentWorkflowDTO,
+} from "@/lib/api/";
 import { departmentsAPI } from "@/lib/api/departments";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/lib/auth-context";
@@ -56,8 +61,10 @@ export default function EditOutgoingDocumentPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [attachments, setAttachments] = useState<File[]>([]);
-  const [existingAttachments, setExistingAttachments] = useState<any[]>([]);
+  const [attachment, setAttachment] = useState<File | null>(null);
+  const [existingAttachment, setExistingAttachment] = useState<any | null>(
+    null
+  );
   const [canEdit, setCanEdit] = useState(true); // State để lưu kết quả kiểm tra quyền
 
   // Form state
@@ -94,7 +101,7 @@ export default function EditOutgoingDocumentPage() {
         (item.comments && item.comments.toLowerCase().includes("từ chối")) ||
         (item.description && item.description.toLowerCase().includes("từ chối"))
     );
-    
+
     // Nếu là trợ lý và văn bản đã bị từ chối
     if (hasRole("ROLE_TRO_LY") && wasRejected) {
       return true;
@@ -132,10 +139,10 @@ export default function EditOutgoingDocumentPage() {
 
         // Kiểm tra quyền truy cập sử dụng dữ liệu mới
         const hasEditPermission = checkEditPermission(documentWithHistory);
-        
+
         // Cập nhật state canEdit
         setCanEdit(hasEditPermission);
-        
+
         if (!hasEditPermission) {
           toast({
             title: "Không có quyền chỉnh sửa",
@@ -163,7 +170,7 @@ export default function EditOutgoingDocumentPage() {
 
         // Fetch existing attachments
         if (documentData.data.attachments) {
-          setExistingAttachments(documentData.data.attachments);
+          setExistingAttachment(documentData.data.attachments[0] || null);
         }
 
         // Fetch departments for dropdown
@@ -218,19 +225,17 @@ export default function EditOutgoingDocumentPage() {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      const newFiles = Array.from(e.target.files);
-      setAttachments((prev) => [...prev, ...newFiles]);
+      const newFile = e.target.files[0];
+      setAttachment(newFile);
     }
   };
 
-  const removeAttachment = (index: number) => {
-    setAttachments((prev) => prev.filter((_, i) => i !== index));
+  const removeAttachment = () => {
+    setAttachment(null);
   };
 
-  const removeExistingAttachment = (id: string) => {
-    setExistingAttachments((prev) =>
-      prev.filter((attachment) => attachment.id !== id)
-    );
+  const removeExistingAttachment = () => {
+    setExistingAttachment(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -245,21 +250,39 @@ export default function EditOutgoingDocumentPage() {
         sentDate: formData.sentDate.toISOString(),
         removedAttachmentIds: document.data.attachments
           ?.filter(
-            (att: any) =>
-              !existingAttachments.some((exAtt) => exAtt.id === att.id)
+            (att: any) => existingAttachment && att.id !== existingAttachment.id
           )
           .map((att: any) => att.id),
       };
+      const _document: OutgoingDocumentDTO = {
+        documentNumber: formData.number,
+        receivingDepartmentText: formData.recipient,
+        documentType: "outgoing-document",
+        title: formData.title,
+        summary: formData.content,
+        signerName: formData.signer,
+      };
 
+      const workflowData: DocumentWorkflowDTO = {
+        status: "REGISTERED",
+        statusDisplayName: "Đã đăng ký",
+        comments: formData.notes,
+      };
+      // Tạo object dữ liệu từ FormData
+      const documentData = {
+        document: _document,
+        workflow: workflowData,
+      };
       // Update document
-      await outgoingDocumentsAPI.updateOutgoingDocument(documentId, updateData);
+      await workflowAPI.updateOutgoingDocumentWorkflow(
+        documentId,
+        documentData
+      );
 
-      // Upload new attachments if any
-      if (attachments.length > 0) {
+      // Upload new attachment if any
+      if (attachment) {
         const formData = new FormData();
-        attachments.forEach((file) => {
-          formData.append("files", file);
-        });
+        formData.append("file", attachment);
 
         await outgoingDocumentsAPI.updateOutgoingDocument(documentId, formData);
       }
@@ -505,8 +528,6 @@ export default function EditOutgoingDocumentPage() {
                     rows={3}
                   />
                 </div>
-
-
               </CardContent>
             </Card>
 
@@ -523,60 +544,49 @@ export default function EditOutgoingDocumentPage() {
                   <Input
                     id="attachments"
                     type="file"
-                    multiple
                     onChange={handleFileChange}
                     className="cursor-pointer"
                   />
                 </div>
 
-                {attachments.length > 0 && (
+                {attachment && (
                   <div className="space-y-2">
                     <Label>Tệp mới</Label>
                     <div className="space-y-2">
-                      {attachments.map((file, index) => (
-                        <div
-                          key={index}
-                          className="flex items-center justify-between rounded-md border p-2"
+                      <div className="flex items-center justify-between rounded-md border p-2">
+                        <span className="text-sm">{attachment.name}</span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={removeAttachment}
+                          className="h-8 w-8 p-0 text-muted-foreground"
                         >
-                          <span className="text-sm">{file.name}</span>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeAttachment(index)}
-                            className="h-8 w-8 p-0 text-muted-foreground"
-                          >
-                            <Trash className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))}
+                          <Trash className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 )}
 
-                {existingAttachments.length > 0 && (
+                {existingAttachment && (
                   <div className="space-y-2">
                     <Label>Tệp hiện có</Label>
                     <div className="space-y-2">
-                      {existingAttachments.map((attachment) => (
-                        <div
-                          key={attachment.id}
-                          className="flex items-center justify-between rounded-md border p-2"
+                      <div className="flex items-center justify-between rounded-md border p-2">
+                        <span className="text-sm">
+                          {existingAttachment.name}
+                        </span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={removeExistingAttachment}
+                          className="h-8 w-8 p-0 text-muted-foreground"
                         >
-                          <span className="text-sm">{attachment.name}</span>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() =>
-                              removeExistingAttachment(attachment.id)
-                            }
-                            className="h-8 w-8 p-0 text-muted-foreground"
-                          >
-                            <Trash className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))}
+                          <Trash className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 )}

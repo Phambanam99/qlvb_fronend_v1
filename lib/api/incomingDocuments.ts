@@ -94,6 +94,7 @@ export interface IncomingDocumentDTO {
   displayStatus?: string;
   signingDate: string;
   receivedDate: Date;
+  closureDeadline?: Date;
   processingStatus: string;
   closureRequest: boolean;
   sendingDepartmentName: string;

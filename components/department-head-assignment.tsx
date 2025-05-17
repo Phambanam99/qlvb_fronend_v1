@@ -38,23 +38,28 @@ import { useRouter } from "next/navigation";
 interface DepartmentHeadAssignmentProps {
   documentId: number;
   departmentId: number;
+  closureDeadline?: string | Date; // Thêm closureDeadline từ văn bản đến
 }
 
 export default function DepartmentHeadAssignment({
   documentId,
   departmentId,
+  closureDeadline,
 }: DepartmentHeadAssignmentProps) {
   // Sử dụng số duy nhất cho người được chọn
   const [selectedStaff, setSelectedStaff] = useState<number | null>(null);
   const [comments, setComments] = useState("");
-  const [deadline, setDeadline] = useState<Date>();
+  // Sử dụng thời hạn từ văn bản đến nếu có
+  const [deadline, setDeadline] = useState<Date | undefined>(
+    closureDeadline ? new Date(closureDeadline) : undefined
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
   // State cho danh sách cán bộ trong phòng
   const [departmentStaff, setDepartmentStaff] = useState<UserDTO[]>([]);
   const [isLoadingStaff, setIsLoadingStaff] = useState(true);
   const { toast } = useToast();
-  
+
   // Tải danh sách cán bộ phòng ngay khi component được mount
   useEffect(() => {
     const fetchDepartmentStaff = async () => {
@@ -93,7 +98,7 @@ export default function DepartmentHeadAssignment({
   // Xử lý khi submit form
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Đảm bảo selectedStaff có giá trị
     if (selectedStaff === null) {
       toast({
@@ -103,7 +108,7 @@ export default function DepartmentHeadAssignment({
       });
       return;
     }
-    
+
     if (!deadline) {
       toast({
         title: "Lỗi",
@@ -112,10 +117,10 @@ export default function DepartmentHeadAssignment({
       });
       return;
     }
-    
+
     try {
       setIsSubmitting(true);
-      
+
       // Tạo đối tượng phân công xử lý
       const documentAssign: DocumentWorkflowDTO = {
         status: DocumentProcessingStatus.DEPT_ASSIGNED.code,
@@ -125,15 +130,15 @@ export default function DepartmentHeadAssignment({
         assignedToId: selectedStaff,
         documentId: documentId,
       };
-      
+
       // Gửi dữ liệu phân công xử lý văn bản đến API
       await workflowAPI.assignToSpecialist(documentId, documentAssign);
-      
+
       toast({
         title: "Thành công",
         description: "Đã phân công xử lý văn bản thành công",
       });
-      
+
       // Chuyển về trang chi tiết
       router.push(`/van-ban-den/${documentId}`);
     } catch (error) {
@@ -152,7 +157,7 @@ export default function DepartmentHeadAssignment({
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <UserCheck className="h-5 w-5" /> 
+          <UserCheck className="h-5 w-5" />
           Phân công xử lý văn bản
         </CardTitle>
       </CardHeader>
@@ -167,7 +172,7 @@ export default function DepartmentHeadAssignment({
                   Danh sách cán bộ trong phòng
                 </span>
               </div>
-              
+
               {isLoadingStaff ? (
                 <div className="py-8 text-center text-muted-foreground">
                   Đang tải danh sách cán bộ...
@@ -229,7 +234,9 @@ export default function DepartmentHeadAssignment({
                 </div>
               ) : (
                 (() => {
-                  const staff = departmentStaff.find((s) => s.id === selectedStaff);
+                  const staff = departmentStaff.find(
+                    (s) => s.id === selectedStaff
+                  );
                   if (!staff) return null;
 
                   return (
@@ -287,8 +294,8 @@ export default function DepartmentHeadAssignment({
           </div>
         </CardContent>
         <CardFooter className="flex justify-end space-x-2">
-          <Button 
-            type="button" 
+          <Button
+            type="button"
             variant="outline"
             onClick={() => router.push(`/van-ban-den/${documentId}`)}
           >

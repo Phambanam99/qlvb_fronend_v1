@@ -2,7 +2,7 @@
 
 import type React from "react";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,8 +17,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
-import { Loader2, AlertCircle } from "lucide-react";
+import { Loader2, AlertCircle, InfoIcon } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
@@ -26,12 +27,21 @@ export default function LoginPage() {
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sessionExpired, setSessionExpired] = useState(false);
 
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") || "/";
   const { login } = useAuth();
   const { toast } = useToast();
+
+  // Kiểm tra xem người dùng có đến từ phiên hết hạn không
+  useEffect(() => {
+    const hasExpired = searchParams.get("session_expired") === "true";
+    if (hasExpired) {
+      setSessionExpired(true);
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,6 +99,14 @@ export default function LoginPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {sessionExpired && (
+              <Alert className="mb-4">
+                <InfoIcon className="h-4 w-4" />
+                <AlertDescription>
+                  Phiên của bạn đã hết hạn. Vui lòng đăng nhập lại để tiếp tục.
+                </AlertDescription>
+              </Alert>
+            )}
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md flex items-center mb-4">
                 <AlertCircle className="h-4 w-4 mr-2" />

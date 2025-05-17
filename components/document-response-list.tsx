@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import Link from "next/link";
 import {
   FileText,
   Download,
@@ -12,6 +13,8 @@ import {
   Trash,
   ThumbsUp,
   ThumbsDown,
+  Send,
+  Eye,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -36,16 +39,18 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { workflowAPI } from "@/lib/api/workflow";
-import { outgoingDocumentsAPI } from "@/lib/api";
+import { outgoingDocumentsAPI, DocumentWorkflowDTO } from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import { getStatusBadgeInfo } from "@/lib/utils";
+import { useNotifications } from "@/lib/notifications-context";
 
 // Định nghĩa kiểu dữ liệu cho Response
 interface DocumentResponse {
   id: number;
   title: string;
-  content: string;
+  summary: string;
+  documentNumber?: string;
   created?: string;
   creator: {
     id: number;
@@ -66,6 +71,7 @@ export default function DocumentResponseList({
   // States và context
   const { toast } = useToast();
   const { user, hasRole } = useAuth();
+  const { addNotification } = useNotifications();
   const [responses, setResponses] = useState<DocumentResponse[]>([]);
   const [rejectionReason, setRejectionReason] = useState("");
   const [selectedResponseId, setSelectedResponseId] = useState<number | null>(
@@ -81,7 +87,12 @@ export default function DocumentResponseList({
     hasRole("ROLE_CUC_PHO") ||
     hasRole("ROLE_CHINH_UY") ||
     hasRole("ROLE_PHO_CHINH_UY");
-  const ruleDoc = ["leader_approved", "published", "completed"];
+  const ruleDoc = [
+    "leader_approved",
+    "published",
+    "completed",
+    "leader_reviewing",
+  ];
   useEffect(() => {
     const fetchResponses = async () => {
       try {
@@ -89,7 +100,9 @@ export default function DocumentResponseList({
         const response = await workflowAPI.getDocumentResponses(
           String(documentId)
         );
-        const res = response.filter((item: any) => ruleDoc.includes(item.status));
+        const res = response.filter((item: any) =>
+          ruleDoc.includes(item.status)
+        );
         setResponses(res as DocumentResponse[]);
       } catch (error) {
         console.error("Error fetching responses:", error);
@@ -159,7 +172,7 @@ export default function DocumentResponseList({
       setResponses(
         responses.map((response) => {
           if (response.id === responseId) {
-            return { ...response, status: "approved" };
+            return { ...response, status: "leader_approved" };
           }
           return response;
         })
@@ -186,9 +199,10 @@ export default function DocumentResponseList({
 
     setIsSubmitting(true);
     try {
-      await workflowAPI.rejectDocumentResponse(selectedResponseId, {
-        comment: rejectionReason,
-      });
+      await workflowAPI.rejectDocumentResponse(
+        selectedResponseId,
+        rejectionReason
+      );
 
       // Cập nhật danh sách văn bản
       setResponses(
@@ -224,6 +238,52 @@ export default function DocumentResponseList({
     }
   };
 
+  const handlePublishDocument = async (responseId: number) => {
+    setIsSubmitting(true);
+    try {
+      // Gọi API để ban hành văn bản
+      await outgoingDocumentsAPI.issueDocument(responseId);
+
+      const workflow: DocumentWorkflowDTO = {
+        documentId: responseId,
+        status: "completed",
+        statusDisplayName: "Đã hoàn thành",
+        comments: "Văn bản đã hoàn thành",
+      };
+      await workflowAPI.changeDocumentStatus(documentId, workflow);
+      // Cập nhật danh sách văn bản với trạng thái mới
+      setResponses(
+        responses.map((response) => {
+          if (response.id === responseId) {
+            return { ...response, status: "published" };
+          }
+          return response;
+        })
+      );
+
+      // Hiển thị thông báo thành công
+      addNotification({
+        title: "Văn bản đã được ban hành",
+        message: "Văn bản đã được ban hành thành công",
+        type: "success",
+      });
+
+      toast({
+        title: "Thành công",
+        description: "Văn bản đã được ban hành thành công",
+      });
+    } catch (error) {
+      console.error("Lỗi khi ban hành văn bản:", error);
+      toast({
+        title: "Lỗi",
+        description: "Không thể ban hành văn bản. Vui lòng thử lại sau.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       {responses.length === 0 ? (
@@ -238,7 +298,7 @@ export default function DocumentResponseList({
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base">
-                  Văn bản trả lời #{response.id}
+                  Văn bản trả lời {response.documentNumber}
                 </CardTitle>
                 {getStatusBadge(response.status)}
               </div>
@@ -254,9 +314,21 @@ export default function DocumentResponseList({
                   {response.created}
                 </span>
               </div>
+              <div className="flex justify-between text-sm">
+                <span>
+                  <span className="text-muted-foreground">Đơn vị:</span>{" "}
+                  {response.creator.fullName}
+                </span>
+                <span>
+                  <span className="text-muted-foreground">
+                    Người phê duyệt:
+                  </span>{" "}
+                  {response.created}
+                </span>
+              </div>
               <Separator />
               <div>
-                <p className="whitespace-pre-line">{response.content}</p>
+                <p className="whitespace-pre-line">{response.summary}</p>
               </div>
               {response.attachmentFilename && (
                 <>
@@ -355,8 +427,30 @@ export default function DocumentResponseList({
                   </Dialog>
                 </div>
               )}
+              {/* Nút Ban hành - Chỉ hiển thị cho văn thư khi văn bản đã được phê duyệt */}
+              {response.status === "leader_approved" &&
+                hasRole("ROLE_VAN_THU") && (
+                  <div className="flex justify-end space-x-2 mt-3">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="border-blue-500 hover:bg-blue-50 text-blue-600"
+                      onClick={() => handlePublishDocument(response.id)}
+                      disabled={isSubmitting}
+                    >
+                      <Send className="mr-2 h-4 w-4" />
+                      Ban hành
+                    </Button>
+                  </div>
+                )}
               <Separator />
               <div className="flex justify-end space-x-2">
+                <Link href={`/van-ban-di/${response.id}`}>
+                  <Button variant="outline" size="sm">
+                    <Eye className="mr-2 h-4 w-4" />
+                    Chi tiết
+                  </Button>
+                </Link>
                 {response.status === "rejected" && (
                   <Button variant="outline" size="sm">
                     <Pencil className="mr-2 h-4 w-4" />

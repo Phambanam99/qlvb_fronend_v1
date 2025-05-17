@@ -88,6 +88,7 @@ export default function DocumentAssignmentPage({
           <DepartmentHeadAssignment
             documentId={documentId}
             departmentId={Number(user?.departmentId!)}
+            closureDeadline={document.data.closureDeadline}
           />
         </div>
         <div className="md:col-span-3">

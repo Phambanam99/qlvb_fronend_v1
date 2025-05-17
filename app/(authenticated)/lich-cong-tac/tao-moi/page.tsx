@@ -1,49 +1,68 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState, useEffect } from "react"
-import { useSearchParams, useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Calendar } from "@/components/ui/calendar"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { ArrowLeft, CalendarIcon, Plus, Save, Trash } from "lucide-react"
-import Link from "next/link"
-import { cn } from "@/lib/utils"
-import { format } from "date-fns"
-import { vi } from "date-fns/locale"
-
+import { useState, useEffect } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { ArrowLeft, CalendarIcon, Plus, Save, Trash } from "lucide-react";
+import Link from "next/link";
+import { cn } from "@/lib/utils";
+import { format } from "date-fns";
+import { de, vi } from "date-fns/locale";
+import { usersAPI } from "@/lib/api/users";
 // Cập nhật import để sử dụng API từ thư mục lib/api
-import { schedulesAPI, departmentsAPI as departmentsApi } from "@/lib/api"
-import { useNotifications } from "@/lib/notifications-context"
+import { schedulesAPI, departmentsAPI } from "@/lib/api";
+import { useNotifications } from "@/lib/notifications-context";
 
 export default function CreateSchedulePage() {
-  const searchParams = useSearchParams()
-  const template = searchParams.get("template") || "week"
+  const searchParams = useSearchParams();
+  const template = searchParams.get("template") || "week";
 
-  const [scheduleType, setScheduleType] = useState<"week" | "month">(template === "month" ? "month" : "week")
-  const [title, setTitle] = useState("")
-  const [description, setDescription] = useState("")
-  const [department, setDepartment] = useState("")
-  const [startDate, setStartDate] = useState<Date>()
-  const [endDate, setEndDate] = useState<Date>()
-  const [scheduleItems, setScheduleItems] = useState<any[]>([])
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [scheduleType, setScheduleType] = useState<"week" | "month">(
+    template === "month" ? "month" : "week"
+  );
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [department, setDepartment] = useState("");
+  const [startDate, setStartDate] = useState<Date>();
+  const [endDate, setEndDate] = useState<Date>();
+  const [scheduleItems, setScheduleItems] = useState<any[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Dữ liệu mẫu cho phòng ban
-  const [departments, setDepartments] = useState<any[]>([])
-  const [staffMembers, setStaffMembers] = useState<any[]>([])
-  const [isLoadingDepartments, setIsLoadingDepartments] = useState(false)
-  const [isLoadingStaff, setIsLoadingStaff] = useState(false)
+  const [departments, setDepartments] = useState<any[]>([]);
+  const [staffMembers, setStaffMembers] = useState<any[]>([]);
+  const [isLoadingDepartments, setIsLoadingDepartments] = useState(false);
+  const [isLoadingStaff, setIsLoadingStaff] = useState(false);
 
   // Thêm các state và hooks cần thiết
-  const { addNotification } = useNotifications()
-  const router = useRouter()
+  const { addNotification } = useNotifications();
+  const router = useRouter();
 
   const addScheduleItem = () => {
     const newItem = {
@@ -56,105 +75,190 @@ export default function CreateSchedulePage() {
       participants: [],
       description: "",
       type: "internal",
-    }
-    setScheduleItems([...scheduleItems, newItem])
-  }
+    };
+    setScheduleItems([...scheduleItems, newItem]);
+  };
 
   const updateScheduleItem = (id: number, field: string, value: any) => {
-    setScheduleItems(scheduleItems.map((item) => (item.id === id ? { ...item, [field]: value } : item)))
-  }
+    setScheduleItems(
+      scheduleItems.map((item) =>
+        item.id === id ? { ...item, [field]: value } : item
+      )
+    );
+  };
 
   const removeScheduleItem = (id: number) => {
-    setScheduleItems(scheduleItems.filter((item) => item.id !== id))
-  }
+    setScheduleItems(scheduleItems.filter((item) => item.id !== id));
+  };
 
-  // Cập nhật hàm handleSubmit để sử dụng API
+  // Kiểm tra dữ liệu trước khi submit
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsSubmitting(true)
+    e.preventDefault();
+
+    // Validate dữ liệu
+    if (!title) {
+      addNotification({
+        title: "Lỗi",
+        message: "Vui lòng nhập tiêu đề lịch công tác",
+        type: "error",
+      });
+      return;
+    }
+
+    if (!startDate) {
+      addNotification({
+        title: "Lỗi",
+        message: "Vui lòng chọn ngày bắt đầu",
+        type: "error",
+      });
+      return;
+    }
+
+    if (!endDate) {
+      addNotification({
+        title: "Lỗi",
+        message: "Vui lòng chọn ngày kết thúc",
+        type: "error",
+      });
+      return;
+    }
+
+    if (scheduleItems.length === 0) {
+      addNotification({
+        title: "Cảnh báo",
+        message:
+          "Lịch công tác chưa có sự kiện nào. Bạn có chắc muốn tiếp tục?",
+        type: "warning",
+      });
+      // Có thể thêm confirm dialog ở đây
+    }
+
+    setIsSubmitting(true);
 
     try {
-      // Tạo đối tượng dữ liệu lịch công tác từ form
+      // Chuẩn bị dữ liệu - thống nhất sử dụng period thay vì scheduleType
       const scheduleData = {
         title,
         description,
         department,
-        scheduleType,
+        period: scheduleType, // Đổi tên trường để thống nhất với backend
         startDate,
         endDate,
-        scheduleItems,
-      }
+        scheduleItems: scheduleItems.map((item) => ({
+          ...item,
+          // Đảm bảo date là chuỗi ISO date
+          date: item.date ? item.date.toISOString().split("T")[0] : null,
+        })),
+      };
 
-      // Gọi API để tạo lịch công tác mới
-      await schedulesAPI.createSchedule(scheduleData)
+      await schedulesAPI.createSchedule(scheduleData);
 
-      // Thêm thông báo
       addNotification({
-        title: "Đã tạo lịch công tác thành công!",
+        title: "Thành công",
         message: "Lịch công tác đã được tạo và chờ phê duyệt.",
         type: "success",
-      })
+      });
 
-      // Reset form và chuyển hướng
-      setIsSubmitting(false)
-      router.push("/lich-cong-tac")
+      router.push("/lich-cong-tac");
     } catch (error) {
-      console.error("Error creating schedule:", error)
+      console.error("Error creating schedule:", error);
       addNotification({
         title: "Lỗi",
         message: "Không thể tạo lịch công tác. Vui lòng thử lại sau.",
         type: "error",
-      })
-      setIsSubmitting(false)
+      });
+    } finally {
+      setIsSubmitting(false);
     }
-  }
-
-  // Fix the department data mapping
-  const fetchDepartments = async () => {
-    try {
-      const response = await departmentsApi.getAllDepartments()
-      // Map the departments to the expected format
-      const formattedDepartments = response.content
-        ? response.content.map((dept: any) => ({
-            id: dept.id,
-            name: dept.name,
-          }))
-        : []
-      setDepartments(formattedDepartments)
-    } catch (error) {
-      console.error("Error fetching departments:", error)
-    }
-  }
+  };
 
   // Thêm useEffect để lấy dữ liệu phòng ban và cán bộ từ API
   useEffect(() => {
     const fetchDepartmentsAndStaff = async () => {
       try {
-        setIsLoadingDepartments(true)
-        // const departmentsData = await departmentsAPI.getAllDepartments()
-        // setDepartments(departmentsData)
-        await fetchDepartments()
-        setIsLoadingDepartments(false)
+        // Kiểm tra trước khi gọi API lấy phòng ban
+        if (departments.length === 0) {
+          setIsLoadingDepartments(true);
+          const departmentsData = await departmentsAPI.getAllDepartments();
 
-        setIsLoadingStaff(true)
-        const usersData = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users`)
-        const staffData = await usersData.json()
-        setStaffMembers(staffData)
-        setIsLoadingStaff(false)
+          // Kiểm tra cấu trúc dữ liệu và xử lý phù hợp
+          if (departmentsData && Array.isArray(departmentsData.content)) {
+            setDepartments(departmentsData.content);
+          } else if (Array.isArray(departmentsData)) {
+            setDepartments(departmentsData);
+          } else {
+            console.error(
+              "Unexpected departments data structure:",
+              departmentsData
+            );
+            setDepartments([]);
+            addNotification({
+              title: "Lỗi",
+              message: "Định dạng dữ liệu phòng ban không đúng",
+              type: "error",
+            });
+          }
+          setIsLoadingDepartments(false);
+        }
+
+        // Kiểm tra trước khi gọi API lấy danh sách cán bộ
+        if (staffMembers.length === 0) {
+          setIsLoadingStaff(true);
+          const usersData = await usersAPI.getAllUsers();
+          if (Array.isArray(usersData)) {
+            setStaffMembers(usersData);
+          } else {
+            console.error("Unexpected users data structure:", usersData);
+            setStaffMembers([]);
+            addNotification({
+              title: "Lỗi",
+              message: "Định dạng dữ liệu người dùng không đúng",
+              type: "error",
+            });
+          }
+          setIsLoadingStaff(false);
+        }
       } catch (error) {
-        console.error("Error fetching departments and staff:", error)
+        console.error("Error fetching departments and staff:", error);
         addNotification({
           title: "Lỗi",
           message: "Không thể tải dữ liệu phòng ban và cán bộ",
           type: "error",
-        })
-        setIsLoadingDepartments(false)
-        setIsLoadingStaff(false)
+        });
+        setIsLoadingDepartments(false);
+        setIsLoadingStaff(false);
       }
-    }
+    };
 
-    fetchDepartmentsAndStaff()
-  }, [addNotification])
+    fetchDepartmentsAndStaff();
+  }, [addNotification]);
+
+  // Sửa lỗi fetchStaffForDepartment
+  useEffect(() => {
+    const fetchStaffForDepartment = async () => {
+      if (!department) return;
+
+      try {
+        setIsLoadingStaff(true);
+        // Sửa gọi API đúng - department đã là ID (string)
+        const usersData = await usersAPI.getUsersByDepartmentId(
+          Number(department)
+        );
+        setStaffMembers(usersData);
+      } catch (error) {
+        console.error("Error fetching staff for department:", error);
+        addNotification({
+          title: "Lỗi",
+          message: "Không thể tải danh sách cán bộ cho phòng ban này",
+          type: "error",
+        });
+      } finally {
+        setIsLoadingStaff(false);
+      }
+    };
+
+    fetchStaffForDepartment();
+  }, [department, addNotification]);
 
   return (
     <div className="space-y-8">
@@ -172,7 +276,9 @@ export default function CreateSchedulePage() {
           <Card className="shadow-sm">
             <CardHeader>
               <CardTitle>Thông tin chung</CardTitle>
-              <CardDescription>Nhập thông tin chung của lịch công tác</CardDescription>
+              <CardDescription>
+                Nhập thông tin chung của lịch công tác
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-2">
@@ -206,23 +312,41 @@ export default function CreateSchedulePage() {
                   <Label htmlFor="department" className="text-base">
                     Phòng ban
                   </Label>
-                  <Select value={department} onValueChange={setDepartment} required>
+                  <Select
+                    value={department}
+                    onValueChange={(value) => {
+                      setDepartment(value); // value đã là ID (string)
+                      // Reset participants khi đổi phòng ban
+                      scheduleItems.forEach((item) => {
+                        updateScheduleItem(item.id, "participants", []);
+                      });
+                    }}
+                    required
+                  >
                     <SelectTrigger id="department" className="h-11">
-                      <SelectValue placeholder={isLoadingDepartments ? "Đang tải..." : "Chọn phòng ban"} />
+                      <SelectValue
+                        placeholder={
+                          isLoadingDepartments
+                            ? "Đang tải..."
+                            : "Chọn phòng ban"
+                        }
+                      />
                     </SelectTrigger>
                     <SelectContent>
                       {isLoadingDepartments ? (
                         <div className="p-2 text-center">
                           <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full mx-auto"></div>
-                          <p className="mt-2 text-xs text-muted-foreground">Đang tải...</p>
+                          <p className="mt-2 text-xs text-muted-foreground">
+                            Đang tải...
+                          </p>
                         </div>
-                      ) : departments.length === 0 ? (
+                      ) : !departments || departments.length === 0 ? (
                         <SelectItem value="none" disabled>
                           Không có phòng ban nào
                         </SelectItem>
                       ) : (
                         departments.map((dept) => (
-                          <SelectItem key={dept.id} value={dept.id}>
+                          <SelectItem key={dept.id} value={dept.id.toString()}>
                             {dept.name}
                           </SelectItem>
                         ))
@@ -236,7 +360,9 @@ export default function CreateSchedulePage() {
                   </Label>
                   <Select
                     value={scheduleType}
-                    onValueChange={(value: "week" | "month") => setScheduleType(value)}
+                    onValueChange={(value: "week" | "month") =>
+                      setScheduleType(value)
+                    }
                     required
                   >
                     <SelectTrigger id="scheduleType" className="h-11">
@@ -258,11 +384,13 @@ export default function CreateSchedulePage() {
                         variant="outline"
                         className={cn(
                           "w-full justify-start text-left font-normal h-11",
-                          !startDate && "text-muted-foreground",
+                          !startDate && "text-muted-foreground"
                         )}
                       >
                         <CalendarIcon className="mr-2 h-4 w-4" />
-                        {startDate ? format(startDate, "dd/MM/yyyy") : "Chọn ngày"}
+                        {startDate
+                          ? format(startDate, "dd/MM/yyyy")
+                          : "Chọn ngày"}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0">
@@ -287,7 +415,7 @@ export default function CreateSchedulePage() {
                         variant="outline"
                         className={cn(
                           "w-full justify-start text-left font-normal h-11",
-                          !endDate && "text-muted-foreground",
+                          !endDate && "text-muted-foreground"
                         )}
                       >
                         <CalendarIcon className="mr-2 h-4 w-4" />
@@ -301,7 +429,9 @@ export default function CreateSchedulePage() {
                         onSelect={setEndDate}
                         initialFocus
                         locale={vi}
-                        disabled={(date) => (startDate ? date < startDate : false)}
+                        disabled={(date) =>
+                          startDate ? date < startDate : false
+                        }
                         className="rounded-md border"
                       />
                     </PopoverContent>
@@ -316,9 +446,15 @@ export default function CreateSchedulePage() {
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle>Chi tiết lịch công tác</CardTitle>
-                  <CardDescription>Thêm các sự kiện trong lịch công tác</CardDescription>
+                  <CardDescription>
+                    Thêm các sự kiện trong lịch công tác
+                  </CardDescription>
                 </div>
-                <Button type="button" onClick={addScheduleItem} className="rounded-full">
+                <Button
+                  type="button"
+                  onClick={addScheduleItem}
+                  className="rounded-full"
+                >
                   <Plus className="mr-2 h-4 w-4" /> Thêm sự kiện
                 </Button>
               </div>
@@ -327,14 +463,18 @@ export default function CreateSchedulePage() {
               <div className="space-y-6">
                 {scheduleItems.length === 0 ? (
                   <div className="text-center py-12 bg-accent/30 rounded-lg">
-                    <p className="text-muted-foreground">Chưa có sự kiện nào. Nhấn "Thêm sự kiện" để bắt đầu.</p>
+                    <p className="text-muted-foreground">
+                      Chưa có sự kiện nào. Nhấn "Thêm sự kiện" để bắt đầu.
+                    </p>
                   </div>
                 ) : (
                   scheduleItems.map((item, index) => (
                     <Card key={item.id} className="shadow-sm border-dashed">
                       <CardHeader className="pb-2">
                         <div className="flex items-center justify-between">
-                          <CardTitle className="text-base">Sự kiện #{index + 1}</CardTitle>
+                          <CardTitle className="text-base">
+                            Sự kiện #{index + 1}
+                          </CardTitle>
                           <Button
                             type="button"
                             variant="ghost"
@@ -348,12 +488,20 @@ export default function CreateSchedulePage() {
                       </CardHeader>
                       <CardContent className="space-y-6">
                         <div className="space-y-2">
-                          <Label htmlFor={`item-title-${item.id}`}>Tiêu đề</Label>
+                          <Label htmlFor={`item-title-${item.id}`}>
+                            Tiêu đề
+                          </Label>
                           <Input
                             id={`item-title-${item.id}`}
                             placeholder="Nhập tiêu đề sự kiện"
                             value={item.title}
-                            onChange={(e) => updateScheduleItem(item.id, "title", e.target.value)}
+                            onChange={(e) =>
+                              updateScheduleItem(
+                                item.id,
+                                "title",
+                                e.target.value
+                              )
+                            }
                             required
                           />
                         </div>
@@ -367,22 +515,28 @@ export default function CreateSchedulePage() {
                                   variant="outline"
                                   className={cn(
                                     "w-full justify-start text-left font-normal",
-                                    !item.date && "text-muted-foreground",
+                                    !item.date && "text-muted-foreground"
                                   )}
                                 >
                                   <CalendarIcon className="mr-2 h-4 w-4" />
-                                  {item.date ? format(item.date, "dd/MM/yyyy") : "Chọn ngày"}
+                                  {item.date
+                                    ? format(item.date, "dd/MM/yyyy")
+                                    : "Chọn ngày"}
                                 </Button>
                               </PopoverTrigger>
                               <PopoverContent className="w-auto p-0">
                                 <Calendar
                                   mode="single"
                                   selected={item.date}
-                                  onSelect={(date) => updateScheduleItem(item.id, "date", date)}
+                                  onSelect={(date) =>
+                                    updateScheduleItem(item.id, "date", date)
+                                  }
                                   initialFocus
                                   locale={vi}
                                   disabled={(date) =>
-                                    startDate && endDate ? date < startDate || date > endDate : false
+                                    startDate && endDate
+                                      ? date < startDate || date > endDate
+                                      : false
                                   }
                                   className="rounded-md border"
                                 />
@@ -390,92 +544,152 @@ export default function CreateSchedulePage() {
                             </Popover>
                           </div>
                           <div className="space-y-2">
-                            <Label htmlFor={`item-type-${item.id}`}>Loại sự kiện</Label>
+                            <Label htmlFor={`item-type-${item.id}`}>
+                              Loại sự kiện
+                            </Label>
                             <Select
                               value={item.type}
-                              onValueChange={(value) => updateScheduleItem(item.id, "type", value)}
+                              onValueChange={(value) =>
+                                updateScheduleItem(item.id, "type", value)
+                              }
                             >
                               <SelectTrigger id={`item-type-${item.id}`}>
                                 <SelectValue placeholder="Chọn loại sự kiện" />
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="internal">Nội bộ</SelectItem>
-                                <SelectItem value="external">Bên ngoài</SelectItem>
-                                <SelectItem value="online">Trực tuyến</SelectItem>
-                                <SelectItem value="field">Hiện trường</SelectItem>
+                                <SelectItem value="external">
+                                  Bên ngoài
+                                </SelectItem>
+                                <SelectItem value="online">
+                                  Trực tuyến
+                                </SelectItem>
+                                <SelectItem value="field">
+                                  Hiện trường
+                                </SelectItem>
                               </SelectContent>
                             </Select>
                           </div>
                           <div className="space-y-2">
-                            <Label htmlFor={`item-start-time-${item.id}`}>Thời gian bắt đầu</Label>
+                            <Label htmlFor={`item-start-time-${item.id}`}>
+                              Thời gian bắt đầu
+                            </Label>
                             <Input
                               id={`item-start-time-${item.id}`}
                               type="time"
                               value={item.startTime}
-                              onChange={(e) => updateScheduleItem(item.id, "startTime", e.target.value)}
+                              onChange={(e) =>
+                                updateScheduleItem(
+                                  item.id,
+                                  "startTime",
+                                  e.target.value
+                                )
+                              }
                               required
                             />
                           </div>
                           <div className="space-y-2">
-                            <Label htmlFor={`item-end-time-${item.id}`}>Thời gian kết thúc</Label>
+                            <Label htmlFor={`item-end-time-${item.id}`}>
+                              Thời gian kết thúc
+                            </Label>
                             <Input
                               id={`item-end-time-${item.id}`}
                               type="time"
                               value={item.endTime}
-                              onChange={(e) => updateScheduleItem(item.id, "endTime", e.target.value)}
+                              onChange={(e) =>
+                                updateScheduleItem(
+                                  item.id,
+                                  "endTime",
+                                  e.target.value
+                                )
+                              }
                               required
                             />
                           </div>
                           <div className="space-y-2">
-                            <Label htmlFor={`item-location-${item.id}`}>Địa điểm</Label>
+                            <Label htmlFor={`item-location-${item.id}`}>
+                              Địa điểm
+                            </Label>
                             <Input
                               id={`item-location-${item.id}`}
                               placeholder="Nhập địa điểm"
                               value={item.location}
-                              onChange={(e) => updateScheduleItem(item.id, "location", e.target.value)}
+                              onChange={(e) =>
+                                updateScheduleItem(
+                                  item.id,
+                                  "location",
+                                  e.target.value
+                                )
+                              }
                               required
                             />
                           </div>
                           <div className="space-y-2">
-                            <Label htmlFor={`item-participants-${item.id}`}>Thành phần tham dự</Label>
+                            <Label htmlFor={`item-participants-${item.id}`}>
+                              Thành phần tham dự
+                            </Label>
                             <Select
                               value={item.participants[0] || ""}
-                              onValueChange={(value) => updateScheduleItem(item.id, "participants", [value])}
+                              onValueChange={(value) =>
+                                updateScheduleItem(item.id, "participants", [
+                                  value,
+                                ])
+                              }
                             >
-                              <SelectTrigger id={`item-participants-${item.id}`}>
-                                <SelectValue placeholder={isLoadingStaff ? "Đang tải..." : "Chọn người tham dự"} />
+                              <SelectTrigger
+                                id={`item-participants-${item.id}`}
+                              >
+                                <SelectValue
+                                  placeholder={
+                                    isLoadingStaff
+                                      ? "Đang tải..."
+                                      : "Chọn người tham dự"
+                                  }
+                                />
                               </SelectTrigger>
                               <SelectContent>
                                 {isLoadingStaff ? (
                                   <div className="p-2 text-center">
                                     <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full mx-auto"></div>
-                                    <p className="mt-2 text-xs text-muted-foreground">Đang tải...</p>
+                                    <p className="mt-2 text-xs text-muted-foreground">
+                                      Đang tải...
+                                    </p>
                                   </div>
-                                ) : staffMembers.filter((staff) => !department || staff.department === department)
-                                    .length === 0 ? (
+                                ) : staffMembers.length === 0 ? (
                                   <SelectItem value="none" disabled>
-                                    Không có cán bộ nào
+                                    {department
+                                      ? "Không có cán bộ trong phòng ban này"
+                                      : "Vui lòng chọn phòng ban trước"}
                                   </SelectItem>
                                 ) : (
-                                  staffMembers
-                                    .filter((staff) => !department || staff.department === department)
-                                    .map((staff) => (
-                                      <SelectItem key={staff.id} value={staff.name}>
-                                        {staff.name}
-                                      </SelectItem>
-                                    ))
+                                  staffMembers.map((staff) => (
+                                    <SelectItem
+                                      key={staff.id}
+                                      value={staff.id.toString()}
+                                    >
+                                      {staff.name || staff.fullName}
+                                    </SelectItem>
+                                  ))
                                 )}
                               </SelectContent>
                             </Select>
                           </div>
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor={`item-description-${item.id}`}>Mô tả</Label>
+                          <Label htmlFor={`item-description-${item.id}`}>
+                            Mô tả
+                          </Label>
                           <Textarea
                             id={`item-description-${item.id}`}
                             placeholder="Nhập mô tả sự kiện"
                             value={item.description}
-                            onChange={(e) => updateScheduleItem(item.id, "description", e.target.value)}
+                            onChange={(e) =>
+                              updateScheduleItem(
+                                item.id,
+                                "description",
+                                e.target.value
+                              )
+                            }
                             rows={2}
                           />
                         </div>
@@ -486,10 +700,19 @@ export default function CreateSchedulePage() {
               </div>
             </CardContent>
             <CardFooter className="flex justify-between pt-6">
-              <Button type="button" variant="outline" className="rounded-full" asChild>
+              <Button
+                type="button"
+                variant="outline"
+                className="rounded-full"
+                asChild
+              >
                 <Link href="/lich-cong-tac">Hủy</Link>
               </Button>
-              <Button type="submit" className="rounded-full" disabled={isSubmitting}>
+              <Button
+                type="submit"
+                className="rounded-full"
+                disabled={isSubmitting}
+              >
                 {isSubmitting ? (
                   "Đang lưu..."
                 ) : (
@@ -503,5 +726,5 @@ export default function CreateSchedulePage() {
         </div>
       </form>
     </div>
-  )
+  );
 }

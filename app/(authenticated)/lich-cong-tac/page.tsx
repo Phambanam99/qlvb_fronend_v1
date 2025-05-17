@@ -1,507 +1,286 @@
-"use client"
+"use client";
 
-import type React from "react"
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { CalendarIcon, Plus, Search, List, CalendarDays } from "lucide-react";
+import Link from "next/link";
+import { Input } from "@/components/ui/input";
+import ScheduleWeekView from "@/components/schedule-week-view";
+import ScheduleMonthView from "@/components/schedule-month-view";
+import ScheduleList from "@/components/schedule-list";
+import { schedulesAPI } from "@/lib/api";
+import { useToast } from "@/components/ui/use-toast";
+import { useSchedules } from "@/lib/store";
+import { Skeleton } from "@/components/ui/skeleton";
 
-import { useState, useEffect } from "react"
-import { useSearchParams, useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Calendar } from "@/components/ui/calendar"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { ArrowLeft, CalendarIcon, Plus, Save, Trash } from "lucide-react"
-import Link from "next/link"
-import { cn } from "@/lib/utils"
-import { format } from "date-fns"
-import { vi } from "date-fns/locale"
+export default function SchedulesPage() {
+  const { toast } = useToast();
+  const { schedules, loading, setSchedules, setLoading } = useSchedules();
+  const [viewMode, setViewMode] = useState<"week" | "month" | "list">("week");
 
-// Cập nhật import để sử dụng API từ thư mục lib/api
-import { schedulesAPI, departmentsAPI } from "@/lib/api"
-import { useNotifications } from "@/lib/notifications-context"
-
-export default function CreateSchedulePage() {
-  const searchParams = useSearchParams()
-  const template = searchParams.get("template") || "week"
-
-  const [scheduleType, setScheduleType] = useState<"week" | "month">(template === "month" ? "month" : "week")
-  const [title, setTitle] = useState("")
-  const [description, setDescription] = useState("")
-  const [department, setDepartment] = useState("")
-  const [startDate, setStartDate] = useState<Date>()
-  const [endDate, setEndDate] = useState<Date>()
-  const [scheduleItems, setScheduleItems] = useState<any[]>([])
-  const [isSubmitting, setIsSubmitting] = useState(false)
-
-  // Dữ liệu mẫu cho phòng ban
-  const [departments, setDepartments] = useState<any[]>([])
-  const [staffMembers, setStaffMembers] = useState<any[]>([])
-  const [isLoadingDepartments, setIsLoadingDepartments] = useState(false)
-  const [isLoadingStaff, setIsLoadingStaff] = useState(false)
-
-  // Thêm các state và hooks cần thiết
-  const { addNotification } = useNotifications()
-  const router = useRouter()
-
-  const addScheduleItem = () => {
-    const newItem = {
-      id: Date.now(),
-      title: "",
-      date: null,
-      startTime: "",
-      endTime: "",
-      location: "",
-      participants: [],
-      description: "",
-      type: "internal",
-    }
-    setScheduleItems([...scheduleItems, newItem])
-  }
-
-  const updateScheduleItem = (id: number, field: string, value: any) => {
-    setScheduleItems(scheduleItems.map((item) => (item.id === id ? { ...item, [field]: value } : item)))
-  }
-
-  const removeScheduleItem = (id: number) => {
-    setScheduleItems(scheduleItems.filter((item) => item.id !== id))
-  }
-
-  // Cập nhật hàm handleSubmit để sử dụng API
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsSubmitting(true)
-
-    try {
-      // Tạo đối tượng dữ liệu lịch công tác từ form
-      const scheduleData = {
-        title,
-        description,
-        department,
-        scheduleType,
-        startDate,
-        endDate,
-        scheduleItems,
-      }
-
-      // Gọi API để tạo lịch công tác mới
-      await schedulesAPI.createSchedule(scheduleData)
-
-      // Thêm thông báo
-      addNotification({
-        title: "Đã tạo lịch công tác thành công!",
-        message: "Lịch công tác đã được tạo và chờ phê duyệt.",
-        type: "success",
-      })
-
-      // Reset form và chuyển hướng
-      setIsSubmitting(false)
-      router.push("/lich-cong-tac")
-    } catch (error) {
-      console.error("Error creating schedule:", error)
-      addNotification({
-        title: "Lỗi",
-        message: "Không thể tạo lịch công tác. Vui lòng thử lại sau.",
-        type: "error",
-      })
-      setIsSubmitting(false)
-    }
-  }
-
-  // Fix the department data mapping
-  const fetchDepartments = async () => {
-    try {
-      const response = await departmentsAPI.getAllDepartments()
-      // Map the departments to the expected format
-      const formattedDepartments = response.content
-        ? response.content.map((dept: any) => ({
-            id: dept.id,
-            name: dept.name,
-          }))
-        : []
-      setDepartments(formattedDepartments)
-    } catch (error) {
-      console.error("Error fetching departments:", error)
-    }
-  }
-
-  // Thêm useEffect để lấy dữ liệu phòng ban và cán bộ từ API
   useEffect(() => {
-    const fetchDepartmentsAndStaff = async () => {
+    const fetchSchedules = async () => {
       try {
-        setIsLoadingDepartments(true)
-        const departmentsData = await departmentsAPI.getAllDepartments()
-        setDepartments(departmentsData)
-        await fetchDepartments()
-        setIsLoadingDepartments(false)
-
-        setIsLoadingStaff(true)
-        // const usersData = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users`)
-        // const staffData = await usersData.json()
-        setStaffMembers(staffData)
-        setIsLoadingStaff(false)
+        setLoading(true);
+        const data = await schedulesAPI.getAllSchedules();
+        console.log("Fetched schedules:", data);
+        setSchedules(data);
       } catch (error) {
-        console.error("Error fetching departments and staff:", error)
-        addNotification({
+        console.error("Error fetching schedules:", error);
+        toast({
           title: "Lỗi",
-          message: "Không thể tải dữ liệu phòng ban và cán bộ",
-          type: "error",
-        })
-        setIsLoadingDepartments(false)
-        setIsLoadingStaff(false)
+          description: "Không thể tải lịch công tác. Vui lòng thử lại sau.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
       }
-    }
+    };
 
-    fetchDepartmentsAndStaff()
-  }, [addNotification])
+    fetchSchedules();
+  }, []); // Remove toast, setSchedules, setLoading from dependencies
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "draft":
+        return <Badge variant="outline">Dự thảo</Badge>;
+      case "pending":
+        return <Badge variant="secondary">Chờ duyệt</Badge>;
+      case "approved":
+        return <Badge variant="default">Đã duyệt</Badge>;
+      case "rejected":
+        return <Badge variant="destructive">Từ chối</Badge>;
+      default:
+        return <Badge variant="outline">Khác</Badge>;
+    }
+  };
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-center space-x-2">
-        <Button variant="outline" size="icon" className="rounded-full" asChild>
-          <Link href="/lich-cong-tac">
-            <ArrowLeft className="h-4 w-4" />
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold tracking-tight">Lịch công tác</h1>
+        <Button asChild>
+          <Link href="/lich-cong-tac/tao-moi">
+            <Plus className="mr-2 h-4 w-4" />
+            Tạo lịch mới
           </Link>
         </Button>
-        <h1 className="text-3xl font-bold">Tạo lịch công tác mới</h1>
       </div>
 
-      <form onSubmit={handleSubmit}>
-        <div className="grid gap-8">
-          <Card className="shadow-sm">
-            <CardHeader>
-              <CardTitle>Thông tin chung</CardTitle>
-              <CardDescription>Nhập thông tin chung của lịch công tác</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="title" className="text-base">
-                  Tiêu đề
-                </Label>
-                <Input
-                  id="title"
-                  placeholder="Nhập tiêu đề lịch công tác"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  className="h-11"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="description" className="text-base">
-                  Mô tả
-                </Label>
-                <Textarea
-                  id="description"
-                  placeholder="Nhập mô tả lịch công tác"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  className="min-h-[100px] resize-none"
-                  rows={3}
-                />
-              </div>
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="department" className="text-base">
-                    Phòng ban
-                  </Label>
-                  <Select value={department} onValueChange={setDepartment} required>
-                    <SelectTrigger id="department" className="h-11">
-                      <SelectValue placeholder={isLoadingDepartments ? "Đang tải..." : "Chọn phòng ban"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {isLoadingDepartments ? (
-                        <div className="p-2 text-center">
-                          <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full mx-auto"></div>
-                          <p className="mt-2 text-xs text-muted-foreground">Đang tải...</p>
-                        </div>
-                      ) : departments.length === 0 ? (
-                        <SelectItem value="none" disabled>
-                          Không có phòng ban nào
-                        </SelectItem>
-                      ) : (
-                        departments.map((dept) => (
-                          <SelectItem key={dept.id} value={dept.id}>
-                            {dept.name}
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="scheduleType" className="text-base">
-                    Loại lịch
-                  </Label>
-                  <Select
-                    value={scheduleType}
-                    onValueChange={(value: "week" | "month") => setScheduleType(value)}
-                    required
-                  >
-                    <SelectTrigger id="scheduleType" className="h-11">
-                      <SelectValue placeholder="Chọn loại lịch" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="week">Lịch tuần</SelectItem>
-                      <SelectItem value="month">Lịch tháng</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="startDate" className="text-base">
-                    Ngày bắt đầu
-                  </Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full justify-start text-left font-normal h-11",
-                          !startDate && "text-muted-foreground",
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {startDate ? format(startDate, "dd/MM/yyyy") : "Chọn ngày"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <Calendar
-                        mode="single"
-                        selected={startDate}
-                        onSelect={setStartDate}
-                        initialFocus
-                        locale={vi}
-                        className="rounded-md border"
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="endDate" className="text-base">
-                    Ngày kết thúc
-                  </Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full justify-start text-left font-normal h-11",
-                          !endDate && "text-muted-foreground",
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {endDate ? format(endDate, "dd/MM/yyyy") : "Chọn ngày"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <Calendar
-                        mode="single"
-                        selected={endDate}
-                        onSelect={setEndDate}
-                        initialFocus
-                        locale={vi}
-                        disabled={(date) => (startDate ? date < startDate : false)}
-                        className="rounded-md border"
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-sm">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Chi tiết lịch công tác</CardTitle>
-                  <CardDescription>Thêm các sự kiện trong lịch công tác</CardDescription>
-                </div>
-                <Button type="button" onClick={addScheduleItem} className="rounded-full">
-                  <Plus className="mr-2 h-4 w-4" /> Thêm sự kiện
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-6">
-                {scheduleItems.length === 0 ? (
-                  <div className="text-center py-12 bg-accent/30 rounded-lg">
-                    <p className="text-muted-foreground">Chưa có sự kiện nào. Nhấn "Thêm sự kiện" để bắt đầu.</p>
-                  </div>
-                ) : (
-                  scheduleItems.map((item, index) => (
-                    <Card key={item.id} className="shadow-sm border-dashed">
-                      <CardHeader className="pb-2">
-                        <div className="flex items-center justify-between">
-                          <CardTitle className="text-base">Sự kiện #{index + 1}</CardTitle>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="rounded-full hover:bg-destructive/10 hover:text-destructive"
-                            onClick={() => removeScheduleItem(item.id)}
-                          >
-                            <Trash className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="space-y-6">
-                        <div className="space-y-2">
-                          <Label htmlFor={`item-title-${item.id}`}>Tiêu đề</Label>
-                          <Input
-                            id={`item-title-${item.id}`}
-                            placeholder="Nhập tiêu đề sự kiện"
-                            value={item.title}
-                            onChange={(e) => updateScheduleItem(item.id, "title", e.target.value)}
-                            required
-                          />
-                        </div>
-                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                          <div className="space-y-2">
-                            <Label htmlFor={`item-date-${item.id}`}>Ngày</Label>
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <Button
-                                  id={`item-date-${item.id}`}
-                                  variant="outline"
-                                  className={cn(
-                                    "w-full justify-start text-left font-normal",
-                                    !item.date && "text-muted-foreground",
-                                  )}
-                                >
-                                  <CalendarIcon className="mr-2 h-4 w-4" />
-                                  {item.date ? format(item.date, "dd/MM/yyyy") : "Chọn ngày"}
-                                </Button>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-auto p-0">
-                                <Calendar
-                                  mode="single"
-                                  selected={item.date}
-                                  onSelect={(date) => updateScheduleItem(item.id, "date", date)}
-                                  initialFocus
-                                  locale={vi}
-                                  disabled={(date) =>
-                                    startDate && endDate ? date < startDate || date > endDate : false
-                                  }
-                                  className="rounded-md border"
-                                />
-                              </PopoverContent>
-                            </Popover>
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor={`item-type-${item.id}`}>Loại sự kiện</Label>
-                            <Select
-                              value={item.type}
-                              onValueChange={(value) => updateScheduleItem(item.id, "type", value)}
-                            >
-                              <SelectTrigger id={`item-type-${item.id}`}>
-                                <SelectValue placeholder="Chọn loại sự kiện" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="internal">Nội bộ</SelectItem>
-                                <SelectItem value="external">Bên ngoài</SelectItem>
-                                <SelectItem value="online">Trực tuyến</SelectItem>
-                                <SelectItem value="field">Hiện trường</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor={`item-start-time-${item.id}`}>Thời gian bắt đầu</Label>
-                            <Input
-                              id={`item-start-time-${item.id}`}
-                              type="time"
-                              value={item.startTime}
-                              onChange={(e) => updateScheduleItem(item.id, "startTime", e.target.value)}
-                              required
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor={`item-end-time-${item.id}`}>Thời gian kết thúc</Label>
-                            <Input
-                              id={`item-end-time-${item.id}`}
-                              type="time"
-                              value={item.endTime}
-                              onChange={(e) => updateScheduleItem(item.id, "endTime", e.target.value)}
-                              required
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor={`item-location-${item.id}`}>Địa điểm</Label>
-                            <Input
-                              id={`item-location-${item.id}`}
-                              placeholder="Nhập địa điểm"
-                              value={item.location}
-                              onChange={(e) => updateScheduleItem(item.id, "location", e.target.value)}
-                              required
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor={`item-participants-${item.id}`}>Thành phần tham dự</Label>
-                            <Select
-                              value={item.participants[0] || ""}
-                              onValueChange={(value) => updateScheduleItem(item.id, "participants", [value])}
-                            >
-                              <SelectTrigger id={`item-participants-${item.id}`}>
-                                <SelectValue placeholder={isLoadingStaff ? "Đang tải..." : "Chọn người tham dự"} />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {isLoadingStaff ? (
-                                  <div className="p-2 text-center">
-                                    <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full mx-auto"></div>
-                                    <p className="mt-2 text-xs text-muted-foreground">Đang tải...</p>
-                                  </div>
-                                ) : staffMembers.filter((staff) => !department || staff.department === department)
-                                    .length === 0 ? (
-                                  <SelectItem value="none" disabled>
-                                    Không có cán bộ nào
-                                  </SelectItem>
-                                ) : (
-                                  staffMembers
-                                    .filter((staff) => !department || staff.department === department)
-                                    .map((staff) => (
-                                      <SelectItem key={staff.id} value={staff.name}>
-                                        {staff.name}
-                                      </SelectItem>
-                                    ))
-                                )}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor={`item-description-${item.id}`}>Mô tả</Label>
-                          <Textarea
-                            id={`item-description-${item.id}`}
-                            placeholder="Nhập mô tả sự kiện"
-                            value={item.description}
-                            onChange={(e) => updateScheduleItem(item.id, "description", e.target.value)}
-                            rows={2}
-                          />
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))
-                )}
-              </div>
-            </CardContent>
-            <CardFooter className="flex justify-between pt-6">
-              <Button type="button" variant="outline" className="rounded-full" asChild>
-                <Link href="/lich-cong-tac">Hủy</Link>
-              </Button>
-              <Button type="submit" className="rounded-full" disabled={isSubmitting}>
-                {isSubmitting ? (
-                  "Đang lưu..."
-                ) : (
-                  <>
-                    <Save className="mr-2 h-4 w-4" /> Lưu lịch công tác
-                  </>
-                )}
-              </Button>
-            </CardFooter>
-          </Card>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-center space-x-2">
+          <Button
+            variant={viewMode === "week" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setViewMode("week")}
+          >
+            <CalendarIcon className="mr-2 h-4 w-4" />
+            Tuần
+          </Button>
+          <Button
+            variant={viewMode === "month" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setViewMode("month")}
+          >
+            <CalendarDays className="mr-2 h-4 w-4" />
+            Tháng
+          </Button>
+          <Button
+            variant={viewMode === "list" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setViewMode("list")}
+          >
+            <List className="mr-2 h-4 w-4" />
+            Danh sách
+          </Button>
         </div>
-      </form>
+        <div className="flex items-center space-x-2">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Tìm kiếm lịch..."
+              className="w-full bg-background pl-8 sm:w-[200px] md:w-[300px]"
+            />
+          </div>
+          <Button variant="outline" size="sm">
+            Lọc
+          </Button>
+        </div>
+      </div>
+
+      <Tabs defaultValue="all">
+        <TabsList>
+          <TabsTrigger value="all">Tất cả</TabsTrigger>
+          <TabsTrigger value="draft">Dự thảo</TabsTrigger>
+          <TabsTrigger value="pending">Chờ duyệt</TabsTrigger>
+          <TabsTrigger value="approved">Đã duyệt</TabsTrigger>
+        </TabsList>
+        <TabsContent value="all" className="mt-4">
+          {loading ? (
+            <ScheduleSkeleton viewMode={viewMode} />
+          ) : schedules.length > 0 ? (
+            <Card>
+              <CardContent className="p-0">
+                {viewMode === "week" && (
+                  <ScheduleWeekView
+                    date={new Date()}
+                    department="all"
+                    type="all"
+                    schedules={schedules}
+                  />
+                )}
+                {viewMode === "month" && (
+                  <ScheduleMonthView
+                    date={new Date()}
+                    department="all"
+                    type="all"
+                    schedules={schedules}
+                  />
+                )}
+                {viewMode === "list" && (
+                  <ScheduleList
+                    date={new Date()}
+                    department="all"
+                    type="all"
+                    schedules={schedules}
+                  />
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-12">
+              <p className="text-muted-foreground mb-4">
+                Chưa có lịch công tác nào
+              </p>
+              <Button asChild>
+                <Link href="/lich-cong-tac/tao-moi">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Tạo lịch mới
+                </Link>
+              </Button>
+            </div>
+          )}
+        </TabsContent>
+        <TabsContent value="draft" className="mt-4">
+          {loading ? (
+            <ScheduleSkeleton viewMode={viewMode} />
+          ) : (
+            <Card>
+              <CardContent className="p-0">
+                {viewMode === "week" && (
+                  <ScheduleWeekView
+                    date={new Date()}
+                    department="all"
+                    type="all"
+                    schedules={schedules}
+                  />
+                )}
+                {viewMode === "month" && (
+                  <ScheduleMonthView
+                    date={new Date()}
+                    department="all"
+                    type="all"
+                    schedules={schedules}
+                  />
+                )}
+                {viewMode === "list" && (
+                  <ScheduleList
+                    date={new Date()}
+                    department="all"
+                    type="all"
+                    schedules={schedules}
+                  />
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+        {/* Các tab khác tương tự */}
+      </Tabs>
     </div>
-  )
+  );
+}
+
+function ScheduleSkeleton({
+  viewMode,
+}: {
+  viewMode: "week" | "month" | "list";
+}) {
+  return (
+    <Card>
+      <CardContent className="p-6">
+        {viewMode === "list" ? (
+          <div className="space-y-4">
+            {Array(5)
+              .fill(0)
+              .map((_, i) => (
+                <div
+                  key={i}
+                  className="flex items-center justify-between border-b pb-4"
+                >
+                  <div className="space-y-2">
+                    <Skeleton className="h-5 w-48" />
+                    <Skeleton className="h-4 w-32" />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-6 w-16" />
+                    <Skeleton className="h-8 w-8 rounded-full" />
+                  </div>
+                </div>
+              ))}
+          </div>
+        ) : viewMode === "week" ? (
+          <div className="space-y-4">
+            <div className="grid grid-cols-7 gap-2">
+              {Array(7)
+                .fill(0)
+                .map((_, i) => (
+                  <Skeleton key={i} className="h-8 w-full" />
+                ))}
+            </div>
+            <div className="grid grid-cols-7 gap-2">
+              {Array(7)
+                .fill(0)
+                .map((_, i) => (
+                  <div key={i} className="h-32 border rounded-md p-2">
+                    <Skeleton className="h-4 w-full mb-2" />
+                    <Skeleton className="h-4 w-3/4 mb-2" />
+                    <Skeleton className="h-4 w-1/2" />
+                  </div>
+                ))}
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="grid grid-cols-7 gap-2">
+              {Array(7)
+                .fill(0)
+                .map((_, i) => (
+                  <Skeleton key={i} className="h-8 w-full" />
+                ))}
+            </div>
+            <div className="grid grid-cols-7 gap-2">
+              {Array(35)
+                .fill(0)
+                .map((_, i) => (
+                  <div key={i} className="h-24 border rounded-md p-1">
+                    <Skeleton className="h-3 w-6 mb-1" />
+                    {i % 5 === 0 && (
+                      <>
+                        <Skeleton className="h-3 w-full mb-1" />
+                        <Skeleton className="h-3 w-3/4" />
+                      </>
+                    )}
+                  </div>
+                ))}
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
 }

@@ -1,15 +1,16 @@
-import { create } from "zustand"
-import { IncomingDocumentDTO } from "./api/incomingDocuments"
-import { OutgoingDocumentDTO } from "./api/outgoingDocuments"
-import { WorkPlanDTO } from "./api/workPlans"
-import { ScheduleDTO } from "./api/schedules"
+import { create } from "zustand";
+import { IncomingDocumentDTO } from "./api/incomingDocuments";
+import { OutgoingDocumentDTO } from "./api/outgoingDocuments";
+import { WorkPlanDTO } from "./api/workPlans";
+import { ScheduleDTO } from "./api/schedules";
+import { schedulesAPI } from "./api";
 
 // Incoming Documents Store
 interface IncomingDocumentsState {
-  incomingDocuments: IncomingDocumentDTO[]
-  loading: boolean
-  setIncomingDocuments: (documents: IncomingDocumentDTO[]) => void
-  setLoading: (loading: boolean) => void
+  incomingDocuments: IncomingDocumentDTO[];
+  loading: boolean;
+  setIncomingDocuments: (documents: IncomingDocumentDTO[]) => void;
+  setLoading: (loading: boolean) => void;
 }
 
 export const useIncomingDocuments = create<IncomingDocumentsState>((set) => ({
@@ -17,14 +18,14 @@ export const useIncomingDocuments = create<IncomingDocumentsState>((set) => ({
   loading: false,
   setIncomingDocuments: (documents) => set({ incomingDocuments: documents }),
   setLoading: (loading) => set({ loading }),
-}))
+}));
 
 // Outgoing Documents Store
 interface OutgoingDocumentsState {
-  outgoingDocuments: any[]
-  loading: boolean
-  setOutgoingDocuments: (documents: any[]) => void
-  setLoading: (loading: boolean) => void
+  outgoingDocuments: any[];
+  loading: boolean;
+  setOutgoingDocuments: (documents: any[]) => void;
+  setLoading: (loading: boolean) => void;
 }
 
 export const useOutgoingDocuments = create<OutgoingDocumentsState>((set) => ({
@@ -32,14 +33,14 @@ export const useOutgoingDocuments = create<OutgoingDocumentsState>((set) => ({
   loading: false,
   setOutgoingDocuments: (documents) => set({ outgoingDocuments: documents }),
   setLoading: (loading) => set({ loading }),
-}))
+}));
 
 // Work Plans Store
 interface WorkPlansState {
-  workPlans: WorkPlanDTO[]
-  loading: boolean
-  setWorkPlans: (workPlans: WorkPlanDTO[]) => void
-  setLoading: (loading: boolean) => void
+  workPlans: WorkPlanDTO[];
+  loading: boolean;
+  setWorkPlans: (workPlans: WorkPlanDTO[]) => void;
+  setLoading: (loading: boolean) => void;
 }
 
 export const useWorkPlans = create<WorkPlansState>((set) => ({
@@ -47,32 +48,61 @@ export const useWorkPlans = create<WorkPlansState>((set) => ({
   loading: false,
   setWorkPlans: (workPlans) => set({ workPlans }),
   setLoading: (loading) => set({ loading }),
-}))
+}));
 
 // Schedules Store
 interface SchedulesState {
-  schedules: ScheduleDTO[]
-  loading: boolean
-  setSchedules: (schedules: ScheduleDTO[]) => void
-  setLoading: (loading: boolean) => void
+  schedules: ScheduleDTO[];
+  loading: boolean;
+  error: string | null;
+  fetchSchedules: () => Promise<void>;
+  setSchedules: (schedules: ScheduleDTO[]) => void;
+  setLoading: (loading: boolean) => void;
+  setError: (error: string | null) => void;
 }
 
-export const useSchedules = create<SchedulesState>((set) => ({
-  schedules: [],
-  loading: false,
-  setSchedules: (schedules) => set({ schedules }),
-  setLoading: (loading) => set({ loading }),
-}))
+const createSchedulesStore = () => {
+  return create<SchedulesState>()((set, get) => ({
+    schedules: [],
+    loading: false,
+    error: null,
+    fetchSchedules: async () => {
+      try {
+        // Kiểm tra nếu đã đang loading thì không gọi API nữa
+        if (get().loading) return;
+
+        set({ loading: true, error: null });
+        const data = await schedulesAPI.getAllSchedules();
+        set({ schedules: data });
+      } catch (error) {
+        console.error("Error fetching schedules:", error);
+        set({
+          error:
+            error instanceof Error
+              ? error.message
+              : "Không thể tải lịch công tác",
+        });
+      } finally {
+        set({ loading: false });
+      }
+    },
+    setSchedules: (schedules) => set({ schedules }),
+    setLoading: (loading) => set({ loading }),
+    setError: (error) => set({ error }),
+  }));
+};
+
+export const useSchedules = createSchedulesStore();
 
 // User Store
 interface UserState {
-  user: any | null
-  isAuthenticated: boolean
-  loading: boolean
-  setUser: (user: any | null) => void
-  setIsAuthenticated: (isAuthenticated: boolean) => void
-  setLoading: (loading: boolean) => void
-  logout: () => void
+  user: any | null;
+  isAuthenticated: boolean;
+  loading: boolean;
+  setUser: (user: any | null) => void;
+  setIsAuthenticated: (isAuthenticated: boolean) => void;
+  setLoading: (loading: boolean) => void;
+  logout: () => void;
 }
 
 export const useUser = create<UserState>((set) => ({
@@ -83,25 +113,25 @@ export const useUser = create<UserState>((set) => ({
   setIsAuthenticated: (isAuthenticated) => set({ isAuthenticated }),
   setLoading: (loading) => set({ loading }),
   logout: () => set({ user: null, isAuthenticated: false }),
-}))
+}));
 
 // Dashboard Store
 interface DashboardState {
   stats: {
-    incomingDocuments: { total: number; pending: number }
-    outgoingDocuments: { total: number; pending: number }
-    workPlans: { total: number; active: number }
-    schedules: { total: number; today: number }
-  }
-  recentDocuments: any[]
-  todayEvents: any[]
-  loading: boolean
-  error: string | null
-  setStats: (stats: any) => void
-  setRecentDocuments: (documents: any[]) => void
-  setTodayEvents: (events: any[]) => void
-  setLoading: (loading: boolean) => void
-  setError: (error: string | null) => void
+    incomingDocuments: { total: number; pending: number };
+    outgoingDocuments: { total: number; pending: number };
+    workPlans: { total: number; active: number };
+    schedules: { total: number; today: number };
+  };
+  recentDocuments: any[];
+  todayEvents: any[];
+  loading: boolean;
+  error: string | null;
+  setStats: (stats: any) => void;
+  setRecentDocuments: (documents: any[]) => void;
+  setTodayEvents: (events: any[]) => void;
+  setLoading: (loading: boolean) => void;
+  setError: (error: string | null) => void;
 }
 
 export const useDashboard = create<DashboardState>((set) => ({
@@ -116,8 +146,9 @@ export const useDashboard = create<DashboardState>((set) => ({
   loading: false,
   error: null,
   setStats: (stats) => set({ stats }),
-  setRecentDocuments: (documents) => set({ recentDocuments: documents }),
+  setRecentDocuments: (documents) =>
+    set({ recentDocuments: documents.filter((doc) => doc !== null) }),
   setTodayEvents: (events) => set({ todayEvents: events }),
   setLoading: (loading) => set({ loading }),
   setError: (error) => set({ error }),
-}))
+}));

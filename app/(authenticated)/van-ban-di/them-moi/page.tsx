@@ -38,25 +38,29 @@ import {
 } from "@/lib/api";
 
 export default function AddOutgoingDocumentPage() {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [file, setFile] = useState<File | null>(null);
+  
   const { user } = useAuth();
+
+  // Form state
+  const [formRef, setFormRef] = useState<HTMLFormElement | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingApprovers, setIsLoadingApprovers] = useState(false);
+  const [approvers, setApprovers] = useState<any[]>([]);
+  const [file, setFile] = useState<File | null>(null);
+  const [replyToId, setReplyToId] = useState<string | null>(null);
+
   const { addNotification } = useNotifications();
   const router = useRouter();
   const searchParams = useSearchParams();
-   console.log("user", user);
+
   // Lấy replyToId từ query parameter
-  const replyToId = searchParams.get("replyToId");
+  useEffect(() => {
+    setReplyToId(searchParams.get("replyToId"));
+  }, [searchParams]);
 
   // State cho thông tin văn bản đến (nếu là trả lời)
   const [incomingDocument, setIncomingDocument] = useState<any>(null);
   const [isLoadingIncomingDoc, setIsLoadingIncomingDoc] = useState(false);
-
-  // Thêm state cho danh sách người phê duyệt
-  const [approvers, setApprovers] = useState<
-    Array<{ id: string; fullName: string; position: string }>
-  >([]);
-  const [isLoadingApprovers, setIsLoadingApprovers] = useState(false);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -159,30 +163,32 @@ export default function AddOutgoingDocumentPage() {
       const formData = new FormData(e.target as HTMLFormElement);
       const _document: OutgoingDocumentDTO = {
         documentNumber: formData.get("documentNumber") as string,
-        signingDate: formData.get("sentDate")? new Date(formData.get("sentDate") as string) : new Date(),
+        signingDate: formData.get("sentDate")
+          ? new Date(formData.get("sentDate") as string)
+          : new Date(),
         receivingDepartmentText: formData.get("recipient") as string,
         documentType: formData.get("documentType") as string,
         title: formData.get("title") as string,
         summary: formData.get("content") as string,
-        signerId:formData.get("approver") ? Number(formData.get("approver")) : 0,
-        
+        signerId: formData.get("approver")
+          ? Number(formData.get("approver"))
+          : 0,
       };
 
       const workflowData: DocumentWorkflowDTO = {
-                status: "REGISTERED",
-                statusDisplayName: "Đã đăng ký",
-                comments: formData.get("note") as string,
-               
-              };
+        status: "REGISTERED",
+        statusDisplayName: "Đã đăng ký",
+        comments: formData.get("note") as string,
+      };
       // Tạo object dữ liệu từ FormData
       const documentData = {
         document: _document,
-        workflow: workflowData
+        workflow: workflowData,
       };
       console.log("Document Data:", documentData);
       if (replyToId) {
         // Nếu đang trả lời văn bản, sử dụng API tạo văn bản trả lời
-        await workflowAPI.createResponseDocument( documentData,replyToId, file);
+        await workflowAPI.createResponseDocument(documentData, replyToId, file);
 
         addNotification({
           title: "Văn bản trả lời đã được tạo",
@@ -509,11 +515,11 @@ export default function AddOutgoingDocumentPage() {
                   "Đang xử lý..."
                 ) : (
                   <>
-                    <Send className="mr-2 h-4 w-4" /> Gửi phê duyệt
+                    <Send className="mr-2 h-4 w-4" /> Lưu nháp
                   </>
                 )}
               </Button>
-              <Button
+              {/* <Button
                 type="button"
                 variant="outline"
                 className="w-full"
@@ -521,7 +527,7 @@ export default function AddOutgoingDocumentPage() {
                 disabled={isSubmitting}
               >
                 <Save className="mr-2 h-4 w-4" /> Lưu nháp
-              </Button>
+              </Button> */}
             </CardFooter>
           </Card>
         </div>

@@ -87,8 +87,10 @@ export default function OutgoingDocumentForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [attachments, setAttachments] = useState<File[]>([]);
-  const [existingAttachments, setExistingAttachments] = useState<any[]>([]);
+  const [attachment, setAttachment] = useState<File | null>(null);
+  const [existingAttachment, setExistingAttachment] = useState<any | null>(
+    null
+  );
   const [departments, setDepartments] = useState<any[]>([]);
   const [approvers, setApprovers] = useState<
     Array<{ id: string; fullName: string; position: string }>
@@ -117,20 +119,17 @@ export default function OutgoingDocumentForm({
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const newFiles = Array.from(e.target.files);
-      setAttachments((prev) => [...prev, ...newFiles]);
+    if (e.target.files && e.target.files[0]) {
+      setAttachment(e.target.files[0]);
     }
   };
 
-  const removeAttachment = (index: number) => {
-    setAttachments((prev) => prev.filter((_, i) => i !== index));
+  const removeAttachment = () => {
+    setAttachment(null);
   };
 
-  const removeExistingAttachment = (id: string) => {
-    setExistingAttachments((prev) =>
-      prev.filter((attachment) => attachment.id !== id)
-    );
+  const removeExistingAttachment = () => {
+    setExistingAttachment(null);
   };
 
   // Hàm kiểm tra quyền chỉnh sửa văn bản (chỉ sử dụng trong chế độ edit)
@@ -188,13 +187,18 @@ export default function OutgoingDocumentForm({
             );
 
             // Lấy danh sách người dùng có vai trò lãnh đạo trong phòng ban
-            const usersResponse = await usersAPI.getUsersByRoleAndDepartment(["ROLE_LEADER"], Number(user.departmentId));
+            const usersResponse = await usersAPI.getUsersByRoleAndDepartment(
+              ["ROLE_LEADER"],
+              Number(user.departmentId)
+            );
             const leaderUsers = usersResponse;
 
             // Lấy danh sách người dùng có vai trò lãnh đạo cấp cao
-            const seniorLeadersResponse = await usersAPI.getUsersByRoleAndDepartment(
-              ["ROLE_SENIOR_LEADER"], 0 // 0 để lấy tất cả phòng ban
-            );
+            const seniorLeadersResponse =
+              await usersAPI.getUsersByRoleAndDepartment(
+                ["ROLE_SENIOR_LEADER"],
+                0 // 0 để lấy tất cả phòng ban
+              );
 
             // Kết hợp hai danh sách
             const allApprovers = [...leaderUsers, ...seniorLeadersResponse];
@@ -230,7 +234,7 @@ export default function OutgoingDocumentForm({
 
           // Kiểm tra quyền truy cập
           const hasEditPermission = checkEditPermission(documentWithHistory);
-          
+
           if (!hasEditPermission) {
             toast({
               title: "Không có quyền chỉnh sửa",
@@ -260,8 +264,11 @@ export default function OutgoingDocumentForm({
           });
 
           // Lấy tệp đính kèm hiện có
-          if (documentData.data.attachments) {
-            setExistingAttachments(documentData.data.attachments);
+          if (
+            documentData.data.attachments &&
+            documentData.data.attachments.length > 0
+          ) {
+            setExistingAttachment(documentData.data.attachments[0]);
           }
         }
       } catch (error) {
@@ -297,44 +304,56 @@ export default function OutgoingDocumentForm({
 
       // Chuẩn bị dữ liệu form
       const formDataToSubmit = new FormData();
-      
+
       // Thêm các trường dữ liệu vào FormData
       formDataToSubmit.append("title", formData.title);
       formDataToSubmit.append("content", formData.content);
       formDataToSubmit.append("recipient", formData.recipient);
-      formDataToSubmit.append("recipientDepartmentId", formData.recipientDepartmentId);
+      formDataToSubmit.append(
+        "recipientDepartmentId",
+        formData.recipientDepartmentId
+      );
       formDataToSubmit.append("signer", formData.signer);
       formDataToSubmit.append("signerPosition", formData.signerPosition);
       formDataToSubmit.append("sentDate", formData.sentDate.toISOString());
       formDataToSubmit.append("isUrgent", formData.isUrgent.toString());
-      formDataToSubmit.append("isConfidential", formData.isConfidential.toString());
+      formDataToSubmit.append(
+        "isConfidential",
+        formData.isConfidential.toString()
+      );
       formDataToSubmit.append("notes", formData.notes);
       formDataToSubmit.append("approverId", formData.approverId);
       formDataToSubmit.append("priority", formData.priority);
-      
+
       // Thêm replyToId nếu có
       if (replyToId) {
         formDataToSubmit.append("replyToId", replyToId);
       }
 
       // Thêm tệp đính kèm
-      attachments.forEach((file) => {
-        formDataToSubmit.append("files", file);
-      });
+      if (attachment) {
+        formDataToSubmit.append("file", attachment);
+      }
 
       // Nếu là chế độ chỉnh sửa
       if (mode === "edit" && documentId) {
         // Thêm danh sách ID tệp đính kèm bị xóa
         const removedAttachmentIds = initialData?.data?.attachments
-          ?.filter((att: any) => !existingAttachments.some((exAtt) => exAtt.id === att.id))
+          ?.filter((att: any) => existingAttachment?.id !== att.id)
           .map((att: any) => att.id);
 
         if (removedAttachmentIds && removedAttachmentIds.length > 0) {
-          formDataToSubmit.append("removedAttachmentIds", JSON.stringify(removedAttachmentIds));
+          formDataToSubmit.append(
+            "removedAttachmentIds",
+            JSON.stringify(removedAttachmentIds)
+          );
         }
 
         // Gọi API cập nhật văn bản
-        await outgoingDocumentsAPI.updateOutgoingDocument(documentId, formDataToSubmit);
+        await outgoingDocumentsAPI.updateOutgoingDocument(
+          documentId,
+          formDataToSubmit
+        );
 
         toast({
           title: "Thành công",
@@ -345,7 +364,9 @@ export default function OutgoingDocumentForm({
         router.push(`/van-ban-di/${documentId}`);
       } else {
         // Gọi API tạo văn bản mới
-        const response = await outgoingDocumentsAPI.createOutgoingDocument(formDataToSubmit);
+        const response = await outgoingDocumentsAPI.createOutgoingDocument(
+          formDataToSubmit
+        );
 
         toast({
           title: "Thành công",
@@ -390,7 +411,7 @@ export default function OutgoingDocumentForm({
       if (mode === "edit" && documentId) {
         // Thêm danh sách ID tệp đính kèm bị xóa
         const removedAttachmentIds = initialData?.data?.attachments
-          ?.filter((att: any) => !existingAttachments.some((exAtt) => exAtt.id === att.id))
+          ?.filter((att: any) => existingAttachment?.id !== att.id)
           .map((att: any) => att.id);
 
         await outgoingDocumentsAPI.updateOutgoingDocument(documentId, {
@@ -399,13 +420,14 @@ export default function OutgoingDocumentForm({
         });
 
         // Upload tệp đính kèm mới nếu có
-        if (attachments.length > 0) {
+        if (attachment) {
           const formData = new FormData();
-          attachments.forEach((file) => {
-            formData.append("files", file);
-          });
+          formData.append("file", attachment);
 
-          await outgoingDocumentsAPI.updateOutgoingDocument(documentId, formData);
+          await outgoingDocumentsAPI.updateOutgoingDocument(
+            documentId,
+            formData
+          );
         }
 
         toast({
@@ -418,29 +440,31 @@ export default function OutgoingDocumentForm({
       } else {
         // Tạo FormData để gửi cả file và dữ liệu
         const formDataToSubmit = new FormData();
-        
+
         // Thêm các trường dữ liệu vào FormData
         Object.entries(draftData).forEach(([key, value]) => {
           if (value !== undefined && value !== null) {
             formDataToSubmit.append(key, value.toString());
           }
         });
-        
+
         // Thêm status=draft
         formDataToSubmit.append("status", "draft");
-        
+
         // Thêm replyToId nếu có
         if (replyToId) {
           formDataToSubmit.append("replyToId", replyToId);
         }
 
         // Thêm tệp đính kèm
-        attachments.forEach((file) => {
-          formDataToSubmit.append("files", file);
-        });
+        if (attachment) {
+          formDataToSubmit.append("file", attachment);
+        }
 
         // Gọi API tạo văn bản nháp
-        const response = await outgoingDocumentsAPI.createOutgoingDocument(formDataToSubmit);
+        const response = await outgoingDocumentsAPI.createOutgoingDocument(
+          formDataToSubmit
+        );
 
         toast({
           title: "Thành công",
@@ -465,7 +489,7 @@ export default function OutgoingDocumentForm({
   // Xử lý xóa văn bản (chỉ có trong chế độ edit)
   const handleDelete = async () => {
     if (!documentId) return;
-    
+
     try {
       setIsDeleting(true);
       await outgoingDocumentsAPI.deleteOutgoingDocument(documentId);
@@ -519,7 +543,9 @@ export default function OutgoingDocumentForm({
             <Card>
               <CardHeader>
                 <CardTitle>Thông tin văn bản</CardTitle>
-                <CardDescription>Nhập các thông tin cơ bản của văn bản</CardDescription>
+                <CardDescription>
+                  Nhập các thông tin cơ bản của văn bản
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -582,7 +608,9 @@ export default function OutgoingDocumentForm({
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="recipientDepartmentId">Phòng ban nhận</Label>
+                    <Label htmlFor="recipientDepartmentId">
+                      Phòng ban nhận
+                    </Label>
                     <Select
                       value={formData.recipientDepartmentId}
                       onValueChange={(value) =>
@@ -668,64 +696,47 @@ export default function OutgoingDocumentForm({
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="attachments">Thêm tệp đính kèm mới</Label>
+                  <Label htmlFor="attachment">Thêm tệp đính kèm mới</Label>
                   <Input
-                    id="attachments"
+                    id="attachment"
                     type="file"
-                    multiple
                     onChange={handleFileChange}
                     className="cursor-pointer"
                   />
                 </div>
 
-                {attachments.length > 0 && (
+                {attachment && (
                   <div className="space-y-2">
                     <Label>Tệp mới</Label>
-                    <div className="space-y-2">
-                      {attachments.map((file, index) => (
-                        <div
-                          key={index}
-                          className="flex items-center justify-between rounded-md border p-2"
-                        >
-                          <span className="text-sm">{file.name}</span>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeAttachment(index)}
-                            className="h-8 w-8 p-0 text-muted-foreground"
-                          >
-                            <Trash className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))}
+                    <div className="flex items-center justify-between rounded-md border p-2">
+                      <span className="text-sm">{attachment.name}</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={removeAttachment}
+                        className="h-8 w-8 p-0 text-muted-foreground"
+                      >
+                        <Trash className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
                 )}
 
-                {mode === "edit" && existingAttachments.length > 0 && (
+                {mode === "edit" && existingAttachment && (
                   <div className="space-y-2">
                     <Label>Tệp hiện có</Label>
-                    <div className="space-y-2">
-                      {existingAttachments.map((attachment) => (
-                        <div
-                          key={attachment.id}
-                          className="flex items-center justify-between rounded-md border p-2"
-                        >
-                          <span className="text-sm">{attachment.name}</span>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() =>
-                              removeExistingAttachment(attachment.id)
-                            }
-                            className="h-8 w-8 p-0 text-muted-foreground"
-                          >
-                            <Trash className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))}
+                    <div className="flex items-center justify-between rounded-md border p-2">
+                      <span className="text-sm">{existingAttachment.name}</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={removeExistingAttachment}
+                        className="h-8 w-8 p-0 text-muted-foreground"
+                      >
+                        <Trash className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
                 )}
@@ -822,7 +833,11 @@ export default function OutgoingDocumentForm({
                 </div>
               </CardContent>
               <CardFooter className="flex flex-col space-y-3">
-                <Button type="submit" className="w-full" disabled={isSubmitting}>
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={isSubmitting}
+                >
                   {isSubmitting ? (
                     "\u0110ang x\u1eed l\u00fd..."
                   ) : (
@@ -860,10 +875,12 @@ export default function OutgoingDocumentForm({
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>Xác nhận xóa văn bản</AlertDialogTitle>
+                        <AlertDialogTitle>
+                          Xác nhận xóa văn bản
+                        </AlertDialogTitle>
                         <AlertDialogDescription>
-                          Bạn có chắc chắn muốn xóa văn bản này? Hành động này không
-                          thể hoàn tác.
+                          Bạn có chắc chắn muốn xóa văn bản này? Hành động này
+                          không thể hoàn tác.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
@@ -872,7 +889,9 @@ export default function OutgoingDocumentForm({
                           onClick={handleDelete}
                           className="bg-destructive text-destructive-foreground"
                         >
-                          {isDeleting ? "\u0110ang x\u00f3a..." : "Xác nhận x\u00f3a"}
+                          {isDeleting
+                            ? "\u0110ang x\u00f3a..."
+                            : "Xác nhận x\u00f3a"}
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>

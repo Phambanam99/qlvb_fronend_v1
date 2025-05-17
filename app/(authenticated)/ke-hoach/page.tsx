@@ -1,101 +1,127 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Badge } from "@/components/ui/badge"
-import { Plus, Search } from "lucide-react"
-import Link from "next/link"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { workPlansAPI } from "@/lib/api/workPlans"
-import { useToast } from "@/components/ui/use-toast"
-import { Skeleton } from "@/components/ui/skeleton"
-import type { WorkPlanDTO } from "@/lib/api/workPlans"
+import { useEffect, useState, useRef } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { Plus, Search } from "lucide-react";
+import Link from "next/link";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { workPlansAPI } from "@/lib/api/workPlans";
+import { useToast } from "@/components/ui/use-toast";
+import { Skeleton } from "@/components/ui/skeleton";
+import type { WorkPlanDTO } from "@/lib/api/workPlans";
+import { DepartmentDTO, departmentsAPI } from "@/lib/api";
 
 export default function WorkPlansPage() {
-  const { toast } = useToast()
-  const [isLoading, setIsLoading] = useState(true)
-  const [workPlans, setWorkPlans] = useState<WorkPlanDTO[]>([])
-  const [searchQuery, setSearchQuery] = useState("")
-  const [statusFilter, setStatusFilter] = useState("all")
-  const [departmentFilter, setDepartmentFilter] = useState("all")
-  const [departments, setDepartments] = useState<{ id: string; name: string }[]>([])
+  const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(true);
+  const [workPlans, setWorkPlans] = useState<WorkPlanDTO[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [departmentFilter, setDepartmentFilter] = useState("all");
+  const [departments, setDepartments] = useState<DepartmentDTO[]>([]);
+  // Thêm một ref để theo dõi việc đã fetch departments hay chưa
+  const hasFetchedDepartmentsRef = useRef(false);
 
   useEffect(() => {
-    const fetchDepartments = async () => {
-      try {
-        const response = await fetch("/api/departments")
-        const data = await response.json()
-        setDepartments(data)
-      } catch (error) {
-        console.error("Error fetching departments:", error)
-      }
-    }
+    // Chỉ fetch một lần và khi danh sách phòng ban trống
+    if (!hasFetchedDepartmentsRef.current && departments.length === 0) {
+      const fetchDepartments = async () => {
+        try {
+          // Đánh dấu đã fetch trước khi gọi API
+          hasFetchedDepartmentsRef.current = true;
 
-    fetchDepartments()
-  }, [])
+          // Gọi API để lấy danh sách phòng ban
+          const data = await departmentsAPI.getAllDepartments(0, 100);
+          setDepartments(data.content);
+        } catch (error) {
+          console.error("Error fetching departments:", error);
+        }
+      };
+
+      fetchDepartments();
+    }
+  }, [departments.length]);
 
   useEffect(() => {
     const fetchWorkPlans = async () => {
       try {
-        setIsLoading(true)
+        setIsLoading(true);
         const data = await workPlansAPI.getAllWorkPlans({
           status: statusFilter !== "all" ? statusFilter : undefined,
           department: departmentFilter !== "all" ? departmentFilter : undefined,
           search: searchQuery || undefined,
-        })
-        setWorkPlans(data)
+        });
+        setWorkPlans(data);
       } catch (error) {
-        console.error("Error fetching work plans:", error)
+        console.error("Error fetching work plans:", error);
         toast({
           title: "Lỗi",
-          description: "Không thể tải danh sách kế hoạch. Vui lòng thử lại sau.",
+          description:
+            "Không thể tải danh sách kế hoạch. Vui lòng thử lại sau.",
           variant: "destructive",
-        })
+        });
+        // Đặt workPlans thành mảng rỗng để hiển thị trạng thái không có dữ liệu
+        setWorkPlans([]);
       } finally {
-        setIsLoading(false)
+        setIsLoading(false);
       }
-    }
+    };
 
-    // Debounce search query
+    // Chỉ gọi API khi người dùng thực hiện thay đổi, sau khi debounce
     const handler = setTimeout(() => {
-      fetchWorkPlans()
-    }, 300)
+      fetchWorkPlans();
+    }, 300);
 
     return () => {
-      clearTimeout(handler)
-    }
-  }, [toast, searchQuery, statusFilter, departmentFilter])
+      clearTimeout(handler);
+    };
+  }, [toast, searchQuery, statusFilter, departmentFilter]);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "draft":
-        return <Badge variant="outline">Dự thảo</Badge>
+        return <Badge variant="outline">Dự thảo</Badge>;
       case "pending":
-        return <Badge variant="secondary">Chờ duyệt</Badge>
+        return <Badge variant="secondary">Chờ duyệt</Badge>;
       case "approved":
-        return <Badge variant="default">Đã duyệt</Badge>
+        return <Badge variant="default">Đã duyệt</Badge>;
       case "rejected":
-        return <Badge variant="destructive">Từ chối</Badge>
+        return <Badge variant="destructive">Từ chối</Badge>;
       case "completed":
-        return <Badge className="bg-green-500 hover:bg-green-600">Hoàn thành</Badge>
+        return (
+          <Badge className="bg-green-500 hover:bg-green-600">Hoàn thành</Badge>
+        );
       case "in_progress":
         return (
           <Badge variant="secondary" className="bg-primary/10 text-primary">
             Đang thực hiện
           </Badge>
-        )
+        );
       default:
-        return <Badge variant="outline">Khác</Badge>
+        return <Badge variant="outline">Khác</Badge>;
     }
-  }
+  };
 
   const filteredWorkPlans = workPlans.filter((plan) => {
     // Đã được lọc từ API, nhưng có thể thêm lọc client-side nếu cần
-    return true
-  })
+    return true;
+  });
 
   return (
     <div className="space-y-6">
@@ -167,7 +193,9 @@ export default function WorkPlansPage() {
                   <CardHeader className="p-4">
                     <div className="flex items-start justify-between">
                       <div>
-                        <CardTitle className="line-clamp-1">{workPlan.title}</CardTitle>
+                        <CardTitle className="line-clamp-1">
+                          {workPlan.title}
+                        </CardTitle>
                         <CardDescription>{workPlan.department}</CardDescription>
                       </div>
                       {getStatusBadge(workPlan.status)}
@@ -177,16 +205,26 @@ export default function WorkPlansPage() {
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       <div>
                         <p className="text-muted-foreground">Bắt đầu</p>
-                        <p>{new Date(workPlan.startDate).toLocaleDateString("vi-VN")}</p>
+                        <p>
+                          {new Date(workPlan.startDate).toLocaleDateString(
+                            "vi-VN"
+                          )}
+                        </p>
                       </div>
                       <div>
                         <p className="text-muted-foreground">Kết thúc</p>
-                        <p>{new Date(workPlan.endDate).toLocaleDateString("vi-VN")}</p>
+                        <p>
+                          {new Date(workPlan.endDate).toLocaleDateString(
+                            "vi-VN"
+                          )}
+                        </p>
                       </div>
                     </div>
                     <div className="mt-4 flex justify-end">
                       <Button variant="ghost" size="sm" asChild>
-                        <Link href={`/ke-hoach/${workPlan.id}`}>Xem chi tiết</Link>
+                        <Link href={`/ke-hoach/${workPlan.id}`}>
+                          Xem chi tiết
+                        </Link>
                       </Button>
                     </div>
                   </CardContent>
@@ -195,7 +233,9 @@ export default function WorkPlansPage() {
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center py-12">
-              <p className="text-muted-foreground mb-4">Không tìm thấy kế hoạch nào phù hợp</p>
+              <p className="text-muted-foreground mb-4">
+                Không tìm thấy kế hoạch nào phù hợp
+              </p>
               <Button asChild>
                 <Link href="/ke-hoach/tao-moi">
                   <Plus className="mr-2 h-4 w-4" />
@@ -218,8 +258,12 @@ export default function WorkPlansPage() {
                     <CardHeader className="p-4">
                       <div className="flex items-start justify-between">
                         <div>
-                          <CardTitle className="line-clamp-1">{workPlan.title}</CardTitle>
-                          <CardDescription>{workPlan.department}</CardDescription>
+                          <CardTitle className="line-clamp-1">
+                            {workPlan.title}
+                          </CardTitle>
+                          <CardDescription>
+                            {workPlan.department}
+                          </CardDescription>
                         </div>
                         {getStatusBadge(workPlan.status)}
                       </div>
@@ -228,16 +272,26 @@ export default function WorkPlansPage() {
                       <div className="grid grid-cols-2 gap-2 text-sm">
                         <div>
                           <p className="text-muted-foreground">Bắt đầu</p>
-                          <p>{new Date(workPlan.startDate).toLocaleDateString("vi-VN")}</p>
+                          <p>
+                            {new Date(workPlan.startDate).toLocaleDateString(
+                              "vi-VN"
+                            )}
+                          </p>
                         </div>
                         <div>
                           <p className="text-muted-foreground">Kết thúc</p>
-                          <p>{new Date(workPlan.endDate).toLocaleDateString("vi-VN")}</p>
+                          <p>
+                            {new Date(workPlan.endDate).toLocaleDateString(
+                              "vi-VN"
+                            )}
+                          </p>
                         </div>
                       </div>
                       <div className="mt-4 flex justify-end">
                         <Button variant="ghost" size="sm" asChild>
-                          <Link href={`/ke-hoach/${workPlan.id}`}>Xem chi tiết</Link>
+                          <Link href={`/ke-hoach/${workPlan.id}`}>
+                            Xem chi tiết
+                          </Link>
                         </Button>
                       </div>
                     </CardContent>
@@ -249,7 +303,7 @@ export default function WorkPlansPage() {
         {/* Các tab khác tương tự */}
       </Tabs>
     </div>
-  )
+  );
 }
 
 function WorkPlansSkeleton() {
@@ -286,5 +340,5 @@ function WorkPlansSkeleton() {
           </Card>
         ))}
     </div>
-  )
+  );
 }

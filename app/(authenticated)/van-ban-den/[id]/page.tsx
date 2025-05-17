@@ -122,6 +122,7 @@ export default function DocumentDetailPage({
           history: history,
           assignedToIds: workflowStatus.assignedToIds,
           assignedToNames: workflowStatus.assignedToNames,
+          
           // Add empty arrays for frontend compatibility
           attachments: [],
           relatedDocuments: [],
@@ -202,16 +203,32 @@ export default function DocumentDetailPage({
     if (!_document || !user) return;
 
     try {
+      // First, check if there's an existing draft related to this document that was rejected
+      const existingDraftsResponse = await workflowAPI.getDocumentResponses(documentId.toString());
+      console.log("Checking for existing drafts:", existingDraftsResponse);
+      
+      // Look for a draft that was rejected (has status "draft" and was previously rejected in history)
+      const existingDraft = existingDraftsResponse?.content?.find((doc: any) => 
+        doc.status === "registered" && doc.history?.some((item: any) => 
+          item.description?.toLowerCase().includes("từ chối") || 
+          item.comments?.toLowerCase().includes("từ chối") ||
+          item.newStatus === "leader_commented"
+        )
+      );
+
       const documentStatus = _document.processingStatus;
       const isAssignedToCurrentUser = _document.assignedToIds?.includes(
         user.id
       );
 
+      
+      // Original flow continues for case with no existing rejected draft
       if (
-        documentStatus === "SPECIALIST_PROCESSING" &&
+        (documentStatus === "specialist_processing" ||
+          documentStatus === "leader_reviewing" ) &&
         isAssignedToCurrentUser
       ) {
-        router.push(`/van-ban-di/du-thao?docId=${_document.id}`);
+        router.push(`/van-ban-di/${_document.id}/chinh-sua`);
         return;
       }
 
@@ -425,6 +442,8 @@ export default function DocumentDetailPage({
     const isAssignedToCurrentUser = _document.assignedToIds && 
       Array.isArray(_document.assignedToIds) && 
       _document.assignedToIds.includes(user.id);
+    // kiểm tra xem người dùng đã trả lời văn bản trong lịch sử chưa
+    
     
     // Log thông tin để debug
     console.log("Trợ lý/nhân viên quyền trả lời:", {
@@ -440,7 +459,12 @@ export default function DocumentDetailPage({
       (_document.assignedToId && _document.assignedToId == user.id) ||
       (_document.workflowStatus && _document.workflowStatus.assignedToId == user.id) ||
       (_document.primaryProcessor && _document.primaryProcessor == user.id);
-    
+    const isReply = _document.history.some((item: any) => {
+      return (
+      
+        item.newStatus === "specialist_submitted"
+      );
+    }) && isUserAssigned;
     return (
       <>
         <Button
@@ -454,7 +478,8 @@ export default function DocumentDetailPage({
         </Button>
         
         {/* Chỉ hiển thị nút Trả lời khi người dùng được phân công xử lý */}
-        {isUserAssigned && (
+        {
+         !isReply && isUserAssigned && (
           <Button
             size="sm"
             className="bg-primary hover:bg-primary/90"

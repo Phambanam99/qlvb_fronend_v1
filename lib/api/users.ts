@@ -87,9 +87,25 @@ export const usersAPI = {
     oldPassword: string,
     newPassword: string
   ): Promise<{ message: string }> => {
-    const response = await api.post(`/users/${id}/change-password`, {
+    const response = await api.put(`/users/${id}/password`, {
       oldPassword,
       newPassword,
+    });
+    return response.data;
+  },
+
+  /**
+   * Check if the provided password matches the user's current password
+   * @param id User ID
+   * @param password Password to check
+   * @returns Object with validity status
+   */
+  checkCurrentPassword: async (
+    id: string | number,
+    password: string
+  ): Promise<{ valid: boolean }> => {
+    const response = await api.post(`/users/${id}/check-password`, {
+      password,
     });
     return response.data;
   },

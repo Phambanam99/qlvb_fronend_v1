@@ -219,6 +219,7 @@ export default function AddIncomingDocumentPage() {
           : new Date(),
         processingStatus: "PENDING",
         closureRequest: closureRequest,
+        closureDeadline: formData.get("deadline") as string,
         sendingDepartmentName: formData.get("sendingDepartmentName") as string,
         emailSource: formData.get("emailSource") as string,
       };
@@ -235,6 +236,7 @@ export default function AddIncomingDocumentPage() {
         ...documentData,
         processingStatus: "PENDING",
         closureRequest: closureRequest,
+        closureDeadline: documentData.closureDeadline,
         sendingDepartmentName: formData.get("issuingAuthority") as string,
         emailSource: formData.get("emailSource") as string,
       };

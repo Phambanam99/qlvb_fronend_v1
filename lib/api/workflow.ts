@@ -255,7 +255,31 @@ export const workflowAPI = {
 
     return response.data;
   },
-
+  updateOutgoingDocumentWorkflow: async (
+    documentId: number | string,
+    documentData: any,
+    attachment?: File | null
+  ) => {
+    const formData = new FormData();
+    formData.append(
+      "data",
+      new Blob([JSON.stringify(documentData)], { type: "application/json" })
+    );
+     // Thêm tệp đính kèm nếu có
+     if (attachment) {
+      formData.append("attachments", attachment);
+    }
+    const response = await api.put(
+      `/workflow/${documentId}/update-outgoing`,
+      formData,
+      {
+        headers: {
+          "Content-Type": undefined,
+        },
+      }
+    );
+    return response.data;
+  },
   /**
    * Lấy danh sách văn bản liên quan
    * @param documentId ID văn bản cần lấy danh sách liên quan
@@ -278,7 +302,7 @@ export const workflowAPI = {
   approveDocumentResponse: async (responseId: number, data: { comment?: string }) => {
     const response = await api.put(`/workflow/${responseId}/approve`, {
       responseId,
-      status: "approved",
+      status: "leader_approved",
       ...data
     })
     return response.data;
@@ -290,11 +314,9 @@ export const workflowAPI = {
    * @param data Dữ liệu bổ sung (lý do từ chối)
    * @returns Kết quả xử lý
    */
-  rejectDocumentResponse: async (responseId: number, data: { comment: string }) => {
+  rejectDocumentResponse: async (responseId: number, comment: string ) => {
     const response = await api.put(`/workflow/${responseId}/provide-feedback`, {
-      responseId,
-      status: "rejected",
-      ...data
+      comments:comment
     });
     return response.data;
   },

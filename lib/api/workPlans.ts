@@ -4,7 +4,8 @@ export interface WorkPlanTaskDTO {
   id: number
   title: string
   description: string
-  assignee: string
+  assignee: string,
+  assigneeId?: number,
   startDate: string
   endDate: string
   status: string

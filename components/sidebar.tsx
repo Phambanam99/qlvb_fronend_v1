@@ -46,10 +46,10 @@ export default function Sidebar() {
       permission: "manage_users", // Chỉ admin mới có thể xem
     },
     {
-      title: "Cài đặt",
-      href: "/cai-dat",
-      icon: Settings,
-      permission: null, // Tất cả người dùng đều có thể xem (nhưng một số tính năng sẽ bị hạn chế)
+      // title: "Cài đặt",
+      // href: "/cai-dat",
+      // icon: Settings,
+      // permission: null, // Tất cả người dùng đều có thể xem (nhưng một số tính năng sẽ bị hạn chế)
     },
   ]
 

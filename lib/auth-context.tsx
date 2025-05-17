@@ -10,6 +10,7 @@ import {
 import { useRouter } from "next/navigation";
 import { authAPI } from "@/lib/api/auth";
 import Cookies from "js-cookie";
+import { isTokenExpired } from "@/lib/utils";
 
 export interface User {
   id: string;
@@ -20,11 +21,9 @@ export interface User {
   avatar?: string;
   department?: string;
   departmentId?: string;
-  // Thêm trường fullName để tương thích với code hiện tại
   fullName?: string;
 }
 
-// Add the hasPermission method to the AuthContextType interface
 interface AuthContextType {
   user: User | null;
   loading: boolean;
@@ -54,20 +53,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
 
+  const validateToken = () => {
+    const token = localStorage.getItem("token");
+
+    if (isTokenExpired(token)) {
+      console.log(
+        "AuthContext: Token hết hạn hoặc không hợp lệ, tự động đăng xuất"
+      );
+      localStorage.removeItem("token");
+      Cookies.remove("auth-token");
+      setUser(null);
+      setIsAuthenticated(false);
+
+      if (window.location.pathname !== "/dang-nhap") {
+        router.push("/dang-nhap?session_expired=true");
+      }
+      return false;
+    }
+    return true;
+  };
+
   useEffect(() => {
     const checkAuth = async () => {
       try {
         console.log("AuthContext: Checking authentication status...");
         const token = localStorage.getItem("token");
-        if (token) {
-          console.log("AuthContext: Token found, fetching current user...");
+
+        if (token && !isTokenExpired(token)) {
+          console.log(
+            "AuthContext: Token found and valid, fetching current user..."
+          );
           const userData = await authAPI.getCurrentUser();
           if (userData) {
             console.log(
               "AuthContext: User data retrieved successfully:",
               userData
             );
-            // Đảm bảo fullName được thiết lập
             setUser({
               ...userData,
               fullName: userData.fullName || userData.name,
@@ -78,18 +99,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setIsAuthenticated(false);
           }
         } else {
-          console.log("AuthContext: No token found");
+          if (token) {
+            console.log("AuthContext: Token found but expired");
+          } else {
+            console.log("AuthContext: No token found");
+          }
+          localStorage.removeItem("token");
+          Cookies.remove("auth-token");
           setIsAuthenticated(false);
         }
       } catch (err) {
         console.error("AuthContext: Auth check failed:", err);
-        // Xóa token nếu không hợp lệ
         localStorage.removeItem("token");
         Cookies.remove("auth-token");
         setIsAuthenticated(false);
       } finally {
         setLoading(false);
-        // Nếu không xác thực được, đánh dấu dữ liệu đã tải xong để tránh vòng lặp loading
         if (!isAuthenticated) {
           setDataLoading(false);
         }
@@ -97,6 +122,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     checkAuth();
+
+    const tokenCheckInterval = setInterval(() => {
+      if (isAuthenticated) {
+        validateToken();
+      }
+    }, 60000);
+
+    return () => {
+      clearInterval(tokenCheckInterval);
+    };
   }, []);
 
   const login = async (
@@ -106,25 +141,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   ) => {
     try {
       setLoading(true);
-      // Reset data loading state on login
       setDataLoading(true);
       setError(null);
       console.log("Đang thực hiện đăng nhập cho tài khoản:", username);
       const userData = await authAPI.login(username, password);
-      // Đảm bảo fullName được thiết lập
       const { token, user } = userData;
 
-      // Lưu token vào localStorage và cookie
       localStorage.setItem("token", token);
       if (rememberMe) {
-        // 30 ngày nếu "Ghi nhớ đăng nhập"
         Cookies.set("auth-token", token, { expires: 30, sameSite: "strict" });
       } else {
-        // Session cookie nếu không "Ghi nhớ đăng nhập"
         Cookies.set("auth-token", token, { sameSite: "strict" });
       }
 
-      // Thiết lập thông tin người dùng
       const userInfo = {
         id: String(userData.user.id),
         name: userData.user.name,
@@ -139,15 +168,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(userInfo);
       setIsAuthenticated(true);
 
-      // Tải trước một số dữ liệu cần thiết nếu có
       try {
-        // Bạn có thể thêm các lời gọi API quan trọng vào đây
-        // Ví dụ: tải thông tin người dùng chi tiết hơn, quyền, v.v.
       } catch (preloadError) {
         console.error("Không thể tải trước dữ liệu quan trọng:", preloadError);
       }
 
-      // Trả về true để báo hiệu đăng nhập thành công
       return true;
     } catch (err: any) {
       console.error("Login failed:", err);
@@ -160,7 +185,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
-      // await authAPI.logout()
       localStorage.removeItem("token");
       Cookies.remove("auth-token");
       setUser(null);
@@ -174,6 +198,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const checkAuth = async () => {
     try {
       setLoading(true);
+      if (!validateToken()) {
+        setUser(null);
+        return;
+      }
+
       const userData = await authAPI.getCurrentUser();
       if (userData) {
         setUser({
@@ -196,15 +225,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return user.roles.includes(role);
   };
 
-  // Thêm hàm hasPermission để tương thích với code hiện tại
   const hasPermission = (permission: string) => {
-    // Giả định rằng quyền được lưu trong roles
     if (!user) return false;
     console.log("User roles:", user.roles[0]);
     return user.roles.includes(permission);
   };
 
-  // Add method to set data as loaded
   const setDataLoaded = () => {
     setDataLoading(false);
   };
