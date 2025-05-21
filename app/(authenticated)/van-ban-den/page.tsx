@@ -40,6 +40,7 @@ import { useIncomingDocuments } from "@/lib/store";
 import { useAuth } from "@/lib/auth-context";
 import { IncomingDocumentDTO } from "@/lib/api";
 import { useRouter } from "next/navigation";
+import { useHierarchicalDepartments } from "@/hooks/use-hierarchical-departments";
 
 // Role có quyền xem toàn bộ văn bản
 const FULL_ACCESS_ROLES = [
@@ -60,8 +61,16 @@ export default function IncomingDocumentsPage() {
   const statuses = getAllStatuses();
   const { user, hasRole } = useAuth();
   const [documentSource, setDocumentSource] = useState<string>("all"); // all, department, assigned
+  const [departmentFilter, setDepartmentFilter] = useState("all"); // Thêm state cho bộ lọc phòng ban
   const [isAddLoading, setIsAddLoading] = useState(false);
   const router = useRouter();
+
+  // Sử dụng hook phòng ban phân cấp
+  const {
+    visibleDepartments,
+    loading: loadingDepartments,
+    hasFullAccess: hasFullDepartmentAccess,
+  } = useHierarchicalDepartments();
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState<number>(0);
@@ -131,6 +140,12 @@ export default function IncomingDocumentsPage() {
     setCurrentPage(0); // Reset về trang đầu khi thay đổi từ khóa tìm kiếm
   };
 
+  // Xử lý khi thay đổi bộ lọc phòng ban
+  const handleDepartmentFilterChange = (value: string) => {
+    setDepartmentFilter(value);
+    setCurrentPage(0); // Reset về trang đầu khi thay đổi bộ lọc phòng ban
+  };
+
   // Kiểm tra xem người dùng có quyền xem văn bản đến không
   const canViewDocuments =
     hasFullAccess || // Admin, văn thư, cục trưởng, cục phó
@@ -156,6 +171,7 @@ export default function IncomingDocumentsPage() {
         hasFullAccess,
         hasDepartmentAccess,
         documentSource,
+        departmentFilter,
       });
 
       // Xác định cách tải văn bản dựa trên các điều kiện
@@ -261,9 +277,11 @@ export default function IncomingDocumentsPage() {
 
   // Tăng cường việc tải dữ liệu
   useEffect(() => {
-    // Không thực hiện gọi API nếu chưa có thông tin người dùng
-    if (!user) {
-      console.log("Văn bản đến: Chưa có thông tin người dùng, chờ tải...");
+    // Không thực hiện gọi API nếu chưa có thông tin người dùng hoặc đang tải danh sách phòng ban
+    if (!user || loadingDepartments) {
+      console.log(
+        "Văn bản đến: Chưa có thông tin người dùng hoặc đang tải phòng ban, chờ tải..."
+      );
       return;
     }
 
@@ -284,7 +302,7 @@ export default function IncomingDocumentsPage() {
     setTimeout(() => {
       fetchDocuments(0, pageSize);
     }, 50);
-  }, [user?.id, statusFilter, documentSource]);
+  }, [user?.id, statusFilter, documentSource, loadingDepartments]);
 
   // Xử lý thay đổi trang riêng biệt
   useEffect(() => {
@@ -300,23 +318,82 @@ export default function IncomingDocumentsPage() {
     }
   }, [currentPage, pageSize, user?.id]);
 
+  // Lấy danh sách các phòng ban con của phòng ban được chọn
+  const getChildDepartmentIds = (departmentId: string) => {
+    if (departmentId === "all") return [];
+
+    const selectedDept = visibleDepartments.find(
+      (d) => d.id.toString() === departmentId
+    );
+    if (!selectedDept) return [];
+
+    const childIds: number[] = [];
+
+    // Hàm đệ quy để lấy tất cả ID phòng ban con
+    const collectChildIds = (dept: (typeof visibleDepartments)[0]) => {
+      if (dept.children && dept.children.length > 0) {
+        dept.children.forEach((child) => {
+          childIds.push(child.id);
+          collectChildIds(child);
+        });
+      }
+    };
+
+    collectChildIds(selectedDept);
+    return [Number(departmentId), ...childIds];
+  };
+
   // Lọc dữ liệu
   const filteredDocuments = incomingDocuments.filter((doc) => {
-    // Lọc theo tìm kiếm
+    // Lọc theo tìm kiếm - thêm kiểm tra an toàn để tránh lỗi với null/undefined
+    const docNumber = (doc.documentNumber || "").toLowerCase();
+    const docTitle = (doc.title || "").toLowerCase();
+    const docAuthority = (doc.issuingAuthority || "").toLowerCase();
+    const searchLower = searchQuery.toLowerCase();
+
     const matchesSearch =
       searchQuery === "" ||
-      (doc.documentNumber?.toLowerCase() || "").includes(
-        searchQuery.toLowerCase()
-      ) ||
-      (doc.title?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
-      (doc.issuingAuthority?.toLowerCase() || "").includes(
-        searchQuery.toLowerCase()
-      );
+      docNumber.includes(searchLower) ||
+      docTitle.includes(searchLower) ||
+      docAuthority.includes(searchLower);
+
     // Lọc theo trạng thái
     const matchesStatus =
       statusFilter === "all" || doc.processingStatus === statusFilter;
 
-    return matchesSearch && matchesStatus;
+    // Lọc theo phòng ban và phòng ban con
+    let matchesDepartment = true;
+    if (departmentFilter !== "all") {
+      const departmentIds = getChildDepartmentIds(departmentFilter);
+      const primaryDeptId = doc.primaryProcessDepartmentId
+        ? Number(doc.primaryProcessDepartmentId)
+        : null;
+      const secondaryDeptIds = doc.secondaryProcessDepartmentIds
+        ? doc.secondaryProcessDepartmentIds.map((id) => Number(id))
+        : [];
+
+      // Kiểm tra xem phòng ban xử lý chính hoặc phối hợp có thuộc phòng ban được chọn không
+      matchesDepartment =
+        (primaryDeptId != null && departmentIds.includes(primaryDeptId)) ||
+        secondaryDeptIds.some((id) => departmentIds.includes(id));
+    }
+
+    // Thêm debug log để theo dõi văn bản bị lọc
+    const result = matchesSearch && matchesStatus && matchesDepartment;
+    if (!result) {
+      console.debug(
+        `Văn bản đến bị lọc: ID=${doc.id}, Số=${doc.documentNumber}, Tiêu đề=${doc.title}`,
+        {
+          matchesSearch,
+          matchesStatus,
+          matchesDepartment,
+          primaryDeptId: doc.primaryProcessDepartmentId,
+          secondaryDeptIds: doc.secondaryProcessDepartmentIds,
+        }
+      );
+    }
+
+    return result;
   });
 
   const getStatusBadge = (status: string, displayStatus: string) => {
@@ -345,7 +422,7 @@ export default function IncomingDocumentsPage() {
     );
   };
 
-  if (loading) {
+  if (loading || loadingDepartments) {
     return (
       <div className="flex h-[80vh] items-center justify-center">
         <div className="text-center">
@@ -431,6 +508,29 @@ export default function IncomingDocumentsPage() {
               </SelectContent>
             </Select>
           )}
+
+          {/* Bộ lọc phòng ban phân cấp */}
+          {hasFullAccess && (
+            <Select
+              value={departmentFilter}
+              onValueChange={handleDepartmentFilterChange}
+            >
+              <SelectTrigger className="w-full sm:w-[220px] border-primary/20">
+                <SelectValue placeholder="Phòng ban" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả phòng ban</SelectItem>
+                {visibleDepartments.map((dept) => (
+                  <SelectItem key={dept.id} value={dept.id.toString()}>
+                    {dept.level > 0
+                      ? "\u00A0".repeat(dept.level * 2) + "└ "
+                      : ""}
+                    {dept.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
         <div className="flex w-full sm:w-auto items-center space-x-3">
           <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
@@ -484,6 +584,11 @@ export default function IncomingDocumentsPage() {
               : hasFullAccess && documentSource === "department"
               ? "Danh sách các văn bản đến được giao cho đơn vị của bạn"
               : "Danh sách các văn bản đến được giao cho bạn"}
+            {departmentFilter !== "all" &&
+              " - Lọc theo phòng ban: " +
+                visibleDepartments.find(
+                  (d) => d.id.toString() === departmentFilter
+                )?.name}
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
@@ -566,11 +671,11 @@ export default function IncomingDocumentsPage() {
             </TableBody>
           </Table>
         </CardContent>
-        {/* Pagination Controls */}
-        {incomingDocuments.length > 0 && (
+        {/* Pagination Controls - Chỉ hiển thị khi có văn bản đã lọc */}
+        {filteredDocuments.length > 0 && (
           <div className="flex items-center justify-between px-4 py-4 border-t">
             <div className="text-sm text-muted-foreground">
-              Hiển thị {incomingDocuments.length} / {totalItems || 0} văn bản
+              Hiển thị {filteredDocuments.length} / {totalItems || 0} văn bản
             </div>
             <div className="flex items-center space-x-6 lg:space-x-8">
               <div className="flex items-center space-x-2">

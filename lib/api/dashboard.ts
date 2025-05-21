@@ -1,26 +1,42 @@
-import api from "./config"
-import type { ActivityLogDTO } from "./types"
+import { de } from "date-fns/locale";
+import api from "./config";
+import type { ActivityLogDTO } from "./types";
 
 export interface DashboardDTO {
-  incomingDocumentCount: number
-  outgoingDocumentCount: number
-  workCaseCount: number
-  pendingDocumentCount: number
-  overdueDocumentCount: number
-  documentCountsByType: Record<string, number>
-  documentCountsByMonth: Record<string, number>
-  processingTimeStatistics: Record<string, number>
-  departmentPerformance: Record<string, any>
-  topActiveUsers: UserActivityDTO[]
-  recentDocuments: any[]
+  // Các trường từ API
+  totalDocuments?: number;
+  incomingDocuments?: number;
+  outgoingDocuments?: number;
+  pendingDocuments?: any[];
+  documentsByStatus?: Record<string, number>;
+  documentsByMonth?: Record<string, number>;
+  upcomingDeadlines?: any[];
+  overdueDocuments?: any[];
+  activeWorkPlans?: any[];
+  unreadNotifications?: number;
+
+  // Các trường cũ (giữ lại để tương thích ngược)
+  incomingDocumentCount?: number;
+  outgoingDocumentCount?: number;
+  workCaseCount?: number;
+  pendingDocumentCount?: number;
+  overdueDocumentCount?: number;
+  scheduleCount?: number;
+  todayScheduleCount?: number;
+  documentCountsByType?: Record<string, number>;
+  documentCountsByMonth?: Record<string, number>;
+  processingTimeStatistics?: Record<string, number>;
+  departmentPerformance?: Record<string, any>;
+  topActiveUsers?: UserActivityDTO[];
+  recentDocuments?: any[];
 }
 
 export interface UserActivityDTO {
-  userId: number
-  userName: string
-  documentsProcessed: number
-  averageProcessingTime: number
-  currentAssignments: number
+  userId: number;
+  userName: string;
+  documentsProcessed: number;
+  averageProcessingTime: number;
+  currentAssignments: number;
 }
 
 export const dashboardAPI = {
@@ -29,8 +45,44 @@ export const dashboardAPI = {
    * @returns Dashboard statistics
    */
   getDashboardStatistics: async (): Promise<DashboardDTO> => {
-    const response = await api.get("/dashboard")
-    return response.data
+    const response = await api.get("/dashboard");
+    return response.data;
+  },
+
+  /**
+   * Get dashboard statistics for a specific department
+   * @param departmentId Department ID
+   * @returns Dashboard statistics for the department
+   */
+  getDepartmentDashboardStatistics: async (
+    departmentId: number
+  ): Promise<DashboardDTO> => {
+    const response = await api.get(`/dashboard/department/${departmentId}`);
+    console.log("response", departmentId);
+    console.log("response heehe ", response.data);
+    return response.data;
+  },
+
+  /**
+   * Get dashboard statistics for a specific user
+   * @param userId User ID
+   * @returns Dashboard statistics for the user
+   */
+  getUserDashboardStatistics: async (userId: number): Promise<DashboardDTO> => {
+    const response = await api.get(`/dashboard/user/${userId}`);
+    return response.data;
+  },
+
+  /**
+   * Get today's schedule events
+   * @returns List of schedule events for today
+   */
+  getTodayScheduleEvents: async (): Promise<any[]> => {
+    const today = new Date().toISOString().split("T")[0];
+    const response = await api.get("/dashboard/schedules/today", {
+      params: { date: today },
+    });
+    return response.data;
   },
 
   /**
@@ -39,11 +91,14 @@ export const dashboardAPI = {
    * @param size Page size
    * @returns Recent activity logs
    */
-  getRecentActivities: async (page = 0, size = 20): Promise<ActivityLogDTO[]> => {
+  getRecentActivities: async (
+    page = 0,
+    size = 20
+  ): Promise<ActivityLogDTO[]> => {
     const response = await api.get("/dashboard/recent-activities", {
       params: { page, size },
-    })
-    return response.data
+    });
+    return response.data;
   },
 
   /**
@@ -54,8 +109,8 @@ export const dashboardAPI = {
   getTopActiveUsers: async (limit = 10): Promise<UserActivityDTO[]> => {
     const response = await api.get("/dashboard/top-users", {
       params: { limit },
-    })
-    return response.data
+    });
+    return response.data;
   },
 
   /**
@@ -63,8 +118,8 @@ export const dashboardAPI = {
    * @returns Document counts grouped by type
    */
   getDocumentCountsByType: async (): Promise<Record<string, number>> => {
-    const response = await api.get("/dashboard/document-types")
-    return response.data
+    const response = await api.get("/dashboard/document-types");
+    return response.data;
   },
 
   /**
@@ -73,14 +128,17 @@ export const dashboardAPI = {
    * @param endDate End date (ISO format)
    * @returns Document counts grouped by month
    */
-  getDocumentCountsByMonth: async (startDate: string, endDate: string): Promise<Record<string, number>> => {
+  getDocumentCountsByMonth: async (
+    startDate: string,
+    endDate: string
+  ): Promise<Record<string, number>> => {
     const response = await api.get("/dashboard/document-counts-by-month", {
       params: {
         start: startDate,
         end: endDate,
       },
-    })
-    return response.data
+    });
+    return response.data;
   },
 
   /**
@@ -88,8 +146,8 @@ export const dashboardAPI = {
    * @returns Statistics about document processing times
    */
   getProcessingTimeStatistics: async (): Promise<Record<string, number>> => {
-    const response = await api.get("/dashboard/processing-times")
-    return response.data
+    const response = await api.get("/dashboard/processing-times");
+    return response.data;
   },
 
   /**
@@ -98,14 +156,17 @@ export const dashboardAPI = {
    * @param endDate End date (ISO format)
    * @returns Document volume report
    */
-  getDocumentVolumeReport: async (startDate: string, endDate: string): Promise<Record<string, any>> => {
+  getDocumentVolumeReport: async (
+    startDate: string,
+    endDate: string
+  ): Promise<Record<string, any>> => {
     const response = await api.get("/dashboard/reports/document-volume", {
       params: {
         start: startDate,
         end: endDate,
       },
-    })
-    return response.data
+    });
+    return response.data;
   },
 
   /**
@@ -113,7 +174,7 @@ export const dashboardAPI = {
    * @returns Department performance metrics
    */
   getDepartmentPerformanceReport: async (): Promise<Record<string, any>> => {
-    const response = await api.get("/dashboard/reports/department-performance")
-    return response.data
+    const response = await api.get("/dashboard/reports/department-performance");
+    return response.data;
   },
-}
+};

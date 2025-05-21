@@ -1,33 +1,79 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { CalendarIcon, Plus, Search, List, CalendarDays } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import {
+  List,
+  Calendar as CalendarIcon,
+  CalendarDays,
+  Plus,
+  Search,
+} from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { schedulesAPI } from "@/lib/api";
+import { useToast } from "@/components/ui/use-toast";
 import ScheduleWeekView from "@/components/schedule-week-view";
 import ScheduleMonthView from "@/components/schedule-month-view";
 import ScheduleList from "@/components/schedule-list";
-import { schedulesAPI } from "@/lib/api";
-import { useToast } from "@/components/ui/use-toast";
 import { useSchedules } from "@/lib/store";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useAuth } from "@/lib/auth-context";
+import { useHierarchicalDepartments } from "@/hooks/use-hierarchical-departments";
 
 export default function SchedulesPage() {
   const { toast } = useToast();
   const { schedules, loading, setSchedules, setLoading } = useSchedules();
+  const [allSchedules, setAllSchedules] = useState<any[]>([]);
   const [viewMode, setViewMode] = useState<"week" | "month" | "list">("week");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [departmentFilter, setDepartmentFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const { hasRole } = useAuth();
+
+  const {
+    visibleDepartments,
+    userDepartmentIds,
+    loading: loadingDepartments,
+    hasFullAccess,
+  } = useHierarchicalDepartments();
+
+  const hasFetchedSchedulesRef = useRef(false);
+  const departmentIdsRef = useRef(userDepartmentIds);
 
   useEffect(() => {
+    departmentIdsRef.current = userDepartmentIds;
+  }, [userDepartmentIds]);
+
+  useEffect(() => {
+    if (
+      loadingDepartments ||
+      (hasFetchedSchedulesRef.current && allSchedules.length > 0)
+    ) {
+      return;
+    }
+
     const fetchSchedules = async () => {
       try {
         setLoading(true);
         const data = await schedulesAPI.getAllSchedules();
         console.log("Fetched schedules:", data);
-        setSchedules(data);
+
+        setAllSchedules(data.content || []);
+        filterSchedules(data.content || []);
+
+        hasFetchedSchedulesRef.current = true;
       } catch (error) {
         console.error("Error fetching schedules:", error);
         toast({
@@ -41,7 +87,67 @@ export default function SchedulesPage() {
     };
 
     fetchSchedules();
-  }, []); // Remove toast, setSchedules, setLoading from dependencies
+  }, [toast, setSchedules, setLoading, loadingDepartments]);
+
+  const filterSchedules = (schedulesList = allSchedules) => {
+    let filteredSchedules = [...schedulesList];
+
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filteredSchedules = filteredSchedules.filter(
+        (schedule) =>
+          schedule.title?.toLowerCase().includes(query) ||
+          schedule.description?.toLowerCase().includes(query) ||
+          schedule.departmentName?.toLowerCase().includes(query)
+      );
+    }
+
+    if (statusFilter !== "all") {
+      filteredSchedules = filteredSchedules.filter(
+        (schedule) => schedule.status === statusFilter
+      );
+    }
+
+    if (departmentFilter !== "all") {
+      filteredSchedules = filteredSchedules.filter((schedule) => {
+        const deptOfSchedule = visibleDepartments.find(
+          (d) =>
+            d.name === schedule.departmentName ||
+            d.id === Number(schedule.departmentId)
+        );
+        if (!deptOfSchedule) return false;
+
+        const selectedDept = visibleDepartments.find(
+          (d) => d.id.toString() === departmentFilter
+        );
+        if (!selectedDept) return false;
+
+        return (
+          deptOfSchedule.id.toString() === departmentFilter ||
+          deptOfSchedule.fullPath.includes(selectedDept.name)
+        );
+      });
+    } else if (!hasFullAccess) {
+      filteredSchedules = filteredSchedules.filter((schedule) => {
+        const deptOfSchedule = visibleDepartments.find(
+          (d) =>
+            d.name === schedule.departmentName ||
+            d.id === Number(schedule.departmentId)
+        );
+        return (
+          deptOfSchedule && departmentIdsRef.current.includes(deptOfSchedule.id)
+        );
+      });
+    }
+
+    setSchedules(filteredSchedules);
+  };
+
+  useEffect(() => {
+    if (!loadingDepartments && allSchedules.length > 0) {
+      filterSchedules();
+    }
+  }, [searchQuery, statusFilter, departmentFilter, loadingDepartments]);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -58,6 +164,10 @@ export default function SchedulesPage() {
     }
   };
 
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -70,46 +180,75 @@ export default function SchedulesPage() {
         </Button>
       </div>
 
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center space-x-2">
-          <Button
-            variant={viewMode === "week" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setViewMode("week")}
-          >
-            <CalendarIcon className="mr-2 h-4 w-4" />
-            Tuần
-          </Button>
-          <Button
-            variant={viewMode === "month" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setViewMode("month")}
-          >
-            <CalendarDays className="mr-2 h-4 w-4" />
-            Tháng
-          </Button>
-          <Button
-            variant={viewMode === "list" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setViewMode("list")}
-          >
-            <List className="mr-2 h-4 w-4" />
-            Danh sách
-          </Button>
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="search"
+            placeholder="Tìm kiếm lịch..."
+            className="w-full bg-background pl-8"
+            value={searchQuery}
+            onChange={handleSearchChange}
+          />
         </div>
-        <div className="flex items-center space-x-2">
-          <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder="Tìm kiếm lịch..."
-              className="w-full bg-background pl-8 sm:w-[200px] md:w-[300px]"
-            />
-          </div>
-          <Button variant="outline" size="sm">
-            Lọc
-          </Button>
-        </div>
+
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-full sm:w-[180px]">
+            <SelectValue placeholder="Trạng thái" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tất cả trạng thái</SelectItem>
+            <SelectItem value="draft">Dự thảo</SelectItem>
+            <SelectItem value="pending">Chờ duyệt</SelectItem>
+            <SelectItem value="approved">Đã duyệt</SelectItem>
+            <SelectItem value="rejected">Từ chối</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+          <SelectTrigger
+            className="w-full sm:w-[220px]"
+            disabled={loadingDepartments}
+          >
+            <SelectValue placeholder="Đơn vị" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tất cả đơn vị</SelectItem>
+            {visibleDepartments.map((dept) => (
+              <SelectItem key={dept.id} value={dept.id.toString()}>
+                {dept.level > 0 ? "\u00A0".repeat(dept.level * 2) + "└ " : ""}
+                {dept.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="flex items-center space-x-2 mb-4">
+        <Button
+          variant={viewMode === "week" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setViewMode("week")}
+        >
+          <CalendarIcon className="mr-2 h-4 w-4" />
+          Tuần
+        </Button>
+        <Button
+          variant={viewMode === "month" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setViewMode("month")}
+        >
+          <CalendarDays className="mr-2 h-4 w-4" />
+          Tháng
+        </Button>
+        <Button
+          variant={viewMode === "list" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setViewMode("list")}
+        >
+          <List className="mr-2 h-4 w-4" />
+          Danh sách
+        </Button>
       </div>
 
       <Tabs defaultValue="all">
@@ -120,7 +259,7 @@ export default function SchedulesPage() {
           <TabsTrigger value="approved">Đã duyệt</TabsTrigger>
         </TabsList>
         <TabsContent value="all" className="mt-4">
-          {loading ? (
+          {loading || loadingDepartments ? (
             <ScheduleSkeleton viewMode={viewMode} />
           ) : schedules.length > 0 ? (
             <Card>
@@ -128,7 +267,7 @@ export default function SchedulesPage() {
                 {viewMode === "week" && (
                   <ScheduleWeekView
                     date={new Date()}
-                    department="all"
+                    department={departmentFilter}
                     type="all"
                     schedules={schedules}
                   />
@@ -136,7 +275,7 @@ export default function SchedulesPage() {
                 {viewMode === "month" && (
                   <ScheduleMonthView
                     date={new Date()}
-                    department="all"
+                    department={departmentFilter}
                     type="all"
                     schedules={schedules}
                   />
@@ -144,7 +283,7 @@ export default function SchedulesPage() {
                 {viewMode === "list" && (
                   <ScheduleList
                     date={new Date()}
-                    department="all"
+                    department={departmentFilter}
                     type="all"
                     schedules={schedules}
                   />
@@ -154,7 +293,7 @@ export default function SchedulesPage() {
           ) : (
             <div className="flex flex-col items-center justify-center py-12">
               <p className="text-muted-foreground mb-4">
-                Chưa có lịch công tác nào
+                Không tìm thấy lịch công tác nào phù hợp
               </p>
               <Button asChild>
                 <Link href="/lich-cong-tac/tao-moi">
@@ -166,7 +305,7 @@ export default function SchedulesPage() {
           )}
         </TabsContent>
         <TabsContent value="draft" className="mt-4">
-          {loading ? (
+          {loading || loadingDepartments ? (
             <ScheduleSkeleton viewMode={viewMode} />
           ) : (
             <Card>
@@ -174,25 +313,25 @@ export default function SchedulesPage() {
                 {viewMode === "week" && (
                   <ScheduleWeekView
                     date={new Date()}
-                    department="all"
+                    department={departmentFilter}
                     type="all"
-                    schedules={schedules}
+                    schedules={schedules.filter((s) => s.status === "draft")}
                   />
                 )}
                 {viewMode === "month" && (
                   <ScheduleMonthView
                     date={new Date()}
-                    department="all"
+                    department={departmentFilter}
                     type="all"
-                    schedules={schedules}
+                    schedules={schedules.filter((s) => s.status === "draft")}
                   />
                 )}
                 {viewMode === "list" && (
                   <ScheduleList
                     date={new Date()}
-                    department="all"
+                    department={departmentFilter}
                     type="all"
-                    schedules={schedules}
+                    schedules={schedules.filter((s) => s.status === "draft")}
                   />
                 )}
               </CardContent>

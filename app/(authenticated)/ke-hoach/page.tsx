@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -25,49 +25,54 @@ import { workPlansAPI } from "@/lib/api/workPlans";
 import { useToast } from "@/components/ui/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { WorkPlanDTO } from "@/lib/api/workPlans";
-import { DepartmentDTO, departmentsAPI } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
+import { useHierarchicalDepartments } from "@/hooks/use-hierarchical-departments";
 
 export default function WorkPlansPage() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
   const [workPlans, setWorkPlans] = useState<WorkPlanDTO[]>([]);
+  const [allWorkPlans, setAllWorkPlans] = useState<WorkPlanDTO[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [departmentFilter, setDepartmentFilter] = useState("all");
-  const [departments, setDepartments] = useState<DepartmentDTO[]>([]);
-  // Thêm một ref để theo dõi việc đã fetch departments hay chưa
-  const hasFetchedDepartmentsRef = useRef(false);
+  const hasFetchedWorkPlansRef = useRef(false);
+
+  const {
+    visibleDepartments,
+    userDepartmentIds,
+    loading: loadingDepartments,
+    hasFullAccess,
+  } = useHierarchicalDepartments();
+
+  const userDepartmentIdsRef = useRef(userDepartmentIds);
+  useEffect(() => {
+    userDepartmentIdsRef.current = userDepartmentIds;
+  }, [userDepartmentIds]);
 
   useEffect(() => {
-    // Chỉ fetch một lần và khi danh sách phòng ban trống
-    if (!hasFetchedDepartmentsRef.current && departments.length === 0) {
-      const fetchDepartments = async () => {
-        try {
-          // Đánh dấu đã fetch trước khi gọi API
-          hasFetchedDepartmentsRef.current = true;
-
-          // Gọi API để lấy danh sách phòng ban
-          const data = await departmentsAPI.getAllDepartments(0, 100);
-          setDepartments(data.content);
-        } catch (error) {
-          console.error("Error fetching departments:", error);
-        }
-      };
-
-      fetchDepartments();
+    if (loadingDepartments) {
+      return;
     }
-  }, [departments.length]);
 
-  useEffect(() => {
     const fetchWorkPlans = async () => {
+      if (hasFetchedWorkPlansRef.current && allWorkPlans.length > 0) {
+        filterWorkPlans();
+        return;
+      }
+
       try {
         setIsLoading(true);
+
         const data = await workPlansAPI.getAllWorkPlans({
           status: statusFilter !== "all" ? statusFilter : undefined,
-          department: departmentFilter !== "all" ? departmentFilter : undefined,
           search: searchQuery || undefined,
         });
-        setWorkPlans(data);
+
+        setAllWorkPlans(data);
+        filterWorkPlans(data);
+
+        hasFetchedWorkPlansRef.current = true;
       } catch (error) {
         console.error("Error fetching work plans:", error);
         toast({
@@ -76,22 +81,70 @@ export default function WorkPlansPage() {
             "Không thể tải danh sách kế hoạch. Vui lòng thử lại sau.",
           variant: "destructive",
         });
-        // Đặt workPlans thành mảng rỗng để hiển thị trạng thái không có dữ liệu
         setWorkPlans([]);
+        setAllWorkPlans([]);
       } finally {
         setIsLoading(false);
       }
     };
 
-    // Chỉ gọi API khi người dùng thực hiện thay đổi, sau khi debounce
-    const handler = setTimeout(() => {
-      fetchWorkPlans();
-    }, 300);
+    fetchWorkPlans();
+  }, [toast, loadingDepartments]);
 
-    return () => {
-      clearTimeout(handler);
-    };
-  }, [toast, searchQuery, statusFilter, departmentFilter]);
+  const filterWorkPlans = (plans = allWorkPlans) => {
+    let filteredPlans = [...plans];
+
+    if (statusFilter !== "all") {
+      filteredPlans = filteredPlans.filter(
+        (plan) => plan.status === statusFilter
+      );
+    }
+
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filteredPlans = filteredPlans.filter(
+        (plan) =>
+          plan.title.toLowerCase().includes(query) ||
+          plan.department?.toLowerCase().includes(query)
+      );
+    }
+
+    if (departmentFilter !== "all") {
+      filteredPlans = filteredPlans.filter((plan) => {
+        const deptOfPlan = visibleDepartments.find(
+          (d) => d.name === plan.department
+        );
+        if (!deptOfPlan) return false;
+
+        const selectedDept = visibleDepartments.find(
+          (d) => d.id.toString() === departmentFilter
+        );
+        if (!selectedDept) return false;
+
+        return (
+          deptOfPlan.id.toString() === departmentFilter ||
+          deptOfPlan.fullPath.includes(selectedDept.name)
+        );
+      });
+    } else if (!hasFullAccess) {
+      filteredPlans = filteredPlans.filter((plan) => {
+        const deptOfPlan = visibleDepartments.find(
+          (d) => d.name === plan.department
+        );
+        return (
+          deptOfPlan && userDepartmentIdsRef.current.includes(deptOfPlan.id)
+        );
+      });
+    }
+
+    setWorkPlans(filteredPlans);
+  };
+
+  useEffect(() => {
+    if (!loadingDepartments && allWorkPlans.length > 0) {
+      filterWorkPlans();
+    }
+  }, [searchQuery, statusFilter, departmentFilter, loadingDepartments]);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -117,11 +170,6 @@ export default function WorkPlansPage() {
         return <Badge variant="outline">Khác</Badge>;
     }
   };
-
-  const filteredWorkPlans = workPlans.filter((plan) => {
-    // Đã được lọc từ API, nhưng có thể thêm lọc client-side nếu cần
-    return true;
-  });
 
   return (
     <div className="space-y-6">
@@ -161,13 +209,17 @@ export default function WorkPlansPage() {
           </SelectContent>
         </Select>
         <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
-          <SelectTrigger className="w-full sm:w-[180px]">
-            <SelectValue placeholder="Phòng ban" />
+          <SelectTrigger
+            className="w-full sm:w-[220px]"
+            disabled={loadingDepartments}
+          >
+            <SelectValue placeholder="Đơn vị" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Tất cả phòng ban</SelectItem>
-            {departments.map((dept) => (
-              <SelectItem key={dept.id} value={dept.id}>
+            <SelectItem value="all">Tất cả đơn vị</SelectItem>
+            {visibleDepartments.map((dept) => (
+              <SelectItem key={dept.id} value={dept.id.toString()}>
+                {dept.level > 0 ? "\u00A0".repeat(dept.level * 2) + "└ " : ""}
                 {dept.name}
               </SelectItem>
             ))}
@@ -184,11 +236,11 @@ export default function WorkPlansPage() {
           <TabsTrigger value="completed">Hoàn thành</TabsTrigger>
         </TabsList>
         <TabsContent value="all" className="mt-4">
-          {isLoading ? (
+          {isLoading || loadingDepartments ? (
             <WorkPlansSkeleton />
-          ) : filteredWorkPlans.length > 0 ? (
+          ) : workPlans.length > 0 ? (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {filteredWorkPlans.map((workPlan) => (
+              {workPlans.map((workPlan) => (
                 <Card key={workPlan.id} className="overflow-hidden">
                   <CardHeader className="p-4">
                     <div className="flex items-start justify-between">
@@ -245,13 +297,12 @@ export default function WorkPlansPage() {
             </div>
           )}
         </TabsContent>
-        {/* Các tab khác tương tự, nhưng lọc theo trạng thái */}
         <TabsContent value="draft" className="mt-4">
-          {isLoading ? (
+          {isLoading || loadingDepartments ? (
             <WorkPlansSkeleton />
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {filteredWorkPlans
+              {workPlans
                 .filter((workPlan) => workPlan.status === "draft")
                 .map((workPlan) => (
                   <Card key={workPlan.id} className="overflow-hidden">
@@ -300,7 +351,6 @@ export default function WorkPlansPage() {
             </div>
           )}
         </TabsContent>
-        {/* Các tab khác tương tự */}
       </Tabs>
     </div>
   );

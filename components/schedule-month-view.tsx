@@ -69,6 +69,7 @@ export default function ScheduleMonthView({
   // Prepare events based on provided schedules
   useEffect(() => {
     console.log("Month View Schedules:", schedules); // Debug log
+    console.log("Department filter (Month View):", department); // Debug log để kiểm tra giá trị department
 
     // Skip if no schedules provided
     if (!schedules || schedules.length === 0) {
@@ -76,65 +77,103 @@ export default function ScheduleMonthView({
       return;
     }
 
-    // Transform schedules to display on specific date (May 17, 2025)
+    // Transform schedules into events format
     let transformedEvents: any[] = [];
 
-    // Use specific application date (May 17, 2025)
-    const appDate = new Date(2025, 4, 17); // Month is 0-indexed (4 = May)
-    const appDateStr = appDate.toISOString().split("T")[0];
-
-    // Find the day in the current month view that matches May 17
-    const currentMonthDays = monthDays.filter((day) => day !== null);
-    const targetDay = currentMonthDays.find(
-      (day) =>
-        day &&
-        day.getDate() === 17 &&
-        day.getMonth() === 4 &&
-        day.getFullYear() === 2025
-    );
-
-    // If we found the target day in the current month view, use its date string
-    // Otherwise fall back to the app date
-    const targetDateStr = targetDay
-      ? targetDay.toISOString().split("T")[0]
-      : appDateStr;
-
-    console.log("Target display date:", targetDateStr);
-
+    // Iterate through each schedule which contains multiple events
     schedules.forEach((schedule) => {
-      // Place all schedules on the specific date
-      transformedEvents.push({
-        id: `${schedule.id}`,
-        title: schedule.title,
-        date: targetDateStr,
-        startTime: "08:00",
-        endTime: "17:00",
-        location: schedule.department || "Không có địa điểm",
-        department: schedule.department,
-        type: "internal",
-        description: schedule.description || "",
-        scheduleId: schedule.id,
-        status: schedule.status,
+      // Skip if schedule has no events
+      if (
+        !schedule.events ||
+        !Array.isArray(schedule.events) ||
+        schedule.events.length === 0
+      ) {
+        return;
+      }
+
+      // Process each event in the schedule
+      schedule.events.forEach((event) => {
+        // Skip if event has no date
+        if (!event.date) {
+          console.warn(
+            `Event ${event.id} in schedule ${schedule.id} missing date, skipping`
+          );
+          return;
+        }
+
+        // Convert event date to Date object
+        const eventDate = new Date(event.date);
+        const eventMonth = eventDate.getMonth();
+        const eventYear = eventDate.getFullYear();
+
+        // Check if the schedule is in current month view
+        const viewMonth = date.getMonth();
+        const viewYear = date.getFullYear();
+
+        // Only include if the event is in the same month and year as the current view
+        if (eventMonth !== viewMonth || eventYear !== viewYear) {
+          return;
+        }
+
+        // Format times from HH:MM:SS to HH:MM
+        const startTime = event.startTime
+          ? event.startTime.substring(0, 5)
+          : "08:00";
+        const endTime = event.endTime ? event.endTime.substring(0, 5) : "17:00";
+
+        transformedEvents.push({
+          id: event.id,
+          scheduleId: schedule.id,
+          title: event.title,
+          date: event.date,
+          startTime: startTime,
+          endTime: endTime,
+          location:
+            event.location || schedule.departmentName || "Không có địa điểm",
+          department: schedule.departmentName,
+          departmentId: schedule.departmentId, // Thêm departmentId để lọc theo ID
+          type: event.type || "internal",
+          description: event.description || "",
+          status: schedule.status,
+        });
       });
     });
 
     // Filter events by department if needed
     if (department !== "all") {
-      transformedEvents = transformedEvents.filter(
-        (event) =>
-          event.department &&
-          event.department.toLowerCase() === department.toLowerCase()
-      );
+      transformedEvents = transformedEvents.filter((event) => {
+        // So sánh bằng ID thay vì tên phòng ban
+        return (
+          event.departmentId &&
+          event.departmentId.toString() === department.toString()
+        );
+      });
     }
 
     setEvents(transformedEvents);
     console.log("Transformed Month Events:", transformedEvents); // Debug log
-  }, [schedules, department, type, monthDays]);
+  }, [schedules, date, department, type]);
 
   const getDayEvents = (day: Date | null) => {
     if (!day) return [];
-    const dayStr = day.toISOString().split("T")[0];
-    return events.filter((event) => event.date === dayStr);
+
+    // Format day as YYYY-MM-DD to match event.date format
+    const dayStr = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(
+      2,
+      "0"
+    )}-${String(day.getDate()).padStart(2, "0")}`;
+
+    console.log("Looking for events on day:", dayStr);
+    const matchingEvents = events.filter((event) => {
+      const eventDate = event.date;
+      const match = eventDate === dayStr;
+      console.log(
+        `Event ${event.id} date: ${eventDate}, match with ${dayStr}: ${match}`
+      );
+      return match;
+    });
+
+    return matchingEvents;
   };
 
   const isToday = (day: Date | null) => {

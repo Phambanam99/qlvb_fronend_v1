@@ -11,18 +11,7 @@ import { useRouter } from "next/navigation";
 import { authAPI } from "@/lib/api/auth";
 import Cookies from "js-cookie";
 import { isTokenExpired } from "@/lib/utils";
-
-export interface User {
-  id: string;
-  username: string;
-  name: string;
-  email: string;
-  roles: string[];
-  avatar?: string;
-  department?: string;
-  departmentId?: string;
-  fullName?: string;
-}
+import { UserDTO as User } from "./api";
 
 interface AuthContextType {
   user: User | null;

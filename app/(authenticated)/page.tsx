@@ -25,6 +25,7 @@ import { schedulesAPI } from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
 import { useDashboard } from "@/lib/store";
 import { useAuth } from "@/lib/auth-context";
+import { da } from "date-fns/locale";
 
 // Danh sách vai trò có quyền xem bảng điều khiển đầy đủ
 const FULL_ACCESS_ROLES = [
@@ -189,42 +190,70 @@ export default function Home() {
           // Admin, văn thư, cục trưởng: xem tất cả dữ liệu
           console.log("Tải thống kê đầy đủ cho admin/cục trưởng");
           dashboardStats = await dashboardAPI.getDashboardStatistics();
+          console.log("dash: ", dashboardStats);
         } else if (hasDepartmentAccess && user?.departmentId) {
           // Trưởng phòng, phó phòng: chỉ xem dữ liệu của phòng ban
           console.log("Tải thống kê cho phòng ban:", user.departmentId);
-          // Hiện tại chưa có API riêng nên vẫn dùng API chung
-          dashboardStats = await dashboardAPI.getDashboardStatistics();
+          // Sử dụng API mới để lấy thống kê theo phòng ban
+          dashboardStats = await dashboardAPI.getDepartmentDashboardStatistics(
+            user.departmentId
+          );
+          console.log("dash p: ", dashboardStats.outgoingDocumentCount);
         } else if (hasPersonalAccess && user?.id) {
           // Nhân viên, trợ lý: chỉ xem dữ liệu cá nhân
           console.log("Tải thống kê cho nhân viên ID:", user.id);
-          dashboardStats = await dashboardAPI.getDashboardStatistics();
+          // Sử dụng API mới để lấy thống kê theo người dùng
+          dashboardStats = await dashboardAPI.getUserDashboardStatistics(
+            user.id
+          );
         } else {
           // Fallback - trả về dữ liệu rỗng
           dashboardStats = {
-            incomingDocumentCount: 0,
-            pendingDocumentCount: 0,
-            outgoingDocumentCount: 0,
-            workCaseCount: 0,
+            incomingDocuments: 0,
+            outgoingDocuments: 0,
+            pendingDocuments: [],
+            activeWorkPlans: [],
           };
         }
 
         if (dashboardStats) {
           console.log("✅ Hoàn tất tải thống kê:", dashboardStats);
-          // Cập nhật thống kê dựa trên dữ liệu đã lọc
+
+          // Tính toán số văn bản đang chờ xử lý
+          const pendingCount = Array.isArray(dashboardStats.pendingDocuments)
+            ? dashboardStats.pendingDocuments.length
+            : 0;
+
+          // Tính toán số kế hoạch đang hoạt động
+          const activeWorkPlansCount = Array.isArray(
+            dashboardStats.activeWorkPlans
+          )
+            ? dashboardStats.activeWorkPlans.length
+            : 0;
+
+          // Cập nhật thống kê dựa trên dữ liệu mới
           setStats({
             incomingDocuments: {
-              total: dashboardStats.incomingDocumentCount || 0,
-              pending: dashboardStats.pendingDocumentCount || 0,
+              total:
+                dashboardStats.incomingDocuments ||
+                dashboardStats.incomingDocumentCount ||
+                0,
+              pending: pendingCount,
             },
             outgoingDocuments: {
-              total: dashboardStats.outgoingDocumentCount || 0,
-              pending: dashboardStats.pendingDocumentCount || 0,
+              total:
+                dashboardStats.outgoingDocuments ||
+                dashboardStats.outgoingDocumentCount ||
+                0,
+              pending: pendingCount,
             },
             workPlans: {
-              total: dashboardStats.workCaseCount || 0,
-              active: dashboardStats.workCaseCount
-                ? Math.floor(dashboardStats.workCaseCount * 0.7)
-                : 0,
+              total: activeWorkPlansCount || dashboardStats.workCaseCount || 0,
+              active:
+                activeWorkPlansCount ||
+                (dashboardStats.workCaseCount
+                  ? Math.floor(dashboardStats.workCaseCount * 0.7)
+                  : 0),
             },
             schedules: {
               total: dashboardStats.scheduleCount || 0,
@@ -332,11 +361,8 @@ export default function Home() {
       // PHẦN 3: TẢI SỰ KIỆN TRONG NGÀY
       console.log("3️⃣ Đang tải sự kiện trong ngày...");
       try {
-        const today = new Date().toISOString().split("T")[0];
-        let events = [];
-
-        // Gọi API để lấy sự kiện trong ngày (nếu có API thì bỏ comment)
-        // events = await schedulesAPI.getScheduleEvents({ date: today });
+        // Sử dụng API mới để lấy lịch công tác trong ngày
+        let events = await dashboardAPI.getTodayScheduleEvents();
 
         if (Array.isArray(events) && events.length > 0) {
           console.log("✅ Đã tải sự kiện trong ngày:", events.length);
@@ -349,7 +375,7 @@ export default function Home() {
             }))
           );
         } else {
-          console.log("Không có sự kiện nào trong ngày hoặc API chưa sẵn sàng");
+          console.log("Không có sự kiện nào trong ngày");
           setTodayEvents([]);
         }
       } catch (eventError) {

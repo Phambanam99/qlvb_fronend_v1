@@ -29,7 +29,14 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { ArrowLeft, CalendarIcon, Plus, Save, Trash } from "lucide-react";
+import {
+  ArrowLeft,
+  CalendarIcon,
+  Plus,
+  Save,
+  Trash,
+  ChevronDown,
+} from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -38,6 +45,22 @@ import { usersAPI } from "@/lib/api/users";
 // Cập nhật import để sử dụng API từ thư mục lib/api
 import { schedulesAPI, departmentsAPI } from "@/lib/api";
 import { useNotifications } from "@/lib/notifications-context";
+import {
+  Command,
+  CommandInput,
+  CommandList,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+} from "@/components/ui/command";
+import { Checkbox } from "@/components/ui/checkbox";
+
+// Hàm xử lý vấn đề lệch ngày khi làm việc với Date
+const normalizeDate = (date: Date | null | undefined): Date | undefined => {
+  if (!date) return undefined;
+  // Tạo một ngày mới với cùng giá trị của ngày hiện tại, loại bỏ thông tin giờ
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+};
 
 export default function CreateSchedulePage() {
   const searchParams = useSearchParams();
@@ -80,6 +103,10 @@ export default function CreateSchedulePage() {
   };
 
   const updateScheduleItem = (id: number, field: string, value: any) => {
+    // Xử lý đặc biệt cho trường date để tránh vấn đề timezone
+    if (field === "date" && value) {
+      value = normalizeDate(value);
+    }
     setScheduleItems(
       scheduleItems.map((item) =>
         item.id === id ? { ...item, [field]: value } : item
@@ -140,14 +167,20 @@ export default function CreateSchedulePage() {
       const scheduleData = {
         title,
         description,
-        department,
+        departmentId: department,
         period: scheduleType, // Đổi tên trường để thống nhất với backend
-        startDate,
-        endDate,
-        scheduleItems: scheduleItems.map((item) => ({
+        startDate: startDate ? normalizeDate(startDate) : undefined,
+        endDate: endDate ? normalizeDate(endDate) : undefined,
+        events: scheduleItems.map((item) => ({
           ...item,
-          // Đảm bảo date là chuỗi ISO date
-          date: item.date ? item.date.toISOString().split("T")[0] : null,
+          // Đảm bảo date là chuỗi ISO date, sử dụng múi giờ local
+          date: item.date
+            ? new Date(
+                item.date.getTime() - item.date.getTimezoneOffset() * 60000
+              )
+                .toISOString()
+                .split("T")[0]
+            : null,
         })),
       };
 
@@ -397,7 +430,9 @@ export default function CreateSchedulePage() {
                       <Calendar
                         mode="single"
                         selected={startDate}
-                        onSelect={setStartDate}
+                        onSelect={(date) =>
+                          setStartDate(date ? normalizeDate(date) : undefined)
+                        }
                         initialFocus
                         locale={vi}
                         className="rounded-md border"
@@ -426,7 +461,9 @@ export default function CreateSchedulePage() {
                       <Calendar
                         mode="single"
                         selected={endDate}
-                        onSelect={setEndDate}
+                        onSelect={(date) =>
+                          setEndDate(date ? normalizeDate(date) : undefined)
+                        }
                         initialFocus
                         locale={vi}
                         disabled={(date) =>
@@ -628,51 +665,138 @@ export default function CreateSchedulePage() {
                             <Label htmlFor={`item-participants-${item.id}`}>
                               Thành phần tham dự
                             </Label>
-                            <Select
-                              value={item.participants[0] || ""}
-                              onValueChange={(value) =>
-                                updateScheduleItem(item.id, "participants", [
-                                  value,
-                                ])
-                              }
-                            >
-                              <SelectTrigger
-                                id={`item-participants-${item.id}`}
-                              >
-                                <SelectValue
-                                  placeholder={
-                                    isLoadingStaff
+                            <div className="relative">
+                              <Select value="multiple" disabled>
+                                <SelectTrigger
+                                  id={`item-participants-${item.id}`}
+                                  className="hidden"
+                                >
+                                  <SelectValue placeholder="Chọn nhiều người tham dự" />
+                                </SelectTrigger>
+                              </Select>
+
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    className="w-full justify-between"
+                                    disabled={isLoadingStaff}
+                                  >
+                                    {isLoadingStaff
                                       ? "Đang tải..."
-                                      : "Chọn người tham dự"
-                                  }
-                                />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {isLoadingStaff ? (
-                                  <div className="p-2 text-center">
-                                    <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full mx-auto"></div>
-                                    <p className="mt-2 text-xs text-muted-foreground">
-                                      Đang tải...
-                                    </p>
-                                  </div>
-                                ) : staffMembers.length === 0 ? (
-                                  <SelectItem value="none" disabled>
-                                    {department
-                                      ? "Không có cán bộ trong phòng ban này"
-                                      : "Vui lòng chọn phòng ban trước"}
-                                  </SelectItem>
-                                ) : (
-                                  staffMembers.map((staff) => (
-                                    <SelectItem
-                                      key={staff.id}
-                                      value={staff.id.toString()}
-                                    >
-                                      {staff.name || staff.fullName}
-                                    </SelectItem>
-                                  ))
-                                )}
-                              </SelectContent>
-                            </Select>
+                                      : item.participants.length === 0
+                                      ? "Chọn người tham dự"
+                                      : item.participants.length === 1
+                                      ? `${item.participants.length} người được chọn`
+                                      : item.participants.length ===
+                                        staffMembers.length
+                                      ? "Tất cả người dùng"
+                                      : `${item.participants.length} người được chọn`}
+                                    <ChevronDown className="h-4 w-4 opacity-50" />
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent
+                                  className="w-full p-0"
+                                  align="start"
+                                >
+                                  <Command>
+                                    <CommandInput placeholder="Tìm kiếm người tham dự..." />
+                                    <CommandList>
+                                      <CommandEmpty>
+                                        Không tìm thấy kết quả
+                                      </CommandEmpty>
+                                      <CommandGroup>
+                                        <CommandItem
+                                          onSelect={() => {
+                                            if (
+                                              staffMembers.length ===
+                                              item.participants.length
+                                            ) {
+                                              // If all are selected, deselect all
+                                              updateScheduleItem(
+                                                item.id,
+                                                "participants",
+                                                []
+                                              );
+                                            } else {
+                                              // Select all
+                                              updateScheduleItem(
+                                                item.id,
+                                                "participants",
+                                                staffMembers.map((staff) =>
+                                                  staff.id.toString()
+                                                )
+                                              );
+                                            }
+                                          }}
+                                        >
+                                          <div className="flex items-center gap-2">
+                                            <Checkbox
+                                              checked={
+                                                staffMembers.length > 0 &&
+                                                staffMembers.length ===
+                                                  item.participants.length
+                                              }
+                                              onCheckedChange={() => {}}
+                                            />
+                                            <span>Tất cả</span>
+                                          </div>
+                                        </CommandItem>
+                                        {staffMembers.map((staff) => (
+                                          <CommandItem
+                                            key={staff.id}
+                                            onSelect={() => {
+                                              const staffId =
+                                                staff.id.toString();
+                                              const currentParticipants = [
+                                                ...item.participants,
+                                              ];
+                                              const isSelected =
+                                                currentParticipants.includes(
+                                                  staffId
+                                                );
+
+                                              let newParticipants;
+                                              if (isSelected) {
+                                                // Remove if already selected
+                                                newParticipants =
+                                                  currentParticipants.filter(
+                                                    (id) => id !== staffId
+                                                  );
+                                              } else {
+                                                // Add if not selected
+                                                newParticipants = [
+                                                  ...currentParticipants,
+                                                  staffId,
+                                                ];
+                                              }
+
+                                              updateScheduleItem(
+                                                item.id,
+                                                "participants",
+                                                newParticipants
+                                              );
+                                            }}
+                                          >
+                                            <div className="flex items-center gap-2">
+                                              <Checkbox
+                                                checked={item.participants.includes(
+                                                  staff.id.toString()
+                                                )}
+                                                onCheckedChange={() => {}}
+                                              />
+                                              <span>
+                                                {staff.name || staff.fullName}
+                                              </span>
+                                            </div>
+                                          </CommandItem>
+                                        ))}
+                                      </CommandGroup>
+                                    </CommandList>
+                                  </Command>
+                                </PopoverContent>
+                              </Popover>
+                            </div>
                           </div>
                         </div>
                         <div className="space-y-2">

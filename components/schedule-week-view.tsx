@@ -17,6 +17,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { constructFromSymbol } from "date-fns/constants";
 
 interface ScheduleWeekViewProps {
   date?: Date;
@@ -55,6 +56,7 @@ export default function ScheduleWeekView({
   // Prepare events based on provided schedules
   useEffect(() => {
     console.log("Week View Schedules:", schedules); // Debug log
+    console.log("Department filter (Week View):", department); // Debug log để kiểm tra giá trị department
 
     // Skip if no schedules provided
     if (!schedules || schedules.length === 0) {
@@ -62,54 +64,77 @@ export default function ScheduleWeekView({
       return;
     }
 
-    // Use specific application date (May 17, 2025)
-    const appDate = new Date(2025, 4, 17); // Month is 0-indexed (4 = May)
-    const appDateStr = appDate.toISOString().split("T")[0];
-
-    console.log("Application date:", appDateStr);
-
-    // Find the day in the current week view that matches May 17
-    const targetDay = weekDays.find(
-      (day) =>
-        day.getDate() === 17 &&
-        day.getMonth() === 4 &&
-        day.getFullYear() === 2025
-    );
-
-    // If we found the target day in the current week view, use its date string
-    // Otherwise fall back to the app date
-    const targetDateStr = targetDay
-      ? targetDay.toISOString().split("T")[0]
-      : appDateStr;
-
-    console.log("Target display date:", targetDateStr);
-
-    // Transform schedules into events format - place on the specific date
+    // Transform schedules into events format
     let transformedEvents: any[] = [];
 
+    // Iterate through each schedule which contains multiple events
     schedules.forEach((schedule) => {
-      transformedEvents.push({
-        id: `${schedule.id}`,
-        title: schedule.title,
-        date: targetDateStr,
-        startTime: "08:00",
-        endTime: "17:00",
-        location: schedule.department || "Không có địa điểm",
-        department: schedule.department,
-        type: "internal",
-        description: schedule.description || "",
-        scheduleId: schedule.id,
-        status: schedule.status,
+      // Skip if schedule has no events
+      if (
+        !schedule.events ||
+        !Array.isArray(schedule.events) ||
+        schedule.events.length === 0
+      ) {
+        return;
+      }
+
+      // Process each event in the schedule
+      schedule.events.forEach((event) => {
+        // Skip if event has no date
+        if (!event.date) {
+          console.warn(
+            `Event ${event.id} in schedule ${schedule.id} missing date, skipping`
+          );
+          return;
+        }
+        console.log("Event Date:", event.date); // Debug log
+        // Convert event date to Date object
+        const eventDate = new Date(event.date);
+
+        // Check if the date falls within current week view
+        const isInCurrentWeek = weekDays.some((day) => {
+          return (
+            day.getDate() === eventDate.getDate() &&
+            day.getMonth() === eventDate.getMonth() &&
+            day.getFullYear() === eventDate.getFullYear()
+          );
+        });
+
+        if (!isInCurrentWeek) return; // Skip if not in current week view
+
+        // Format times from HH:MM:SS to HH:MM
+        const startTime = event.startTime
+          ? event.startTime.substring(0, 5)
+          : "08:00";
+        const endTime = event.endTime ? event.endTime.substring(0, 5) : "17:00";
+
+        transformedEvents.push({
+          id: event.id,
+          scheduleId: schedule.id,
+          title: event.title,
+          date: event.date,
+          startTime: startTime,
+          endTime: endTime,
+          location:
+            event.location || schedule.departmentName || "Không có địa điểm",
+          department: schedule.departmentName,
+          departmentId: schedule.departmentId, // Thêm departmentId để lọc theo ID
+          type: event.type || "internal",
+          description: event.description || "",
+          status: schedule.status,
+        });
       });
     });
 
     // Filter events by department if needed
     if (department !== "all") {
-      transformedEvents = transformedEvents.filter(
-        (event) =>
-          event.department &&
-          event.department.toLowerCase() === department.toLowerCase()
-      );
+      transformedEvents = transformedEvents.filter((event) => {
+        // So sánh bằng ID thay vì tên phòng ban
+        return (
+          event.departmentId &&
+          event.departmentId.toString() === department.toString()
+        );
+      });
     }
 
     setEvents(transformedEvents);

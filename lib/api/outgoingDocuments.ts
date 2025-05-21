@@ -29,6 +29,7 @@ export interface OutgoingDocumentDTO {
   creator?: any;
   approver?: any;
   submittedAt?: string;
+  draftingDepartmentId?: string;
   attachments?: DocumentAttachmentDTO[];
   history?: any[];
 }
@@ -58,9 +59,10 @@ export const outgoingDocumentsAPI = {
           sentDate: doc.signingDate,
           attachments: [],
           history: [],
+         
         })
       );
-
+        
       return { documents };
     } catch (error) {
       console.error("Error fetching outgoing documents:", error);

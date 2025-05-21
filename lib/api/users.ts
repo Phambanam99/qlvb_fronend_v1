@@ -9,6 +9,8 @@ export interface UserDTO {
   department?: string;
   position?: string;
   avatar?: string;
+  departmentId?: number;
+  departmentName?: string;
   isActive: boolean;
   roles: string[];
   createdAt: string;

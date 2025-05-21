@@ -1,4 +1,5 @@
 import api from "./config"
+import { UserDTO as User } from "./users"
 
 export interface AuthRequest {
   username: string
@@ -8,15 +9,7 @@ export interface AuthRequest {
 export interface AuthResponse {
   fullName: any
   token: string
-  user: {
-    id: number
-    username: string
-    name: string
-    email: string
-    roles: string[]
-    useRoles: string[]
-    status: string
-  }
+  user: User
 }
 
 export const authAPI = {

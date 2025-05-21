@@ -10,6 +10,7 @@ export interface ScheduleEventDTO {
   type: string;
   description?: string;
   participants: string[];
+  participantNames: string[];
   scheduleId: number;
   createdAt: string;
   updatedAt: string;
@@ -22,13 +23,18 @@ export interface ScheduleDTO {
   department: string;
   period: string;
   status: string;
-  createdBy: string;
+  createdById: string;
+  createdByName: string;
   approver?: string;
   approvedAt?: string;
+  approvedById?: string;
+  approvedByName?: string;
+  approvalDate?: string;
+  approvalComments?: string;
   comments?: string;
   createdAt: string;
   updatedAt: string;
-  items?: ScheduleEventDTO[];
+  events?: ScheduleEventDTO[];
 }
 
 export interface ScheduleEventParams {
