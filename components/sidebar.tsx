@@ -1,17 +1,28 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import { FileText, Send, ClipboardList, Calendar, Users, Settings, Menu, X } from "lucide-react"
-import { useState } from "react"
-import { useAuth } from "@/lib/auth-context"
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import {
+  FileText,
+  Send,
+  ClipboardList,
+  Calendar,
+  Users,
+  Settings,
+  Menu,
+  X,
+  Building,
+  UserCheck,
+} from "lucide-react";
+import { useState } from "react";
+import { useAuth } from "@/lib/auth-context";
 
 export default function Sidebar() {
-  const pathname = usePathname()
-  const [isOpen, setIsOpen] = useState(false)
-  const { hasPermission } = useAuth()
+  const pathname = usePathname();
+  const [isOpen, setIsOpen] = useState(false);
+  const { hasPermission } = useAuth();
 
   // Định nghĩa các mục menu với quyền hạn tương ứng
   const navItems = [
@@ -43,18 +54,32 @@ export default function Sidebar() {
       title: "Quản lý người dùng",
       href: "/nguoi-dung",
       icon: Users,
-      permission: "manage_users", // Chỉ admin mới có thể xem
+      permission: "ROLE_ADMIN", // Chỉ admin mới có thể xem
     },
     {
-      // title: "Cài đặt",
-      // href: "/cai-dat",
-      // icon: Settings,
-      // permission: null, // Tất cả người dùng đều có thể xem (nhưng một số tính năng sẽ bị hạn chế)
+      title: "Quản lý vai trò",
+      href: "/vai-tro",
+      icon: UserCheck,
+      permission: "ROLE_ADMIN", // Chỉ admin mới có thể xem
     },
-  ]
+    {
+      title: "Quản lý phòng ban",
+      href: "/phong-ban",
+      icon: Building,
+      permission: "ROLE_ADMIN", // Chỉ admin mới có thể xem
+    },
+    {
+      title: "Cài đặt",
+      href: "/cai-dat",
+      icon: Settings,
+      permission: "ROLE_ADMIN", // Chỉ admin mới có thể xem
+    },
+  ];
 
   // Lọc các mục menu dựa trên quyền hạn
-  const filteredNavItems = navItems.filter((item) => item.permission === null || hasPermission(item.permission))
+  const filteredNavItems = navItems.filter(
+    (item) => item.permission === null || hasPermission(item.permission)
+  );
 
   return (
     <>
@@ -67,17 +92,19 @@ export default function Sidebar() {
         {isOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
       </Button>
       <div
-        className={cn("fixed inset-0 z-40 bg-background/80 backdrop-blur-sm md:hidden", isOpen ? "block" : "hidden")}
+        className={cn(
+          "fixed inset-0 z-40 bg-background/80 backdrop-blur-sm md:hidden",
+          isOpen ? "block" : "hidden"
+        )}
         onClick={() => setIsOpen(false)}
       />
       <div
         className={cn(
           "fixed inset-y-0 left-0 z-40 w-64 bg-accent/50 shadow-md border-r transition-transform duration-300 ease-in-out md:translate-x-0 md:static md:z-0",
-          isOpen ? "translate-x-0" : "-translate-x-full",
+          isOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
         <div className="flex flex-col h-full">
-         
           <nav className="flex-1 overflow-auto py-6 px-4">
             <div className="space-y-1.5">
               {filteredNavItems.map((item) => (
@@ -86,9 +113,10 @@ export default function Sidebar() {
                   href={item.href}
                   className={cn(
                     "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-all hover:bg-primary/10 hover:text-primary",
-                    pathname === item.href || pathname.startsWith(`${item.href}/`)
+                    pathname === item.href ||
+                      pathname.startsWith(`${item.href}/`)
                       ? "bg-primary/20 text-primary shadow-sm"
-                      : "text-muted-foreground",
+                      : "text-muted-foreground"
                   )}
                 >
                   <item.icon className="h-4 w-4" />
@@ -105,7 +133,9 @@ export default function Sidebar() {
                 </div>
                 <div>
                   <p className="font-medium text-primary">Cần trợ giúp?</p>
-                  <p className="text-xs text-muted-foreground">Xem hướng dẫn sử dụng</p>
+                  <p className="text-xs text-muted-foreground">
+                    Xem hướng dẫn sử dụng
+                  </p>
                 </div>
               </div>
             </div>
@@ -113,5 +143,5 @@ export default function Sidebar() {
         </div>
       </div>
     </>
-  )
+  );
 }

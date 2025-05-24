@@ -39,7 +39,7 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { workflowAPI } from "@/lib/api/workflow";
-import { outgoingDocumentsAPI, DocumentWorkflowDTO } from "@/lib/api";
+import { outgoingDocumentsAPI, DocumentWorkflowDTO, DocumentResponseDTO } from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import { getStatusBadgeInfo } from "@/lib/utils";
@@ -50,8 +50,10 @@ interface DocumentResponse {
   id: number;
   title: string;
   summary: string;
+  draftingDepartment?: string;
   documentNumber?: string;
   created?: string;
+  signerName?: string;
   creator: {
     id: number;
     fullName: string;
@@ -69,6 +71,7 @@ export default function DocumentResponseList({
   documentId,
 }: DocumentResponseListProps) {
   // States và context
+  const documentResponeDTO : DocumentResponseDTO = [];
   const { toast } = useToast();
   const { user, hasRole } = useAuth();
   const { addNotification } = useNotifications();
@@ -92,6 +95,7 @@ export default function DocumentResponseList({
     "published",
     "completed",
     "leader_reviewing",
+    "department_approved",
   ];
   useEffect(() => {
     const fetchResponses = async () => {
@@ -100,6 +104,7 @@ export default function DocumentResponseList({
         const response = await workflowAPI.getDocumentResponses(
           String(documentId)
         );
+        console.log("response", response);
         const res = response.filter((item: any) =>
           ruleDoc.includes(item.status)
         );
@@ -317,13 +322,13 @@ export default function DocumentResponseList({
               <div className="flex justify-between text-sm">
                 <span>
                   <span className="text-muted-foreground">Đơn vị:</span>{" "}
-                  {response.creator.fullName}
+                  {response.draftingDepartment}
                 </span>
                 <span>
                   <span className="text-muted-foreground">
                     Người phê duyệt:
                   </span>{" "}
-                  {response.created}
+                  {response.signerName}
                 </span>
               </div>
               <Separator />
@@ -356,7 +361,7 @@ export default function DocumentResponseList({
                   <Separator />
                   <div>
                     <p className="text-sm font-medium text-muted-foreground mb-2">
-                      Phản hồi của lãnh đạo
+                      Phản hồi của người phê duyệt
                     </p>
                     <div className="p-3 bg-amber-50 border border-amber-200 rounded-md">
                       <p className="text-sm italic text-amber-700">
@@ -368,7 +373,7 @@ export default function DocumentResponseList({
               )}
 
               {/* Buttons for Approve/Reject - Only visible to managers/admin */}
-              {canApproveReject && response.status === "leader_reviewing" && (
+              {canApproveReject && response.status === "department_approved" && (
                 <div className="flex justify-end space-x-2 mt-3">
                   {/* Approve Button */}
                   <Button

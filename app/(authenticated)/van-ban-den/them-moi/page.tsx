@@ -314,11 +314,11 @@ export default function AddIncomingDocumentPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="referenceNumber">Số tham chiếu</Label>
+                  <Label htmlFor="referenceNumber">Số  lưu trữ</Label>
                   <Input
                     id="referenceNumber"
                     name="referenceNumber"
-                    placeholder="Nhập số tham chiếu"
+                    placeholder="Nhập số lưu trữ"
                   />
                 </div>
                 <div className="space-y-2">

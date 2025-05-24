@@ -90,7 +90,7 @@ export const outgoingDocumentsAPI = {
         attachments: [],
         history: [],
       };
-
+      console.log(document);
       return { data: document };
     } catch (error) {
       console.error("Error fetching outgoing document:", error);

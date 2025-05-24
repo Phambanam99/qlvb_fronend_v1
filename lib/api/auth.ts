@@ -1,15 +1,24 @@
-import api from "./config"
-import { UserDTO as User } from "./users"
+import api from "./config";
+import { UserDTO as User } from "./users";
 
 export interface AuthRequest {
-  username: string
-  password: string
+  username: string;
+  password: string;
 }
 
 export interface AuthResponse {
-  fullName: any
-  token: string
-  user: User
+  fullName: any;
+  token: string;
+  user: User;
+}
+
+export interface RegisterRequest {
+  username: string;
+  password: string;
+  fullName: string;
+  email?: string;
+  departmentId: number;
+  roles: string[];
 }
 
 export const authAPI = {
@@ -21,11 +30,11 @@ export const authAPI = {
    */
   login: async (username: string, password: string): Promise<AuthResponse> => {
     try {
-      const response = await api.post("/auth/login", { username, password })
-      return response.data
+      const response = await api.post("/auth/login", { username, password });
+      return response.data;
     } catch (error) {
-      console.error("Login error:", error)
-      throw error
+      console.error("Login error:", error);
+      throw error;
     }
   },
 
@@ -34,9 +43,14 @@ export const authAPI = {
    * @param userData User data
    * @returns Created user data
    */
-  register: async (userData: any) => {
-    const response = await api.post("/auth/register", userData)
-    return response.data
+  register: async (userData: RegisterRequest): Promise<User> => {
+    try {
+      const response = await api.post("/auth/register", userData);
+      return response.data;
+    } catch (error) {
+      console.error("Registration error:", error);
+      throw error;
+    }
   },
 
   /**
@@ -44,7 +58,7 @@ export const authAPI = {
    * @returns Current user data
    */
   getCurrentUser: async () => {
-    const response = await api.get("/auth/me")
-    return response.data
+    const response = await api.get("/auth/me");
+    return response.data;
   },
-}
+};

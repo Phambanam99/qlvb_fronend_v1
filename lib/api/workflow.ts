@@ -320,4 +320,33 @@ export const workflowAPI = {
     });
     return response.data;
   },
+  headerDeparmentApprove: async (responseId: number, comment: string ) => {
+    const response = await api.put(`/workflow/${responseId}/header-department-approve`, {
+      comments:comment
+    });
+    return response.data;
+  },
+  headerDepartmentComment: async (responseId: number, 
+    comments: string, 
+    file?: File | null ) => {
+    const formData = new FormData();
+    formData.append(
+      "comments",
+      new Blob([JSON.stringify(comments)], { type: "application/json" })
+    );
+     // Thêm tệp đính kèm nếu có
+     if (file) {
+      formData.append("file", file);
+    }
+    console.log("formData",formData);
+   
+    const response = await api.put(`/workflow/${responseId}/header-feedback-with-attachment`, 
+      formData,
+      {
+        headers: {
+          "Content-Type": undefined,
+        },
+      });
+    return response.data;
+  },
 };

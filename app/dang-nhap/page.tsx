@@ -17,9 +17,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
-import { Loader2, AlertCircle, InfoIcon } from "lucide-react";
+import { Loader2, InfoIcon } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import Link from "next/link";
+import { ErrorMessage } from "@/components/ui/error-message";
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
@@ -63,7 +65,7 @@ export default function LoginPage() {
         setTimeout(() => {
           console.log("🚀 Đang chuyển hướng sau khi đăng nhập thành công...");
           router.push(callbackUrl);
-        }, 500);
+        }, 100);
       } else {
         // Xử lý trường hợp loginResult không phải true (có thể undefined hoặc false)
         setError(
@@ -107,12 +109,7 @@ export default function LoginPage() {
                 </AlertDescription>
               </Alert>
             )}
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md flex items-center mb-4">
-                <AlertCircle className="h-4 w-4 mr-2" />
-                <span className="text-sm">{error}</span>
-              </div>
-            )}
+            <ErrorMessage message={error} />
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
@@ -169,16 +166,24 @@ export default function LoginPage() {
           </CardContent>
           <CardFooter>
             <div className="w-full text-center text-sm text-muted-foreground">
-              <div className="mt-2 p-3 bg-muted/50 rounded-md">
-                <p className="font-medium text-foreground">
-                  Tài khoản mặc định:
-                </p>
-                <p className="mt-1">
-                  Tên đăng nhập: <span className="font-medium">admin</span>
-                </p>
-                <p>
-                  Mật khẩu: <span className="font-medium">admin123</span>
-                </p>
+              <div className="flex flex-col space-y-4">
+                <div className="p-3 bg-muted/50 rounded-md">
+                  <p className="font-medium text-foreground">
+                    Tài khoản mặc định:
+                  </p>
+                  <p className="mt-1">
+                    Tên đăng nhập: <span className="font-medium">admin</span>
+                  </p>
+                  <p>
+                    Mật khẩu: <span className="font-medium">admin123</span>
+                  </p>
+                </div>
+                <div className="pt-2">
+                  Chưa có tài khoản?{" "}
+                  <Link href="/dang-ky" className="text-primary font-medium">
+                    Đăng ký ngay
+                  </Link>
+                </div>
               </div>
             </div>
           </CardFooter>

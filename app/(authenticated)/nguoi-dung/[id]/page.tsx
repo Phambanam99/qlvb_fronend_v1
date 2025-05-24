@@ -1,148 +1,171 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { useParams, useRouter } from "next/navigation"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { toast } from "@/components/ui/use-toast"
-import { Loader2, ArrowLeft, UserCog, Key, Shield, AlertTriangle } from "lucide-react"
-import { usersAPI } from "@/lib/api/users"
-import { rolesAPI } from "@/lib/api/roles"
-import { departmentsAPI } from "@/lib/api/departments"
-import UserProfileForm from "@/components/user-profile-form"
-import UserRoleForm from "@/components/user-role-form"
-import UserPasswordForm from "@/components/user-password-form"
-import UserStatusForm from "@/components/user-status-form"
+import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/use-toast";
+import {
+  Loader2,
+  ArrowLeft,
+  UserCog,
+  Key,
+  Shield,
+  AlertTriangle,
+} from "lucide-react";
+import { usersAPI } from "@/lib/api/users";
+import { rolesAPI } from "@/lib/api/roles";
+import { departmentsAPI } from "@/lib/api/departments";
+import UserProfileForm from "@/components/user-profile-form";
+import UserRoleForm from "@/components/user-role-form";
+import UserPasswordForm from "@/components/user-password-form";
+import UserStatusForm from "@/components/user-status-form";
+import { cp } from "fs";
 
 export default function UserDetailPage() {
-  const params = useParams()
-  const router = useRouter()
-  const userId = params.id as string
+  const params = useParams();
+  const router = useRouter();
+  const userId = params.id as string;
+  const { toast } = useToast();
 
-  const [user, setUser] = useState<any>(null)
-  const [roles, setRoles] = useState<any[]>([])
-  const [departments, setDepartments] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
+  const [user, setUser] = useState<any>(null);
+  const [roles, setRoles] = useState<any[]>([]);
+  const [departments, setDepartments] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        setLoading(true)
+        setLoading(true);
         const [userData, rolesData, departmentsData] = await Promise.all([
           usersAPI.getUserById(userId),
           rolesAPI.getAllRoles(),
           departmentsAPI.getAllDepartments(),
-        ])
+        ]);
 
-        setUser(userData)
-        setRoles(rolesData)
-        setDepartments(departmentsData.content)
+        setUser(userData);
+        setRoles(rolesData);
+        setDepartments(departmentsData.content);
       } catch (error) {
-        console.error("Error fetching user data:", error)
+        console.error("Error fetching user data:", error);
         toast({
           title: "Lỗi",
-          description: "Không thể tải thông tin người dùng. Vui lòng thử lại sau.",
+          description:
+            "Không thể tải thông tin người dùng. Vui lòng thử lại sau.",
           variant: "destructive",
-        })
+        });
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
-    fetchData()
-  }, [userId])
+    fetchData();
+  }, [userId]);
 
   const handleUpdateProfile = async (data: any) => {
     try {
-      setSaving(true)
-      const updatedUser = await usersAPI.updateUser(userId, data)
-      setUser(updatedUser)
+      setSaving(true);
+      const updatedUser = await usersAPI.updateUser(userId, data);
+      setUser(updatedUser);
       toast({
         title: "Thành công",
         description: "Thông tin người dùng đã được cập nhật",
-      })
+      });
     } catch (error) {
-      console.error("Error updating user:", error)
+      console.error("Error updating user:", error);
       toast({
         title: "Lỗi",
-        description: "Không thể cập nhật thông tin người dùng. Vui lòng thử lại sau.",
+        description:
+          "Không thể cập nhật thông tin người dùng. Vui lòng thử lại sau.",
         variant: "destructive",
-      })
+      });
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }
+  };
 
   const handleUpdateRole = async (data: any) => {
     try {
-      setSaving(true)
-      const updatedUser = await usersAPI.updateUser(userId, data)
-      setUser(updatedUser)
+      console.log(data);
+      setSaving(true);
+      const updatedUser = await usersAPI.updateUser(userId, data);
+      setUser(updatedUser);
       toast({
         title: "Thành công",
         description: "Vai trò và phòng ban đã được cập nhật",
-      })
+      });
     } catch (error) {
-      console.error("Error updating user role:", error)
+      console.error("Error updating user role:", error);
       toast({
         title: "Lỗi",
-        description: "Không thể cập nhật vai trò và phòng ban. Vui lòng thử lại sau.",
+        description:
+          "Không thể cập nhật vai trò và phòng ban. Vui lòng thử lại sau.",
         variant: "destructive",
-      })
+      });
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }
+  };
 
   const handleChangePassword = async (data: any) => {
     try {
-      setSaving(true)
-      await usersAPI.resetPassword(userId, data.newPassword)
+      setSaving(true);
+      await usersAPI.resetPassword(userId, data.newPassword);
       toast({
         title: "Thành công",
         description: "Mật khẩu đã được đặt lại",
-      })
+      });
     } catch (error) {
-      console.error("Error resetting password:", error)
+      console.error("Error resetting password:", error);
       toast({
         title: "Lỗi",
         description: "Không thể đặt lại mật khẩu. Vui lòng thử lại sau.",
         variant: "destructive",
-      })
+      });
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }
+  };
 
   const handleUpdateStatus = async (data: any) => {
     try {
-      setSaving(true)
-      const updatedUser = await usersAPI.updateUser(userId, data)
-      setUser(updatedUser)
+      console.log(data);
+      setSaving(true);
+      const updatedUser = await usersAPI.updateUser(userId, data);
+      setUser(updatedUser);
       toast({
         title: "Thành công",
-        description: `Tài khoản đã được ${data.isActive ? "kích hoạt" : "vô hiệu hóa"}`,
-      })
+        description: `Tài khoản đã được ${
+          data.isActive ? "kích hoạt" : "vô hiệu hóa"
+        }`,
+      });
     } catch (error) {
-      console.error("Error updating user status:", error)
+      console.error("Error updating user status:", error);
       toast({
         title: "Lỗi",
-        description: "Không thể cập nhật trạng thái tài khoản. Vui lòng thử lại sau.",
+        description:
+          "Không thể cập nhật trạng thái tài khoản. Vui lòng thử lại sau.",
         variant: "destructive",
-      })
+      });
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }
+  };
 
   if (loading) {
     return (
       <div className="flex h-[calc(100vh-4rem)] w-full items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
-    )
+    );
   }
 
   if (!user) {
@@ -150,13 +173,15 @@ export default function UserDetailPage() {
       <div className="flex h-[calc(100vh-4rem)] w-full flex-col items-center justify-center gap-2">
         <AlertTriangle className="h-8 w-8 text-destructive" />
         <h2 className="text-xl font-semibold">Không tìm thấy người dùng</h2>
-        <p className="text-muted-foreground">Người dùng không tồn tại hoặc đã bị xóa</p>
+        <p className="text-muted-foreground">
+          Người dùng không tồn tại hoặc đã bị xóa
+        </p>
         <Button variant="outline" onClick={() => router.back()}>
           <ArrowLeft className="mr-2 h-4 w-4" />
           Quay lại
         </Button>
       </div>
-    )
+    );
   }
 
   return (
@@ -194,10 +219,16 @@ export default function UserDetailPage() {
           <Card>
             <CardHeader>
               <CardTitle>Thông tin cá nhân</CardTitle>
-              <CardDescription>Cập nhật thông tin cá nhân của người dùng</CardDescription>
+              <CardDescription>
+                Cập nhật thông tin cá nhân của người dùng
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <UserProfileForm user={user} onSubmit={handleUpdateProfile} saving={saving} />
+              <UserProfileForm
+                user={user}
+                onSubmit={handleUpdateProfile}
+                saving={saving}
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -206,7 +237,9 @@ export default function UserDetailPage() {
           <Card>
             <CardHeader>
               <CardTitle>Vai trò & Phòng ban</CardTitle>
-              <CardDescription>Quản lý vai trò và phòng ban của người dùng</CardDescription>
+              <CardDescription>
+                Quản lý vai trò và phòng ban của người dùng
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <UserRoleForm
@@ -227,7 +260,10 @@ export default function UserDetailPage() {
               <CardDescription>Đặt lại mật khẩu cho người dùng</CardDescription>
             </CardHeader>
             <CardContent>
-              <UserPasswordForm onSubmit={handleChangePassword} saving={saving} />
+              <UserPasswordForm
+                onSubmit={handleChangePassword}
+                saving={saving}
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -236,14 +272,20 @@ export default function UserDetailPage() {
           <Card>
             <CardHeader>
               <CardTitle>Trạng thái tài khoản</CardTitle>
-              <CardDescription>Kích hoạt hoặc vô hiệu hóa tài khoản người dùng</CardDescription>
+              <CardDescription>
+                Kích hoạt hoặc vô hiệu hóa tài khoản người dùng
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <UserStatusForm user={user} onSubmit={handleUpdateStatus} saving={saving} />
+              <UserStatusForm
+                user={user}
+                onSubmit={handleUpdateStatus}
+                saving={saving}
+              />
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
     </div>
-  )
+  );
 }

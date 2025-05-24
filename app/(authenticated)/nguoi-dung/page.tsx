@@ -9,13 +9,13 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Loader2, Plus, Search, UserCog } from "lucide-react"
-import { usersAPI } from "@/lib/api/users"
+import { UserDTO, usersAPI } from "@/lib/api/users"
 import { rolesAPI } from "@/lib/api/roles"
 import { departmentsAPI } from "@/lib/api/departments"
 import { toast } from "@/components/ui/use-toast"
 import { PageResponse, DepartmentDTO } from "@/lib/api"
 export default function UsersPage() {
-  const [users, setUsers] = useState<any[]>([])
+  const [users, setUsers] = useState<UserDTO[]>([])
   const [roles, setRoles] = useState<any[]>([])
   // Update your state declaration to expect a paginated response
 const [departments, setDepartments] = useState<PageResponse<DepartmentDTO>>()
@@ -55,15 +55,14 @@ const [departments, setDepartments] = useState<PageResponse<DepartmentDTO>>()
 
   const filteredUsers = users.filter((user) => {
     const matchesSearch =
-      user.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase())
+      user.fullName.toLowerCase().includes(searchTerm.toLowerCase()) 
 
-    const matchesRole = roleFilter === "all" || user.roleId === roleFilter
-    const matchesDepartment = departmentFilter === "all" || user.departmentId === departmentFilter
+    const matchesRole = roleFilter === "all" || user.roleId === Number(roleFilter)
+    const matchesDepartment = departmentFilter === "all" || user.departmentId === Number(departmentFilter)
     const matchesStatus =
       statusFilter === "all" ||
-      (statusFilter === "active" && user.isActive) ||
-      (statusFilter === "inactive" && !user.isActive)
+      (statusFilter === "active" && user.status === 1) ||
+      (statusFilter === "inactive" && user.status !== 1)
 
     return matchesSearch && matchesRole && matchesDepartment && matchesStatus
   })
@@ -128,7 +127,7 @@ const [departments, setDepartments] = useState<PageResponse<DepartmentDTO>>()
                   <SelectItem value="all">Tất cả vai trò</SelectItem>
                   {roles.map((role) => (
                     <SelectItem key={role.id} value={role.id}>
-                      {role.name}
+                      {role.displayName}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -180,7 +179,7 @@ const [departments, setDepartments] = useState<PageResponse<DepartmentDTO>>()
               <TableHeader>
                 <TableRow>
                   <TableHead>Họ tên</TableHead>
-                  <TableHead>Email</TableHead>
+                 
                   <TableHead>Vai trò</TableHead>
                   <TableHead>Phòng ban</TableHead>
                   <TableHead>Trạng thái</TableHead>
@@ -198,11 +197,11 @@ const [departments, setDepartments] = useState<PageResponse<DepartmentDTO>>()
                   filteredUsers.map((user) => (
                     <TableRow key={user.id}>
                       <TableCell className="font-medium">{user.fullName}</TableCell>
-                      <TableCell>{user.email}</TableCell>
-                      <TableCell>{getRoleName(user.roleId)}</TableCell>
+  
+                      <TableCell>{user.roleDisplayNames[0]}</TableCell>
                       <TableCell>{getDepartmentName(user.departmentId)}</TableCell>
                       <TableCell>
-                        {user.isActive ? (
+                        {user.status === 1 ? (
                           <Badge variant="outline" className="bg-green-50 text-green-700">
                             Đang hoạt động
                           </Badge>

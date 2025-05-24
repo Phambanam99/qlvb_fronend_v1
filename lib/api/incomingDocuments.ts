@@ -15,35 +15,51 @@ export const DocumentProcessingStatus = {
   DEPT_ASSIGNED: { code: "dept_assigned", displayName: "Phòng đã phân công" },
   PENDING_APPROVAL: { code: "pending_approval", displayName: "Chờ phê duyệt" },
 
-  // 4. Chuyên viên statuses
+  // 4. TL/NV statuses
   SPECIALIST_PROCESSING: {
     code: "specialist_processing",
-    displayName: "Chuyên viên đang xử lý",
+    displayName: "TL/NV đang xử lý",
   },
   SPECIALIST_SUBMITTED: {
     code: "specialist_submitted",
-    displayName: "Chuyên viên đã trình",
+    displayName: "TL/NV đã trình",
   },
 
-  // 5. Lãnh đạo statuses
+  // 5. Thử trưởng statuses
   LEADER_REVIEWING: {
     code: "leader_reviewing",
-    displayName: "Lãnh đạo đang xem xét",
+    displayName: "Thủ trưởng đang xem xét",
   },
   LEADER_APPROVED: {
     code: "leader_approved",
-    displayName: "Lãnh đạo đã phê duyệt",
+    displayName: "Thủ trưởng đã phê duyệt",
   },
   LEADER_COMMENTED: {
     code: "leader_commented",
-    displayName: "Lãnh đạo đã cho ý kiến",
+    displayName: "Thủ trưởng đã cho ý kiến",
   },
+ 
 
   // Final statuses
   PUBLISHED: { code: "published", displayName: "Đã ban hành" },
   COMPLETED: { code: "completed", displayName: "Hoàn thành" },
   REJECTED: { code: "rejected", displayName: "Từ chối" },
   ARCHIVED: { code: "archived", displayName: "Lưu trữ" },
+  HEADER_DEPARTMENT_REVIEWING:
+  {
+    code: "department_reviewing", 
+    displayName: "Chỉ  huy đang xem xét"
+  },
+    HEADER_DEPARTMENT_APPROVED:   {
+      code: "department_approved", 
+      displayName: "Chỉ huy đã phê duyệt"
+    },
+   
+    HEADER_DEPARTMENT_COMMENTED:
+    {
+      code: "department_commented", 
+      displayName:"Chỉ huy đã cho ý kiến"
+    },
 } as const;
 
 // ------------------

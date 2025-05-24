@@ -736,7 +736,7 @@ export default function DocumentDetailPage({
             </TabsList>
             <TabsContent value="responses" className="space-y-4 pt-4">
               <DocumentResponseList documentId={_document.id} />
-              {hasRole("staff") && (
+              {hasRole(["ROLE_TRO_LY", "ROLE_NHAN_VIEN"]) && (
                 <DocumentResponseForm documentId={_document.id} />
               )}
             </TabsContent>

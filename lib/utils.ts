@@ -39,29 +39,32 @@ export function getStatusBadgeInfo(
     pendingApproval: { variant: "outline", display: "Chờ phê duyệt" },
     specialistProcessing: {
       variant: "secondary",
-      display: "Chuyên viên đang xử lý",
+      display: "Trợ lý đang xử lý",
     },
     specialistSubmitted: {
       variant: "secondary",
-      display: "Chuyên viên đã trình",
+      display: "Trợ lý đã trình",
     },
-    leaderReviewing: { variant: "secondary", display: "Lãnh đạo đang xem xét" },
-    leaderApproved: { variant: "success", display: "Lãnh đạo đã phê duyệt" },
+    leaderReviewing: { variant: "secondary", display: "Thủ trưởng đang xem xét" },
+    leaderApproved: { variant: "success", display: "Thủ trưởng đã phê duyệt" },
     leaderCommented: {
       variant: "secondary",
-      display: "Lãnh đạo đã cho ý kiến",
+      display: "Thủ trưởng đã cho ý kiến",
     },
     published: { variant: "success", display: "Đã ban hành" },
     completed: { variant: "success", display: "Hoàn thành" },
     rejected: { variant: "destructive", display: "Từ chối" },
     archived: { variant: "outline", display: "Lưu trữ" },
-
+   
     // Văn bản đi
     sent: { variant: "success", display: "Đã gửi" },
     approved: { variant: "success", display: "Đã phê duyệt" },
 
     // Văn bản phản hồi
     pendingLeaderReview: { variant: "outline", display: "Chờ ý kiến chỉ huy" },
+    departmentReviewing: { variant: "outline", display: "Chỉ huy đang xem xét" },
+    departmentApproved: { variant: "success", display: "Chỉ huy đã phê duyệt" },
+    departmentCommented: { variant: "secondary", display: "Chỉ huy đã cho ý kiến" },
   };
 
   // Lấy thông tin từ bảng ánh xạ, hoặc dùng giá trị mặc định

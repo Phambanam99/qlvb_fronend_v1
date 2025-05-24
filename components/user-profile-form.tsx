@@ -1,12 +1,19 @@
-"use client"
+"use client";
 
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
-import * as z from "zod"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { Loader2, Save } from "lucide-react"
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import * as z from "zod";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Loader2, Save } from "lucide-react";
 
 const profileFormSchema = z.object({
   fullName: z.string().min(2, {
@@ -17,26 +24,30 @@ const profileFormSchema = z.object({
   }),
   phone: z.string().optional(),
   position: z.string().optional(),
-})
+});
 
-type ProfileFormValues = z.infer<typeof profileFormSchema>
+type ProfileFormValues = z.infer<typeof profileFormSchema>;
 
 interface UserProfileFormProps {
-  user: any
-  onSubmit: (data: ProfileFormValues) => void
-  saving: boolean
+  user: any;
+  onSubmit: (data: ProfileFormValues) => void;
+  saving: boolean;
 }
 
-export default function UserProfileForm({ user, onSubmit, saving }: UserProfileFormProps) {
+export default function UserProfileForm({
+  user,
+  onSubmit,
+  saving,
+}: UserProfileFormProps) {
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
     defaultValues: {
       fullName: user.fullName || "",
       email: user.email || "",
       phone: user.phone || "",
-      position: user.position || "",
+      position: user.roleDisplayNames[0] || "",
     },
-  })
+  });
 
   return (
     <Form {...form}>
@@ -63,7 +74,11 @@ export default function UserProfileForm({ user, onSubmit, saving }: UserProfileF
               <FormItem>
                 <FormLabel>Email</FormLabel>
                 <FormControl>
-                  <Input type="email" placeholder="example@example.com" {...field} />
+                  <Input
+                    type="email"
+                    placeholder="example@example.com"
+                    {...field}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -116,5 +131,5 @@ export default function UserProfileForm({ user, onSubmit, saving }: UserProfileF
         </div>
       </form>
     </Form>
-  )
+  );
 }

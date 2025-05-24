@@ -1,16 +1,42 @@
-import api from "./config"
-import type { PermissionDTO } from "./types"
+import api from "./config";
+import type { PermissionDTO, PageResponse } from "./types";
 
 export interface CustomRoleDTO {
-  id: number
-  name: string
-  description: string
-  systemRole: boolean
-  createdAt: string
-  updatedAt: string
-  createdById?: number
-  createdByName?: string
-  permissions: PermissionDTO[]
+  id: number;
+  name: string;
+  displayName?: string;
+  description: string;
+  isSystem: boolean;
+  systemRole: boolean;
+  createdAt: string;
+  updatedAt: string;
+  createdById?: number;
+  createdByName?: string;
+  permissions?: PermissionDTO[] | string[];
+  userCount?: number;
+}
+
+export interface RoleDTO {
+  id: number;
+  name?: string;
+  displayName?: string;
+  description?: string;
+  userCount?: number;
+  isSystem?: boolean;
+}
+
+export interface CreateRoleDTO {
+  name: string;
+  displayName: string;
+  description: string;
+  permissions?: string[];
+}
+
+export interface UpdateRoleDTO {
+  name?: string;
+  displayName?: string;
+  description?: string;
+  permissions?: string[];
 }
 
 export const rolesAPI = {
@@ -18,9 +44,35 @@ export const rolesAPI = {
    * Get all roles
    * @returns List of all roles
    */
-  getAllRoles: async (): Promise<CustomRoleDTO[]> => {
-    const response = await api.get("/roles")
-    return response.data
+  getAllRoles: async (): Promise<RoleDTO[]> => {
+    try {
+      const response = await api.get("/roles");
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching all roles:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get roles with pagination
+   * @param page Page number
+   * @param size Page size
+   * @returns Paginated list of roles
+   */
+  getRolesPaginated: async (
+    page = 0,
+    size = 10
+  ): Promise<PageResponse<RoleDTO>> => {
+    try {
+      const response = await api.get("/roles/paginated", {
+        params: { page, size },
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching paginated roles:", error);
+      throw error;
+    }
   },
 
   /**
@@ -28,9 +80,29 @@ export const rolesAPI = {
    * @param id Role ID
    * @returns Role data
    */
-  getRoleById: async (id: string | number): Promise<CustomRoleDTO> => {
-    const response = await api.get(`/roles/${id}`)
-    return response.data
+  getRoleById: async (id: string | number): Promise<RoleDTO> => {
+    try {
+      const response = await api.get(`/roles/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching role with ID ${id}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get role by name
+   * @param name Role name
+   * @returns Role data
+   */
+  getRoleByName: async (name: string): Promise<RoleDTO> => {
+    try {
+      const response = await api.get(`/roles/name/${name}`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching role with name ${name}:`, error);
+      throw error;
+    }
   },
 
   /**
@@ -38,9 +110,14 @@ export const rolesAPI = {
    * @param roleData Role data
    * @returns Created role data
    */
-  createRole: async (roleData: Partial<CustomRoleDTO>) => {
-    const response = await api.post("/roles", roleData)
-    return response.data
+  createRole: async (roleData: CreateRoleDTO): Promise<RoleDTO> => {
+    try {
+      const response = await api.post("/roles", roleData);
+      return response.data;
+    } catch (error) {
+      console.error("Error creating role:", error);
+      throw error;
+    }
   },
 
   /**
@@ -49,9 +126,17 @@ export const rolesAPI = {
    * @param roleData Role data to update
    * @returns Updated role data
    */
-  updateRole: async (id: string | number, roleData: Partial<CustomRoleDTO>) => {
-    const response = await api.put(`/roles/${id}`, roleData)
-    return response.data
+  updateRole: async (
+    id: string | number,
+    roleData: UpdateRoleDTO
+  ): Promise<RoleDTO> => {
+    try {
+      const response = await api.put(`/roles/${id}`, roleData);
+      return response.data;
+    } catch (error) {
+      console.error(`Error updating role with ID ${id}:`, error);
+      throw error;
+    }
   },
 
   /**
@@ -59,48 +144,17 @@ export const rolesAPI = {
    * @param id Role ID
    * @returns Success message
    */
-  deleteRole: async (id: string | number) => {
-    const response = await api.delete(`/roles/${id}`)
-    return response.data
+  deleteRole: async (id: string | number): Promise<{ message: string }> => {
+    try {
+      const response = await api.delete(`/roles/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error(`Error deleting role with ID ${id}:`, error);
+      throw error;
+    }
   },
 
-  /**
-   * Get system roles
-   * @returns List of system roles
-   */
-  getSystemRoles: async (): Promise<CustomRoleDTO[]> => {
-    const response = await api.get("/roles/system")
-    return response.data
-  },
+ 
 
-  /**
-   * Get custom roles
-   * @returns List of custom roles
-   */
-  getCustomRoles: async (): Promise<CustomRoleDTO[]> => {
-    const response = await api.get("/roles/custom")
-    return response.data
-  },
-
-  /**
-   * Add permission to role
-   * @param roleId Role ID
-   * @param permissionId Permission ID
-   * @returns Updated role data
-   */
-  addPermissionToRole: async (roleId: string | number, permissionId: string | number) => {
-    const response = await api.post(`/roles/${roleId}/permissions/${permissionId}`)
-    return response.data
-  },
-
-  /**
-   * Remove permission from role
-   * @param roleId Role ID
-   * @param permissionId Permission ID
-   * @returns Updated role data
-   */
-  removePermissionFromRole: async (roleId: string | number, permissionId: string | number) => {
-    const response = await api.delete(`/roles/${roleId}/permissions/${permissionId}`)
-    return response.data
-  },
-}
+ 
+};

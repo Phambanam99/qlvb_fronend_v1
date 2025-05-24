@@ -1,21 +1,19 @@
 import api from "./config";
 
 export interface UserDTO {
-  id: number;
+  id?: number;
   username: string;
-  email: string;
   fullName: string;
-  phone?: string;
-  department?: string;
   position?: string;
-  avatar?: string;
   departmentId?: number;
   departmentName?: string;
-  isActive: boolean;
+  isActive?: boolean;
+  statusDisplayName?: string;
   roles: string[];
+  roleId:number;
   createdAt: string;
   updatedAt: string;
-  roleDisplayNames?: string;
+  roleDisplayNames?: string[];
 }
 
 export const usersAPI = {
@@ -49,7 +47,7 @@ export const usersAPI = {
    * @returns Created user data
    */
   createUser: async (userData: Partial<UserDTO>): Promise<UserDTO> => {
-    const response = await api.post("/users", userData);
+    const response = await api.post("/auth/register", userData);
     return response.data;
   },
 
@@ -132,6 +130,18 @@ export const usersAPI = {
         indexes: null, // <- điểm mấu chốt: bỏ [] khi serialize array
       },
     });
+    return response.data;
+  },
+
+  // approve user
+  approveUser: async (id: number): Promise<UserDTO> => {
+    const response = await api.post(`/users/${id}/approve`);
+    return response.data;
+  },
+
+  // reject user
+  rejectUser: async (id: number): Promise<UserDTO> => {
+    const response = await api.post(`/users/${id}/reject`);
     return response.data;
   },
 };

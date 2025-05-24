@@ -17,7 +17,7 @@ import {
 
 interface UserStatusFormProps {
   user: any
-  onSubmit: (data: { isActive: boolean }) => void
+  onSubmit: (data: { userStatus: string }) => void
   saving: boolean
 }
 
@@ -31,7 +31,8 @@ export default function UserStatusForm({ user, onSubmit, saving }: UserStatusFor
   }
 
   const confirmStatusChange = () => {
-    onSubmit({ isActive: action === "activate" })
+
+    onSubmit(action === "activate" ? { userStatus: "ACTIVE" }: {userStatus: "INACTIVE"})
     setIsDialogOpen(false)
   }
 
@@ -41,7 +42,7 @@ export default function UserStatusForm({ user, onSubmit, saving }: UserStatusFor
         <div className="space-y-0.5">
           <div className="flex items-center gap-2">
             <h3 className="text-base font-medium">Trạng thái tài khoản</h3>
-            {user.isActive ? (
+            {user.status === 1 ? (
               <Badge variant="outline" className="bg-green-50 text-green-700 hover:bg-green-50 hover:text-green-700">
                 Đang hoạt động
               </Badge>
@@ -52,13 +53,13 @@ export default function UserStatusForm({ user, onSubmit, saving }: UserStatusFor
             )}
           </div>
           <p className="text-sm text-muted-foreground">
-            {user.isActive
+            {user.status === 1
               ? "Tài khoản đang hoạt động và có thể đăng nhập vào hệ thống"
               : "Tài khoản đã bị vô hiệu hóa và không thể đăng nhập vào hệ thống"}
           </p>
         </div>
 
-        {user.isActive ? (
+        {user.status === 1 ? (
           <Button variant="destructive" onClick={() => handleStatusChange(false)}>
             <XCircle className="mr-2 h-4 w-4" />
             Vô hiệu hóa
@@ -79,7 +80,7 @@ export default function UserStatusForm({ user, onSubmit, saving }: UserStatusFor
         <AlertTriangle className="h-4 w-4" />
         <AlertTitle>Lưu ý quan trọng</AlertTitle>
         <AlertDescription>
-          {user.isActive
+          {user.status === 1
             ? "Vô hiệu hóa tài khoản sẽ ngăn người dùng đăng nhập vào hệ thống. Các tài liệu và dữ liệu của họ vẫn được giữ nguyên."
             : "Kích hoạt tài khoản sẽ cho phép người dùng đăng nhập lại vào hệ thống với quyền truy cập như trước."}
         </AlertDescription>

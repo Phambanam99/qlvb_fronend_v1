@@ -13,21 +13,12 @@ import { Badge } from "@/components/ui/badge"
 import { PlusIcon, SearchIcon, FilterIcon } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { useAuth } from "@/lib/auth-context"
-import { fetchData } from "@/lib/api"
+import { DepartmentDTO, departmentsAPI, fetchData } from "@/lib/api"
 
-interface Department {
-  id: number
-  name: string
-  abbreviation: string
-  email: string
-  type: string
-  typeName: string
-  group: string
-  userCount: number
-}
+
 
 export default function DepartmentsPage() {
-  const [departments, setDepartments] = useState<Department[]>([])
+  const [departments, setDepartments] = useState<DepartmentDTO[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [typeFilter, setTypeFilter] = useState("all")
@@ -38,9 +29,10 @@ export default function DepartmentsPage() {
   useEffect(() => {
     const loadDepartments = async () => {
       try {
-        const response = await fetchData("/api/departments")
-        if (response.success) {
-          setDepartments(response.data as Department[])
+        const response = await departmentsAPI.getAllDepartments()
+        console.log(response)
+        if (response.content) {
+          setDepartments(response.content as DepartmentDTO[])
         } else {
           toast({
             title: "Lỗi",
@@ -61,7 +53,7 @@ export default function DepartmentsPage() {
     }
 
     loadDepartments()
-  }, [toast])
+  }, [])
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value)
@@ -125,7 +117,7 @@ export default function DepartmentsPage() {
     <div className="container mx-auto py-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Quản lý phòng ban</h1>
-        {user?.roles.includes("admin") && (
+        {user?.roles.includes("ROLE_ADMIN") && (
           <Button onClick={handleAddNew}>
             <PlusIcon className="mr-2 h-4 w-4" />
             Thêm mới

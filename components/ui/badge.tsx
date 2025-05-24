@@ -30,6 +30,9 @@ const badgeVariants = cva(
         completed: "bg-green-400 text-green-900",
         rejected: "bg-red-300 text-red-900",
         archived: "bg-gray-400 text-gray-900",
+        department_reviewing: "bg-yellow-100 text-yellow-800",
+        department_approved: "bg-green-200 text-green-900",
+        department_commented: "bg-purple-200 text-purple-900",
       },
     },
     defaultVariants: {
