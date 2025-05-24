@@ -66,7 +66,8 @@ export default function OutgoingDocumentDetailPage({
   const router = useRouter();
 
   const [_document, setDocument] = useState<OutgoingDocumentDTO>();
-  const [relatedDocuments, setRelatedDocuments] = useState<IncomingDocumentDTO>([]);
+  const [relatedDocuments, setRelatedDocuments] =
+    useState<IncomingDocumentDTO>();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [approvalComment, setApprovalComment] = useState("");
@@ -78,39 +79,40 @@ export default function OutgoingDocumentDetailPage({
   useEffect(() => {
     // Biến để kiểm tra component còn mounted hay không
     let isMounted = true;
-    
+
     const fetchDocument = async () => {
       try {
         setIsLoading(true);
-        
+
         // Gọi các API song song để tăng hiệu suất
         const [documentResponse, history] = await Promise.all([
           outgoingDocumentsAPI.getOutgoingDocumentById(documentId),
-          workflowAPI.getDocumentHistory(documentId)
+          workflowAPI.getDocumentHistory(documentId),
         ]);
-        
+
         // Kiểm tra component còn mounted không trước khi cập nhật state
         if (!isMounted) return;
-        
+
         const documentData = documentResponse.data;
-        
+        console.log("documentData", documentData);
         // Cập nhật document một lần duy nhất với đầy đủ thông tin
         setDocument({
           ...documentData,
-          history: history
+          history: history,
         });
-        
+
         setHistoryLoaded(true);
-        
+
         // Nếu có văn bản liên quan (văn bản đến được trả lời)
         if (documentData.relatedDocuments) {
           try {
             const relatedIds = documentData.relatedDocuments;
-            const relatedDocsData = await incomingDocumentsAPI.getIncomingDocumentById(relatedIds);
-            
+            const relatedDocsData =
+              await incomingDocumentsAPI.getIncomingDocumentById(relatedIds);
+
             // Kiểm tra component còn mounted không
             if (!isMounted) return;
-            
+
             setRelatedDocuments(relatedDocsData.data);
           } catch (error) {
             console.error("Error fetching related documents:", error);
@@ -136,14 +138,23 @@ export default function OutgoingDocumentDetailPage({
     };
 
     fetchDocument();
-    
+
     // Cleanup function để tránh cập nhật state khi component đã unmounted
     return () => {
       isMounted = false;
     };
-  }, [documentId, toast, router, hasRole, incomingDocumentsAPI, outgoingDocumentsAPI, workflowAPI]);
+  }, [
+    documentId,
+    toast,
+    router,
+    hasRole,
+    incomingDocumentsAPI,
+    outgoingDocumentsAPI,
+    workflowAPI,
+  ]);
 
   const getStatusBadge = (status: string) => {
+    console.log("status", status);
     const badgeInfo = getStatusBadgeInfo(status);
     return <Badge variant={badgeInfo.variant}>{badgeInfo.text}</Badge>;
   };
@@ -155,12 +166,12 @@ export default function OutgoingDocumentDetailPage({
       if (historyLoaded) {
         return;
       }
-      
+
       if (_document) {
         setIsLoading(true);
         // Fetch document workflow history
         const history = await workflowAPI.getDocumentHistory(documentId);
-        
+
         // Cập nhật document với history
         setDocument((prev) => {
           if (!prev) return prev;
@@ -169,7 +180,7 @@ export default function OutgoingDocumentDetailPage({
             history: history,
           };
         });
-        
+
         setHistoryLoaded(true);
       }
     } catch (err) {
@@ -183,7 +194,7 @@ export default function OutgoingDocumentDetailPage({
       setIsLoading(false);
     }
   };
-  
+
   const handleDownloadAttachment = async () => {
     if (!_document?.attachmentFilename) {
       toast({
@@ -195,7 +206,9 @@ export default function OutgoingDocumentDetailPage({
     }
 
     try {
-      const blob = await outgoingDocumentsAPI.downloadAttachmentDocument(documentId);
+      const blob = await outgoingDocumentsAPI.downloadAttachmentDocument(
+        documentId
+      );
       console.log("Blob:", blob);
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -226,7 +239,7 @@ export default function OutgoingDocumentDetailPage({
   const handleApprove = async () => {
     try {
       setIsSubmitting(true);
-      await workflowAPI.leaderStartReviewing(documentId, approvalComment);
+      await workflowAPI.headerDeparmentApprove(documentId, approvalComment);
 
       addNotification({
         title: "Văn bản đã được phê duyệt",
@@ -240,16 +253,16 @@ export default function OutgoingDocumentDetailPage({
       );
       setDocument(response.data);
       // Fetch document workflow history
-        const history = await workflowAPI.getDocumentHistory(documentId);
+      const history = await workflowAPI.getDocumentHistory(documentId);
 
-        // Cập nhật document với history
-        setDocument((prev) => {
-          if (!prev) return prev;
-          return {
-            ...prev,
-            history: history,
-          };
-        });
+      // Cập nhật document với history
+      setDocument((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          history: history,
+        };
+      });
       toast({
         title: "Thành công",
         description: "Văn bản đã được phê duyệt thành công",
@@ -295,7 +308,7 @@ export default function OutgoingDocumentDetailPage({
         documentId
       );
       setDocument(response.data);
-      
+
       // Fetch document workflow history
       const history = await workflowAPI.getDocumentHistory(documentId);
 
@@ -306,8 +319,8 @@ export default function OutgoingDocumentDetailPage({
           ...prev,
           history: history,
         };
-      }); 
-      
+      });
+
       // Thông báo cho người tạo văn bản
       if (response.data.creator?.id) {
         // Gửi thông báo cho người tạo văn bản
@@ -315,9 +328,11 @@ export default function OutgoingDocumentDetailPage({
         // có thể cần cập nhật API hoặc sử dụng cách khác để thông báo
         addNotification({
           title: "Văn bản bị từ chối",
-          message: `Văn bản ${response.data.documentNumber || response.data.number} đã bị từ chối và cần được chỉnh sửa`,
+          message: `Văn bản ${
+            response.data.documentNumber || response.data.number
+          } đã bị từ chối và cần được chỉnh sửa`,
           type: "warning",
-          link: `/van-ban-di/${response.data.id}/chinh-sua`
+          link: `/van-ban-di/${response.data.id}/chinh-sua`,
         });
       }
 
@@ -339,19 +354,81 @@ export default function OutgoingDocumentDetailPage({
     }
   };
 
+  // Hàm xử lý từ chối văn bản dành riêng cho chỉ huy đơn vị
+  const handleDepartmentHeadReject = async () => {
+    if (!rejectionComment) {
+      toast({
+        title: "Cảnh báo",
+        description: "Vui lòng nhập lý do từ chối",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      await workflowAPI.headerDepartmentComment(documentId, rejectionComment);
+
+      // Thông báo chung
+      addNotification({
+        title: "Văn bản đã bị từ chối",
+        message:
+          "Văn bản đã bị từ chối và trả lại người soạn thảo để chỉnh sửa.",
+        type: "warning",
+      });
+
+      // Refresh document data
+      const response = await outgoingDocumentsAPI.getOutgoingDocumentById(
+        documentId
+      );
+      setDocument(response.data);
+
+      // Fetch document workflow history
+      const history = await workflowAPI.getDocumentHistory(documentId);
+
+      // Cập nhật document với history
+      setDocument((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          history: history,
+        };
+      });
+
+      toast({
+        title: "Thành công",
+        description: "Văn bản đã được gửi trả lại để chỉnh sửa",
+        variant: "success",
+      });
+    } catch (err: any) {
+      console.error("Error rejecting document:", err);
+      toast({
+        title: "Lỗi",
+        description: err.message || "Không thể từ chối văn bản",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   // Hiển thị các nút hành động dựa trên vai trò người dùng và trạng thái văn bản
   const renderActionButtons = () => {
     if (!user || !_document) return null;
-    
+
     // Kiểm tra xem văn bản có bị từ chối không
-    const wasRejected = _document.history?.some((item: any) => 
-      item.newStatus === "leader_commented" || 
-      (item.comments && item.comments.toLowerCase().includes("từ chối")) || 
-      (item.description && item.description.toLowerCase().includes("từ chối"))
+    const wasRejected = _document.history?.some(
+      (item: any) =>
+        item.newStatus === "leader_commented" ||
+        (item.comments && item.comments.toLowerCase().includes("từ chối")) ||
+        (item.description && item.description.toLowerCase().includes("từ chối"))
     );
 
     // Nếu là người soạn thảo và văn bản đang ở trạng thái nháp
-    if (hasRole(["ROLE_DRAF", "ROLE_TRO_LY"]) && (_document.status === "draft" || wasRejected)) {
+    if (
+      hasRole(["ROLE_DRAF", "ROLE_TRO_LY", "ROLE_NHAN_VIEN"]) &&
+      (_document.status === "draft" || wasRejected)
+    ) {
       return (
         <>
           {wasRejected && (
@@ -359,12 +436,17 @@ export default function OutgoingDocumentDetailPage({
               <div className="flex items-start">
                 <XCircle className="h-4 w-4 text-red-600 mt-0.5 mr-2" />
                 <div>
-                  <p className="text-sm font-medium text-red-800">Văn bản đã bị từ chối</p>
+                  <p className="text-sm font-medium text-red-800">
+                    Văn bản đã bị từ chối
+                  </p>
                   <p className="text-xs text-red-700 mt-1">
-                    {_document.history?.find((item: any) => 
-                      item.action === "REJECT_DOCUMENT" || 
-                      (item.comments && item.comments.toLowerCase().includes("từ chối")) || 
-                      (item.description && item.description.toLowerCase().includes("từ chối"))
+                    {_document.history?.find(
+                      (item: any) =>
+                        item.action === "REJECT_DOCUMENT" ||
+                        (item.comments &&
+                          item.comments.toLowerCase().includes("từ chối")) ||
+                        (item.description &&
+                          item.description.toLowerCase().includes("từ chối"))
                     )?.comments || "Vui lòng chỉnh sửa và gửi lại"}
                   </p>
                 </div>
@@ -388,26 +470,33 @@ export default function OutgoingDocumentDetailPage({
             onClick={async () => {
               try {
                 setIsSubmitting(true);
-                await outgoingDocumentsAPI.submitForApproval(Number(_document.id));
+                await outgoingDocumentsAPI.submitForApproval(
+                  Number(_document.id)
+                );
 
                 // Refresh document data
                 const response =
                   await outgoingDocumentsAPI.getOutgoingDocumentById(
                     documentId
                   );
-                  
+
                 // Cập nhật document với dữ liệu mới
                 const updatedDocument = response.data;
-                
+
                 // Đảm bảo cập nhật trạng thái thành "pending_approval"
-                if (updatedDocument && updatedDocument.status !== "pending_approval") {
+                if (
+                  updatedDocument &&
+                  updatedDocument.status !== "pending_approval"
+                ) {
                   updatedDocument.status = "specialist_submitted";
                 }
-                
+
                 setDocument(updatedDocument);
-                
+
                 // Fetch document workflow history
-                const history = await workflowAPI.getDocumentHistory(documentId);
+                const history = await workflowAPI.getDocumentHistory(
+                  documentId
+                );
 
                 // Cập nhật document với history
                 setDocument((prev) => {
@@ -416,7 +505,7 @@ export default function OutgoingDocumentDetailPage({
                     ...prev,
                     history: history,
                   };
-                }); 
+                });
                 console.log("Document after update:", document);
 
                 toast({
@@ -446,7 +535,14 @@ export default function OutgoingDocumentDetailPage({
 
     // Nếu là trưởng phòng và văn bản đang chờ phê duyệt
     if (
-      hasRole(["ROLE_TRUONG_PHONG", "ROLE_PHO_PHONG"]) &&
+      hasRole([
+        "ROLE_TRUONG_PHONG",
+        "ROLE_PHO_PHONG",
+        "ROLE_TRAM_TRUONG",
+        "ROLE_TRUONG_BAN",
+        "ROLE_PHO_CUM_TRUONG",
+        "ROLE_CUM_TRUONG",
+      ]) &&
       _document.status === "specialist_submitted"
     ) {
       return (
@@ -479,7 +575,7 @@ export default function OutgoingDocumentDetailPage({
               <AlertDialogFooter>
                 <AlertDialogCancel>Hủy</AlertDialogCancel>
                 <AlertDialogAction
-                  onClick={handleReject}
+                  onClick={handleDepartmentHeadReject}
                   className="bg-red-600 hover:bg-red-700"
                   disabled={isSubmitting}
                 >
@@ -527,7 +623,12 @@ export default function OutgoingDocumentDetailPage({
 
     // Nếu là thủ trưởng và văn bản đang chờ phê duyệt
     if (
-      hasRole(["ROLE_CUC_TRUONG", "ROLE_CUC_PHO"]) &&
+      hasRole([
+        "ROLE_CUC_TRUONG",
+        "ROLE_CUC_PHO",
+        "ROLE_CHINH_UY",
+        "ROLE_PHO_CHINH_UY",
+      ]) &&
       _document.status === "pending_approval"
     ) {
       return (
@@ -624,17 +725,17 @@ export default function OutgoingDocumentDetailPage({
               const response =
                 await outgoingDocumentsAPI.getOutgoingDocumentById(documentId);
               setDocument(response.data);
-// Fetch document workflow history
-        const history = await workflowAPI.getDocumentHistory(documentId);
+              // Fetch document workflow history
+              const history = await workflowAPI.getDocumentHistory(documentId);
 
-        // Cập nhật document với history
-        setDocument((prev) => {
-          if (!prev) return prev;
-          return {
-            ...prev,
-            history: history,
-          };
-        });
+              // Cập nhật document với history
+              setDocument((prev) => {
+                if (!prev) return prev;
+                return {
+                  ...prev,
+                  history: history,
+                };
+              });
               toast({
                 title: "Thành công",
                 description: "Văn bản đã được ban hành thành công",
@@ -740,22 +841,20 @@ export default function OutgoingDocumentDetailPage({
                     Nơi nhận
                   </p>
                   <p>
-                    {typeof _document.recipient === 'object' 
-                      ? (_document.recipient as any)?.name 
-                      : typeof _document.receivingDepartmentText === 'object'
-                        ? (_document.receivingDepartmentText as any)?.name
-                        : _document.recipient || _document.receivingDepartmentText || "Chưa xác định"}
+                    {typeof _document.recipient === "object"
+                      ? (_document.recipient as any)?.name
+                      : typeof _document.receivingDepartmentText === "object"
+                      ? (_document.receivingDepartmentText as any)?.name
+                      : _document.recipient ||
+                        _document.receivingDepartmentText ||
+                        "Chưa xác định"}
                   </p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">
                     Người soạn thảo
                   </p>
-                  <p>
-                    {_document.creator?.name ||
-                      _document.creatorName ||
-                      "Không xác định"}
-                  </p>
+                  <p>{_document.creator?.fullName || "Không xác định"}</p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">
@@ -774,7 +873,7 @@ export default function OutgoingDocumentDetailPage({
                   Nội dung văn bản
                 </p>
                 <div className="rounded-md border p-4 bg-accent/30 whitespace-pre-line">
-                  {_document.summary }
+                  {_document.summary}
                 </div>
               </div>
               <Separator className="bg-primary/10" />
@@ -840,12 +939,15 @@ export default function OutgoingDocumentDetailPage({
             </CardContent>
           </Card>
 
-          <Tabs value={activeTab} onValueChange={(value) => {
-            setActiveTab(value);
-            if (value === "history") {
-              loadDocumentHistory();
-            }
-          }}>
+          <Tabs
+            value={activeTab}
+            onValueChange={(value) => {
+              setActiveTab(value);
+              if (value === "history") {
+                loadDocumentHistory();
+              }
+            }}
+          >
             <TabsList className="grid grid-cols-2 mb-2">
               <TabsTrigger
                 value="details"
@@ -867,18 +969,22 @@ export default function OutgoingDocumentDetailPage({
                   <div className="space-y-1">
                     <div className="text-sm font-medium">Ngày tạo:</div>
                     <div className="text-sm">
-                      {_document?.created 
-                        ? new Date(_document.created).toLocaleDateString("vi-VN") 
+                      {_document?.created
+                        ? new Date(_document.created).toLocaleDateString(
+                            "vi-VN"
+                          )
                         : "Chưa có thông tin"}
                     </div>
                   </div>
                   {_document?.sentDate && (
-                  <div className="space-y-1">
-                    <div className="text-sm font-medium">Ngày gửi:</div>
-                    <div className="text-sm">
-                      {new Date(_document.sentDate).toLocaleDateString("vi-VN")}
+                    <div className="space-y-1">
+                      <div className="text-sm font-medium">Ngày gửi:</div>
+                      <div className="text-sm">
+                        {new Date(_document.sentDate).toLocaleDateString(
+                          "vi-VN"
+                        )}
+                      </div>
                     </div>
-                  </div>
                   )}
                 </CardContent>
               </Card>
@@ -902,7 +1008,9 @@ export default function OutgoingDocumentDetailPage({
                             </div>
                             <div className="space-y-1">
                               <div className="flex items-center justify-between">
-                                <p className="font-medium">{item.newStatusDisplayName}</p>
+                                <p className="font-medium">
+                                  {item.newStatusDisplayName}
+                                </p>
                                 <p className="text-sm text-muted-foreground">
                                   {new Date(item.timestamp).toLocaleString(
                                     "vi-VN"
@@ -941,7 +1049,9 @@ export default function OutgoingDocumentDetailPage({
                 <p className="text-sm font-medium text-muted-foreground">
                   Trạng thái
                 </p>
-                <div className="mt-1">{getStatusBadge(String(_document.status))}</div>
+                <div className="mt-1">
+                  {getStatusBadge(String(_document.status))}
+                </div>
               </div>
               <Separator className="bg-primary/10" />
               <div>
@@ -959,11 +1069,11 @@ export default function OutgoingDocumentDetailPage({
                       _document.creatorPosition ||
                       "Không xác định"}{" "}
                     -{" "}
-                    {typeof _document.creator?.department === 'object' 
-                      ? (_document.creator.department as any)?.name 
-                      : typeof _document.creator?.departmentName === 'string'
-                        ? _document.creator.departmentName
-                        : _document.creator?.department || "Không xác định"}
+                    {typeof _document.creator?.department === "object"
+                      ? (_document.creator.department as any)?.name
+                      : typeof _document.creator?.departmentName === "string"
+                      ? _document.creator.departmentName
+                      : _document.creator?.department || "Không xác định"}
                   </p>
                 </div>
               </div>
@@ -1002,8 +1112,12 @@ export default function OutgoingDocumentDetailPage({
                   Ngày gửi phê duyệt
                 </p>
                 <p className="mt-1">
-                  {(_document?.history && _document.history.length > 0 && _document.history[0]?.timestamp)
-                    ? new Date(_document.history[0].timestamp).toLocaleDateString("vi-VN")
+                  {_document?.history &&
+                  _document.history.length > 0 &&
+                  _document.history[0]?.timestamp
+                    ? new Date(
+                        _document.history[0].timestamp
+                      ).toLocaleDateString("vi-VN")
                     : "Chưa gửi phê duyệt"}
                 </p>
               </div>
@@ -1018,7 +1132,7 @@ export default function OutgoingDocumentDetailPage({
                       try {
                         setIsSubmitting(true);
                         await outgoingDocumentsAPI.deleteOutgoingDocument(
-                         Number(_document.id)
+                          Number(_document.id)
                         );
 
                         toast({
@@ -1054,38 +1168,32 @@ export default function OutgoingDocumentDetailPage({
             <CardContent className="pt-6">
               <div className="space-y-4">
                 {relatedDocuments ? (
-                 (
-                    <div
-                      key={relatedDocuments.id}
-                      className="rounded-md border border-primary/10 p-3 bg-accent/30"
-                    >
-                      <div className="flex justify-between">
-                        <p className="font-medium text-primary">
-                          {relatedDocuments.documentNumber}
-                        </p>
-                        <Badge
-                          variant="outline"
-                        >
-                          Văn bản đến
-                        </Badge>
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        {relatedDocuments.title}
+                  <div
+                    key={relatedDocuments.id}
+                    className="rounded-md border border-primary/10 p-3 bg-accent/30"
+                  >
+                    <div className="flex justify-between">
+                      <p className="font-medium text-primary">
+                        {relatedDocuments.documentNumber}
                       </p>
-                      <div className="mt-2 flex justify-end">
-                        <Button
-                          variant="ghost"
-                          className="hover:bg-primary/10 hover:text-primary"
-                          asChild
-                        >
-                          <Link href={`/van-ban-den/${relatedDocuments.id}`}>
-                            Xem
-                          </Link>
-                        </Button>
-                      </div>
+                      <Badge variant="outline">Văn bản đến</Badge>
                     </div>
-                  ))
-                 : (
+                    <p className="text-sm text-muted-foreground">
+                      {relatedDocuments.title}
+                    </p>
+                    <div className="mt-2 flex justify-end">
+                      <Button
+                        variant="ghost"
+                        className="hover:bg-primary/10 hover:text-primary"
+                        asChild
+                      >
+                        <Link href={`/van-ban-den/${relatedDocuments.id}`}>
+                          Xem
+                        </Link>
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
                   <p className="text-sm text-muted-foreground">
                     Không có văn bản liên quan
                   </p>
