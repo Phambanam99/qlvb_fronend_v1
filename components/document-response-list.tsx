@@ -39,7 +39,11 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { workflowAPI } from "@/lib/api/workflow";
-import { outgoingDocumentsAPI, DocumentWorkflowDTO, DocumentResponseDTO } from "@/lib/api";
+import {
+  outgoingDocumentsAPI,
+  DocumentWorkflowDTO,
+  DocumentResponseDTO,
+} from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import { getStatusBadgeInfo } from "@/lib/utils";
@@ -71,7 +75,6 @@ export default function DocumentResponseList({
   documentId,
 }: DocumentResponseListProps) {
   // States và context
-  const documentResponeDTO : DocumentResponseDTO = [];
   const { toast } = useToast();
   const { user, hasRole } = useAuth();
   const { addNotification } = useNotifications();
@@ -373,69 +376,80 @@ export default function DocumentResponseList({
               )}
 
               {/* Buttons for Approve/Reject - Only visible to managers/admin */}
-              {canApproveReject && response.status === "department_approved" && (
-                <div className="flex justify-end space-x-2 mt-3">
-                  {/* Approve Button */}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="border-green-500 hover:bg-green-50 text-green-600"
-                    onClick={() => handleApproveResponse(response.id)}
-                    disabled={isSubmitting}
-                  >
-                    <ThumbsUp className="mr-2 h-4 w-4" />
-                    Chấp nhận
-                  </Button>
+              {canApproveReject &&
+                response.status === "department_approved" && (
+                  <div className="flex justify-end space-x-2 mt-3">
+                    {/* Approve Button */}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="border-green-500 hover:bg-green-50 text-green-600"
+                      onClick={() => handleApproveResponse(response.id)}
+                      disabled={isSubmitting}
+                    >
+                      <ThumbsUp className="mr-2 h-4 w-4" />
+                      Chấp nhận
+                    </Button>
 
-                  {/* Reject Button - Opens Dialog */}
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="border-red-500 hover:bg-red-50 text-red-600"
-                        onClick={() => setSelectedResponseId(response.id)}
-                        disabled={isSubmitting}
-                      >
-                        <ThumbsDown className="mr-2 h-4 w-4" />
-                        Từ chối
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Từ chối văn bản trả lời</DialogTitle>
-                        <DialogDescription>
-                          Vui lòng nhập lý do từ chối văn bản trả lời này.
-                        </DialogDescription>
-                      </DialogHeader>
-                      <Textarea
-                        value={rejectionReason}
-                        onChange={(e) => setRejectionReason(e.target.value)}
-                        placeholder="Nhập lý do từ chối..."
-                        className="min-h-[100px]"
-                      />
-                      <DialogFooter>
-                        <DialogClose asChild>
-                          <Button variant="outline">Hủy</Button>
-                        </DialogClose>
-                        <DialogClose asChild>
-                          <Button
-                            variant="destructive"
-                            onClick={handleRejectResponse}
-                            disabled={!rejectionReason.trim() || isSubmitting}
-                          >
-                            Từ chối
-                          </Button>
-                        </DialogClose>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
-                </div>
-              )}
+                    {/* Reject Button - Opens Dialog */}
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="border-red-500 hover:bg-red-50 text-red-600"
+                          onClick={() => setSelectedResponseId(response.id)}
+                          disabled={isSubmitting}
+                        >
+                          <ThumbsDown className="mr-2 h-4 w-4" />
+                          Từ chối
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Từ chối văn bản trả lời</DialogTitle>
+                          <DialogDescription>
+                            Vui lòng nhập lý do từ chối văn bản trả lời này.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <Textarea
+                          value={rejectionReason}
+                          onChange={(e) => setRejectionReason(e.target.value)}
+                          placeholder="Nhập lý do từ chối..."
+                          className="min-h-[100px]"
+                        />
+                        <DialogFooter>
+                          <DialogClose asChild>
+                            <Button variant="outline">Hủy</Button>
+                          </DialogClose>
+                          <DialogClose asChild>
+                            <Button
+                              variant="destructive"
+                              onClick={handleRejectResponse}
+                              disabled={!rejectionReason.trim() || isSubmitting}
+                            >
+                              Từ chối
+                            </Button>
+                          </DialogClose>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+                )}
               {/* Nút Ban hành - Chỉ hiển thị cho văn thư khi văn bản đã được phê duyệt */}
               {response.status === "leader_approved" &&
                 hasRole("ROLE_VAN_THU") && (
                   <div className="flex justify-end space-x-2 mt-3">
+                    <Link href={`/van-ban-di/${response.id}/chinh-sua`}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="border-yellow-500 hover:bg-yellow-50 text-yellow-600 mr-2"
+                      >
+                        <Pencil className="mr-2 h-4 w-4" />
+                        Kiểm tra và chỉnh sửa
+                      </Button>
+                    </Link>
                     <Button
                       variant="outline"
                       size="sm"
