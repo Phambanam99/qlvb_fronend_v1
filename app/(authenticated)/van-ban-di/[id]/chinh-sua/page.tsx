@@ -26,7 +26,15 @@ import {
 } from "@/components/ui/select";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, Loader2, Save, Trash } from "lucide-react";
+import {
+  ArrowLeft,
+  Download,
+  FileText,
+  Loader2,
+  Paperclip,
+  Save,
+  Trash,
+} from "lucide-react";
 import Link from "next/link";
 import {
   outgoingDocumentsAPI,
@@ -54,10 +62,10 @@ function EditOutgoingDocumentPage() {
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();
-  const { hasRole } = useAuth();
+  const { hasRole, user } = useAuth();
   const documentId = params.id as string;
 
-  const [document, setDocument] = useState<any>(null);
+  const [_document, setDocument] = useState<any>(null);
   const [departments, setDepartments] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -68,16 +76,59 @@ function EditOutgoingDocumentPage() {
 
   // Form state
   const [formData, setFormData] = useState({
-    number: "",
+    documentNumber: "",
     title: "",
     content: "",
     recipient: "",
     signer: "",
     signerPosition: "",
     sentDate: new Date(),
+    documentType: "official",
+    priority: "normal",
     notes: "",
   });
+  const handleDownloadAttachment = async () => {
+    if (!_document?.data?.attachmentFilename) {
+      toast({
+        title: "Lỗi",
+        description: "Không có tệp đính kèm để tải",
+        variant: "destructive",
+      });
+      return;
+    }
 
+    try {
+      const blob = await outgoingDocumentsAPI.downloadAttachmentDocument(
+        Number(documentId)
+      );
+
+      const url = window.URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = url;
+
+      const filename =
+        _document.data.attachmentFilename.split("/").pop() || "document.pdf";
+      a.download = filename;
+
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast({
+        title: "Thành công",
+        description: "Đang tải tệp xuống",
+      });
+    } catch (error) {
+      console.error("Lỗi khi tải tệp đính kèm:", error);
+      toast({
+        title: "Lỗi",
+        description: "Không thể tải tệp đính kèm. Vui lòng thử lại sau.",
+        variant: "destructive",
+      });
+    }
+  };
   // Hàm kiểm tra quyền chỉnh sửa văn bản
   const checkEditPermission = (documentData: any) => {
     // Nếu không có dữ liệu văn bản
@@ -165,13 +216,15 @@ function EditOutgoingDocumentPage() {
         const doc = documentData.data as any;
         console.log("Document data:", doc);
         setFormData({
-          number: doc.number || "",
+          documentNumber: doc.number || doc.documentNumber || "",
           title: doc.title || "",
           content: doc.summary || "",
-          recipient: doc.recipient || "",
+          recipient: doc.recipient || doc.receivingDepartmentText || "",
           signer: doc.signerName || "",
           signerPosition: doc.signerPosition || "",
           sentDate: doc.signingDate ? new Date(doc.signingDate) : new Date(),
+          documentType: doc.documentType || "official",
+          priority: doc.priority || "normal",
           notes: doc.notes || "",
         });
 
@@ -268,15 +321,15 @@ function EditOutgoingDocumentPage() {
       let removedAttachmentIds: number[] = [];
 
       // Handle attachments removal logic
-      if (document.data.attachments && document.data.attachments.length > 0) {
+      if (_document.data.attachments && _document.data.attachments.length > 0) {
         // If we have an attachments array, check which ones were removed
-        removedAttachmentIds = document.data.attachments
+        removedAttachmentIds = _document.data.attachments
           .filter(
             (att: any) => !existingAttachments.some((e) => e.id === att.id)
           )
           .map((att: any) => att.id);
       } else if (
-        document.data.attachmentFilename &&
+        _document.data.attachmentFilename &&
         existingAttachments.length === 0
       ) {
         // If we had a single attachment and it was removed, mark it for removal
@@ -289,23 +342,32 @@ function EditOutgoingDocumentPage() {
         sentDate: formData.sentDate.toISOString(),
         removedAttachmentIds,
       };
-      const _document: OutgoingDocumentDTO = {
-        documentNumber: formData.number,
+      const documentObj: OutgoingDocumentDTO = {
+        documentNumber: formData.documentNumber,
         receivingDepartmentText: formData.recipient,
-        documentType: "outgoing-document",
+        documentType: formData.documentType,
         title: formData.title,
         summary: formData.content,
         signerName: formData.signer,
       };
+      var workflowData: DocumentWorkflowDTO;
+      if (_document.data.status === "leader_approved") {
+        workflowData = {
+          status: "PUBLISHED",
+          statusDisplayName: "Đã ban hành",
+          comments: formData.notes,
+        };
+      } else {
+        workflowData = {
+          status: "REGISTERED",
+          statusDisplayName: "Đã đăng ký",
+          comments: formData.notes,
+        };
+      }
 
-      const workflowData: DocumentWorkflowDTO = {
-        status: "REGISTERED",
-        statusDisplayName: "Đã đăng ký",
-        comments: formData.notes,
-      };
       // Tạo object dữ liệu từ FormData
       const documentData = {
-        document: _document,
+        document: documentObj,
         workflow: workflowData,
       };
       // Update document
@@ -373,7 +435,7 @@ function EditOutgoingDocumentPage() {
     );
   }
 
-  if (!document) {
+  if (!_document) {
     return (
       <div className="flex h-[calc(100vh-4rem)] w-full flex-col items-center justify-center gap-2">
         <h2 className="text-xl font-semibold">Không tìm thấy văn bản</h2>
@@ -408,73 +470,79 @@ function EditOutgoingDocumentPage() {
   }
 
   return (
-    <div className="container py-6">
-      <div className="mb-6 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" asChild>
-            <Link href={`/van-ban-di/${documentId}`}>
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
-          </Button>
-          <h1 className="text-2xl font-bold">Chỉnh sửa văn bản đi</h1>
-        </div>
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button variant="destructive" disabled={isDeleting}>
-              {isDeleting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Đang xóa...
-                </>
-              ) : (
-                <>
-                  <Trash className="mr-2 h-4 w-4" />
-                  Xóa văn bản
-                </>
-              )}
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Xác nhận xóa văn bản</AlertDialogTitle>
-              <AlertDialogDescription>
-                Bạn có chắc chắn muốn xóa văn bản này? Hành động này không thể
-                hoàn tác.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Hủy</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleDelete}
-                className="bg-destructive text-destructive-foreground"
-              >
-                {isDeleting ? "Đang xóa..." : "Xác nhận xóa"}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+    <div className="space-y-6">
+      <div className="flex items-center space-x-2">
+        <Button variant="outline" size="icon" asChild>
+          <Link href={`/van-ban-di/${documentId}`}>
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
+        </Button>
+        <h1 className="text-2xl font-bold tracking-tight text-primary">
+          Chỉnh sửa văn bản đi
+        </h1>
       </div>
 
       <form onSubmit={handleSubmit}>
         <div className="grid gap-6 md:grid-cols-2">
-          <Card>
-            <CardHeader>
+          <Card className="bg-card md:col-span-1">
+            <CardHeader className="bg-primary/5 border-b">
               <CardTitle>Thông tin văn bản</CardTitle>
               <CardDescription>Thông tin cơ bản của văn bản đi</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="number">Số văn bản</Label>
-                <Input
-                  id="number"
-                  name="number"
-                  value={formData.number}
-                  onChange={handleInputChange}
-                  placeholder="Nhập số văn bản"
-                  required
-                />
+            <CardContent className="space-y-6 pt-6">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="documentNumber">Số văn bản</Label>
+                  <Input
+                    id="documentNumber"
+                    name="documentNumber"
+                    value={formData.documentNumber}
+                    onChange={handleInputChange}
+                    placeholder="Nhập số văn bản"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="sentDate">Ngày ban hành</Label>
+                  <DatePicker
+                    date={formData.sentDate}
+                    setDate={handleDateChange}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="recipient">Nơi nhận</Label>
+                  <Input
+                    id="recipient"
+                    name="recipient"
+                    value={formData.recipient}
+                    onChange={handleInputChange}
+                    placeholder="Nhập tên đơn vị nhận"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="documentType">Loại văn bản</Label>
+                  <Select
+                    name="documentType"
+                    value={formData.documentType}
+                    onValueChange={(value) =>
+                      handleSelectChange("documentType", value)
+                    }
+                  >
+                    <SelectTrigger id="documentType">
+                      <SelectValue placeholder="Chọn loại văn bản" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="official">Công văn</SelectItem>
+                      <SelectItem value="decision">Quyết định</SelectItem>
+                      <SelectItem value="directive">Chỉ thị</SelectItem>
+                      <SelectItem value="report">Báo cáo</SelectItem>
+                      <SelectItem value="plan">Kế hoạch</SelectItem>
+                      <SelectItem value="other">Khác</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="title">Trích yếu</Label>
                 <Input
@@ -486,7 +554,6 @@ function EditOutgoingDocumentPage() {
                   required
                 />
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="content">Nội dung</Label>
                 <Textarea
@@ -495,117 +562,65 @@ function EditOutgoingDocumentPage() {
                   value={formData.content}
                   onChange={handleInputChange}
                   placeholder="Nhập nội dung văn bản"
-                  rows={5}
+                  rows={10}
                   required
                 />
               </div>
-
               <div className="space-y-2">
-                <Label htmlFor="sentDate">Ngày ban hành</Label>
-                <DatePicker
-                  date={formData.sentDate}
-                  setDate={handleDateChange}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="recipient">Người nhận</Label>
-                <Input
-                  id="recipient"
-                  name="recipient"
-                  value={formData.recipient}
-                  onChange={handleInputChange}
-                  placeholder="Nhập người nhận"
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Thông tin người ký</CardTitle>
-                <CardDescription>Thông tin về người ký văn bản</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
+                <Label htmlFor="attachments">Tệp đính kèm</Label>
                 <div className="space-y-2">
-                  <Label htmlFor="signer">Người ký</Label>
-                  <Input
-                    id="signer"
-                    name="signer"
-                    value={formData.signer}
-                    onChange={handleInputChange}
-                    placeholder="Nhập tên người ký"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="signerPosition">Chức vụ</Label>
-                  <Input
-                    id="signerPosition"
-                    name="signerPosition"
-                    value={formData.signerPosition}
-                    onChange={handleInputChange}
-                    placeholder="Nhập chức vụ người ký"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="notes">Ghi chú</Label>
-                  <Textarea
-                    id="notes"
-                    name="notes"
-                    value={formData.notes}
-                    onChange={handleInputChange}
-                    placeholder="Nhập ghi chú (nếu có)"
-                    rows={3}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Tệp đính kèm</CardTitle>
-                <CardDescription>
-                  Quản lý tệp đính kèm của văn bản
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="attachments">Thêm tệp đính kèm mới</Label>
-                  <Input
-                    id="attachments"
-                    type="file"
-                    onChange={handleFileChange}
-                    className="cursor-pointer"
-                  />
-                </div>
-
-                {attachment && (
-                  <div className="space-y-2">
-                    <Label>Tệp mới</Label>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between rounded-md border p-2">
-                        <span className="text-sm">{attachment.name}</span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={removeAttachment}
-                          className="h-8 w-8 p-0 text-muted-foreground"
-                        >
-                          <Trash className="h-4 w-4" />
-                        </Button>
+                  {_document.data.attachmentFilename ? (
+                    <div className="flex items-center justify-between rounded-md border border-primary/10 p-2 bg-accent/30">
+                      <div className="flex items-center space-x-2">
+                        <FileText className="h-4 w-4 text-primary" />
+                        <span className="text-sm">
+                          {_document.data.attachmentFilename.split("/").pop() ||
+                            "Tài liệu đính kèm"}
+                        </span>
                       </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
+                        onClick={handleDownloadAttachment}
+                      >
+                        <Download className="h-4 w-4" />
+                      </Button>
                     </div>
-                  </div>
-                )}
-
+                  ) : _document.attachments &&
+                    _document.attachments.length > 0 ? (
+                    _document.attachments.map((file: any, index: number) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between rounded-md border border-primary/10 p-2 bg-accent/30"
+                      >
+                        <div className="flex items-center space-x-2">
+                          <FileText className="h-4 w-4 text-primary" />
+                          <span className="text-sm">{file.name}</span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <span className="text-xs text-muted-foreground">
+                            {file.size}
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
+                            onClick={() => handleDownloadAttachment()}
+                          >
+                            <Download className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Không có tệp đính kèm
+                    </p>
+                  )}
+                </div>
                 {existingAttachments.length > 0 && (
-                  <div className="space-y-2">
+                  <div className="space-y-2 mb-4">
                     <Label>Tệp hiện có</Label>
                     <div className="space-y-2">
                       {existingAttachments.map((att) => (
@@ -613,63 +628,218 @@ function EditOutgoingDocumentPage() {
                           key={att.id}
                           className="flex items-center justify-between rounded-md border p-2"
                         >
-                          <span className="text-sm">{att.name}</span>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setExistingAttachments(
-                                existingAttachments.filter(
-                                  (a) => a.id !== att.id
-                                )
-                              );
-                            }}
-                            className="h-8 w-8 p-0 text-muted-foreground"
-                          >
-                            <Trash className="h-4 w-4" />
-                          </Button>
+                          <div className="flex items-center space-x-2">
+                            <FileText className="h-4 w-4 text-primary" />
+                            <span className="text-sm">{att.name}</span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={handleDownloadAttachment}
+                              className="h-8 w-8 p-0 text-muted-foreground"
+                            >
+                              <Download className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setExistingAttachments(
+                                  existingAttachments.filter(
+                                    (a) => a.id !== att.id
+                                  )
+                                );
+                              }}
+                              className="h-8 w-8 p-0 text-muted-foreground"
+                            >
+                              <Trash className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
                       ))}
-                      {existingAttachments.length > 1 && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={removeExistingAttachment}
-                          className="mt-2 text-red-600 border-red-200 hover:bg-red-50"
-                        >
-                          <Trash className="mr-2 h-4 w-4" />
-                          Xóa tất cả tệp đính kèm
-                        </Button>
-                      )}
                     </div>
                   </div>
                 )}
-              </CardContent>
-            </Card>
-          </div>
-        </div>
 
-        <div className="mt-6 flex justify-end gap-2">
-          <Button variant="outline" asChild>
-            <Link href={`/van-ban-di/${documentId}`}>Hủy</Link>
-          </Button>
-          <Button type="submit" disabled={isSaving}>
-            {isSaving ? (
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="attachments"
+                    type="file"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() =>
+                      document.getElementById("attachments")?.click()
+                    }
+                  >
+                    <Paperclip className="mr-2 h-4 w-4" />
+                    Chọn tệp
+                  </Button>
+                  <span className="text-sm text-muted-foreground">
+                    {attachment ? attachment.name : "Chưa có tệp nào được chọn"}
+                  </span>
+                </div>
+                {attachment && (
+                  <div className="mt-2">
+                    <div className="text-sm">
+                      {attachment.name} ({(attachment.size / 1024).toFixed(2)}{" "}
+                      KB)
+                    </div>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-card md:col-span-1">
+            <CardHeader className="bg-primary/5 border-b">
+              <CardTitle>Thông tin phê duyệt</CardTitle>
+              <CardDescription>
+                Thông tin về người soạn thảo và phê duyệt
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6 pt-6">
+              <div className="space-y-2">
+                <Label>Người soạn thảo</Label>
+                <div className="rounded-md border p-3 bg-accent/30">
+                  <p className="font-medium">
+                    {user?.fullName || "Người dùng hiện tại"}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {user?.position || "Chức vụ"} -{" "}
+                    {user?.departmentId
+                      ? `Phòng ${user.departmentId}`
+                      : "Phòng ban"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="signer">Người ký</Label>
+                <Input
+                  id="signer"
+                  name="signer"
+                  value={formData.signer}
+                  onChange={handleInputChange}
+                  placeholder="Nhập tên người ký"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="signerPosition">Chức vụ</Label>
+                <Input
+                  id="signerPosition"
+                  name="signerPosition"
+                  value={formData.signerPosition}
+                  onChange={handleInputChange}
+                  placeholder="Nhập chức vụ người ký"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="priority">Độ ưu tiên</Label>
+                <Select
+                  name="priority"
+                  value={formData.priority}
+                  onValueChange={(value) =>
+                    handleSelectChange("priority", value)
+                  }
+                >
+                  <SelectTrigger id="priority">
+                    <SelectValue placeholder="Chọn độ ưu tiên" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="normal">Bình thường</SelectItem>
+                    <SelectItem value="high">Cao</SelectItem>
+                    <SelectItem value="urgent">Khẩn</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="notes">Ghi chú</Label>
+                <Textarea
+                  id="notes"
+                  name="notes"
+                  value={formData.notes}
+                  onChange={handleInputChange}
+                  placeholder="Nhập ghi chú (nếu có)"
+                  rows={4}
+                />
+              </div>
+
+              <div className="rounded-md bg-amber-50 border border-amber-200 p-3">
+                <p className="text-sm text-amber-800">
+                  <span className="font-medium">Lưu ý:</span> Sau khi lưu, văn
+                  bản sẽ được cập nhật trong hệ thống.
+                </p>
+              </div>
+            </CardContent>
+            <CardFooter className="flex justify-end gap-2">
+              <Button variant="outline" asChild>
+                <Link href={`/van-ban-di/${documentId}`}>Hủy</Link>
+              </Button>
+              <Button type="submit" disabled={isSaving}>
+                {isSaving ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Đang lưu...
+                  </>
+                ) : (
+                  <>
+                    <Save className="mr-2 h-4 w-4" />
+                    Lưu thay đổi
+                  </>
+                )}
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+      </form>
+
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
+          <Button variant="destructive" className="mt-4" disabled={isDeleting}>
+            {isDeleting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Đang lưu...
+                Đang xóa...
               </>
             ) : (
               <>
-                <Save className="mr-2 h-4 w-4" />
-                Lưu thay đổi
+                <Trash className="mr-2 h-4 w-4" />
+                Xóa văn bản
               </>
             )}
           </Button>
-        </div>
-      </form>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xác nhận xóa văn bản</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bạn có chắc chắn muốn xóa văn bản này? Hành động này không thể
+              hoàn tác.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Hủy</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground"
+            >
+              {isDeleting ? "Đang xóa..." : "Xác nhận xóa"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
