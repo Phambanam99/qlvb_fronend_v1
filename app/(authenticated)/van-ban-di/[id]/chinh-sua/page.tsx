@@ -49,7 +49,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-export default function EditOutgoingDocumentPage() {
+// Define the component as a regular named function
+function EditOutgoingDocumentPage() {
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();
@@ -644,3 +645,6 @@ export default function EditOutgoingDocumentPage() {
     </div>
   );
 }
+
+// Export the component as default
+export default EditOutgoingDocumentPage;
