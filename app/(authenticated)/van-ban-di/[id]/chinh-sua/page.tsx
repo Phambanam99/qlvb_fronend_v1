@@ -62,9 +62,7 @@ export default function EditOutgoingDocumentPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [attachment, setAttachment] = useState<File | null>(null);
-  const [existingAttachment, setExistingAttachment] = useState<any | null>(
-    null
-  );
+  const [existingAttachments, setExistingAttachments] = useState<any[]>([]);
   const [canEdit, setCanEdit] = useState(true); // State để lưu kết quả kiểm tra quyền
 
   // Form state
@@ -178,7 +176,7 @@ export default function EditOutgoingDocumentPage() {
 
         // Fetch existing attachments
         if (documentData.data.attachments) {
-          setExistingAttachment(documentData.data.attachments[0] || null);
+          setExistingAttachments(documentData.data.attachments);
         }
 
         // Fetch departments for dropdown
@@ -243,7 +241,7 @@ export default function EditOutgoingDocumentPage() {
   };
 
   const removeExistingAttachment = () => {
-    setExistingAttachment(null);
+    setExistingAttachments([]);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -258,7 +256,7 @@ export default function EditOutgoingDocumentPage() {
         sentDate: formData.sentDate.toISOString(),
         removedAttachmentIds: document.data.attachments
           ?.filter(
-            (att: any) => existingAttachment && att.id !== existingAttachment.id
+            (att: any) => !existingAttachments.some((e) => e.id === att.id)
           )
           .map((att: any) => att.id),
       };
@@ -577,24 +575,45 @@ export default function EditOutgoingDocumentPage() {
                   </div>
                 )}
 
-                {existingAttachment && (
+                {existingAttachments.length > 0 && (
                   <div className="space-y-2">
                     <Label>Tệp hiện có</Label>
                     <div className="space-y-2">
-                      <div className="flex items-center justify-between rounded-md border p-2">
-                        <span className="text-sm">
-                          {existingAttachment.name}
-                        </span>
+                      {existingAttachments.map((att) => (
+                        <div
+                          key={att.id}
+                          className="flex items-center justify-between rounded-md border p-2"
+                        >
+                          <span className="text-sm">{att.name}</span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setExistingAttachments(
+                                existingAttachments.filter(
+                                  (a) => a.id !== att.id
+                                )
+                              );
+                            }}
+                            className="h-8 w-8 p-0 text-muted-foreground"
+                          >
+                            <Trash className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                      {existingAttachments.length > 1 && (
                         <Button
                           type="button"
-                          variant="ghost"
+                          variant="outline"
                           size="sm"
                           onClick={removeExistingAttachment}
-                          className="h-8 w-8 p-0 text-muted-foreground"
+                          className="mt-2 text-red-600 border-red-200 hover:bg-red-50"
                         >
-                          <Trash className="h-4 w-4" />
+                          <Trash className="mr-2 h-4 w-4" />
+                          Xóa tất cả tệp đính kèm
                         </Button>
-                      </div>
+                      )}
                     </div>
                   </div>
                 )}
