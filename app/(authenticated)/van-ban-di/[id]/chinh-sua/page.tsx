@@ -162,7 +162,7 @@ function EditOutgoingDocumentPage() {
 
         // Set form data from document
         // Đảm bảo các trường dữ liệu được định dạng đúng
-        const doc = documentData.data;
+        const doc = documentData.data as any;
         console.log("Document data:", doc);
         setFormData({
           number: doc.number || "",
@@ -178,6 +178,19 @@ function EditOutgoingDocumentPage() {
         // Fetch existing attachments
         if (documentData.data.attachments) {
           setExistingAttachments(documentData.data.attachments);
+        }
+        // Check for single attachment format (attachmentFilename)
+        else if (documentData.data.attachmentFilename) {
+          // Create a single attachment object with the filename
+          setExistingAttachments([
+            {
+              id: "single-attachment",
+              name:
+                documentData.data.attachmentFilename.split("/").pop() ||
+                "Tài liệu đính kèm",
+              filename: documentData.data.attachmentFilename,
+            },
+          ]);
         }
 
         // Fetch departments for dropdown
@@ -252,14 +265,29 @@ function EditOutgoingDocumentPage() {
       setIsSaving(true);
 
       // Prepare form data for API
+      let removedAttachmentIds: number[] = [];
+
+      // Handle attachments removal logic
+      if (document.data.attachments && document.data.attachments.length > 0) {
+        // If we have an attachments array, check which ones were removed
+        removedAttachmentIds = document.data.attachments
+          .filter(
+            (att: any) => !existingAttachments.some((e) => e.id === att.id)
+          )
+          .map((att: any) => att.id);
+      } else if (
+        document.data.attachmentFilename &&
+        existingAttachments.length === 0
+      ) {
+        // If we had a single attachment and it was removed, mark it for removal
+        // Note: We can't get the actual ID, but the backend should handle this with the empty list
+        removedAttachmentIds = [0]; // Signal to the backend that the attachment was removed
+      }
+
       const updateData = {
         ...formData,
         sentDate: formData.sentDate.toISOString(),
-        removedAttachmentIds: document.data.attachments
-          ?.filter(
-            (att: any) => !existingAttachments.some((e) => e.id === att.id)
-          )
-          .map((att: any) => att.id),
+        removedAttachmentIds,
       };
       const _document: OutgoingDocumentDTO = {
         documentNumber: formData.number,
