@@ -107,6 +107,14 @@ export default function EditOutgoingDocumentPage() {
       return true;
     }
 
+    // Nếu là văn thư và văn bản đã được phê duyệt bởi thủ trưởng
+    if (
+      hasRole("ROLE_VAN_THU") &&
+      (doc.status === "approved" || doc.status === "leader_approved")
+    ) {
+      return true;
+    }
+
     // Mặc định không có quyền chỉnh sửa
     return false;
   };
