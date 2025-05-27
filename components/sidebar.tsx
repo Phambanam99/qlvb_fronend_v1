@@ -54,7 +54,7 @@ export default function Sidebar() {
       title: "Quản lý người dùng",
       href: "/nguoi-dung",
       icon: Users,
-      permission: "ROLE_ADMIN", // Chỉ admin mới có thể xem
+      permission: "manage_users", // Tất cả các vai trò có quyền manage_users
     },
     {
       title: "Quản lý vai trò",

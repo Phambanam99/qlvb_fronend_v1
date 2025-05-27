@@ -37,6 +37,7 @@ import { Loader2, ArrowLeft, Save } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { departmentsAPI } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { DEPARTMENT_MANAGEMENT_ROLES, hasRoleInGroup } from "@/lib/role-utils";
 
 const departmentFormSchema = z.object({
   name: z
@@ -112,7 +113,10 @@ export default function AddDepartmentPage() {
   }, [toast]);
 
   const onSubmit = async (data: DepartmentFormValues) => {
-    if (!hasPermission("ROLE_ADMIN")) {
+    if (
+      !hasPermission("ROLE_ADMIN") &&
+      !hasRoleInGroup(DEPARTMENT_MANAGEMENT_ROLES)
+    ) {
       toast({
         title: "Không có quyền",
         description: "Bạn không có quyền thêm phòng ban mới",

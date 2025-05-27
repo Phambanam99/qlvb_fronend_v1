@@ -1,5 +1,5 @@
-import { Skeleton } from "@/components/ui/skeleton"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
 export default function EditOutgoingDocumentLoading() {
   return (
@@ -104,7 +104,10 @@ export default function EditOutgoingDocumentLoading() {
                 <Skeleton className="h-4 w-24" />
                 <div className="space-y-2">
                   {[1, 2].map((i) => (
-                    <div key={i} className="flex items-center justify-between rounded-md border p-2">
+                    <div
+                      key={i}
+                      className="flex items-center justify-between rounded-md border p-2"
+                    >
                       <Skeleton className="h-4 w-48" />
                       <Skeleton className="h-8 w-8" />
                     </div>
@@ -121,5 +124,5 @@ export default function EditOutgoingDocumentLoading() {
         <Skeleton className="h-10 w-32" />
       </div>
     </div>
-  )
+  );
 }

@@ -136,13 +136,13 @@ export const workflowAPI = {
   ) => {
     // Sử dụng FormData thay vì gửi JSON trực tiếp
     const formData = new FormData();
-    
+
     // Thêm dữ liệu workflow vào FormData
     formData.append(
       "data",
       new Blob([JSON.stringify(workflowData)], { type: "application/json" })
     );
-    
+
     const response = await api.put(
       `/workflow/${documentId}/approve`,
       formData,
@@ -265,8 +265,8 @@ export const workflowAPI = {
       "data",
       new Blob([JSON.stringify(documentData)], { type: "application/json" })
     );
-     // Thêm tệp đính kèm nếu có
-     if (attachment) {
+    // Thêm tệp đính kèm nếu có
+    if (attachment) {
       formData.append("attachments", attachment);
     }
     const response = await api.put(
@@ -287,66 +287,104 @@ export const workflowAPI = {
    */
   getDocumentResponses: async (documentId: string) => {
     const response = await api.get(`/documents/outgoing/related`, {
-      params: { relatedDocuments: documentId }
+      params: { relatedDocuments: documentId },
     });
-    console.log("response getDocumentResponses", response.data)
+    console.log("response getDocumentResponses", response.data);
     return response.data;
   },
-  
+
   /**
    * Chấp nhận văn bản phản hồi
    * @param responseId ID văn bản phản hồi cần chấp nhận
    * @param data Dữ liệu bổ sung (nếu có)
    * @returns Kết quả xử lý
    */
-  approveDocumentResponse: async (responseId: number, data: { comment?: string }) => {
+  approveDocumentResponse: async (
+    responseId: number,
+    data: { comment?: string }
+  ) => {
     const response = await api.put(`/workflow/${responseId}/approve`, {
       responseId,
       status: "leader_approved",
-      ...data
-    })
+      ...data,
+    });
     return response.data;
   },
-  
+
   /**
    * Từ chối văn bản phản hồi
    * @param responseId ID văn bản phản hồi cần từ chối
    * @param data Dữ liệu bổ sung (lý do từ chối)
    * @returns Kết quả xử lý
    */
-  rejectDocumentResponse: async (responseId: number, comment: string ) => {
-    const response = await api.put(`/workflow/${responseId}/provide-feedback`, {
-      comments:comment
-    });
+  // rejectDocumentResponse: async (responseId: number, comment: string ) => {
+  //   const response = await api.put(`/workflow/${responseId}/provide-feedback`, {
+  //     comments:comment
+  //   });
+  //   return response.data;
+  // },
+  headerDeparmentApprove: async (responseId: number, comment: string) => {
+    const response = await api.put(
+      `/workflow/${responseId}/header-department-approve`,
+      {
+        comments: comment,
+      }
+    );
     return response.data;
   },
-  headerDeparmentApprove: async (responseId: number, comment: string ) => {
-    const response = await api.put(`/workflow/${responseId}/header-department-approve`, {
-      comments:comment
-    });
-    return response.data;
-  },
-  headerDepartmentComment: async (responseId: number, 
-    comments: string, 
-    file?: File | null ) => {
+  headerDepartmentComment: async (
+    responseId: number,
+    comments: string,
+    file?: File | null
+  ) => {
     const formData = new FormData();
     formData.append(
       "comments",
       new Blob([JSON.stringify(comments)], { type: "application/json" })
     );
-     // Thêm tệp đính kèm nếu có
-     if (file) {
+    // Thêm tệp đính kèm nếu có
+    if (file) {
       formData.append("file", file);
     }
-    console.log("formData",formData);
-   
-    const response = await api.put(`/workflow/${responseId}/header-feedback-with-attachment`, 
+    console.log("formData", formData);
+
+    const response = await api.put(
+      `/workflow/${responseId}/header-feedback-with-attachment`,
       formData,
       {
         headers: {
           "Content-Type": undefined,
         },
-      });
+      }
+    );
+    return response.data;
+  },
+  rejectDocumentResponse: async (
+    responseId: number,
+    comments: string,
+    file?: File | null
+  ) => {
+    console.log("comments", comments);
+    const formData = new FormData();
+    formData.append(
+      "comments",
+      new Blob([JSON.stringify(comments)], { type: "application/json" })
+    );
+    // Thêm tệp đính kèm nếu có
+    if (file) {
+      formData.append("file", file);
+    }
+    console.log("formData", formData);
+
+    const response = await api.put(
+      `/workflow/${responseId}/provide-feedback-with-attachment`,
+      formData,
+      {
+        headers: {
+          "Content-Type": undefined,
+        },
+      }
+    );
     return response.data;
   },
 };

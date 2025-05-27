@@ -36,10 +36,18 @@ import {
 import { use } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, ArrowLeft, Save, Trash2, AlertCircle } from "lucide-react";
+import {
+  Loader2,
+  ArrowLeft,
+  Save,
+  Trash2,
+  AlertCircle,
+  PlusIcon,
+} from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { departmentsAPI, usersAPI } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { DEPARTMENT_MANAGEMENT_ROLES, hasRoleInGroup } from "@/lib/role-utils";
 import {
   Table,
   TableBody,
@@ -282,7 +290,18 @@ export default function DepartmentDetailPage({
     );
   }
 
-  const canManageDepartment = hasPermission("ROLE_ADMIN");
+  // Check if user can manage department based on role groups
+  const { user } = useAuth();
+  const userRoles = user?.roles || [];
+  const canManageDepartment =
+    hasPermission("ROLE_ADMIN") ||
+    hasRoleInGroup(userRoles, DEPARTMENT_MANAGEMENT_ROLES);
+
+  // For department heads, they can only manage their own departments
+  const canManageUsers =
+    canManageDepartment ||
+    (user?.departmentId === departmentId &&
+      hasRoleInGroup(userRoles, ["ROLE_TRUONG_PHONG", "ROLE_TRUONG_BAN"]));
 
   return (
     <div className="container py-6">
@@ -556,11 +575,27 @@ export default function DepartmentDetailPage({
 
         <TabsContent value="users">
           <Card>
-            <CardHeader>
-              <CardTitle>Người dùng trong phòng ban</CardTitle>
-              <CardDescription>
-                Danh sách người dùng thuộc phòng ban này
-              </CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Người dùng trong phòng ban</CardTitle>
+                <CardDescription>
+                  Danh sách người dùng thuộc phòng ban này
+                </CardDescription>
+              </div>
+
+              {canManageUsers && (
+                <Button
+                  size="sm"
+                  onClick={() =>
+                    router.push(
+                      `/nguoi-dung/them-moi?departmentId=${departmentId}`
+                    )
+                  }
+                >
+                  <PlusIcon className="mr-2 h-4 w-4" />
+                  Thêm người dùng
+                </Button>
+              )}
             </CardHeader>
             <CardContent>
               {users.length === 0 ? (

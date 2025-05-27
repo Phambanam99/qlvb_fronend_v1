@@ -19,7 +19,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Paperclip, Save, X, Plus, Building } from "lucide-react";
+import {
+  ArrowLeft,
+  Paperclip,
+  Save,
+  X,
+  Plus,
+  Building,
+  PlusCircle,
+} from "lucide-react";
 import Link from "next/link";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
@@ -34,6 +42,8 @@ import {
   departmentsAPI,
   UserDTO,
   IncomingDocumentDTO,
+  documentTypesAPI,
+  DocumentTypeDTO,
 } from "@/lib/api";
 import {
   Dialog,
@@ -69,6 +79,17 @@ export default function AddIncomingDocumentPage() {
   // Thêm state cho việc hiển thị hoặc ẩn phần chuyển xử lý
   const [showProcessingSection, setShowProcessingSection] =
     useState<boolean>(false);
+
+  // State for document types
+  const [documentTypes, setDocumentTypes] = useState<DocumentTypeDTO[]>([]);
+  const [isLoadingDocumentTypes, setIsLoadingDocumentTypes] = useState(false);
+  const [newDocumentType, setNewDocumentType] = useState("");
+  const [isDocumentTypeDialogOpen, setIsDocumentTypeDialogOpen] =
+    useState(false);
+  const [isCreatingDocumentType, setIsCreatingDocumentType] = useState(false);
+  const [documentTypeError, setDocumentTypeError] = useState<string | null>(
+    null
+  );
 
   const router = useRouter();
   const { toast } = useToast();
@@ -117,6 +138,28 @@ export default function AddIncomingDocumentPage() {
     };
 
     fetchDepartments();
+  }, [toast]);
+
+  // Fetch document types
+  useEffect(() => {
+    const fetchDocumentTypes = async () => {
+      try {
+        setIsLoadingDocumentTypes(true);
+        const response = await documentTypesAPI.getAllDocumentTypes();
+        setDocumentTypes(response);
+      } catch (error) {
+        console.error("Lỗi khi lấy danh sách loại văn bản:", error);
+        toast({
+          title: "Lỗi",
+          description: "Không thể tải danh sách loại văn bản",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoadingDocumentTypes(false);
+      }
+    };
+
+    fetchDocumentTypes();
   }, [toast]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -193,6 +236,56 @@ export default function AddIncomingDocumentPage() {
       });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleAddDocumentType = async () => {
+    if (!newDocumentType.trim()) {
+      toast({
+        title: "Lỗi",
+        description: "Tên loại văn bản không được để trống",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check if document type already exists
+    const documentTypeExists = documentTypes.some(
+      (type) => type.name.toLowerCase() === newDocumentType.trim().toLowerCase()
+    );
+
+    if (documentTypeExists) {
+      setDocumentTypeError("Loại văn bản này đã tồn tại trong hệ thống");
+      return;
+    }
+
+    try {
+      setIsCreatingDocumentType(true);
+      setDocumentTypeError(null);
+
+      const response = await documentTypesAPI.createDocumentType({
+        name: newDocumentType,
+        isActive: true,
+      });
+
+      setDocumentTypes((prev) => [...prev, response]);
+      setNewDocumentType("");
+      setIsDocumentTypeDialogOpen(false);
+
+      toast({
+        title: "Thành công",
+        description: "Đã thêm loại văn bản mới",
+      });
+    } catch (error) {
+      console.error("Lỗi khi thêm loại văn bản:", error);
+      setDocumentTypeError("Không thể tạo loại văn bản mới");
+      toast({
+        title: "Lỗi",
+        description: "Không thể thêm loại văn bản mới",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCreatingDocumentType(false);
     }
   };
 
@@ -314,7 +407,7 @@ export default function AddIncomingDocumentPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="referenceNumber">Số  lưu trữ</Label>
+                  <Label htmlFor="referenceNumber">Số lưu trữ</Label>
                   <Input
                     id="referenceNumber"
                     name="referenceNumber"
@@ -428,20 +521,103 @@ export default function AddIncomingDocumentPage() {
 
                 <div className="space-y-2">
                   <Label htmlFor="documentType">Loại văn bản</Label>
-                  <Select value={documentType} onValueChange={setDocumentType}>
-                    <SelectTrigger id="documentType" name="documentType">
-                      <SelectValue placeholder="Chọn loại văn bản" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="OFFICIAL_LETTER">Công văn</SelectItem>
-                      <SelectItem value="DECISION">Quyết định</SelectItem>
-                      <SelectItem value="DIRECTIVE">Chỉ thị</SelectItem>
-                      <SelectItem value="ANNOUNCEMENT">Thông báo</SelectItem>
-                      <SelectItem value="REPORT">Báo cáo</SelectItem>
-                      <SelectItem value="PLAN">Kế hoạch</SelectItem>
-                      <SelectItem value="OTHER">Khác</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="flex gap-2">
+                    <Select
+                      value={documentType}
+                      onValueChange={setDocumentType}
+                    >
+                      <SelectTrigger
+                        id="documentType"
+                        name="documentType"
+                        className="flex-1"
+                      >
+                        <SelectValue placeholder="Chọn loại văn bản" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {isLoadingDocumentTypes ? (
+                          <SelectItem value="loading" disabled>
+                            Đang tải...
+                          </SelectItem>
+                        ) : documentTypes.length === 0 ? (
+                          <SelectItem value="empty" disabled>
+                            Không có loại văn bản nào
+                          </SelectItem>
+                        ) : (
+                          documentTypes.map((type) => (
+                            <SelectItem key={type.id} value={type.name}>
+                              {type.name}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <Dialog
+                      open={isDocumentTypeDialogOpen}
+                      onOpenChange={setIsDocumentTypeDialogOpen}
+                    >
+                      <DialogTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="shrink-0"
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Thêm loại văn bản mới</DialogTitle>
+                          <DialogDescription>
+                            Nhập tên loại văn bản chưa có trong hệ thống
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4 py-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="newDocumentType">
+                              Tên loại văn bản
+                            </Label>
+                            <Input
+                              id="newDocumentType"
+                              value={newDocumentType}
+                              onChange={(e) => {
+                                setNewDocumentType(e.target.value);
+                                setDocumentTypeError(null);
+                              }}
+                              placeholder="Nhập tên loại văn bản mới"
+                              className={
+                                documentTypeError ? "border-red-500" : ""
+                              }
+                            />
+                            {documentTypeError && (
+                              <p className="text-sm font-medium text-red-500 mt-1">
+                                {documentTypeError}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <DialogFooter>
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              setIsDocumentTypeDialogOpen(false);
+                            }}
+                          >
+                            Hủy
+                          </Button>
+                          <Button
+                            onClick={handleAddDocumentType}
+                            disabled={
+                              isCreatingDocumentType || !newDocumentType.trim()
+                            }
+                          >
+                            {isCreatingDocumentType
+                              ? "Đang thêm..."
+                              : "Thêm loại văn bản"}
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="urgencyLevel">Độ khẩn</Label>

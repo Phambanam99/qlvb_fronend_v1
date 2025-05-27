@@ -336,7 +336,7 @@ export default function IncomingDocumentsPage() {
           childIds.push(child.id);
           collectChildIds(child);
         });
-      }
+      }documentType
     };
 
     collectChildIds(selectedDept);

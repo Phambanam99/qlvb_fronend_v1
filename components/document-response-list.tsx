@@ -209,7 +209,7 @@ export default function DocumentResponseList({
     try {
       await workflowAPI.rejectDocumentResponse(
         selectedResponseId,
-        rejectionReason
+         rejectionReason
       );
 
       // Cập nhật danh sách văn bản

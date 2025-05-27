@@ -12,6 +12,7 @@ import { authAPI } from "@/lib/api/auth";
 import Cookies from "js-cookie";
 import { isTokenExpired } from "@/lib/utils";
 import { UserDTO as User } from "./api";
+import { hasRoleInGroup } from "./role-utils";
 
 interface AuthContextType {
   user: User | null;
@@ -216,7 +217,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const hasPermission = (permission: string) => {
     if (!user) return false;
-    console.log("User roles:", user.roles[0]);
+
+    // Check if permission is actually a role (with ROLE_ prefix)
+    if (permission.startsWith("ROLE_")) {
+      return user.roles.includes(permission);
+    }
+
+    // For broader group permissions checks
+    if (permission === "manage_departments") {
+      return hasRoleInGroup(user.roles, [
+        "ROLE_ADMIN",
+        "ROLE_TRUONG_PHONG",
+        "ROLE_TRUONG_BAN",
+        "ROLE_CUC_TRUONG",
+        "ROLE_CUC_PHO",
+        "ROLE_CHINH_UY",
+        "ROLE_PHO_CHINH_UY",
+      ]);
+    }
+
+    if (permission === "manage_users") {
+      return hasRoleInGroup(user.roles, [
+        "ROLE_ADMIN",
+        "ROLE_TRUONG_PHONG",
+        "ROLE_PHO_PHONG",
+        "ROLE_TRUONG_BAN",
+        "ROLE_PHO_BAN",
+        "ROLE_CUC_TRUONG",
+        "ROLE_CUC_PHO",
+        "ROLE_CHINH_UY",
+        "ROLE_PHO_CHINH_UY",
+        "ROLE_CUM_TRUONG",
+        "ROLE_PHO_CUM_TRUONG",
+        "ROLE_TRAM_TRUONG",
+      ]);
+    }
+
+    if (permission === "view_all_documents") {
+      return hasRoleInGroup(user.roles, [
+        "ROLE_ADMIN",
+        "ROLE_VAN_THU",
+        "ROLE_CUC_TRUONG",
+        "ROLE_CUC_PHO",
+        "ROLE_CHINH_UY",
+        "ROLE_PHO_CHINH_UY",
+      ]);
+    }
+
+    // Default to just checking if role matches permission
     return user.roles.includes(permission);
   };
 

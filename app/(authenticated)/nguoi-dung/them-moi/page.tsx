@@ -39,7 +39,16 @@ export default function AddUserPage() {
   const [departments, setDepartments] = useState<DepartmentDTO[]>([]);
   const [roles, setRoles] = useState<RoleDTO[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { hasRole } = useAuth();
+  const [selectedDepartment, setSelectedDepartment] = useState<string>("");
+  const [selectedRole, setSelectedRole] = useState<string>("");
+  const [username, setUsername] = useState<string>("");
+  const [fullName, setFullName] = useState<string>("");
+  const [email, setEmail] = useState<string>("");
+  const [phone, setPhone] = useState<string>("");
+  const [password, setPassword] = useState<string>("");
+  const [confirmPassword, setConfirmPassword] = useState<string>("");
+  const [isActive, setIsActive] = useState<boolean>(true);
+  const { hasRole, hasPermission } = useAuth();
   const { addNotification } = useNotifications();
   const router = useRouter();
 
@@ -71,30 +80,52 @@ export default function AddUserPage() {
     fetchData();
   }, [addNotification]);
 
-  // Cập nhật hàm handleSubmit để sử dụng API
+  // Cập nhật hàm handleSubmit để sử dụng state thay vì truy xuất DOM
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Kiểm tra xác nhận mật khẩu
+    if (password !== confirmPassword) {
+      addNotification({
+        title: "Lỗi",
+        message: "Mật khẩu và xác nhận mật khẩu không khớp.",
+        type: "error",
+      });
+      return;
+    }
+
+    // Kiểm tra đã chọn phòng ban và vai trò
+    if (!selectedDepartment) {
+      addNotification({
+        title: "Lỗi",
+        message: "Vui lòng chọn phòng ban.",
+        type: "error",
+      });
+      return;
+    }
+
+    if (!selectedRole) {
+      addNotification({
+        title: "Lỗi",
+        message: "Vui lòng chọn vai trò.",
+        type: "error",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
       // Tạo đối tượng dữ liệu người dùng từ form
       const userData = {
-        fullName: (document.getElementById("fullName") as HTMLInputElement)
-          .value,
-
-        departmentId: Number(
-          (document.getElementById("department") as HTMLSelectElement).value
-        ),
-        position: (document.getElementById("position") as HTMLInputElement)
-          .value,
-        username: (document.getElementById("username") as HTMLInputElement)
-          .value,
-        password: (document.getElementById("password") as HTMLInputElement)
-          .value,
-        roles: [(document.getElementById("role") as HTMLSelectElement).value],
-        status: (document.getElementById("active") as HTMLInputElement).checked
-          ? 1
-          : 0,
+        fullName,
+        email,
+        phone,
+        departmentId: Number(selectedDepartment),
+        username,
+        password,
+        roles: [selectedRole],
+        isActive,
       };
 
       // Gọi API để tạo người dùng mới
@@ -122,7 +153,7 @@ export default function AddUserPage() {
   };
 
   // Kiểm tra quyền hạn
-  if (!hasRole("ROLE_ADMIN")) {
+  if (!hasRole("ROLE_ADMIN") && !hasPermission("manage_users")) {
     router.push("/khong-co-quyen");
     return null;
   }
@@ -161,7 +192,13 @@ export default function AddUserPage() {
             <CardContent className="space-y-6 pt-6">
               <div className="space-y-2">
                 <Label htmlFor="fullName">Họ và tên</Label>
-                <Input id="fullName" placeholder="Nhập họ và tên" required />
+                <Input
+                  id="fullName"
+                  placeholder="Nhập họ và tên"
+                  required
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
@@ -170,32 +207,43 @@ export default function AddUserPage() {
                   type="email"
                   placeholder="example@example.com"
                   required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="phone">Số điện thoại</Label>
-                <Input id="phone" placeholder="Nhập số điện thoại" />
+                <Input
+                  id="phone"
+                  placeholder="Nhập số điện thoại"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                />
               </div>
-              
-                <div className="space-y-2">
-                  <Label htmlFor="department">Phòng ban</Label>
-                  <Select required>
-                    <SelectTrigger id="department">
-                      <SelectValue placeholder="Chọn phòng ban" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {departments.map((department) => (
-                        <SelectItem
-                          key={department.id}
-                          value={department.id.toString()}
-                        >
-                          {department.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              
+
+              <div className="space-y-2">
+                <Label htmlFor="department">Phòng ban</Label>
+                <Select
+                  id="department"
+                  value={selectedDepartment}
+                  onValueChange={setSelectedDepartment}
+                  required
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Chọn phòng ban" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {departments.map((department) => (
+                      <SelectItem
+                        key={department.id}
+                        value={department.id.toString()}
+                      >
+                        {department.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </CardContent>
           </Card>
 
@@ -213,6 +261,8 @@ export default function AddUserPage() {
                   id="username"
                   placeholder="Nhập tên đăng nhập"
                   required
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
                 />
               </div>
               <div className="space-y-2">
@@ -222,6 +272,8 @@ export default function AddUserPage() {
                   type="password"
                   placeholder="Nhập mật khẩu"
                   required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                 />
               </div>
               <div className="space-y-2">
@@ -231,12 +283,19 @@ export default function AddUserPage() {
                   type="password"
                   placeholder="Nhập lại mật khẩu"
                   required
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="role">Vai trò</Label>
-                <Select required>
-                  <SelectTrigger id="role">
+                <Select
+                  id="role"
+                  value={selectedRole}
+                  onValueChange={setSelectedRole}
+                  required
+                >
+                  <SelectTrigger>
                     <SelectValue placeholder="Chọn vai trò" />
                   </SelectTrigger>
                   <SelectContent>
@@ -251,7 +310,12 @@ export default function AddUserPage() {
               <div className="space-y-2">
                 <Label>Trạng thái</Label>
                 <div className="flex items-center space-x-2">
-                  <Checkbox id="active" defaultChecked />
+                  <Checkbox
+                    id="active"
+                    defaultChecked
+                    checked={isActive}
+                    onCheckedChange={setIsActive}
+                  />
                   <label
                     htmlFor="active"
                     className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"

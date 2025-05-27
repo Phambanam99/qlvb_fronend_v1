@@ -188,14 +188,14 @@ export default function DepartmentHeadAssignment({
                     onValueChange={(value) => handleStaffSelect(Number(value))}
                     className="space-y-0"
                   >
-                    {departmentStaff.map((staff) => (
+                    {departmentStaff.map((staff: UserDTO) => (
                       <div
                         key={staff.id}
                         className="flex items-center px-4 py-3 border-b last:border-b-0 hover:bg-accent/50"
                       >
                         <RadioGroupItem
                           id={`staff-${staff.id}`}
-                          value={staff.id.toString()}
+                          value={staff.id? staff.id.toString() : ""}
                           className="mr-3"
                         />
                         <label
@@ -212,7 +212,7 @@ export default function DepartmentHeadAssignment({
                               {staff.fullName}
                             </p>
                             <p className="text-xs text-muted-foreground">
-                              {staff.position || "Nhân viên"}
+                              {staff.roleDisplayNames? staff.roleDisplayNames[0] : "Nhân viên"}
                             </p>
                           </div>
                         </label>

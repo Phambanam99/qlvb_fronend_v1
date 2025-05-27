@@ -857,7 +857,7 @@ export default function DocumentDetailPage({
                     _document.assignedToIds &&
                     Array.isArray(_document.assignedToIds) &&
                     _document.assignedToIds.length > 0 &&
-                    hasAssignedToCurrentDepartment; // Đã có phòng được phân công
+                    hasAssignedToCurrentDepartment; //_document Đã có phòng được phân công
 
                   // Nếu chưa có ai trong phòng được phân công hoặc văn bản đang ở trạng thái chờ xử lý
                   if (

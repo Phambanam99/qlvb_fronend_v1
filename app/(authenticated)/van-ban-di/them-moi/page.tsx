@@ -22,7 +22,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Paperclip, Save, Send } from "lucide-react";
+import {
+  ArrowLeft,
+  Paperclip,
+  Save,
+  Send,
+  PlusCircle,
+  Plus,
+} from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { useNotifications } from "@/lib/notifications-context";
@@ -35,10 +42,22 @@ import {
   incomingDocumentsAPI,
   OutgoingDocumentDTO,
   DocumentWorkflowDTO,
+  documentTypesAPI,
+  DocumentTypeDTO,
+  senderApi,
+  SenderDTO,
 } from "@/lib/api";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 export default function AddOutgoingDocumentPage() {
-  
   const { user } = useAuth();
 
   // Form state
@@ -48,6 +67,58 @@ export default function AddOutgoingDocumentPage() {
   const [approvers, setApprovers] = useState<any[]>([]);
   const [file, setFile] = useState<File | null>(null);
   const [replyToId, setReplyToId] = useState<string | null>(null);
+
+  // Form data state
+  const [formData, setFormData] = useState({
+    documentNumber: "",
+    sentDate: new Date().toISOString().slice(0, 10), // Today's date in YYYY-MM-DD format
+    recipient: "",
+    documentType: "",
+    title: "",
+    content: "",
+    approver: "",
+    priority: "normal",
+    note: "",
+  });
+
+  // Handler for form field changes
+  const handleInputChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
+  ) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  // Handler for select fields
+  const handleSelectChange = (name: string, value: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  // State for document types
+  const [documentTypes, setDocumentTypes] = useState<DocumentTypeDTO[]>([]);
+  const [isLoadingDocumentTypes, setIsLoadingDocumentTypes] = useState(false);
+  const [newDocumentType, setNewDocumentType] = useState("");
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isCreatingDocumentType, setIsCreatingDocumentType] = useState(false);
+  const [documentTypeError, setDocumentTypeError] = useState<string | null>(
+    null
+  );
+
+  // State for recipients (using senders as recipients)
+  const [recipients, setRecipients] = useState<any[]>([]);
+  const [isLoadingRecipients, setIsLoadingRecipients] = useState(false);
+  const [newRecipient, setNewRecipient] = useState("");
+  const [isRecipientDialogOpen, setIsRecipientDialogOpen] = useState(false);
+  const [isCreatingRecipient, setIsCreatingRecipient] = useState(false);
+  const [recipientError, setRecipientError] = useState<string | null>(null);
 
   const { addNotification } = useNotifications();
   const router = useRouter();
@@ -62,11 +133,134 @@ export default function AddOutgoingDocumentPage() {
   const [incomingDocument, setIncomingDocument] = useState<any>(null);
   const [isLoadingIncomingDoc, setIsLoadingIncomingDoc] = useState(false);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      setFile(e.target.files[0]);
-    } else {
-      setFile(null);
+  // Fetch document types on component mount
+  useEffect(() => {
+    const fetchDocumentTypes = async () => {
+      try {
+        setIsLoadingDocumentTypes(true);
+        const types = await documentTypesAPI.getAllDocumentTypes();
+        console.log("Fetched Document Types:", types);
+        setDocumentTypes(types);
+      } catch (error) {
+        console.error("Error fetching document types:", error);
+        addNotification({
+          title: "Lỗi",
+          message: "Không thể tải danh sách loại văn bản",
+          type: "error",
+        });
+      } finally {
+        setIsLoadingDocumentTypes(false);
+      }
+    };
+
+    fetchDocumentTypes();
+  }, []);
+
+  // Function to handle creating a new document type
+  const handleCreateDocumentType = async () => {
+    if (!newDocumentType.trim()) {
+      addNotification({
+        title: "Cảnh báo",
+        message: "Tên loại văn bản không được để trống",
+        type: "warning",
+      });
+      return;
+    }
+
+    // Check if document type already exists
+    const documentTypeExists = documentTypes.some(
+      (type) => type.name.toLowerCase() === newDocumentType.trim().toLowerCase()
+    );
+
+    if (documentTypeExists) {
+      setDocumentTypeError("Loại văn bản này đã tồn tại trong hệ thống");
+      return;
+    }
+
+    try {
+      setIsCreatingDocumentType(true);
+      setDocumentTypeError(null);
+
+      const documentTypeData: Partial<DocumentTypeDTO> = {
+        name: newDocumentType,
+        isActive: true,
+      };
+      
+      console.log("Creating Document Type:", documentTypeData);
+      const createdType = await documentTypesAPI.createDocumentType(
+        documentTypeData
+      );
+      console.log("Created Document Type:", createdType);
+      // Add the new document type to the list
+      setDocumentTypes((prevTypes) => [...prevTypes, createdType]);
+
+      // Reset and close dialog
+      setNewDocumentType("");
+      setIsDialogOpen(false);
+
+      addNotification({
+        title: "Thành công",
+        message: "Đã thêm loại văn bản mới",
+        type: "success",
+      });
+    } catch (error) {
+      console.error("Error creating document type:", error);
+      setDocumentTypeError("Không thể tạo loại văn bản mới");
+      addNotification({
+        title: "Lỗi",
+        message: "Không thể tạo loại văn bản mới",
+        type: "error",
+      });
+    } finally {
+      setIsCreatingDocumentType(false);
+    }
+  };
+
+  // Function to handle creating a new recipient
+  const handleCreateRecipient = async () => {
+    if (!newRecipient.trim()) {
+      setRecipientError("Tên người nhận không được để trống");
+      return;
+    }
+
+    try {
+      setIsCreatingRecipient(true);
+      setRecipientError(null);
+
+      // Gọi API để tạo người nhận mới (sử dụng API tạo người gửi tạm thời)
+      const senderData: SenderDTO = {
+        name: newRecipient.trim(),
+      };
+
+      const createdRecipient = await senderApi.createSender(senderData);
+
+      // Thêm người nhận mới vào danh sách người nhận
+      setRecipients((prevRecipients) => [
+        ...prevRecipients,
+        {
+          id: createdRecipient.id,
+          name: createdRecipient.name,
+        },
+      ]);
+
+      // Đóng dialog và reset trường nhập
+      setIsRecipientDialogOpen(false);
+      setNewRecipient("");
+
+      addNotification({
+        title: "Thành công",
+        message: "Đã thêm người nhận mới",
+        type: "success",
+      });
+    } catch (error) {
+      console.error("Error creating recipient:", error);
+      addNotification({
+        title: "Lỗi",
+        message: "Không thể tạo người nhận mới",
+        type: "error",
+      });
+    } finally {
+      setIsCreatingRecipient(false);
     }
   };
 
@@ -129,7 +323,13 @@ export default function AddOutgoingDocumentPage() {
 
         // Lấy danh sách người dùng có vai trò trưởng phòng hoặc phó phòng trong phòng ban hiện tại
         const departmentManagers = await usersAPI.getUsersByRoleAndDepartment(
-          ["ROLE_TRUONG_PHONG", "ROLE_PHO_PHONG"],
+          ["ROLE_TRUONG_PHONG", 
+            "ROLE_PHO_PHONG", 
+            "ROLE_TRUONG_BAN", 
+            "ROLE_PHO_BAN",
+            "ROLE_CUM_TRUONG",
+            "ROLE_PHO_CUM_TRUONG",
+            "ROLE_TRAM_TRUONG"],
           Number(user.departmentId)
         );
 
@@ -153,38 +353,59 @@ export default function AddOutgoingDocumentPage() {
     fetchApprovers();
   }, [user]);
 
-  // Cập nhật hàm handleSubmit để sử dụng một file
+  // Fetch recipients (senders) on component mount
+  useEffect(() => {
+    const fetchRecipients = async () => {
+      try {
+        setIsLoadingRecipients(true);
+        const senders = await senderApi.getAllSenders();
+        setRecipients(senders || []);
+      } catch (error) {
+        console.error("Error fetching recipients:", error);
+        addNotification({
+          title: "Lỗi",
+          message: "Không thể tải danh sách nơi nhận",
+          type: "error",
+        });
+      } finally {
+        setIsLoadingRecipients(false);
+      }
+    };
+
+    fetchRecipients();
+  }, []);
+
+  // Cập nhật hàm handleSubmit để sử dụng state thay vì DOM
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
     try {
-      // Tạo FormData
-      const formData = new FormData(e.target as HTMLFormElement);
+      // Sử dụng state formData thay vì truy xuất DOM
       const _document: OutgoingDocumentDTO = {
-        documentNumber: formData.get("documentNumber") as string,
-        signingDate: formData.get("sentDate")
-          ? new Date(formData.get("sentDate") as string)
+        documentNumber: formData.documentNumber,
+        signingDate: formData.sentDate
+          ? new Date(formData.sentDate)
           : new Date(),
-        receivingDepartmentText: formData.get("recipient") as string,
-        documentType: formData.get("documentType") as string,
-        title: formData.get("title") as string,
-        summary: formData.get("content") as string,
-        signerId: formData.get("approver")
-          ? Number(formData.get("approver"))
-          : 0,
+        receivingDepartmentText: formData.recipient,
+        documentType: formData.documentType,
+        title: formData.title,
+        summary: formData.content,
+        signerId: formData.approver ? Number(formData.approver) : 0,
       };
 
       const workflowData: DocumentWorkflowDTO = {
         status: "REGISTERED",
         statusDisplayName: "Đã đăng ký",
-        comments: formData.get("note") as string,
+        comments: formData.note,
       };
-      // Tạo object dữ liệu từ FormData
+
+      // Tạo object dữ liệu từ state
       const documentData = {
         document: _document,
         workflow: workflowData,
       };
+
       console.log("Document Data:", documentData);
       if (replyToId) {
         // Nếu đang trả lời văn bản, sử dụng API tạo văn bản trả lời
@@ -289,6 +510,12 @@ export default function AddOutgoingDocumentPage() {
     }
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      setFile(e.target.files[0]);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center space-x-2">
@@ -346,36 +573,205 @@ export default function AddOutgoingDocumentPage() {
                     name="documentNumber"
                     placeholder="Nhập số văn bản"
                     required
+                    value={formData.documentNumber}
+                    onChange={handleInputChange}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="sentDate">Ngày ban hành</Label>
-                  <Input id="sentDate" name="sentDate" type="date" required />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="recipient">Nơi nhận</Label>
                   <Input
-                    id="recipient"
-                    name="recipient"
-                    placeholder="Nhập tên đơn vị nhận"
+                    id="sentDate"
+                    name="sentDate"
+                    type="date"
                     required
+                    value={formData.sentDate}
+                    onChange={handleInputChange}
                   />
                 </div>
                 <div className="space-y-2">
+                  <Label htmlFor="recipient">Nơi nhận</Label>
+                  <div className="flex gap-2">
+                    <Select
+                      name="recipient"
+                      value={formData.recipient}
+                      onValueChange={(value) =>
+                        handleSelectChange("recipient", value)
+                      }
+                    >
+                      <SelectTrigger id="recipient" className="flex-1">
+                        <SelectValue placeholder="Chọn nơi nhận" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {isLoadingRecipients ? (
+                          <SelectItem value="loading" disabled>
+                            Đang tải danh sách nơi nhận...
+                          </SelectItem>
+                        ) : recipients.length === 0 ? (
+                          <SelectItem value="empty" disabled>
+                            Chưa có người nhận nào
+                          </SelectItem>
+                        ) : (
+                          recipients.map((recipient) => (
+                            <SelectItem
+                              key={recipient.id}
+                              value={String(recipient.id)}
+                            >
+                              {recipient.name}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <Dialog
+                      open={isRecipientDialogOpen}
+                      onOpenChange={setIsRecipientDialogOpen}
+                    >
+                      <DialogTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="shrink-0"
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Thêm người nhận mới</DialogTitle>
+                          <DialogDescription>
+                            Nhập tên người nhận chưa có trong hệ thống
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4 py-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="newRecipient">Tên người nhận</Label>
+                            <Input
+                              id="newRecipient"
+                              value={newRecipient}
+                              onChange={(e) => setNewRecipient(e.target.value)}
+                              placeholder="Nhập tên người nhận mới"
+                            />
+                          </div>
+                        </div>
+                        <DialogFooter>
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              setIsRecipientDialogOpen(false);
+                            }}
+                          >
+                            Hủy
+                          </Button>
+                          <Button
+                            onClick={handleCreateRecipient}
+                            disabled={
+                              isCreatingRecipient || !newRecipient.trim()
+                            }
+                          >
+                            {isCreatingRecipient
+                              ? "Đang thêm..."
+                              : "Thêm người nhận"}
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="documentType">Loại văn bản</Label>
-                  <Select name="documentType">
-                    <SelectTrigger id="documentType">
-                      <SelectValue placeholder="Chọn loại văn bản" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="official">Công văn</SelectItem>
-                      <SelectItem value="decision">Quyết định</SelectItem>
-                      <SelectItem value="directive">Chỉ thị</SelectItem>
-                      <SelectItem value="report">Báo cáo</SelectItem>
-                      <SelectItem value="plan">Kế hoạch</SelectItem>
-                      <SelectItem value="other">Khác</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="flex gap-2">
+                    <Select
+                      name="documentType"
+                      value={formData.documentType}
+                      onValueChange={(value) =>
+                        handleSelectChange("documentType", value)
+                      }
+                    >
+                      <SelectTrigger id="documentType" className="flex-1">
+                        <SelectValue placeholder="Chọn loại văn bản" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {isLoadingDocumentTypes ? (
+                          <SelectItem value="loading" disabled>
+                            Đang tải danh sách loại văn bản...
+                          </SelectItem>
+                        ) : documentTypes.length === 0 ? (
+                          <SelectItem value="empty" disabled>
+                            Chưa có loại văn bản nào
+                          </SelectItem>
+                        ) : (
+                          documentTypes.map((type) => (
+                            <SelectItem key={type.id} value={String(type.name)}>
+                              {type.name}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="shrink-0"
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Thêm loại văn bản mới</DialogTitle>
+                          <DialogDescription>
+                            Nhập tên loại văn bản chưa có trong hệ thống
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4 py-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="newDocumentType">
+                              Tên loại văn bản
+                            </Label>
+                            <Input
+                              id="newDocumentType"
+                              value={newDocumentType}
+                              onChange={(e) => {
+                                setNewDocumentType(e.target.value);
+                                setDocumentTypeError(null);
+                              }}
+                              placeholder="Nhập tên loại văn bản mới"
+                              className={
+                                documentTypeError ? "border-red-500" : ""
+                              }
+                            />
+                            {documentTypeError && (
+                              <p className="text-sm font-medium text-red-500 mt-1">
+                                {documentTypeError}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <DialogFooter>
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              setIsDialogOpen(false);
+                            }}
+                          >
+                            Hủy
+                          </Button>
+                          <Button
+                            onClick={handleCreateDocumentType}
+                            disabled={
+                              isCreatingDocumentType || !newDocumentType.trim()
+                            }
+                          >
+                            {isCreatingDocumentType
+                              ? "Đang thêm..."
+                              : "Thêm loại văn bản"}
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
                 </div>
               </div>
               <div className="space-y-2">
@@ -385,6 +781,8 @@ export default function AddOutgoingDocumentPage() {
                   name="title"
                   placeholder="Nhập trích yếu văn bản"
                   required
+                  value={formData.title}
+                  onChange={handleInputChange}
                 />
               </div>
               <div className="space-y-2">
@@ -394,6 +792,8 @@ export default function AddOutgoingDocumentPage() {
                   name="content"
                   placeholder="Nhập nội dung văn bản"
                   rows={10}
+                  value={formData.content}
+                  onChange={handleInputChange}
                 />
               </div>
               <div className="space-y-2">
@@ -498,6 +898,8 @@ export default function AddOutgoingDocumentPage() {
                   name="note"
                   placeholder="Nhập ghi chú cho người phê duyệt (nếu có)"
                   rows={4}
+                  value={formData.note}
+                  onChange={handleInputChange}
                 />
               </div>
 

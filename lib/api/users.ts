@@ -10,7 +10,7 @@ export interface UserDTO {
   isActive?: boolean;
   statusDisplayName?: string;
   roles: string[];
-  roleId:number;
+  roleId: number;
   createdAt: string;
   updatedAt: string;
   roleDisplayNames?: string[];
@@ -115,7 +115,7 @@ export const usersAPI = {
     id: string | number,
     newPassword: string
   ): Promise<{ message: string }> => {
-    const response = await api.post(`/users/${id}/reset-password`, {
+    const response = await api.put(`/users/${id}/password`, {
       newPassword,
     });
     return response.data;

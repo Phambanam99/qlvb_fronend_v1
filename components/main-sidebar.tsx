@@ -1,7 +1,17 @@
-"use client"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { FileText, Send, Users, Calendar, BarChart3, Settings, Building, Briefcase, Home } from "lucide-react"
+"use client";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import {
+  FileText,
+  Send,
+  Users,
+  Calendar,
+  BarChart3,
+  Settings,
+  Building,
+  Briefcase,
+  Home,
+} from "lucide-react";
 
 import {
   Sidebar,
@@ -13,16 +23,28 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "@/components/ui/sidebar"
-import { useAuth } from "@/lib/auth-context"
+} from "@/components/ui/sidebar";
+import { useAuth } from "@/lib/auth-context";
+import {
+  DEPARTMENT_MANAGEMENT_ROLES,
+  SYSTEM_ROLES,
+  hasRoleInGroup,
+} from "@/lib/role-utils";
 
 export function MainSidebar() {
-  const pathname = usePathname()
-  const { user } = useAuth()
+  const pathname = usePathname();
+  const { user } = useAuth();
 
   const isActive = (path: string) => {
-    return pathname === path || pathname?.startsWith(`${path}/`)
-  }
+    return pathname === path || pathname?.startsWith(`${path}/`);
+  };
+
+  // Check if user is in system admin roles
+  const isSystemAdmin = user?.roles && hasRoleInGroup(user.roles, SYSTEM_ROLES);
+
+  // Check if user is in a department management role
+  const canManageDepartment =
+    user?.roles && hasRoleInGroup(user.roles, DEPARTMENT_MANAGEMENT_ROLES);
 
   return (
     <Sidebar>
@@ -33,7 +55,9 @@ export function MainSidebar() {
           </div>
           <div className="ml-2">
             <h3 className="text-lg font-semibold">Quản lý văn bản</h3>
-            <p className="text-xs text-muted-foreground">Hệ thống quản lý văn bản</p>
+            <p className="text-xs text-muted-foreground">
+              Hệ thống quản lý văn bản
+            </p>
           </div>
         </div>
       </SidebarHeader>
@@ -66,7 +90,10 @@ export function MainSidebar() {
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/lich-cong-tac")}>
+                <SidebarMenuButton
+                  asChild
+                  isActive={isActive("/lich-cong-tac")}
+                >
                   <Link href="/lich-cong-tac">
                     <Calendar className="mr-2 h-4 w-4" />
                     <span>Lịch công tác</span>
@@ -126,7 +153,39 @@ export function MainSidebar() {
             </SidebarGroupContent>
           </SidebarGroup>
         )}
+
+        {canManageDepartment && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Quản lý phòng ban</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={isActive("/quan-ly-phong-ban")}
+                  >
+                    <Link href="/quan-ly-phong-ban">
+                      <Building className="mr-2 h-4 w-4" />
+                      <span>Danh sách phòng ban</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={isActive("/them-phong-ban")}
+                  >
+                    <Link href="/them-phong-ban">
+                      <FileText className="mr-2 h-4 w-4" />
+                      <span>Thêm phòng ban</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
     </Sidebar>
-  )
+  );
 }
