@@ -86,7 +86,12 @@ export default function IncomingDocumentsPage() {
     hasRole("ROLE_TRUONG_PHONG") ||
     hasRole("ROLE_PHO_PHONG") ||
     hasRole("ROLE_TRUONG_BAN") ||
-    hasRole("ROLE_PHO_BAN");
+    hasRole("ROLE_PHO_BAN") ||
+    hasRole("ROLE_CUM_TRUONG") ||
+    hasRole("ROLE_PHO_CUM_TRUONG") ||
+    hasRole("ROLE_CHINH_TRI_VIEN_CUM") ||
+    hasRole("ROLE_PHO_TRAM_TRUONG") ||
+    hasRole("ROLE_TRAM_TRUONG");
 
   // Cập nhật documentSource mặc định dựa trên vai trò người dùng khi thông tin user thay đổi
   useEffect(() => {

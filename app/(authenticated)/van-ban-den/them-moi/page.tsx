@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -26,25 +26,11 @@ import {
   X,
   Plus,
   Building,
-  PlusCircle,
+  Users,
 } from "lucide-react";
 import Link from "next/link";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
-import { useRouter } from "next/navigation";
-import {
-  usersAPI,
-  incomingDocumentsAPI,
-  workflowAPI,
-  DocumentWorkflowDTO,
-  senderApi,
-  departmentsAPI,
-  UserDTO,
-  IncomingDocumentDTO,
-  documentTypesAPI,
-  DocumentTypeDTO,
-} from "@/lib/api";
 import {
   Dialog,
   DialogTrigger,
@@ -54,954 +40,672 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Switch } from "@/components/ui/switch";
+import { cn } from "@/lib/utils";
+
+// Import hooks and components
+import { DepartmentTree } from "@/components/department-tree";
+import { useDepartmentSelection } from "@/hooks/use-department-selection";
+import { useDocumentForm } from "@/hooks/use-document-form";
+import { useDepartmentUsers } from "@/hooks/use-department-users";
+import { useDocumentTypeManagement } from "@/hooks/use-document-type-management";
+import { useSenderManagement } from "@/hooks/use-sender-management";
+
+// Import new components
+import { DocumentPurposeSelector } from "./components/document-purpose-selector";
+import { ProcessingSection } from "./components/processing-section";
+import { NotificationSection } from "./components/notification-section";
+import { DocumentInfoForm } from "./components/document-info-form";
+
+// Leadership role configuration
+const leadershipRoleOrder: Record<string, number> = {
+  ROLE_CUC_TRUONG: 1,
+  ROLE_CUC_PHO: 2,
+  ROLE_CHINH_UY: 3,
+  ROLE_PHO_CHINH_UY: 4,
+  ROLE_TRUONG_PHONG: 5,
+  ROLE_PHO_PHONG: 6,
+  ROLE_TRAM_TRUONG: 7,
+  ROLE_PHO_TRAM_TRUONG: 8,
+  ROLE_CHINH_TRI_VIEN_TRAM: 9,
+  ROLE_CUM_TRUONG: 10,
+  ROLE_PHO_CUM_TRUONG: 11,
+  ROLE_CHINH_TRI_VIEN_CUM: 12,
+  ROLE_TRUONG_BAN: 13,
+};
+
+// Get role display name helper
+const getRoleDisplayName = (role: string): string => {
+  switch (role) {
+    case "ROLE_CUC_TRUONG":
+      return "Cục trưởng";
+    case "ROLE_CUC_PHO":
+      return "Cục phó";
+    case "ROLE_CHINH_UY":
+      return "Chính ủy";
+    case "ROLE_PHO_CHINH_UY":
+      return "Phó Chính ủy";
+    case "ROLE_TRUONG_PHONG":
+      return "Trưởng phòng";
+    case "ROLE_PHO_PHONG":
+      return "Phó phòng";
+    case "ROLE_TRAM_TRUONG":
+      return "Trạm trưởng";
+    case "ROLE_PHO_TRAM_TRUONG":
+      return "Phó Trạm trưởng";
+    case "ROLE_CHINH_TRI_VIEN_TRAM":
+      return "Chính trị viên trạm";
+    case "ROLE_CUM_TRUONG":
+      return "Cụm trưởng";
+    case "ROLE_PHO_CUM_TRUONG":
+      return "Phó cụm trưởng";
+    case "ROLE_CHINH_TRI_VIEN_CUM":
+      return "Chính trị viên cụm";
+    case "ROLE_TRUONG_BAN":
+      return "Trưởng Ban";
+    default:
+      return role.replace("ROLE_", "").replace(/_/g, " ").toLowerCase();
+  }
+};
 
 export default function AddIncomingDocumentPage() {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [files, setFiles] = useState<File[]>([]);
-  const [selectedDepartments, setSelectedDepartments] = useState<string[]>([]);
-  const [departmentList, setDepartmentList] = useState<any[]>([]);
-  const [isLoadingDepartmentList, setIsLoadingDepartmentList] = useState(true);
-  const [documentType, setDocumentType] = useState<string>("OFFICIAL_LETTER");
-  const [departments, setDepartments] = useState<any[]>([]);
-  const [isLoadingDepartments, setIsLoadingDepartments] = useState(true);
-  const [newSender, setNewSender] = useState("");
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [urgencyLevel, setUrgencyLevel] = useState("NORMAL");
-  const [securityLevel, setSecurityLevel] = useState("NORMAL");
-  const [closureRequest, setClosureRequest] = useState(false);
-  const [primaryDepartment, setPrimaryDepartment] = useState<number | null>(
-    null
-  );
-  const [secondaryDepartments, setSecondaryDepartments] = useState<number[]>(
-    []
-  );
-  // Thêm state cho việc hiển thị hoặc ẩn phần chuyển xử lý
-  const [showProcessingSection, setShowProcessingSection] =
-    useState<boolean>(false);
-
-  // State for document types
-  const [documentTypes, setDocumentTypes] = useState<DocumentTypeDTO[]>([]);
-  const [isLoadingDocumentTypes, setIsLoadingDocumentTypes] = useState(false);
-  const [newDocumentType, setNewDocumentType] = useState("");
-  const [isDocumentTypeDialogOpen, setIsDocumentTypeDialogOpen] =
-    useState(false);
-  const [isCreatingDocumentType, setIsCreatingDocumentType] = useState(false);
-  const [documentTypeError, setDocumentTypeError] = useState<string | null>(
-    null
-  );
-
-  const router = useRouter();
   const { toast } = useToast();
   const formRef = useRef<HTMLFormElement>(null);
-  const [senderError, setSenderError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchDepartmentList = async () => {
-      try {
-        setIsLoadingDepartmentList(true);
-        const response = await departmentsAPI.getAllDepartments();
-        console.log("senders", response);
-        setDepartmentList(response.content || []);
-      } catch (error) {
-        console.error("Lỗi khi lấy danh sách phòng ban:", error);
-        toast({
-          title: "Lỗi",
-          description: "Không thể tải danh sách phòng ban",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoadingDepartmentList(false);
-      }
-    };
+  // Use custom hooks
+  const {
+    departments,
+    expandedDepartments,
+    isLoading: isLoadingDepartmentList,
+    primaryDepartment,
+    secondaryDepartments,
+    toggleDepartment,
+    selectPrimaryDepartment,
+    selectSecondaryDepartment,
+    clearSelection,
+    findDepartmentById,
+  } = useDepartmentSelection();
 
-    fetchDepartmentList();
-  }, [toast]);
+  const {
+    documentNumber,
+    setDocumentNumber,
+    documentCode,
+    setDocumentCode,
+    documentTitle,
+    setDocumentTitle,
+    documentSummary,
+    setDocumentSummary,
+    documentDate,
+    setDocumentDate,
+    receivedDate,
+    setReceivedDate,
+    documentNotes,
+    setDocumentNotes,
+    selectedDocumentType,
+    setSelectedDocumentType,
+    files,
+    setFiles,
+    documentTypes,
+    urgencyLevel,
+    setUrgencyLevel,
+    securityLevel,
+    setSecurityLevel,
+    closureRequest,
+    setClosureRequest,
+    closureDeadline,
+    setClosureDeadline,
+    sendingDepartmentName,
+    setSendingDepartmentName,
+    emailSource,
+    setEmailSource,
+    isLoadingDocumentTypes,
+    isSubmitting,
+    handleSubmit: submitDocument,
+  } = useDocumentForm();
 
-  useEffect(() => {
-    const fetchDepartments = async () => {
-      try {
-        setIsLoadingDepartments(true);
-        const senders = await senderApi.getAllSenders();
+  const {
+    departmentUsers,
+    isLoadingUsers,
+    fetchDepartmentUsers,
+    getLeadershipRole,
+  } = useDepartmentUsers(leadershipRoleOrder);
 
-        setDepartments(senders || []);
-      } catch (error) {
-        console.error("Lỗi khi lấy danh sách đơn vị gửi:", error);
-        toast({
-          title: "Lỗi",
-          description: "Không thể tải danh sách đơn vị gửi",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoadingDepartments(false);
-      }
-    };
+  const {
+    newDocumentType,
+    setNewDocumentType,
+    isDocumentTypeDialogOpen,
+    setIsDocumentTypeDialogOpen,
+    isCreatingDocumentType,
+    documentTypeError,
+    setDocumentTypeError,
+    createDocumentType,
+  } = useDocumentTypeManagement();
 
-    fetchDepartments();
-  }, [toast]);
+  const {
+    departments: senderDepartments,
+    isLoadingDepartments,
+    newSender,
+    setNewSender,
+    dialogOpen,
+    setDialogOpen,
+    isCreatingSender,
+    senderError,
+    setSenderError,
+    createSender,
+  } = useSenderManagement();
 
-  // Fetch document types
-  useEffect(() => {
-    const fetchDocumentTypes = async () => {
-      try {
-        setIsLoadingDocumentTypes(true);
-        const response = await documentTypesAPI.getAllDocumentTypes();
-        setDocumentTypes(response);
-      } catch (error) {
-        console.error("Lỗi khi lấy danh sách loại văn bản:", error);
-        toast({
-          title: "Lỗi",
-          description: "Không thể tải danh sách loại văn bản",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoadingDocumentTypes(false);
-      }
-    };
+  // Local state
+  const [validationErrors, setValidationErrors] = useState<
+    Record<string, string>
+  >({});
+  const [documentPurpose, setDocumentPurpose] = useState<
+    "PROCESS" | "NOTIFICATION"
+  >("PROCESS");
+  const [notificationScope, setNotificationScope] = useState<
+    "ALL_UNITS" | "SPECIFIC_UNITS"
+  >("ALL_UNITS");
 
-    fetchDocumentTypes();
-  }, [toast]);
+  // Validation function
+  const validateForm = () => {
+    const errors: Record<string, string> = {};
 
+    if (!documentNumber.trim()) {
+      errors.documentNumber = "Số văn bản là bắt buộc";
+    }
+
+    if (!documentTitle.trim()) {
+      errors.documentTitle = "Trích yếu là bắt buộc";
+    }
+
+    if (!sendingDepartmentName.trim()) {
+      errors.sendingDepartmentName = "Đơn vị gửi là bắt buộc";
+    }
+
+    // Chỉ validate phòng ban xử lý chính khi văn bản cần xử lý
+    if (documentPurpose === "PROCESS" && !primaryDepartment) {
+      errors.primaryDepartment = "Phòng ban xử lý chính là bắt buộc";
+    }
+
+    // Validate notification scope
+    if (
+      documentPurpose === "NOTIFICATION" &&
+      notificationScope === "SPECIFIC_UNITS" &&
+      secondaryDepartments.length === 0
+    ) {
+      errors.notificationDepartments =
+        "Vui lòng chọn ít nhất một phòng ban nhận thông báo";
+    }
+
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  // Handle file change
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      // Only take the first selected file
       setFiles([e.target.files[0]]);
     }
   };
 
+  // Handle file removal
   const handleRemoveFile = (index: number) => {
     setFiles((prevFiles) => prevFiles.filter((_, i) => i !== index));
   };
 
-  const handleSelectPrimaryDepartment = (deptId: number) => {
-    setPrimaryDepartment((prevId) => (prevId === deptId ? null : deptId));
-
-    if (secondaryDepartments.includes(deptId)) {
-      setSecondaryDepartments((prev) => prev.filter((id) => id !== deptId));
-    }
+  // Handle primary department selection
+  const handleSelectPrimaryDepartment = (deptId: number | string) => {
+    // Convert string IDs back to number if needed
+    const id =
+      typeof deptId === "string" && deptId.includes("-")
+        ? deptId
+        : Number(deptId);
+    selectPrimaryDepartment(id as number);
   };
 
-  const handleSelectSecondaryDepartment = (deptId: number) => {
-    if (deptId === primaryDepartment) return;
-
-    setSecondaryDepartments((prev) => {
-      if (prev.includes(deptId)) {
-        return prev.filter((id) => id !== deptId);
-      } else {
-        return [...prev, deptId];
-      }
-    });
+  // Handle secondary department selection
+  const handleSelectSecondaryDepartment = (deptId: number | string) => {
+    const id =
+      typeof deptId === "string" && deptId.includes("-")
+        ? deptId
+        : Number(deptId);
+    selectSecondaryDepartment(id as number);
   };
 
+  // Handle removing selections
   const handleRemovePrimaryDepartment = () => {
-    setPrimaryDepartment(null);
+    selectPrimaryDepartment(null as any);
   };
 
-  const handleRemoveSecondaryDepartment = (deptId: number) => {
-    setSecondaryDepartments((prev) => prev.filter((id) => id !== deptId));
-  };
-
-  const handleAddSender = async () => {
-    if (!newSender.trim()) {
-      toast({
-        title: "Lỗi",
-        description: "Tên đơn vị gửi không được để trống",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      setIsSubmitting(true);
-      const response = await senderApi.createSender({
-        name: newSender,
-        description: "Đơn vị gửi mới được thêm từ trang tạo văn bản đến",
-      });
-
-      setDepartments((prev) => [...prev, response]);
-      setNewSender("");
-      setDialogOpen(false);
-
-      toast({
-        title: "Thành công",
-        description: "Đã thêm đơn vị gửi mới",
-      });
-    } catch (error) {
-      console.error("Lỗi khi thêm đơn vị gửi:", error);
-      setSenderError("Đã tồn tại đơn vị gửi này trong hệ thống");
-      toast({
-        title: "Lỗi",
-        description: "Không thể thêm đơn vị gửi mới",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
+  const handleRemoveSecondaryDepartment = (deptId: number | string) => {
+    // Convert back to number if it was a composite string ID
+    if (typeof deptId === "string" && deptId.includes("-")) {
+      // For composite IDs like "departmentId-userId", we need to handle differently
+      // Just remove from the array directly through the hook
+      const currentIds = secondaryDepartments.filter(
+        (id: any) => id !== deptId
+      );
+      // Since we can't set secondary departments directly, we need to clear and re-add
+      clearSelection();
+      if (primaryDepartment) {
+        selectPrimaryDepartment(primaryDepartment);
+      }
+      currentIds.forEach((id: any) => selectSecondaryDepartment(id));
+    } else {
+      // For regular department IDs, use the hook method
+      selectSecondaryDepartment(Number(deptId));
     }
   };
 
+  // Handle document type creation
   const handleAddDocumentType = async () => {
-    if (!newDocumentType.trim()) {
-      toast({
-        title: "Lỗi",
-        description: "Tên loại văn bản không được để trống",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Check if document type already exists
-    const documentTypeExists = documentTypes.some(
-      (type) => type.name.toLowerCase() === newDocumentType.trim().toLowerCase()
-    );
-
-    if (documentTypeExists) {
-      setDocumentTypeError("Loại văn bản này đã tồn tại trong hệ thống");
-      return;
-    }
-
-    try {
-      setIsCreatingDocumentType(true);
-      setDocumentTypeError(null);
-
-      const response = await documentTypesAPI.createDocumentType({
-        name: newDocumentType,
-        isActive: true,
-      });
-
-      setDocumentTypes((prev) => [...prev, response]);
-      setNewDocumentType("");
+    const updatedTypes = await createDocumentType(documentTypes);
+    if (updatedTypes) {
+      // The document types are managed by the useDocumentForm hook
+      // We don't need to set them manually as the hook will refresh them
+      // Just close the dialog
       setIsDocumentTypeDialogOpen(false);
-
-      toast({
-        title: "Thành công",
-        description: "Đã thêm loại văn bản mới",
-      });
-    } catch (error) {
-      console.error("Lỗi khi thêm loại văn bản:", error);
-      setDocumentTypeError("Không thể tạo loại văn bản mới");
-      toast({
-        title: "Lỗi",
-        description: "Không thể thêm loại văn bản mới",
-        variant: "destructive",
-      });
-    } finally {
-      setIsCreatingDocumentType(false);
     }
   };
 
+  // Handle notification scope change
+  const handleNotificationScopeChange = (
+    scope: "ALL_UNITS" | "SPECIFIC_UNITS"
+  ) => {
+    setNotificationScope(scope);
+    if (scope === "ALL_UNITS") {
+      clearSelection();
+    }
+  };
+
+  // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
 
-    try {
-      const formData = new FormData(formRef.current!);
-
-      const documentData = {
-        title: formData.get("title") as string,
-        documentType: documentType,
-        documentNumber: formData.get("documentNumber") as string,
-        referenceNumber: formData.get("referenceNumber") as string,
-        issuingAuthority: formData.get("issuingAuthority") as string,
-        urgencyLevel: urgencyLevel,
-        securityLevel: securityLevel,
-        summary: formData.get("summary") as string,
-        notes: formData.get("notes") as string,
-        signingDate: formData.get("signingDate") as string,
-        receivedDate: (formData.get("receivedDate") as string)
-          ? new Date(formData.get("receivedDate") as string)
-          : new Date(),
-        processingStatus: "PENDING",
-        closureRequest: closureRequest,
-        closureDeadline: formData.get("deadline") as string,
-        sendingDepartmentName: formData.get("sendingDepartmentName") as string,
-        emailSource: formData.get("emailSource") as string,
-      };
-
-      const apiFormData = new FormData();
-
-      Object.entries(documentData).forEach(([key, value]) => {
-        if (value !== null && value !== undefined) {
-          apiFormData.append(key, value.toString());
-        }
-      });
-
-      const incomingDTO: IncomingDocumentDTO = {
-        ...documentData,
-        processingStatus: "PENDING",
-        closureRequest: closureRequest,
-        closureDeadline: documentData.closureDeadline,
-        sendingDepartmentName: formData.get("issuingAuthority") as string,
-        emailSource: formData.get("emailSource") as string,
-      };
-      const closureDeadline = formData.get("deadline") as string;
-      const deadlineDate = closureDeadline
-        ? new Date(closureDeadline)
-        : new Date();
-      const workflowData: DocumentWorkflowDTO = {
-        status: "REGISTERED",
-        statusDisplayName: "Đã đăng ký",
-        comments: formData.get("notes") as string,
-        primaryDepartmentId: primaryDepartment!,
-        collaboratingDepartmentIds: secondaryDepartments,
-        closureDeadline: deadlineDate,
-      };
-
-      const data = {
-        document: incomingDTO,
-        workflow: workflowData,
-      };
-      if (files.length > 0) {
-        await workflowAPI.createFullDocument(data, files[0]);
-      }
-
+    // Validate form first
+    if (!validateForm()) {
       toast({
-        title: "Thành công",
-        description: "Văn bản đến đã được tạo thành công",
-      });
-
-      router.push("/van-ban-den");
-    } catch (error) {
-      console.error("Lỗi khi tạo văn bản:", error);
-      toast({
-        title: "Lỗi",
-        description:
-          error instanceof Error
-            ? error.message
-            : "Có lỗi xảy ra khi tạo văn bản",
+        title: "Lỗi validation",
+        description: "Vui lòng kiểm tra và điền đầy đủ thông tin bắt buộc",
         variant: "destructive",
       });
-    } finally {
-      setIsSubmitting(false);
+      return;
     }
+
+    // Merge form data
+    const formData = new FormData(formRef.current!);
+
+    // Update state from form
+    setDocumentNumber(formData.get("documentNumber") as string);
+    setDocumentCode(formData.get("referenceNumber") as string);
+    setDocumentTitle(formData.get("title") as string);
+    setDocumentSummary(formData.get("summary") as string);
+    setDocumentNotes(formData.get("notes") as string);
+    setSendingDepartmentName(formData.get("issuingAuthority") as string);
+    setEmailSource((formData.get("emailSource") as string) || "");
+
+    const signingDate = formData.get("signingDate") as string;
+    const receivedDateStr = formData.get("receivedDate") as string;
+    const deadlineStr = formData.get("deadline") as string;
+
+    if (signingDate) setDocumentDate(new Date(signingDate));
+    if (receivedDateStr) setReceivedDate(new Date(receivedDateStr));
+    if (deadlineStr) setClosureDeadline(deadlineStr);
+
+    // Prepare processing data based on document purpose
+    const processingData = {
+      purpose: documentPurpose,
+      primaryDepartment:
+        documentPurpose === "PROCESS" ? primaryDepartment : null,
+      secondaryDepartments:
+        documentPurpose === "NOTIFICATION" && notificationScope === "ALL_UNITS"
+          ? [] // Empty array for ALL_UNITS - backend will handle this
+          : (secondaryDepartments as number[]),
+      notificationScope:
+        documentPurpose === "NOTIFICATION" ? notificationScope : null,
+    };
+
+    // Submit using the hook
+    await submitDocument(
+      processingData.primaryDepartment,
+      processingData.secondaryDepartments,
+      documentPurpose,
+      processingData.notificationScope || undefined
+    );
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center space-x-2">
-        <Button variant="outline" size="icon" asChild>
-          <Link href="/van-ban-den">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-        </Button>
-        <h1 className="text-2xl font-bold tracking-tight">Thêm văn bản đến</h1>
+    <div className="container mx-auto max-w-7xl space-y-6">
+      {/* Breadcrumb Navigation */}
+      <nav className="flex" aria-label="Breadcrumb">
+        <ol className="inline-flex items-center space-x-1 md:space-x-3">
+          <li className="inline-flex items-center">
+            <Link
+              href="/"
+              className="text-gray-700 hover:text-primary inline-flex items-center"
+            >
+              Trang chủ
+            </Link>
+          </li>
+          <li>
+            <div className="flex items-center">
+              <span className="mx-2 text-gray-400">/</span>
+              <Link
+                href="/van-ban-den"
+                className="text-gray-700 hover:text-primary"
+              >
+                Văn bản đến
+              </Link>
+            </div>
+          </li>
+          <li aria-current="page">
+            <div className="flex items-center">
+              <span className="mx-2 text-gray-400">/</span>
+              <span className="text-gray-500">Thêm mới</span>
+            </div>
+          </li>
+        </ol>
+      </nav>
+
+      {/* Page Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-2">
+          <Button variant="outline" size="icon" asChild>
+            <Link href="/van-ban-den">
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">
+              Thêm văn bản đến
+            </h1>
+            <p className="text-muted-foreground">
+              Tạo mới văn bản đến và phân công xử lý
+            </p>
+          </div>
+        </div>
       </div>
 
       <form ref={formRef} onSubmit={handleSubmit} encType="multipart/form-data">
-        <div className="grid gap-6 md:grid-cols-2">
-          <Card className="bg-card md:col-span-1">
+        <div className="grid gap-6 lg:grid-cols-2">
+          {/* Document Information Card */}
+          <Card className="bg-card">
             <CardHeader className="bg-primary/5 border-b">
-              <CardTitle>Thông tin văn bản</CardTitle>
+              <CardTitle className="text-lg">Thông tin văn bản</CardTitle>
               <CardDescription>
                 Nhập thông tin chi tiết của văn bản đến
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6 pt-6">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="documentNumber">Số văn bản</Label>
-                  <Input
-                    id="documentNumber"
-                    name="documentNumber"
-                    placeholder="Nhập số văn bản"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="referenceNumber">Số lưu trữ</Label>
-                  <Input
-                    id="referenceNumber"
-                    name="referenceNumber"
-                    placeholder="Nhập số lưu trữ"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signingDate">Ngày ký</Label>
-                  <Input
-                    id="signingDate"
-                    name="signingDate"
-                    type="date"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="receivedDate">Ngày nhận</Label>
-                  <Input
-                    id="receivedDate"
-                    name="receivedDate"
-                    type="date"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="issuingAuthority">Đơn vị gửi</Label>
-                  <div className="flex gap-2">
-                    <Select name="issuingAuthority" required>
-                      <SelectTrigger className="flex-1">
-                        <SelectValue placeholder="Chọn đơn vị gửi" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {isLoadingDepartments ? (
-                          <SelectItem value="loading" disabled>
-                            Đang tải...
-                          </SelectItem>
-                        ) : departments.length === 0 ? (
-                          <SelectItem value="empty" disabled>
-                            Không có đơn vị nào
-                          </SelectItem>
-                        ) : (
-                          departments.map((dept) => (
-                            <SelectItem key={dept.id} value={dept.name}>
-                              {dept.name}
-                            </SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
-                    <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-                      <DialogTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="shrink-0"
-                        >
-                          <Plus className="h-4 w-4" />
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Thêm đơn vị gửi mới</DialogTitle>
-                          <DialogDescription>
-                            Nhập tên đơn vị gửi chưa có trong hệ thống
-                          </DialogDescription>
-                        </DialogHeader>
-                        <div className="space-y-4 py-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="newDepartment">
-                              Tên đơn vị gửi
-                            </Label>
-                            <Input
-                              id="newDepartment"
-                              value={newSender}
-                              onChange={(e) => {
-                                setNewSender(e.target.value);
-                                setSenderError(null);
-                              }}
-                              placeholder="Nhập tên đơn vị gửi mới"
-                              className={senderError ? "border-red-500" : ""}
-                            />
-                            {senderError && (
-                              <p className="text-sm font-medium text-red-500 mt-1">
-                                {senderError}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                        <DialogFooter>
-                          <Button
-                            variant="outline"
-                            onClick={() => {
-                              setDialogOpen(false);
-
-                              setSenderError(null);
-                            }}
-                          >
-                            Hủy
-                          </Button>
-                          <Button
-                            onClick={handleAddSender}
-                            disabled={isSubmitting || !newSender.trim()}
-                          >
-                            {isSubmitting ? "Đang thêm..." : "Thêm đơn vị"}
-                          </Button>
-                        </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="documentType">Loại văn bản</Label>
-                  <div className="flex gap-2">
-                    <Select
-                      value={documentType}
-                      onValueChange={setDocumentType}
-                    >
-                      <SelectTrigger
-                        id="documentType"
-                        name="documentType"
-                        className="flex-1"
-                      >
-                        <SelectValue placeholder="Chọn loại văn bản" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {isLoadingDocumentTypes ? (
-                          <SelectItem value="loading" disabled>
-                            Đang tải...
-                          </SelectItem>
-                        ) : documentTypes.length === 0 ? (
-                          <SelectItem value="empty" disabled>
-                            Không có loại văn bản nào
-                          </SelectItem>
-                        ) : (
-                          documentTypes.map((type) => (
-                            <SelectItem key={type.id} value={type.name}>
-                              {type.name}
-                            </SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
-                    <Dialog
-                      open={isDocumentTypeDialogOpen}
-                      onOpenChange={setIsDocumentTypeDialogOpen}
-                    >
-                      <DialogTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="shrink-0"
-                        >
-                          <Plus className="h-4 w-4" />
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Thêm loại văn bản mới</DialogTitle>
-                          <DialogDescription>
-                            Nhập tên loại văn bản chưa có trong hệ thống
-                          </DialogDescription>
-                        </DialogHeader>
-                        <div className="space-y-4 py-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="newDocumentType">
-                              Tên loại văn bản
-                            </Label>
-                            <Input
-                              id="newDocumentType"
-                              value={newDocumentType}
-                              onChange={(e) => {
-                                setNewDocumentType(e.target.value);
-                                setDocumentTypeError(null);
-                              }}
-                              placeholder="Nhập tên loại văn bản mới"
-                              className={
-                                documentTypeError ? "border-red-500" : ""
-                              }
-                            />
-                            {documentTypeError && (
-                              <p className="text-sm font-medium text-red-500 mt-1">
-                                {documentTypeError}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                        <DialogFooter>
-                          <Button
-                            variant="outline"
-                            onClick={() => {
-                              setIsDocumentTypeDialogOpen(false);
-                            }}
-                          >
-                            Hủy
-                          </Button>
-                          <Button
-                            onClick={handleAddDocumentType}
-                            disabled={
-                              isCreatingDocumentType || !newDocumentType.trim()
-                            }
-                          >
-                            {isCreatingDocumentType
-                              ? "Đang thêm..."
-                              : "Thêm loại văn bản"}
-                          </Button>
-                        </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="urgencyLevel">Độ khẩn</Label>
-                  <Select value={urgencyLevel} onValueChange={setUrgencyLevel}>
-                    <SelectTrigger id="urgencyLevel" name="urgencyLevel">
-                      <SelectValue placeholder="Chọn độ khẩn" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="NORMAL">Bình thường</SelectItem>
-                      <SelectItem value="URGENT">Khẩn</SelectItem>
-                      <SelectItem value="IMMEDIATE">Hỏa tốc</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="securityLevel">Độ mật</Label>
-                  <Select
-                    value={securityLevel}
-                    onValueChange={setSecurityLevel}
-                  >
-                    <SelectTrigger id="securityLevel" name="securityLevel">
-                      <SelectValue placeholder="Chọn độ mật" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="NORMAL">Bình thường</SelectItem>
-                      <SelectItem value="CONFIDENTIAL">Mật</SelectItem>
-                      <SelectItem value="SECRET">Tối mật</SelectItem>
-                      <SelectItem value="TOP_SECRET">Tuyệt mật</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="title">Trích yếu</Label>
-                <Input
-                  id="title"
-                  name="title"
-                  placeholder="Nhập trích yếu văn bản"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="summary">Tóm tắt nội dung</Label>
-                <Textarea
-                  id="summary"
-                  name="summary"
-                  placeholder="Nhập tóm tắt nội dung văn bản"
-                  rows={5}
-                />
-              </div>
-
-              {/* <div className="flex items-center space-x-2">
-                <Switch
-                  id="closureRequest"
-                  checked={closureRequest}
-                  onCheckedChange={setClosureRequest}
-                />
-                <Label htmlFor="closureRequest">
-                  Yêu cầu văn bản đóng lưu sau khi xử lý
-                </Label>
-              </div> */}
-              <div className="space-y-2">
-                <Label htmlFor="attachments">Tệp đính kèm</Label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    id="attachments"
-                    type="file"
-                    onChange={handleFileChange}
-                    className="hidden"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() =>
-                      document.getElementById("attachments")?.click()
-                    }
-                  >
-                    <Paperclip className="mr-2 h-4 w-4" />
-                    Chọn tệp
-                  </Button>
-                  <span className="text-sm text-muted-foreground">
-                    {files.length > 0
-                      ? `Đã chọn ${files.length} tệp`
-                      : "Chưa có tệp nào được chọn"}
-                  </span>
-                </div>
-                {files.length > 0 && (
-                  <div className="mt-2 space-y-1">
-                    {files.map((file, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center justify-between text-sm bg-muted/50 p-2 rounded"
-                      >
-                        <span>
-                          {file.name} ({(file.size / 1024).toFixed(2)} KB)
-                        </span>
-                        <Button
-                          type="button"
-                          onClick={() => handleRemoveFile(index)}
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 rounded-full"
-                        >
-                          <X className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+            <CardContent className="pt-6">
+              <DocumentInfoForm
+                documentNumber={documentNumber}
+                setDocumentNumber={setDocumentNumber}
+                documentCode={documentCode}
+                setDocumentCode={setDocumentCode}
+                documentTitle={documentTitle}
+                setDocumentTitle={setDocumentTitle}
+                documentSummary={documentSummary}
+                setDocumentSummary={setDocumentSummary}
+                documentDate={documentDate}
+                setDocumentDate={setDocumentDate}
+                receivedDate={receivedDate}
+                setReceivedDate={setReceivedDate}
+                sendingDepartmentName={sendingDepartmentName}
+                setSendingDepartmentName={setSendingDepartmentName}
+                selectedDocumentType={selectedDocumentType}
+                setSelectedDocumentType={setSelectedDocumentType}
+                urgencyLevel={urgencyLevel}
+                setUrgencyLevel={setUrgencyLevel}
+                securityLevel={securityLevel}
+                setSecurityLevel={setSecurityLevel}
+                files={files}
+                handleFileChange={handleFileChange}
+                handleRemoveFile={handleRemoveFile}
+                documentTypes={documentTypes}
+                isLoadingDocumentTypes={isLoadingDocumentTypes}
+                newDocumentType={newDocumentType}
+                setNewDocumentType={setNewDocumentType}
+                isDocumentTypeDialogOpen={isDocumentTypeDialogOpen}
+                setIsDocumentTypeDialogOpen={setIsDocumentTypeDialogOpen}
+                isCreatingDocumentType={isCreatingDocumentType}
+                documentTypeError={documentTypeError}
+                setDocumentTypeError={setDocumentTypeError}
+                handleAddDocumentType={handleAddDocumentType}
+                senderDepartments={senderDepartments}
+                isLoadingDepartments={isLoadingDepartments}
+                newSender={newSender}
+                setNewSender={setNewSender}
+                dialogOpen={dialogOpen}
+                setDialogOpen={setDialogOpen}
+                isCreatingSender={isCreatingSender}
+                senderError={senderError}
+                setSenderError={setSenderError}
+                createSender={createSender}
+                validationErrors={validationErrors}
+                setValidationErrors={setValidationErrors}
+              />
             </CardContent>
           </Card>
 
-          <Card className="bg-card md:col-span-1">
+          {/* Processing Assignment Card */}
+          <Card className="bg-card">
             <CardHeader className="bg-primary/5 border-b">
-              <CardTitle>Chuyển xử lý</CardTitle>
-              <CardDescription>Chọn phòng ban xử lý văn bản</CardDescription>
+              <CardTitle>Phân loại văn bản</CardTitle>
+              <CardDescription>Chọn mục đích của văn bản</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6 pt-6">
-              <div className="space-y-4">
-                <div>
-                  <div className="flex items-center justify-between">
-                    <Label className="text-red-500 font-medium">
-                      Phòng ban xử lý chính
-                    </Label>
-                    {primaryDepartment && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 px-2 text-xs text-red-500"
-                        onClick={handleRemovePrimaryDepartment}
-                      >
-                        Bỏ chọn
-                      </Button>
-                    )}
-                  </div>
-                  {/* Hiển thị phòng ban chính */}
-                  <div className="min-h-[60px] p-2 border rounded-md bg-accent/50 mt-2">
-                    {!primaryDepartment ? (
-                      <div className="w-full h-full flex items-center justify-center text-sm text-muted-foreground">
-                        Chưa chọn phòng ban xử lý chính
-                      </div>
-                    ) : (
-                      (() => {
-                        const dept = departmentList.find(
-                          (d) => d.id === primaryDepartment
-                        );
-                        if (!dept)
-                          return (
-                            <div className="w-full h-full flex items-center justify-center text-sm text-muted-foreground">
-                              Không tìm thấy thông tin phòng ban
-                            </div>
-                          );
+              {/* Document Purpose Selection */}
+              <DocumentPurposeSelector
+                documentPurpose={documentPurpose}
+                onPurposeChange={setDocumentPurpose}
+              />
 
-                        return (
-                          <Badge
-                            key={dept.id}
-                            variant="outline"
-                            className="pl-2 pr-1 py-1.5 flex items-center gap-1 border-red-500 bg-red-50 text-red-700"
-                          >
-                            <span>{dept.name}</span>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-4 w-4 rounded-full text-red-700 hover:bg-red-100"
-                              onClick={handleRemovePrimaryDepartment}
-                            >
-                              <X className="h-3 w-3" />
-                            </Button>
-                          </Badge>
-                        );
-                      })()
-                    )}
-                  </div>
-                </div>
+              {/* Processing Section - Only show when PROCESS is selected */}
+              {documentPurpose === "PROCESS" && (
+                <ProcessingSection
+                  primaryDepartment={primaryDepartment}
+                  secondaryDepartments={secondaryDepartments as number[]}
+                  validationErrors={validationErrors}
+                  findDepartmentById={findDepartmentById}
+                  onRemovePrimaryDepartment={handleRemovePrimaryDepartment}
+                  onRemoveSecondaryDepartment={handleRemoveSecondaryDepartment}
+                  onClearSelection={clearSelection}
+                />
+              )}
 
-                <div>
-                  <div className="flex items-center justify-between">
-                    <Label className="text-blue-600 font-medium">
-                      Phòng ban phối hợp ({secondaryDepartments.length})
-                    </Label>
-                    {secondaryDepartments.length > 0 && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 px-2 text-xs text-blue-600"
-                        onClick={() => setSecondaryDepartments([])}
-                      >
-                        Bỏ chọn tất cả
-                      </Button>
-                    )}
-                  </div>
+              {/* Notification Section - Only show when NOTIFICATION is selected */}
+              {documentPurpose === "NOTIFICATION" && (
+                <NotificationSection
+                  notificationScope={notificationScope}
+                  secondaryDepartments={secondaryDepartments as number[]}
+                  findDepartmentById={findDepartmentById}
+                  onScopeChange={handleNotificationScopeChange}
+                  onRemoveSecondaryDepartment={handleRemoveSecondaryDepartment}
+                  onClearSelection={clearSelection}
+                />
+              )}
 
-                  {/* Hiển thị phòng ban phối hợp */}
-                  <div className="flex flex-wrap gap-2 min-h-[60px] p-2 border rounded-md bg-accent/50 mt-2">
-                    {secondaryDepartments.length === 0 ? (
-                      <div className="w-full h-full flex items-center justify-center text-sm text-muted-foreground">
-                        Chưa chọn phòng ban phối hợp
-                      </div>
-                    ) : (
-                      secondaryDepartments.map((deptId) => {
-                        const dept = departmentList.find(
-                          (d) => d.id === deptId
-                        );
-                        if (!dept) return null;
-
-                        return (
-                          <Badge
-                            key={deptId}
-                            variant="outline"
-                            className="pl-2 pr-1 py-1.5 flex items-center gap-1 border-blue-500 bg-blue-50 text-blue-700"
-                          >
-                            <span>{dept.name}</span>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-4 w-4 rounded-full text-blue-700 hover:bg-blue-100"
-                              onClick={() =>
-                                handleRemoveSecondaryDepartment(deptId)
-                              }
-                            >
-                              <X className="h-3 w-3" />
-                            </Button>
-                          </Badge>
-                        );
-                      })
-                    )}
-                  </div>
-                </div>
-
+              {/* Department Tree - Show for both cases but with different context */}
+              {(documentPurpose === "PROCESS" ||
+                (documentPurpose === "NOTIFICATION" &&
+                  notificationScope === "SPECIFIC_UNITS")) && (
                 <div className="space-y-2">
-                  <Label>Danh sách phòng ban</Label>
+                  <Label>
+                    {documentPurpose === "PROCESS"
+                      ? "Danh sách phòng ban xử lý"
+                      : "Danh sách phòng ban nhận thông báo"}
+                  </Label>
                   <div className="border rounded-md overflow-hidden">
                     <div className="bg-primary/5 px-4 py-2 border-b flex items-center justify-between">
                       <span className="text-sm font-medium">
-                        Chọn phòng ban xử lý văn bản
+                        {documentPurpose === "PROCESS"
+                          ? "Chọn phòng ban xử lý văn bản"
+                          : "Chọn phòng ban nhận thông báo"}
                       </span>
                     </div>
-                    <div className="max-h-[300px] overflow-y-auto">
-                      {isLoadingDepartmentList ? (
-                        <div
-                          key="loading"
-                          className="flex items-center justify-center p-4"
-                        >
-                          <p>Đang tải danh sách phòng ban...</p>
-                        </div>
-                      ) : departmentList.length === 0 ? (
-                        <div
-                          key="empty"
-                          className="flex items-center justify-center p-4"
-                        >
-                          <p>Không có phòng ban nào</p>
-                        </div>
-                      ) : (
-                        departmentList.map((dept) => {
-                          const deptId = dept.id;
-                          const isPrimary = primaryDepartment === deptId;
-                          const isSecondary =
-                            secondaryDepartments.includes(deptId);
 
-                          return (
-                            <div
-                              key={dept.id || `dept-${dept.name}`}
-                              className={`flex items-center justify-between px-4 py-3 border-b last:border-b-0 hover:bg-accent/50 ${
-                                isPrimary
-                                  ? "bg-red-50"
-                                  : isSecondary
-                                  ? "bg-blue-50"
-                                  : ""
-                              }`}
-                            >
-                              <div className="flex items-center gap-3">
-                                <div className="flex items-center gap-1.5">
-                                  <Checkbox
-                                    id={`primary-${dept.id}`}
-                                    checked={isPrimary}
-                                    onCheckedChange={() =>
-                                      handleSelectPrimaryDepartment(deptId)
-                                    }
-                                    className="border-red-500 text-red-500 focus-visible:ring-red-300"
-                                  />
-                                  <Checkbox
-                                    id={`secondary-${dept.id}`}
-                                    checked={isSecondary}
-                                    onCheckedChange={() =>
-                                      handleSelectSecondaryDepartment(deptId)
-                                    }
-                                    className="border-blue-500 text-blue-500 focus-visible:ring-blue-300"
-                                    disabled={isPrimary}
-                                  />
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <div className="h-8 w-8 bg-primary/10 rounded-full flex items-center justify-center">
-                                    <Building className="h-4 w-4 text-primary" />
-                                  </div>
-                                  <div>
-                                    <p className="text-sm font-medium">
-                                      {dept.name}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">
-                                      {dept.group || "Phòng ban"}
-                                    </p>
-                                  </div>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Badge
-                                  variant="outline"
-                                  className="text-xs bg-accent"
-                                >
-                                  {dept.userCount || 0} thành viên
-                                </Badge>
-                                <div className="flex gap-1">
-                                  {isPrimary && (
-                                    <span className="text-xs px-1.5 py-0.5 bg-red-100 text-red-700 rounded-sm">
-                                      Chính
-                                    </span>
-                                  )}
-                                  {isSecondary && (
-                                    <span className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded-sm">
-                                      Phối hợp
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })
-                      )}
-                    </div>
+                    {isLoadingDepartmentList ? (
+                      <div className="flex items-center justify-center p-4">
+                        <p>Đang tải danh sách phòng ban...</p>
+                      </div>
+                    ) : (
+                      <DepartmentTree
+                        departments={departments}
+                        expandedDepartments={expandedDepartments}
+                        toggleDepartment={toggleDepartment}
+                        onSelectPrimaryDepartment={
+                          documentPurpose === "PROCESS"
+                            ? handleSelectPrimaryDepartment
+                            : undefined
+                        }
+                        onSelectSecondaryDepartment={
+                          handleSelectSecondaryDepartment
+                        }
+                        primaryDepartment={
+                          documentPurpose === "PROCESS"
+                            ? primaryDepartment
+                            : null
+                        }
+                        secondaryDepartments={secondaryDepartments as any}
+                        departmentUsers={departmentUsers}
+                        isLoadingUsers={isLoadingUsers}
+                        onDepartmentExpand={fetchDepartmentUsers}
+                        getLeadershipRole={getLeadershipRole}
+                        getRoleDisplayName={getRoleDisplayName}
+                        selectionMode={
+                          documentPurpose === "PROCESS" ? "both" : "secondary"
+                        }
+                        maxHeight="400px"
+                      />
+                    )}
                   </div>
-                  <div className="flex items-center gap-2 text-xs mt-1">
-                    <div className="flex items-center gap-1">
-                      <div className="w-3 h-3 rounded-sm border border-red-500 bg-white"></div>
-                      <span>Xử lý chính</span>
-                    </div>
+
+                  <div className="flex items-center gap-4 text-xs mt-1">
+                    {documentPurpose === "PROCESS" && (
+                      <div className="flex items-center gap-1">
+                        <div className="w-3 h-3 rounded-sm border border-red-500 bg-white"></div>
+                        <span>Xử lý chính</span>
+                      </div>
+                    )}
                     <div className="flex items-center gap-1">
                       <div className="w-3 h-3 rounded-sm border border-blue-500 bg-white"></div>
-                      <span>Phối hợp</span>
+                      <span>
+                        {documentPurpose === "PROCESS"
+                          ? "Phối hợp"
+                          : "Nhận thông báo"}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Building className="h-3 w-3 text-muted-foreground" />
+                      <span>Đơn vị lớn</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Users className="h-3 w-3 text-muted-foreground" />
+                      <span>Đơn vị nhỏ</span>
                     </div>
                   </div>
                 </div>
+              )}
 
-                <div className="space-y-2">
-                  <Label htmlFor="notes">Ghi chú</Label>
-                  <Textarea
-                    id="notes"
-                    name="notes"
-                    placeholder="Nhập ghi chú cho phòng ban xử lý (nếu có)"
-                    rows={3}
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="notes">
+                  {documentPurpose === "PROCESS"
+                    ? "Ghi chú"
+                    : "Nội dung thông báo"}
+                </Label>
+                <Textarea
+                  id="notes"
+                  name="notes"
+                  value={documentNotes}
+                  onChange={(e) => setDocumentNotes(e.target.value)}
+                  placeholder={
+                    documentPurpose === "PROCESS"
+                      ? "Nhập ghi chú cho phòng ban xử lý (nếu có)"
+                      : "Nhập nội dung thông báo (nếu có)"
+                  }
+                  rows={3}
+                />
+              </div>
 
+              {documentPurpose === "PROCESS" && (
                 <div className="space-y-2">
                   <Label htmlFor="deadline">Thời hạn xử lý</Label>
                   <Input
                     id="deadline"
                     name="deadline"
                     type="date"
+                    value={closureDeadline}
+                    onChange={(e) => setClosureDeadline(e.target.value)}
                     placeholder="Chọn thời hạn xử lý"
                   />
                 </div>
-              </div>
+              )}
             </CardContent>
           </Card>
         </div>
 
-        <div className="mt-6 flex justify-between">
-          <Button type="button" variant="outline" asChild>
-            <Link href="/van-ban-den">Hủy</Link>
-          </Button>
-          <Button
-            type="submit"
-            disabled={isSubmitting}
-            className="bg-primary hover:bg-primary/90"
-          >
-            {isSubmitting ? (
-              "Đang lưu..."
-            ) : (
-              <>
-                <Save className="mr-2 h-4 w-4" /> Lưu văn bản
-              </>
-            )}
-          </Button>
+        <div className="mt-6 flex flex-col sm:flex-row justify-between gap-4">
+          <div className="flex gap-2">
+            <Button type="button" variant="outline" asChild>
+              <Link href="/van-ban-den">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Hủy
+              </Link>
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => {
+                // Save as draft functionality
+                toast({
+                  title: "Thông báo",
+                  description: "Chức năng lưu nháp sẽ được cập nhật sớm",
+                });
+              }}
+            >
+              Lưu nháp
+            </Button>
+          </div>
+
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                // Reset form
+                if (
+                  confirm(
+                    "Bạn có chắc muốn đặt lại form? Tất cả dữ liệu sẽ bị mất."
+                  )
+                ) {
+                  window.location.reload();
+                }
+              }}
+            >
+              Đặt lại
+            </Button>
+            <Button
+              type="submit"
+              disabled={
+                isSubmitting ||
+                (documentPurpose === "PROCESS" && !primaryDepartment) ||
+                (documentPurpose === "NOTIFICATION" &&
+                  notificationScope === "SPECIFIC_UNITS" &&
+                  secondaryDepartments.length === 0)
+              }
+              className="bg-primary hover:bg-primary/90"
+            >
+              {isSubmitting ? (
+                <>
+                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-background border-t-transparent" />
+                  Đang lưu...
+                </>
+              ) : (
+                <>
+                  <Save className="mr-2 h-4 w-4" />
+                  Lưu văn bản
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       </form>
     </div>

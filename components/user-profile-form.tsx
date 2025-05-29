@@ -14,10 +14,14 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Loader2, Save } from "lucide-react";
+import { userAgent } from "next/server";
 
 const profileFormSchema = z.object({
   fullName: z.string().min(2, {
     message: "Họ tên phải có ít nhất 2 ký tự",
+  }),
+  username: z.string().min(2, {
+    message: "Tên đăng nhập phải có ít nhất 2 ký tự",
   }),
   email: z.string().email({
     message: "Email không hợp lệ",
@@ -43,6 +47,7 @@ export default function UserProfileForm({
     resolver: zodResolver(profileFormSchema),
     defaultValues: {
       fullName: user.fullName || "",
+      username: user.username || "",
       email: user.email || "",
       phone: user.phone || "",
       position: user.roleDisplayNames[0] || "",
@@ -107,6 +112,19 @@ export default function UserProfileForm({
                 <FormLabel>Chức vụ</FormLabel>
                 <FormControl>
                   <Input placeholder="Nhập chức vụ" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+           <FormField
+            control={form.control}
+            name="username"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Tên đăng nhập</FormLabel>
+                <FormControl>
+                  <Input placeholder="Nhập tên đăng nhập" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>

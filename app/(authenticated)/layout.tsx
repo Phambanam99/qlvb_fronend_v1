@@ -4,11 +4,10 @@ import type React from "react";
 
 import { useAuth } from "@/lib/auth-context";
 import { Header } from "@/components/header";
-import Sidebar from "@/components/sidebar";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { NotificationsProvider } from "@/lib/notifications-context";
-import { MainSidebar } from "@/components/main-sidebar";
+
 export default function AuthenticatedLayout({
   children,
 }: {
@@ -103,11 +102,9 @@ export default function AuthenticatedLayout({
     <NotificationsProvider>
       <div className="flex min-h-screen flex-col">
         <Header />
-
-        <div className="flex flex-1">
-          <Sidebar />
-          <main className="flex-1 overflow-auto p-6">{children}</main>
-        </div>
+        <main className="flex-1 overflow-auto p-6 bg-gray-50/50">
+          {children}
+        </main>
       </div>
     </NotificationsProvider>
   );

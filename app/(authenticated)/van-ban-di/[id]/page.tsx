@@ -46,6 +46,7 @@ import {
   workflowAPI,
   incomingDocumentsAPI,
   IncomingDocumentDTO,
+  DocumentWorkflowDTO,
 } from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -353,7 +354,43 @@ export default function OutgoingDocumentDetailPage({
       setIsSubmitting(false);
     }
   };
+  const handleApproveResponse = async () => {
+    setIsSubmitting(true);
+    try {
+      await workflowAPI.approveDocumentResponse(documentId, { comment: "" });
 
+      // Refresh document data
+      const response = await outgoingDocumentsAPI.getOutgoingDocumentById(
+        documentId
+      );
+      setDocument(response.data);
+      // Fetch document workflow history
+      const history = await workflowAPI.getDocumentHistory(documentId);
+
+      // Cập nhật document với history
+      setDocument((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          history: history,
+        };
+      });
+
+      toast({
+        title: "Thành công",
+        description: "Đã chấp nhận văn bản trả lời",
+      });
+    } catch (error) {
+      console.error("Error approving response:", error);
+      toast({
+        title: "Lỗi",
+        description: "Không thể chấp nhận văn bản. Vui lòng thử lại sau.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
   // Hàm xử lý từ chối văn bản dành riêng cho chỉ huy đơn vị
   const handleDepartmentHeadReject = async () => {
     if (!rejectionComment) {
@@ -416,6 +453,37 @@ export default function OutgoingDocumentDetailPage({
   const renderActionButtons = () => {
     if (!user || !_document) return null;
 
+    // Kiểm tra xem văn bản có phải từ đơn vị con gửi lên không
+    const isFromChildDepartment =
+      _document.status === "department_approved" ||
+      _document.status === "parent_dept_review" ||
+      _document.history?.some(
+        (item: any) =>
+          item.newStatus === "child_dept_submitted" ||
+          item.newStatus === "parent_dept_review"
+      );
+
+    // Kiểm tra nếu người dùng là trưởng phòng và văn bản đến từ đơn vị con
+    if (
+      hasRole([
+        "ROLE_TRUONG_PHONG",
+        "ROLE_PHO_PHONG",
+        "ROLE_TRUONG_BAN",
+        "ROLE_CUM_TRUONG",
+        "ROLE_PHO_CUM_TRUONG",
+      ]) &&
+      isFromChildDepartment
+    ) {
+      return (
+        <Button size="sm" className="bg-blue-600 hover:bg-blue-700" asChild>
+          <Link href={`/van-ban-di/${_document.id}/xem-xet-tu-don-vi-con`}>
+            <CheckCircle className="mr-2 h-4 w-4" /> Xem xét văn bản từ đơn vị
+            con
+          </Link>
+        </Button>
+      );
+    }
+
     // Kiểm tra xem văn bản có bị từ chối không
     const wasRejected = _document.history?.some(
       (item: any) =>
@@ -423,6 +491,140 @@ export default function OutgoingDocumentDetailPage({
         (item.comments && item.comments.toLowerCase().includes("từ chối")) ||
         (item.description && item.description.toLowerCase().includes("từ chối"))
     );
+
+    // Kiểm tra xem văn bản có bị văn thư trả lại không
+    const wasReturnedByClerk = _document.history?.some(
+      (item: any) =>
+        (item.newStatus === "format_correction" &&
+          item.previousStatus === "LEADER_APPROVED") ||
+        (item.comments &&
+          (item.comments.toLowerCase().includes("trả lại") ||
+            item.comments.toLowerCase().includes("chỉnh sửa thể thức"))) ||
+        (item.description &&
+          (item.description.toLowerCase().includes("trả lại") ||
+            item.description.toLowerCase().includes("chỉnh sửa thể thức")))
+    );
+    console.log("(item.newStatus", _document.history);
+    console.log("wasReturnedByClerk", wasReturnedByClerk);
+    // Nếu là trợ lý/nhân viên và văn bản bị văn thư trả lại để chỉnh sửa thể thức
+    if (
+      hasRole(["ROLE_DRAF", "ROLE_TRO_LY", "ROLE_NHAN_VIEN"]) &&
+      _document.status === "format_correction" &&
+      wasReturnedByClerk
+    ) {
+      // Tìm comment của văn thư khi trả lại
+      const clerkComment =
+        _document.history?.find(
+          (item: any) =>
+            (item.newStatus === "format_correction" &&
+              item.previousStatus === "LEADER_APPROVED") ||
+            (item.comments &&
+              (item.comments.toLowerCase().includes("trả lại") ||
+                item.comments.toLowerCase().includes("chỉnh sửa thể thức")))
+        )?.comments || "Văn thư yêu cầu chỉnh sửa thể thức văn bản";
+
+      return (
+        <>
+          <div className="rounded-md bg-orange-50 p-2 border border-orange-200 mr-3">
+            <div className="flex items-start">
+              <ArrowLeft className="h-4 w-4 text-orange-600 mt-0.5 mr-2" />
+              <div>
+                <p className="text-sm font-medium text-orange-800">
+                  Văn bản bị văn thư trả lại yêu cầu chỉnh sửa
+                </p>
+                <p className="text-xs text-orange-700 mt-1">{clerkComment}</p>
+              </div>
+            </div>
+          </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-primary/20 hover:bg-primary/10 hover:text-primary mr-2"
+            asChild
+          >
+            <Link href={`/van-ban-di/${_document.id}/chinh-sua`}>
+              <Edit className="mr-2 h-4 w-4" />
+              Chỉnh sửa
+            </Link>
+          </Button>
+
+          <Button
+            size="sm"
+            className="bg-primary hover:bg-primary/90"
+            onClick={async () => {
+              try {
+                setIsSubmitting(true);
+
+                // Tạo dữ liệu để cập nhật trạng thái văn bản
+                const workflowData: DocumentWorkflowDTO = {
+                  documentId: documentId,
+                  status: "leader_approved", // Chuyển về trạng thái phê duyệt để văn thư xử lý tiếp
+                  comments: "Đã chỉnh sửa theo yêu cầu của văn thư",
+                  // Đánh dấu bỏ qua bước phê duyệt của trưởng phòng
+                };
+
+                // Gọi API để gửi văn bản đến văn thư
+                await workflowAPI.changeDocumentStatus(
+                  documentId,
+                  workflowData
+                );
+
+                // Thông báo cho văn thư
+                addNotification({
+                  title: "Văn bản đã được chỉnh sửa",
+                  message: `Văn bản ${
+                    _document.documentNumber || "#"
+                  } đã được chỉnh sửa theo yêu cầu và gửi lại văn thư để xem xét`,
+                  type: "success",
+                  recipientRoles: ["ROLE_VAN_THU"],
+                });
+
+                // Refresh document data
+                const response =
+                  await outgoingDocumentsAPI.getOutgoingDocumentById(
+                    documentId
+                  );
+                setDocument(response.data);
+
+                // Fetch document workflow history
+                const history = await workflowAPI.getDocumentHistory(
+                  documentId
+                );
+
+                // Cập nhật document với history
+                setDocument((prev) => {
+                  if (!prev) return prev;
+                  return {
+                    ...prev,
+                    history: history,
+                  };
+                });
+
+                toast({
+                  title: "Thành công",
+                  description: "Văn bản đã được gửi lại cho văn thư xem xét",
+                  variant: "success",
+                });
+              } catch (err: any) {
+                toast({
+                  title: "Lỗi",
+                  description:
+                    err.message || "Không thể gửi văn bản đến văn thư",
+                  variant: "destructive",
+                });
+              } finally {
+                setIsSubmitting(false);
+              }
+            }}
+            disabled={isSubmitting}
+          >
+            <Send className="mr-2 h-4 w-4" />
+            {isSubmitting ? "Đang xử lý..." : "Gửi lại văn thư"}
+          </Button>
+        </>
+      );
+    }
 
     // Nếu là người soạn thảo và văn bản đang ở trạng thái nháp
     if (
@@ -575,7 +777,7 @@ export default function OutgoingDocumentDetailPage({
               <AlertDialogFooter>
                 <AlertDialogCancel>Hủy</AlertDialogCancel>
                 <AlertDialogAction
-                  onClick={handleDepartmentHeadReject}
+                  onClick={handleReject}
                   className="bg-red-600 hover:bg-red-700"
                   disabled={isSubmitting}
                 >
@@ -629,7 +831,8 @@ export default function OutgoingDocumentDetailPage({
         "ROLE_CHINH_UY",
         "ROLE_PHO_CHINH_UY",
       ]) &&
-      _document.status === "pending_approval"
+      (_document.status === "pending_approval" ||
+        _document.status === "department_approved")
     ) {
       return (
         <>
@@ -697,7 +900,7 @@ export default function OutgoingDocumentDetailPage({
               <AlertDialogFooter>
                 <AlertDialogCancel>Hủy</AlertDialogCancel>
                 <AlertDialogAction
-                  onClick={handleApprove}
+                  onClick={handleApproveResponse}
                   className="bg-green-600 hover:bg-green-700"
                   disabled={isSubmitting}
                 >
@@ -711,7 +914,7 @@ export default function OutgoingDocumentDetailPage({
     }
 
     // Nếu là văn thư và văn bản đã được phê duyệt
-    if (hasRole("ROLE_VAN_THU") && _document.status === "approved") {
+    if (hasRole("ROLE_VAN_THU") && _document.status === "leader_approved") {
       return (
         <Button
           size="sm"
@@ -755,6 +958,172 @@ export default function OutgoingDocumentDetailPage({
           <Send className="mr-2 h-4 w-4" />
           {isSubmitting ? "Đang xử lý..." : "Ban hành văn bản"}
         </Button>
+      );
+    }
+
+    // Nếu là văn thư và văn bản đã được thủ trưởng phê duyệt nhưng chưa đạt thể thức yêu cầu
+    if (hasRole("ROLE_VAN_THU") && _document.status === "leader_approved") {
+      return (
+        <>
+          {/* Nút trả lại văn bản cho trợ lý */}
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-orange-200 text-orange-600 hover:bg-orange-50 mr-2"
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Trả lại trợ lý
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Trả lại văn bản cho trợ lý</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Vui lòng nhập lý do trả lại để trợ lý chỉnh sửa thể thức văn
+                  bản.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <Textarea
+                placeholder="Nhập lý do trả lại văn bản..."
+                value={rejectionComment}
+                onChange={(e) => setRejectionComment(e.target.value)}
+                className="min-h-[100px]"
+              />
+              <AlertDialogFooter>
+                <AlertDialogCancel>Hủy</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={async () => {
+                    if (!rejectionComment.trim()) {
+                      toast({
+                        title: "Lỗi",
+                        description: "Vui lòng nhập lý do trả lại văn bản",
+                        variant: "destructive",
+                      });
+                      return;
+                    }
+
+                    try {
+                      setIsSubmitting(true);
+                      const rejectCom: DocumentWorkflowDTO = {
+                        documentId: documentId,
+                        status: "format_incorrection",
+                        comments: rejectionComment,
+                      };
+                      // Gọi API để trả lại văn bản cho trợ lý
+                      await workflowAPI.returnDocumentToSpecialist(
+                        documentId,
+                        rejectCom
+                      );
+
+                      // Tạo thông báo cho trợ lý
+                      if (_document.creator?.id) {
+                        addNotification({
+                          title: "Văn bản cần chỉnh sửa thể thức",
+                          message: `Văn bản ${
+                            _document.documentNumber || "#"
+                          } đã được văn thư trả lại để chỉnh sửa theo yêu cầu`,
+                          type: "warning",
+                          link: `/van-ban-di/${documentId}/chinh-sua`,
+                        });
+                      }
+
+                      // Refresh document data
+                      const response =
+                        await outgoingDocumentsAPI.getOutgoingDocumentById(
+                          documentId
+                        );
+                      setDocument(response.data);
+
+                      // Fetch document workflow history
+                      const history = await workflowAPI.getDocumentHistory(
+                        documentId
+                      );
+
+                      // Cập nhật document với history
+                      setDocument((prev) => {
+                        if (!prev) return prev;
+                        return {
+                          ...prev,
+                          history: history,
+                        };
+                      });
+
+                      toast({
+                        title: "Thành công",
+                        description:
+                          "Văn bản đã được trả lại trợ lý để chỉnh sửa thể thức",
+                      });
+
+                      setRejectionComment("");
+                    } catch (err: any) {
+                      toast({
+                        title: "Lỗi",
+                        description:
+                          err.message || "Không thể trả lại văn bản cho trợ lý",
+                        variant: "destructive",
+                      });
+                    } finally {
+                      setIsSubmitting(false);
+                    }
+                  }}
+                  className="bg-orange-600 hover:bg-orange-700"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? "Đang xử lý..." : "Xác nhận trả lại"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          <Button
+            size="sm"
+            className="bg-primary hover:bg-primary/90"
+            onClick={async () => {
+              try {
+                setIsSubmitting(true);
+                await outgoingDocumentsAPI.issueDocument(Number(_document.id));
+
+                // Refresh document data
+                const response =
+                  await outgoingDocumentsAPI.getOutgoingDocumentById(
+                    documentId
+                  );
+                setDocument(response.data);
+                // Fetch document workflow history
+                const history = await workflowAPI.getDocumentHistory(
+                  documentId
+                );
+
+                // Cập nhật document với history
+                setDocument((prev) => {
+                  if (!prev) return prev;
+                  return {
+                    ...prev,
+                    history: history,
+                  };
+                });
+                toast({
+                  title: "Thành công",
+                  description: "Văn bản đã được ban hành thành công",
+                });
+              } catch (err: any) {
+                toast({
+                  title: "Lỗi",
+                  description: err.message || "Không thể ban hành văn bản",
+                  variant: "destructive",
+                });
+              } finally {
+                setIsSubmitting(false);
+              }
+            }}
+            disabled={isSubmitting}
+          >
+            <Send className="mr-2 h-4 w-4" />
+            {isSubmitting ? "Đang xử lý..." : "Ban hành văn bản"}
+          </Button>
+        </>
       );
     }
 

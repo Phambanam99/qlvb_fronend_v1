@@ -95,6 +95,7 @@ export default function OutgoingDocumentForm({
   const [approvers, setApprovers] = useState<
     Array<{ id: string; fullName: string; position: string }>
   >([]);
+  const [isFromClerkReturn, setIsFromClerkReturn] = useState(false);
 
   // Hàm xử lý các sự kiện input
   const handleInputChange = (
@@ -154,6 +155,22 @@ export default function OutgoingDocumentForm({
         (item.comments && item.comments.toLowerCase().includes("từ chối")) ||
         (item.description && item.description.toLowerCase().includes("từ chối"))
     );
+
+    // Kiểm tra xem văn bản có bị văn thư trả lại không
+    const wasReturnedByClerk = doc.history?.some(
+      (item: any) =>
+        (item.newStatus === "specialist_processing" &&
+          item.previousStatus === "leader_approved") ||
+        (item.comments && item.comments.toLowerCase().includes("trả lại")) ||
+        (item.description &&
+          item.description.toLowerCase().includes("trả lại để chỉnh sửa"))
+    );
+
+    // Nếu văn bản bị văn thư trả lại, đánh dấu là văn bản từ văn thư
+    if (wasReturnedByClerk && hasRole("ROLE_TRO_LY")) {
+      setIsFromClerkReturn(true);
+      return true;
+    }
 
     // Nếu là trợ lý và văn bản đã bị từ chối
     if (hasRole("ROLE_TRO_LY") && wasRejected) {
@@ -330,12 +347,25 @@ export default function OutgoingDocumentForm({
         formData.isConfidential.toString()
       );
       formDataToSubmit.append("notes", formData.notes);
-      formDataToSubmit.append("approverId", formData.approverId);
+
+      // Thêm approverId - Nếu văn bản từ văn thư trả lại, sẽ không cần approverId
+      // vì sẽ gửi thẳng cho văn thư
+      if (!isFromClerkReturn) {
+        formDataToSubmit.append("approverId", formData.approverId);
+      }
+
       formDataToSubmit.append("priority", formData.priority);
 
       // Thêm replyToId nếu có
       if (replyToId) {
         formDataToSubmit.append("replyToId", replyToId);
+      }
+
+      // Thêm trạng thái văn bản - Với văn bản từ văn thư trả lại, đánh dấu status là leader_approved
+      // để chỉ rõ văn bản này đã được thủ trưởng phê duyệt và gửi thẳng cho văn thư
+      if (isFromClerkReturn) {
+        formDataToSubmit.append("status", "leader_approved");
+        formDataToSubmit.append("skipDepartmentApproval", "true");
       }
 
       // Thêm tệp đính kèm
@@ -365,8 +395,20 @@ export default function OutgoingDocumentForm({
 
         toast({
           title: "Thành công",
-          description: "Văn bản đã được cập nhật thành công",
+          description: isFromClerkReturn
+            ? "Văn bản đã được chỉnh sửa và gửi thẳng cho văn thư xem xét"
+            : "Văn bản đã được cập nhật thành công",
         });
+
+        // Thông báo đến văn thư nếu là văn bản bị trả lại
+        if (isFromClerkReturn) {
+          addNotification({
+            title: "Văn bản đã chỉnh sửa theo yêu cầu",
+            message: `Văn bản "${formData.title}" đã được chỉnh sửa theo yêu cầu và gửi đến văn thư để xem xét`,
+            type: "success",
+            recipientRoles: ["ROLE_VAN_THU"],
+          });
+        }
 
         // Chuyển hướng về trang chi tiết văn bản
         router.push(`/van-ban-di/${documentId}`);
@@ -848,6 +890,10 @@ export default function OutgoingDocumentForm({
                 >
                   {isSubmitting ? (
                     "\u0110ang x\u1eed l\u00fd..."
+                  ) : isFromClerkReturn ? (
+                    <>
+                      <Send className="mr-2 h-4 w-4" /> Gửi lại văn thư
+                    </>
                   ) : (
                     <>
                       <Send className="mr-2 h-4 w-4" /> Gửi phê duyệt

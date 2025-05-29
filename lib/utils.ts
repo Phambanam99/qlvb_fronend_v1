@@ -65,6 +65,14 @@ export function getStatusBadgeInfo(
     departmentReviewing: { variant: "outline", display: "Chỉ huy đang xem xét" },
     departmentApproved: { variant: "success", display: "Chỉ huy đã phê duyệt" },
     departmentCommented: { variant: "secondary", display: "Chỉ huy đã cho ý kiến" },
+    formatCorrection: {
+      variant: "secondary",
+      display: "Cần chỉnh sửa thể thức",
+    },
+    formatCorrected: {
+      variant: "secondary", 
+      display: "Đã chỉnh sửa thể thức",
+    },
   };
 
   // Lấy thông tin từ bảng ánh xạ, hoặc dùng giá trị mặc định

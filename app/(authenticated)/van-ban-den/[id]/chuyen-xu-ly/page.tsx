@@ -3,8 +3,23 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Building, X, Send, FileText, Calendar, Clock, AlertCircle } from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  ArrowLeft,
+  Building,
+  X,
+  Send,
+  FileText,
+  Calendar,
+  Clock,
+  AlertCircle,
+} from "lucide-react";
 import Link from "next/link";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
@@ -15,30 +30,40 @@ import { useToast } from "@/components/ui/use-toast";
 import { departmentsAPI, incomingDocumentsAPI, workflowAPI } from "@/lib/api";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { useAuth } from "@/lib/auth-context";
+import { hasRoleInGroup } from "@/lib/role-utils";
 
 export default function AssignDocumentPage() {
   const params = useParams();
   const documentId = Number(params.id);
   const router = useRouter();
   const { toast } = useToast();
-  
+  const { user } = useAuth();
+
   const [document, setDocument] = useState<any>(null);
   const [departmentList, setDepartmentList] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoadingDepartmentList, setIsLoadingDepartmentList] = useState(true);
-  const [primaryDepartment, setPrimaryDepartment] = useState<number | null>(null);
-  const [secondaryDepartments, setSecondaryDepartments] = useState<number[]>([]);
+  const [primaryDepartment, setPrimaryDepartment] = useState<number | null>(
+    null
+  );
+  const [secondaryDepartments, setSecondaryDepartments] = useState<number[]>(
+    []
+  );
   const [notes, setNotes] = useState("");
   const [deadline, setDeadline] = useState("");
-  
+  const [isParentDepartmentHead, setIsParentDepartmentHead] = useState(false);
+
   // Fetch document details
   useEffect(() => {
     const fetchDocument = async () => {
       try {
         setIsLoading(true);
-        const response = await incomingDocumentsAPI.getIncomingDocumentById(documentId);
+        const response = await incomingDocumentsAPI.getIncomingDocumentById(
+          documentId
+        );
         setDocument(response.data);
       } catch (error) {
         console.error("Lỗi khi lấy thông tin văn bản:", error);
@@ -52,43 +77,72 @@ export default function AssignDocumentPage() {
         setIsLoading(false);
       }
     };
-    
+
     fetchDocument();
   }, [documentId, toast]);
-  
 
+  // Check if user is department head and fetch child departments
   useEffect(() => {
-    const fetchDepartmentList = async () => {
-      try {
-        setIsLoadingDepartmentList(true);
+    const checkUserDepartment = async () => {
+      if (!user?.id || !user?.departmentId) return;
+
+      // Check if user has a department head role
+      const isDepartmentHead = hasRoleInGroup(user.roles || [], [
+        "ROLE_TRUONG_PHONG",
+        "ROLE_PHO_PHONG",
+        "ROLE_TRUONG_BAN",
+        "ROLE_CUM_TRUONG",
+        "ROLE_CUC_TRUONG",
+        "ROLE_CUC_PHO",
+        "ROLE_PHO_CHINH_UY",
+        "ROLE_PHO_CHINH_UY",
+        "ROLE_PHO_CUM_TRUONG",
+        "ROLE_CHINH_TRI_VIEN_CUM",
+      ]);
+
+      if (isDepartmentHead) {
+        try {
+          // Get child departments
+          const childDepts = await workflowAPI.getChildDepartments(
+            user.departmentId
+          );
+          if (Array.isArray(childDepts) && childDepts.length > 0) {
+            setIsParentDepartmentHead(true);
+            setDepartmentList(childDepts);
+          } else {
+            // No child departments, fetch all departments
+            const response = await departmentsAPI.getAllDepartments();
+            setDepartmentList(response.content || []);
+          }
+        } catch (error) {
+          console.error("Lỗi khi lấy danh sách phòng ban con:", error);
+          // Fallback to all departments
+          const response = await departmentsAPI.getAllDepartments();
+          setDepartmentList(response.content || []);
+        }
+      } else {
+        // User is not a department head, show all departments
         const response = await departmentsAPI.getAllDepartments();
         setDepartmentList(response.content || []);
-      } catch (error) {
-        console.error("Lỗi khi lấy danh sách phòng ban:", error);
-        toast({
-          title: "Lỗi",
-          description: "Không thể tải danh sách phòng ban",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoadingDepartmentList(false);
       }
+
+      setIsLoadingDepartmentList(false);
     };
 
-    fetchDepartmentList();
-  }, [toast]);
+    checkUserDepartment();
+  }, [user, toast]);
 
   const handleSelectPrimaryDepartment = (deptId: number) => {
     setPrimaryDepartment((prevId) => (prevId === deptId ? null : deptId));
-    
+
     if (secondaryDepartments.includes(deptId)) {
       setSecondaryDepartments((prev) => prev.filter((id) => id !== deptId));
     }
   };
-  
+
   const handleSelectSecondaryDepartment = (deptId: number) => {
     if (deptId === primaryDepartment) return;
-    
+
     setSecondaryDepartments((prev) => {
       if (prev.includes(deptId)) {
         return prev.filter((id) => id !== deptId);
@@ -97,15 +151,15 @@ export default function AssignDocumentPage() {
       }
     });
   };
-  
+
   const handleRemovePrimaryDepartment = () => {
     setPrimaryDepartment(null);
   };
-  
+
   const handleRemoveSecondaryDepartment = (deptId: number) => {
     setSecondaryDepartments((prev) => prev.filter((id) => id !== deptId));
   };
-  
+
   // Format date function
   const formatDate = (dateString: string) => {
     if (!dateString) return "Không xác định";
@@ -114,7 +168,7 @@ export default function AssignDocumentPage() {
       return new Intl.DateTimeFormat("vi-VN", {
         day: "2-digit",
         month: "2-digit",
-        year: "numeric"
+        year: "numeric",
       }).format(date);
     } catch (e) {
       return dateString;
@@ -142,25 +196,25 @@ export default function AssignDocumentPage() {
   // Get document type display name
   const getDocumentTypeName = (type: string) => {
     const typeMap: Record<string, string> = {
-      "OFFICIAL_LETTER": "Công văn",
-      "DECISION": "Quyết định",
-      "DECREE": "Nghị định",
-      "DIRECTIVE": "Chỉ thị",
-      "PLAN": "Kế hoạch",
-      "REPORT": "Báo cáo",
-      "ANNOUNCEMENT": "Thông báo",
-      "PROPOSAL": "Tờ trình",
-      "INTERNAL_DOCUMENT": "Văn bản nội bộ",
-      "CONTRACT": "Hợp đồng",
-      "MEETING_MINUTES": "Biên bản họp",
-      "OTHER": "Khác"
+      OFFICIAL_LETTER: "Công văn",
+      DECISION: "Quyết định",
+      DECREE: "Nghị định",
+      DIRECTIVE: "Chỉ thị",
+      PLAN: "Kế hoạch",
+      REPORT: "Báo cáo",
+      ANNOUNCEMENT: "Thông báo",
+      PROPOSAL: "Tờ trình",
+      INTERNAL_DOCUMENT: "Văn bản nội bộ",
+      CONTRACT: "Hợp đồng",
+      MEETING_MINUTES: "Biên bản họp",
+      OTHER: "Khác",
     };
     return typeMap[type] || type;
   };
-  
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!primaryDepartment) {
       toast({
         title: "Lỗi",
@@ -169,16 +223,16 @@ export default function AssignDocumentPage() {
       });
       return;
     }
-    
+
     try {
       setIsSubmitting(true);
-      
+
       // Prepare deadline date
       let deadlineDate = null;
       if (deadline) {
         deadlineDate = new Date(deadline).toISOString();
       }
-      
+
       // Call API to assign document
       await workflowAPI.distributeDocument(documentId, {
         primaryDepartmentId: primaryDepartment,
@@ -186,12 +240,12 @@ export default function AssignDocumentPage() {
         comments: notes,
         closureDeadline: deadlineDate,
       });
-      
+
       toast({
         title: "Thành công",
         description: "Văn bản đã được chuyển xử lý thành công",
       });
-      
+
       router.push(`/van-ban-den/${documentId}`);
     } catch (error) {
       console.error("Lỗi khi chuyển xử lý văn bản:", error);
@@ -204,7 +258,7 @@ export default function AssignDocumentPage() {
       setIsSubmitting(false);
     }
   };
-  
+
   // Loading state
   if (isLoading) {
     return (
@@ -215,22 +269,28 @@ export default function AssignDocumentPage() {
               <ArrowLeft className="h-4 w-4" />
             </Link>
           </Button>
-          <h1 className="text-2xl font-bold tracking-tight">Chuyển xử lý văn bản</h1>
+          <h1 className="text-2xl font-bold tracking-tight">
+            Chuyển xử lý văn bản
+          </h1>
         </div>
-        
+
         <div className="grid gap-6 md:grid-cols-7">
           <Card className="md:col-span-4">
             <CardHeader className="bg-primary/5 border-b">
-              <CardTitle><Skeleton className="h-6 w-48" /></CardTitle>
+              <CardTitle>
+                <Skeleton className="h-6 w-48" />
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 pt-6">
               <div className="space-y-4">
-                {Array(4).fill(0).map((_, i) => (
-                  <div key={i}>
-                    <Skeleton className="h-4 w-24 mb-2" />
-                    <Skeleton className="h-6 w-full" />
-                  </div>
-                ))}
+                {Array(4)
+                  .fill(0)
+                  .map((_, i) => (
+                    <div key={i}>
+                      <Skeleton className="h-4 w-24 mb-2" />
+                      <Skeleton className="h-6 w-full" />
+                    </div>
+                  ))}
               </div>
             </CardContent>
           </Card>
@@ -238,7 +298,7 @@ export default function AssignDocumentPage() {
       </div>
     );
   }
-  
+
   // Error state
   if (error || !document) {
     return (
@@ -249,9 +309,11 @@ export default function AssignDocumentPage() {
               <ArrowLeft className="h-4 w-4" />
             </Link>
           </Button>
-          <h1 className="text-2xl font-bold tracking-tight">Chuyển xử lý văn bản</h1>
+          <h1 className="text-2xl font-bold tracking-tight">
+            Chuyển xử lý văn bản
+          </h1>
         </div>
-        
+
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Lỗi</AlertTitle>
@@ -262,7 +324,7 @@ export default function AssignDocumentPage() {
       </div>
     );
   }
-  
+
   return (
     <div className="space-y-6">
       <div className="flex items-center space-x-2">
@@ -271,7 +333,9 @@ export default function AssignDocumentPage() {
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>
-        <h1 className="text-2xl font-bold tracking-tight">Chuyển xử lý văn bản</h1>
+        <h1 className="text-2xl font-bold tracking-tight">
+          Chuyển xử lý văn bản
+        </h1>
       </div>
 
       <div className="grid gap-6 md:grid-cols-7">
@@ -283,25 +347,37 @@ export default function AssignDocumentPage() {
             <CardContent className="space-y-4 pt-6">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <p className="text-sm font-medium text-muted-foreground">Số văn bản</p>
-                  <p className="font-medium">{document.documentNumber || "Chưa có số"}</p>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Số văn bản
+                  </p>
+                  <p className="font-medium">
+                    {document.documentNumber || "Chưa có số"}
+                  </p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-sm font-medium text-muted-foreground">Số tham chiếu</p>
-                  <p className="font-medium">{document.referenceNumber || "Không có"}</p>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Số tham chiếu
+                  </p>
+                  <p className="font-medium">
+                    {document.referenceNumber || "Không có"}
+                  </p>
                 </div>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <p className="text-sm font-medium text-muted-foreground">Ngày ban hành</p>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Ngày ban hành
+                  </p>
                   <div className="flex items-center gap-1">
                     <Calendar className="h-4 w-4 text-muted-foreground" />
                     <p>{formatDate(document.signingDate)}</p>
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-sm font-medium text-muted-foreground">Ngày nhận</p>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Ngày nhận
+                  </p>
                   <div className="flex items-center gap-1">
                     <Calendar className="h-4 w-4 text-muted-foreground" />
                     <p>{formatDate(document.receivedDate)}</p>
@@ -310,73 +386,110 @@ export default function AssignDocumentPage() {
               </div>
 
               <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground">Trích yếu</p>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Trích yếu
+                </p>
                 <p className="font-medium">{document.title}</p>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <p className="text-sm font-medium text-muted-foreground">Đơn vị gửi</p>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Đơn vị gửi
+                  </p>
                   <p>{document.issuingAuthority}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-sm font-medium text-muted-foreground">Loại văn bản</p>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Loại văn bản
+                  </p>
                   <div className="flex items-center gap-2">
                     <FileText className="h-4 w-4 text-muted-foreground" />
                     <p>{getDocumentTypeName(document.documentType)}</p>
                   </div>
                 </div>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <p className="text-sm font-medium text-muted-foreground">Độ khẩn</p>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Độ khẩn
+                  </p>
                   <div>{getUrgencyBadge(document.urgencyLevel)}</div>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-sm font-medium text-muted-foreground">Độ mật</p>
-                  <Badge variant="outline" className={document.securityLevel !== "NORMAL" ? "bg-red-50 text-red-700" : ""}>
-                    {document.securityLevel === "NORMAL" ? "Thường" : 
-                     document.securityLevel === "CONFIDENTIAL" ? "Mật" : 
-                     document.securityLevel === "SECRET" ? "Tối mật" : 
-                     document.securityLevel === "TOP_SECRET" ? "Tuyệt mật" : document.securityLevel}
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Độ mật
+                  </p>
+                  <Badge
+                    variant="outline"
+                    className={
+                      document.securityLevel !== "NORMAL"
+                        ? "bg-red-50 text-red-700"
+                        : ""
+                    }
+                  >
+                    {document.securityLevel === "NORMAL"
+                      ? "Thường"
+                      : document.securityLevel === "CONFIDENTIAL"
+                      ? "Mật"
+                      : document.securityLevel === "SECRET"
+                      ? "Tối mật"
+                      : document.securityLevel === "TOP_SECRET"
+                      ? "Tuyệt mật"
+                      : document.securityLevel}
                   </Badge>
                 </div>
               </div>
-              
+
               {document.summary && (
                 <div className="space-y-1">
-                  <p className="text-sm font-medium text-muted-foreground">Tóm tắt nội dung</p>
-                  <p className="text-sm bg-accent/30 p-3 rounded-md">{document.summary}</p>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Tóm tắt nội dung
+                  </p>
+                  <p className="text-sm bg-accent/30 p-3 rounded-md">
+                    {document.summary}
+                  </p>
                 </div>
               )}
-              
+
               {document.attachmentFilename && (
                 <div className="space-y-1">
-                  <p className="text-sm font-medium text-muted-foreground">Tệp đính kèm</p>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Tệp đính kèm
+                  </p>
                   <div className="flex items-center space-x-2 rounded-md border border-primary/10 p-2 bg-accent/30">
                     <FileText className="h-4 w-4 text-primary" />
-                    <span className="text-sm">{document.attachmentFilename.split('/').pop()}</span>
+                    <span className="text-sm">
+                      {document.attachmentFilename.split("/").pop()}
+                    </span>
                   </div>
                 </div>
               )}
             </CardContent>
           </Card>
         </div>
-        
+
         <div className="md:col-span-3">
           <form onSubmit={handleSubmit}>
             <Card className="bg-card">
               <CardHeader className="bg-primary/5 border-b">
                 <CardTitle>Chuyển xử lý</CardTitle>
-                <CardDescription>Chọn phòng ban xử lý văn bản</CardDescription>
+                <CardDescription>
+                  {isParentDepartmentHead
+                    ? "Chọn đơn vị con để xử lý văn bản"
+                    : "Chọn phòng ban xử lý văn bản"}
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6 pt-6">
                 <div className="space-y-4">
+                  {/* Primary department selection section */}
                   <div>
                     <div className="flex items-center justify-between">
                       <Label className="text-red-500 font-medium">
-                        Phòng ban xử lý chính
+                        {isParentDepartmentHead
+                          ? "Đơn vị con xử lý chính"
+                          : "Phòng ban xử lý chính"}
                       </Label>
                       {primaryDepartment && (
                         <Button
@@ -393,7 +506,9 @@ export default function AssignDocumentPage() {
                     <div className="min-h-[60px] p-2 border rounded-md bg-accent/50 mt-2">
                       {!primaryDepartment ? (
                         <div className="w-full h-full flex items-center justify-center text-sm text-muted-foreground">
-                          Chưa chọn phòng ban xử lý chính
+                          {isParentDepartmentHead
+                            ? "Chưa chọn đơn vị con xử lý chính"
+                            : "Chưa chọn phòng ban xử lý chính"}
                         </div>
                       ) : (
                         (() => {
@@ -429,10 +544,13 @@ export default function AssignDocumentPage() {
                     </div>
                   </div>
 
+                  {/* Secondary department selection section */}
                   <div>
                     <div className="flex items-center justify-between">
                       <Label className="text-blue-600 font-medium">
-                        Phòng ban phối hợp ({secondaryDepartments.length})
+                        {isParentDepartmentHead
+                          ? `Đơn vị con phối hợp (${secondaryDepartments.length})`
+                          : `Phòng ban phối hợp (${secondaryDepartments.length})`}
                       </Label>
                       {secondaryDepartments.length > 0 && (
                         <Button
@@ -450,7 +568,9 @@ export default function AssignDocumentPage() {
                     <div className="flex flex-wrap gap-2 min-h-[60px] p-2 border rounded-md bg-accent/50 mt-2">
                       {secondaryDepartments.length === 0 ? (
                         <div className="w-full h-full flex items-center justify-center text-sm text-muted-foreground">
-                          Chưa chọn phòng ban phối hợp
+                          {isParentDepartmentHead
+                            ? "Chưa chọn đơn vị con phối hợp"
+                            : "Chưa chọn phòng ban phối hợp"}
                         </div>
                       ) : (
                         secondaryDepartments.map((deptId) => {
@@ -484,11 +604,17 @@ export default function AssignDocumentPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Danh sách phòng ban</Label>
+                    <Label>
+                      {isParentDepartmentHead
+                        ? "Danh sách đơn vị con"
+                        : "Danh sách phòng ban"}
+                    </Label>
                     <div className="border rounded-md overflow-hidden">
                       <div className="bg-primary/5 px-4 py-2 border-b flex items-center justify-between">
                         <span className="text-sm font-medium">
-                          Chọn phòng ban xử lý văn bản
+                          {isParentDepartmentHead
+                            ? "Chọn đơn vị con xử lý văn bản"
+                            : "Chọn phòng ban xử lý văn bản"}
                         </span>
                       </div>
                       <div className="max-h-[300px] overflow-y-auto">
@@ -504,7 +630,11 @@ export default function AssignDocumentPage() {
                             key="empty"
                             className="flex items-center justify-center p-4"
                           >
-                            <p>Không có phòng ban nào</p>
+                            <p>
+                              {isParentDepartmentHead
+                                ? "Không có đơn vị con nào"
+                                : "Không có phòng ban nào"}
+                            </p>
                           </div>
                         ) : (
                           departmentList.map((dept) => {
@@ -619,12 +749,14 @@ export default function AssignDocumentPage() {
                       {deadline && (
                         <div className="flex items-center gap-1 text-xs text-muted-foreground">
                           <Clock className="h-3 w-3" />
-                          <span>{new Date(deadline).toLocaleDateString("vi-VN")}</span>
+                          <span>
+                            {new Date(deadline).toLocaleDateString("vi-VN")}
+                          </span>
                         </div>
                       )}
                     </div>
                   </div>
-                  
+
                   <Button
                     type="submit"
                     disabled={isSubmitting || !primaryDepartment}

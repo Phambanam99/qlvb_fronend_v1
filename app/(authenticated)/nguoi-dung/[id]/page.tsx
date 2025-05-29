@@ -72,6 +72,7 @@ export default function UserDetailPage() {
 
   const handleUpdateProfile = async (data: any) => {
     try {
+      console.log(data);
       setSaving(true);
       const updatedUser = await usersAPI.updateUser(userId, data);
       setUser(updatedUser);

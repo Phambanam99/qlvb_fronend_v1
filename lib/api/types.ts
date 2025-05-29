@@ -59,7 +59,7 @@ export interface DocumentHistoryDTO {
 export interface DocumentWorkflowDTO {
   documentId?: number;
   status: string;
-  statusDisplayName: string;
+  statusDisplayName?: string;
   assignedToId?: number;
   assignedToName?: string;
   assignedToIds?: number[];

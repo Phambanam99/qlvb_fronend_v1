@@ -18,7 +18,10 @@ import Link from "next/link";
 import DocumentResponseForm from "@/components/document-response-form";
 import DocumentResponseList from "@/components/document-response-list";
 import DocumentProcessingHistory from "@/components/document-processing-history";
-import { getStatusByCode, incomingDocumentsAPI } from "@/lib/api/incomingDocuments";
+import {
+  getStatusByCode,
+  incomingDocumentsAPI,
+} from "@/lib/api/incomingDocuments";
 import { getStatusBadgeInfo } from "@/lib/utils";
 import { workflowAPI } from "@/lib/api/workflow";
 import { useAuth } from "@/lib/auth-context";
@@ -73,36 +76,40 @@ export default function DocumentDetailPage({
   const [isDocumentLoading, setIsDocumentLoading] = useState(true);
   const [isWorkflowLoading, setIsWorkflowLoading] = useState(true);
   const [isHistoryLoading, setIsHistoryLoading] = useState(true);
-  
+
   // Tracking overall loading status
   useEffect(() => {
     // Chỉ đặt isLoading = false khi tất cả dữ liệu đã tải xong
-    setIsLoading(isDocumentLoading || isWorkflowLoading || isHistoryLoading || !user);
+    setIsLoading(
+      isDocumentLoading || isWorkflowLoading || isHistoryLoading || !user
+    );
   }, [isDocumentLoading, isWorkflowLoading, isHistoryLoading, user]);
-  
+
   useEffect(() => {
     const fetchDocument = async () => {
       if (!documentId || !user) {
         return; // Tránh gọi API khi không có ID hoặc user
       }
-      
+
       try {
         console.log("Bắt đầu tải dữ liệu văn bản:", {
           documentId,
           timestamp: new Date().toISOString(),
-          user: user?.fullName
+          user: user?.fullName,
         });
-        
+
         // Bắt đầu tải document
         setIsDocumentLoading(true);
         setIsWorkflowLoading(true);
         setIsHistoryLoading(true);
-        
+
         // Fetch document details
-        const response = await incomingDocumentsAPI.getIncomingDocumentById(documentId);
+        const response = await incomingDocumentsAPI.getIncomingDocumentById(
+          documentId
+        );
         console.log("1. Tải văn bản thành công:", response);
         setIsDocumentLoading(false);
-        
+
         // Fetch document workflow status
         const workflowStatus = await workflowAPI.getDocumentStatus(documentId);
         console.log("2. Tải workflow status thành công:", workflowStatus);
@@ -122,13 +129,16 @@ export default function DocumentDetailPage({
           history: history,
           assignedToIds: workflowStatus.assignedToIds,
           assignedToNames: workflowStatus.assignedToNames,
-          
+
           // Add empty arrays for frontend compatibility
           attachments: [],
           relatedDocuments: [],
           responses: [],
         };
-        console.log("✅ Tất cả dữ liệu đã tải xong, bắt đầu render", documentData);
+        console.log(
+          "✅ Tất cả dữ liệu đã tải xong, bắt đầu render",
+          documentData
+        );
         setDocument(documentData);
         setError(null);
       } catch (err: any) {
@@ -204,16 +214,21 @@ export default function DocumentDetailPage({
 
     try {
       // First, check if there's an existing draft related to this document that was rejected
-      const existingDraftsResponse = await workflowAPI.getDocumentResponses(documentId.toString());
+      const existingDraftsResponse = await workflowAPI.getDocumentResponses(
+        documentId.toString()
+      );
       console.log("Checking for existing drafts:", existingDraftsResponse);
-      
+
       // Look for a draft that was rejected (has status "draft" and was previously rejected in history)
-      const existingDraft = existingDraftsResponse?.content?.find((doc: any) => 
-        doc.status === "registered" && doc.history?.some((item: any) => 
-          item.description?.toLowerCase().includes("từ chối") || 
-          item.comments?.toLowerCase().includes("từ chối") ||
-          item.newStatus === "leader_commented"
-        )
+      const existingDraft = existingDraftsResponse?.content?.find(
+        (doc: any) =>
+          doc.status === "registered" &&
+          doc.history?.some(
+            (item: any) =>
+              item.description?.toLowerCase().includes("từ chối") ||
+              item.comments?.toLowerCase().includes("từ chối") ||
+              item.newStatus === "leader_commented"
+          )
       );
 
       const documentStatus = _document.processingStatus;
@@ -221,11 +236,10 @@ export default function DocumentDetailPage({
         user.id
       );
 
-      
       // Original flow continues for case with no existing rejected draft
       if (
         (documentStatus === "specialist_processing" ||
-          documentStatus === "leader_reviewing" ) &&
+          documentStatus === "leader_reviewing") &&
         isAssignedToCurrentUser
       ) {
         router.push(`/van-ban-di/${_document.id}/chinh-sua`);
@@ -258,7 +272,16 @@ export default function DocumentDetailPage({
       setIsLoading(false);
     }
   };
-
+  const hasDepartmentAccess =
+    hasRole("ROLE_TRUONG_PHONG") ||
+    hasRole("ROLE_PHO_PHONG") ||
+    hasRole("ROLE_TRUONG_BAN") ||
+    hasRole("ROLE_PHO_BAN") ||
+    hasRole("ROLE_CUM_TRUONG") ||
+    hasRole("ROLE_PHO_CUM_TRUONG") ||
+    hasRole("ROLE_CHINH_TRI_VIEN_CUM") ||
+    hasRole("ROLE_PHO_TRAM_TRUONG") ||
+    hasRole("ROLE_TRAM_TRUONG");
   const renderActionButtons = () => {
     if (!user || !_document) return null;
 
@@ -272,8 +295,10 @@ export default function DocumentDetailPage({
       Array.isArray(departments) &&
       departments.some((dept) => dept.id === currentDeptId);
 
-    // Kiểm tra xem chính xác phòng ban hiện tại đã có nhân viên nào được phân công chưa
-    // Bất kỳ phòng ban nào cũng có thể phân công cho nhân viên của mình
+    // Kiểm tra văn bản có được chuyển từ đơn vị con lên không
+    const isForwardedFromChildDept =
+      _document.sourceDepartmentId &&
+      _document.processingStatus === "parent_dept_review";
 
     // Kiểm tra trạng thái văn bản và thông tin phân công
     console.log("Document assignment info:", {
@@ -282,8 +307,9 @@ export default function DocumentDetailPage({
       departments: departments,
       currentDeptId: currentDeptId,
       isCurrentDepartmentAssigned: isCurrentDepartmentAssigned,
+      isForwardedFromChildDept: isForwardedFromChildDept,
     });
-    
+
     // Sử dụng tiếp cận đơn giản hơn: tạo key riêng để theo dõi xem phòng đã phân công chưa
     const processKey = `document_${_document.id}_dept_${currentDeptId}_assigned`;
 
@@ -364,14 +390,7 @@ export default function DocumentDetailPage({
       );
     }
 
-    if (
-      hasRole([
-        "ROLE_TRUONG_PHONG",
-        "ROLE_PHO_PHONG",
-        "ROLE_TRUONG_BAN",
-        "ROLE_PHO_BAN",
-      ])
-    ) {
+    if (hasDepartmentAccess) {
       return (
         <>
           {/* Hiển thị nút Phân công nếu phòng ban được giao xử lý văn bản và đang ở trạng thái phù hợp */}
@@ -409,26 +428,120 @@ export default function DocumentDetailPage({
               </Button>
             )}
 
-          {_document.responses && _document.responses.length > 0 && (
+          {/* Hiển thị nút Xem xét từ đơn vị con nếu văn bản được chuyển từ đơn vị con lên */}
+          {isForwardedFromChildDept && _document.latestResponseId && (
             <Button
               variant="outline"
               size="sm"
-              className="border-primary/20 hover:bg-primary/10 hover:text-primary"
+              className="border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 hover:text-amber-800"
               disabled={isNavigating}
               onClick={() => {
                 setIsNavigating(true);
-                router.push(`/van-ban-den/${_document.id}/xem-xet/1`);
+                router.push(
+                  `/van-ban-den/${_document.id}/xem-xet-tu-don-vi-con/${_document.latestResponseId}`
+                );
               }}
             >
               {isNavigating ? (
                 <>
-                  <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-primary/50 border-t-transparent"></span>
+                  <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-amber-700 border-t-transparent"></span>
                   Đang chuyển trang...
                 </>
               ) : (
                 <>
                   <Send className="mr-2 h-4 w-4" />
-                  Xem xét
+                  Xem xét từ đơn vị con
+                </>
+              )}
+            </Button>
+          )}
+
+          {_document.responses &&
+            _document.responses.length > 0 &&
+            !isForwardedFromChildDept && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-primary/20 hover:bg-primary/10 hover:text-primary"
+                disabled={isNavigating}
+                onClick={() => {
+                  setIsNavigating(true);
+                  router.push(`/van-ban-den/${_document.id}/xem-xet/1`);
+                }}
+              >
+                {isNavigating ? (
+                  <>
+                    <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-primary/50 border-t-transparent"></span>
+                    Đang chuyển trang...
+                  </>
+                ) : (
+                  <>
+                    <Send className="mr-2 h-4 w-4" />
+                    Xem xét
+                  </>
+                )}
+              </Button>
+            )}
+        </>
+      );
+    }
+
+    if (hasRole(["ROLE_TRO_LY", "ROLE_NHAN_VIEN"])) {
+      // Kiểm tra xem người dùng hiện tại có được phân công xử lý văn bản này không
+      const isAssignedToCurrentUser =
+        _document.assignedToIds &&
+        Array.isArray(_document.assignedToIds) &&
+        _document.assignedToIds.includes(user.id);
+      // kiểm tra xem người dùng đã trả lời văn bản trong lịch sử chưa
+
+      // Log thông tin để debug
+      console.log("Trợ lý/nhân viên quyền trả lời:", {
+        userId: user.id,
+        userName: user.fullName,
+        assignedToIds: _document.assignedToIds,
+        isAssignedToCurrentUser: isAssignedToCurrentUser,
+      });
+
+      // Kiểm tra trong nhiều vị trí khác có thể chứa thông tin phân công
+      const isUserAssigned =
+        isAssignedToCurrentUser ||
+        (_document.assignedToId && _document.assignedToId == user.id) ||
+        (_document.workflowStatus &&
+          _document.workflowStatus.assignedToId == user.id) ||
+        (_document.primaryProcessor && _document.primaryProcessor == user.id);
+      const isReply =
+        _document.history.some((item: any) => {
+          return item.newStatus === "specialist_submitted";
+        }) && isUserAssigned;
+      return (
+        <>
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-primary/20 hover:bg-primary/10 hover:text-primary"
+            onClick={handleDownloadAttachment}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Tải xuống
+          </Button>
+
+          {/* Chỉ hiển thị nút Trả lời khi người dùng được phân công xử lý */}
+          {!isReply && isUserAssigned && (
+            <Button
+              size="sm"
+              className="bg-primary hover:bg-primary/90"
+              onClick={handleResponse}
+              disabled={isNavigating}
+            >
+              {isNavigating ? (
+                <>
+                  <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
+                  Đang chuyển trang...
+                </>
+              ) : (
+                <>
+                  <Send className="mr-2 h-4 w-4" />
+                  Trả lời
                 </>
               )}
             </Button>
@@ -436,72 +549,6 @@ export default function DocumentDetailPage({
         </>
       );
     }
-
-    if (hasRole(["ROLE_TRO_LY", "ROLE_NHAN_VIEN"])) {
-    // Kiểm tra xem người dùng hiện tại có được phân công xử lý văn bản này không
-    const isAssignedToCurrentUser = _document.assignedToIds && 
-      Array.isArray(_document.assignedToIds) && 
-      _document.assignedToIds.includes(user.id);
-    // kiểm tra xem người dùng đã trả lời văn bản trong lịch sử chưa
-    
-    
-    // Log thông tin để debug
-    console.log("Trợ lý/nhân viên quyền trả lời:", {
-      userId: user.id, 
-      userName: user.fullName,
-      assignedToIds: _document.assignedToIds,
-      isAssignedToCurrentUser: isAssignedToCurrentUser
-    });
-    
-    // Kiểm tra trong nhiều vị trí khác có thể chứa thông tin phân công
-    const isUserAssigned = 
-      isAssignedToCurrentUser ||
-      (_document.assignedToId && _document.assignedToId == user.id) ||
-      (_document.workflowStatus && _document.workflowStatus.assignedToId == user.id) ||
-      (_document.primaryProcessor && _document.primaryProcessor == user.id);
-    const isReply = _document.history.some((item: any) => {
-      return (
-      
-        item.newStatus === "specialist_submitted"
-      );
-    }) && isUserAssigned;
-    return (
-      <>
-        <Button
-          variant="outline"
-          size="sm"
-          className="border-primary/20 hover:bg-primary/10 hover:text-primary"
-          onClick={handleDownloadAttachment}
-        >
-          <Download className="mr-2 h-4 w-4" />
-          Tải xuống
-        </Button>
-        
-        {/* Chỉ hiển thị nút Trả lời khi người dùng được phân công xử lý */}
-        {
-         !isReply && isUserAssigned && (
-          <Button
-            size="sm"
-            className="bg-primary hover:bg-primary/90"
-            onClick={handleResponse}
-            disabled={isNavigating}
-          >
-            {isNavigating ? (
-              <>
-                <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
-                Đang chuyển trang...
-              </>
-            ) : (
-              <>
-                <Send className="mr-2 h-4 w-4" />
-                Trả lời
-              </>
-            )}
-          </Button>
-        )}
-      </>
-    );
-  }  
 
     if (hasRole("ROLE_PHE_DUYET")) {
       return (
@@ -800,25 +847,27 @@ export default function DocumentDetailPage({
                 </p>
                 <div className="mt-1">
                   {_document.assignedToIds && _document.assignedToNames ? (
-                    _document.assignedToNames.map((name: string, indexName: number) => (
-                      <div
-                        key={indexName}
-                        className="flex items-center space-x-2"
-                      >
-                        <div className="flex -space-x-2">
-                          <div
-                            key={indexName}
-                            className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary"
-                          >
-                            {name
-                              .split(" ")
-                              .map((n: string) => n[0])
-                              .join("")}
+                    _document.assignedToNames.map(
+                      (name: string, indexName: number) => (
+                        <div
+                          key={indexName}
+                          className="flex items-center space-x-2"
+                        >
+                          <div className="flex -space-x-2">
+                            <div
+                              key={indexName}
+                              className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary"
+                            >
+                              {name
+                                .split(" ")
+                                .map((n: string) => n[0])
+                                .join("")}
+                            </div>
                           </div>
+                          <span className="text-sm">{name}</span>
                         </div>
-                        <span className="text-sm">{name}</span>
-                      </div>
-                    ))
+                      )
+                    )
                   ) : (
                     <p className="text-sm text-muted-foreground">
                       Chưa có cán bộ được phân công
@@ -904,24 +953,28 @@ export default function DocumentDetailPage({
                   {/* Kiểm tra người dùng có được phân công xử lý văn bản này không */}
                   {(() => {
                     // Giống như cách kiểm tra ở nút Trả lời
-                    const isAssignedToCurrentUser = _document.assignedToIds && 
-                      Array.isArray(_document.assignedToIds) && 
+                    const isAssignedToCurrentUser =
+                      _document.assignedToIds &&
+                      Array.isArray(_document.assignedToIds) &&
                       _document.assignedToIds.includes(user?.id);
-                    
+
                     // Kiểm tra trong nhiều vị trí khác có thể chứa thông tin phân công
-                    const isUserAssigned = 
+                    const isUserAssigned =
                       isAssignedToCurrentUser ||
-                      (_document.assignedToId && _document.assignedToId == user?.id) ||
-                      (_document.workflowStatus && _document.workflowStatus.assignedToId == user?.id) ||
-                      (_document.primaryProcessor && _document.primaryProcessor == user?.id);
-                    
+                      (_document.assignedToId &&
+                        _document.assignedToId == user?.id) ||
+                      (_document.workflowStatus &&
+                        _document.workflowStatus.assignedToId == user?.id) ||
+                      (_document.primaryProcessor &&
+                        _document.primaryProcessor == user?.id);
+
                     console.log("Kiểm tra quyền cập nhật thông tin xử lý:", {
                       userId: user?.id,
                       assignedToIds: _document.assignedToIds,
                       isAssignedToCurrentUser,
-                      isUserAssigned
+                      isUserAssigned,
                     });
-                    
+
                     // Chỉ hiển thị nút nếu người dùng được phân công xử lý
                     if (isUserAssigned) {
                       return (
@@ -954,7 +1007,6 @@ export default function DocumentDetailPage({
               )}
             </CardFooter>
           </Card>
-
         </div>
       </div>
     </div>

@@ -53,7 +53,7 @@ export default function UserRoleForm({
   const form = useForm<RoleFormValues>({
     resolver: zodResolver(roleFormSchema),
     defaultValues: {
-      roles: user.roleNames?.length ? [user.roleNames[0]] : ["default-role"],
+      roles: user.displayNames?.length ? [user.displayNames[0]] : ["default-role"],
       departmentId: user.departmentId?.toString() || "0",
     },
   });

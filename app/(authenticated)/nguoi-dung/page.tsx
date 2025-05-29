@@ -19,6 +19,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CardFooter,
 } from "@/components/ui/card";
 import {
   Select,
@@ -27,7 +28,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Plus, Search, UserCog } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  Loader2,
+  Plus,
+  Search,
+  UserCog,
+} from "lucide-react";
 import { UserDTO, usersAPI } from "@/lib/api/users";
 import { rolesAPI } from "@/lib/api/roles";
 import { departmentsAPI } from "@/lib/api/departments";
@@ -41,27 +51,129 @@ import {
 } from "@/lib/role-utils";
 
 export default function UsersPage() {
+  // User data states
   const [users, setUsers] = useState<UserDTO[]>([]);
+  const [totalUsers, setTotalUsers] = useState<number>(0);
   const [roles, setRoles] = useState<any[]>([]);
   const [departments, setDepartments] = useState<PageResponse<DepartmentDTO>>();
   const [loading, setLoading] = useState(true);
+
+  // Filter states
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [departmentFilter, setDepartmentFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(0);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+
   const { toast } = useToast();
   const { user, hasRole } = useAuth();
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
+  // Function to fetch users with pagination
+  const fetchUsers = async (page: number, size: number, filters: any = {}) => {
+    setLoading(true);
 
-        // Get current user's roles and department
+    try {
+      // Get current user's roles and department
+      const userRoles = user?.roles || [];
+      const userDepartmentId = user?.departmentId;
+
+      // Check if user is an admin or leadership (can see all users)
+      const isAdmin = hasRoleInGroup(userRoles, SYSTEM_ROLES);
+      const isLeadership = hasRoleInGroup(userRoles, [
+        "ROLE_CUC_TRUONG",
+        "ROLE_CUC_PHO",
+        "ROLE_CHINH_UY",
+        "ROLE_PHO_CHINH_UY",
+      ]);
+      const isDepartmentHead = hasRoleInGroup(userRoles, [
+        "ROLE_TRUONG_PHONG",
+        "ROLE_PHO_PHONG",
+        "ROLE_TRUONG_BAN",
+        "ROLE_PHO_BAN",
+      ]);
+
+      // Prepare filter parameters
+      const params: any = {
+        page,
+        size,
+        ...filters,
+      };
+
+      // Apply role filter if selected
+      if (roleFilter !== "all") {
+        params.roleId = roleFilter;
+      }
+
+      // Apply department filter if selected
+      if (departmentFilter !== "all") {
+        params.departmentId = departmentFilter;
+      }
+
+      // Apply status filter if selected
+      if (statusFilter !== "all") {
+        params.status = statusFilter === "active" ? 1 : 0;
+      }
+
+      // Apply search term if provided
+      if (searchTerm.trim()) {
+        params.keyword = searchTerm.trim();
+      }
+
+      let usersData;
+
+      if (isAdmin || isLeadership) {
+        // Admin and leadership see all users with pagination
+        usersData = await usersAPI.getPaginatedUsers(params);
+      } else if (isDepartmentHead && userDepartmentId) {
+        // Department heads only see users in their department
+        params.departmentId = userDepartmentId;
+        usersData = await usersAPI.getPaginatedUsers(params);
+      } else {
+        // Regular users can only see themselves - no need for pagination here
+        usersData = {
+          content: user ? [user as UserDTO] : [],
+          totalElements: user ? 1 : 0,
+          totalPages: 1,
+          size,
+          number: 0,
+        };
+      }
+
+      setUsers(usersData.content);
+      setTotalUsers(usersData.totalElements);
+      setTotalPages(usersData.totalPages);
+    } catch (error) {
+      console.error("Error fetching paginated users:", error);
+      toast({
+        title: "Lỗi",
+        description: "Không thể tải dữ liệu người dùng. Vui lòng thử lại sau.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch initial data: roles and departments
+  useEffect(() => {
+    const fetchInitialData = async () => {
+      try {
+        const [rolesData, departmentsData] = await Promise.all([
+          rolesAPI.getAllRoles(),
+          departmentsAPI.getAllDepartments(),
+        ]);
+
+        setRoles(rolesData);
+        setDepartments(departmentsData);
+
+        // Pre-filter to show only their department for department heads
         const userRoles = user?.roles || [];
         const userDepartmentId = user?.departmentId;
 
-        // Check if user is an admin or leadership (can see all users)
         const isAdmin = hasRoleInGroup(userRoles, SYSTEM_ROLES);
         const isLeadership = hasRoleInGroup(userRoles, [
           "ROLE_CUC_TRUONG",
@@ -76,66 +188,73 @@ export default function UsersPage() {
           "ROLE_PHO_BAN",
         ]);
 
-        // If department head, pre-filter to show only their department
         if (isDepartmentHead && !isAdmin && !isLeadership && userDepartmentId) {
           setDepartmentFilter(String(userDepartmentId));
         }
 
-        // Fetch data based on access level
-        let usersData: UserDTO[];
-
-        if (isAdmin || isLeadership) {
-          // Admin and leadership see all users
-          usersData = await usersAPI.getAllUsers();
-        } else if (isDepartmentHead && userDepartmentId) {
-          // Department heads only see users in their department
-          usersData = await usersAPI.getUsersByDepartmentId(userDepartmentId);
-        } else {
-          // Regular users can only see themselves
-          usersData = user ? [user as UserDTO] : [];
-        }
-
-        const [rolesData, departmentsData] = await Promise.all([
-          rolesAPI.getAllRoles(),
-          departmentsAPI.getAllDepartments(),
-        ]);
-
-        setUsers(usersData);
-        setRoles(rolesData);
-        setDepartments(departmentsData);
+        // Initial fetch of users
+        fetchUsers(currentPage, itemsPerPage);
       } catch (error) {
-        console.error("Error fetching data:", error);
+        console.error("Error fetching initial data:", error);
         toast({
           title: "Lỗi",
-          description:
-            "Không thể tải dữ liệu người dùng. Vui lòng thử lại sau.",
+          description: "Không thể tải dữ liệu ban đầu. Vui lòng thử lại sau.",
           variant: "destructive",
         });
-      } finally {
         setLoading(false);
       }
     };
 
-    fetchData();
+    fetchInitialData();
   }, []);
 
-  const filteredUsers = users.filter((user) => {
-    const matchesSearch = user.fullName
-      .toLowerCase()
-      .includes(searchTerm.toLowerCase());
+  // Refetch users when filters or pagination changes
+  useEffect(() => {
+    const filters = {
+      roleId: roleFilter !== "all" ? roleFilter : undefined,
+      departmentId: departmentFilter !== "all" ? departmentFilter : undefined,
+      status:
+        statusFilter !== "all"
+          ? statusFilter === "active"
+            ? 1
+            : 0
+          : undefined,
+      keyword: searchTerm.trim() || undefined,
+    };
 
-    const matchesRole =
-      roleFilter === "all" || user.roleId === Number(roleFilter);
-    const matchesDepartment =
-      departmentFilter === "all" ||
-      user.departmentId === Number(departmentFilter);
-    const matchesStatus =
-      statusFilter === "all" ||
-      (statusFilter === "active" && user.status === 1) ||
-      (statusFilter === "inactive" && user.status !== 1);
+    // Use debounce for search term to prevent too many API calls
+    const timer = setTimeout(() => {
+      fetchUsers(currentPage, itemsPerPage, filters);
+    }, 300);
 
-    return matchesSearch && matchesRole && matchesDepartment && matchesStatus;
-  });
+    return () => clearTimeout(timer);
+  }, [
+    currentPage,
+    itemsPerPage,
+    roleFilter,
+    departmentFilter,
+    statusFilter,
+    searchTerm,
+  ]);
+
+  // Apply filters and reset to first page
+  const applyFilters = () => {
+    // Reset to first page when filters change
+    setCurrentPage(0);
+  };
+
+  // Page change handler
+  const handlePageChange = (page: number) => {
+    // Ensure page is within valid range
+    const validPage = Math.max(0, Math.min(page, totalPages - 1));
+    setCurrentPage(validPage);
+  };
+
+  // Per page items change handler
+  const handlePerPageChange = (value: string) => {
+    setItemsPerPage(parseInt(value, 10));
+    setCurrentPage(0); // Reset to first page when changing items per page
+  };
 
   const getRoleName = (roleId: string) => {
     const role = roles.find((r) => r.id === roleId);
@@ -149,7 +268,7 @@ export default function UsersPage() {
     return department ? department.name : "Không xác định";
   };
 
-  if (loading) {
+  if (loading && currentPage === 0) {
     return (
       <div className="flex h-[calc(100vh-4rem)] w-full items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -193,14 +312,24 @@ export default function UsersPage() {
                   placeholder="Tìm theo tên, email..."
                   className="pl-8"
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    // Reset to first page when search changes
+                    setCurrentPage(0);
+                  }}
                 />
               </div>
             </div>
 
             <div className="space-y-2">
               <label className="text-sm font-medium">Vai trò</label>
-              <Select value={roleFilter} onValueChange={setRoleFilter}>
+              <Select
+                value={roleFilter}
+                onValueChange={(value) => {
+                  setRoleFilter(value);
+                  applyFilters();
+                }}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Chọn vai trò" />
                 </SelectTrigger>
@@ -219,7 +348,10 @@ export default function UsersPage() {
               <label className="text-sm font-medium">Phòng ban</label>
               <Select
                 value={departmentFilter}
-                onValueChange={setDepartmentFilter}
+                onValueChange={(value) => {
+                  setDepartmentFilter(value);
+                  applyFilters();
+                }}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Chọn phòng ban" />
@@ -240,7 +372,13 @@ export default function UsersPage() {
 
             <div className="space-y-2">
               <label className="text-sm font-medium">Trạng thái</label>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <Select
+                value={statusFilter}
+                onValueChange={(value) => {
+                  setStatusFilter(value);
+                  applyFilters();
+                }}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Chọn trạng thái" />
                 </SelectTrigger>
@@ -259,7 +397,7 @@ export default function UsersPage() {
         <CardHeader>
           <CardTitle>Danh sách người dùng</CardTitle>
           <CardDescription>
-            Tổng số: {filteredUsers.length} người dùng
+            Hiển thị {users.length} / {totalUsers} người dùng
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -268,7 +406,6 @@ export default function UsersPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Họ tên</TableHead>
-
                   <TableHead>Vai trò</TableHead>
                   <TableHead>Phòng ban</TableHead>
                   <TableHead>Trạng thái</TableHead>
@@ -276,20 +413,30 @@ export default function UsersPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredUsers.length === 0 ? (
+                {loading ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center">
+                    <TableCell colSpan={5} className="h-24 text-center">
+                      <div className="flex justify-center items-center">
+                        <Loader2 className="h-6 w-6 animate-spin text-primary mr-2" />
+                        Đang tải dữ liệu...
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : users.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="h-24 text-center">
                       Không tìm thấy người dùng nào
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredUsers.map((user) => (
+                  users.map((user) => (
                     <TableRow key={user.id}>
                       <TableCell className="font-medium">
                         {user.fullName}
                       </TableCell>
-
-                      <TableCell>{user.roleDisplayNames[0]}</TableCell>
+                      <TableCell>
+                        {user.roleDisplayNames?.[0] || "Không xác định"}
+                      </TableCell>
                       <TableCell>
                         {getDepartmentName(user.departmentId)}
                       </TableCell>
@@ -325,6 +472,77 @@ export default function UsersPage() {
             </Table>
           </div>
         </CardContent>
+        <CardFooter className="flex items-center justify-between px-6 pt-2">
+          <div className="flex items-center space-x-2">
+            <span className="text-sm text-muted-foreground">Hiển thị</span>
+            <Select
+              value={String(itemsPerPage)}
+              onValueChange={handlePerPageChange}
+            >
+              <SelectTrigger className="h-8 w-[70px]">
+                <SelectValue>{itemsPerPage}</SelectValue>
+              </SelectTrigger>
+              <SelectContent side="top">
+                {[10, 20, 30, 50, 100].map((size) => (
+                  <SelectItem key={size} value={String(size)}>
+                    {size}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <span className="text-sm text-muted-foreground">
+              mục trên mỗi trang
+            </span>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <div className="text-sm text-muted-foreground">
+              Trang {currentPage + 1} / {Math.max(1, totalPages)}
+            </div>
+            <div className="flex items-center space-x-1">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => handlePageChange(0)}
+                disabled={currentPage === 0 || loading}
+              >
+                <ChevronsLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 0 || loading}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={
+                  currentPage === totalPages - 1 || totalPages === 0 || loading
+                }
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => handlePageChange(totalPages - 1)}
+                disabled={
+                  currentPage === totalPages - 1 || totalPages === 0 || loading
+                }
+              >
+                <ChevronsRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </CardFooter>
       </Card>
     </div>
   );

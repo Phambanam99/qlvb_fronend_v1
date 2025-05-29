@@ -66,11 +66,30 @@ export const workflowAPI = {
     documentId: number | string,
     workflowData: DocumentWorkflowDTO
   ) => {
-    const response = await api.post(
-      `/workflow/${documentId}/assign-specialist`,
-      workflowData
-    );
-    return response.data;
+    // First check if the current department has any child departments
+    try {
+      if (workflowData.departmentId) {
+        const childDepartments = await workflowAPI.getChildDepartments(
+          workflowData.departmentId
+        );
+
+        // If there are child departments, we should distribute to them instead
+        if (Array.isArray(childDepartments) && childDepartments.length > 0) {
+          throw new Error(
+            "Đơn vị này có đơn vị con. Vui lòng phân phối văn bản cho đơn vị con trước."
+          );
+        }
+      }
+
+      // If no child departments, proceed with the assignment
+      const response = await api.post(
+        `/workflow/${documentId}/assign-specialist`,
+        workflowData
+      );
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
   },
 
   /**
@@ -217,7 +236,23 @@ export const workflowAPI = {
     });
     return response.data;
   },
+  createOugoingAlone: async (data: any, file: File | null) => {
+    const formData = new FormData();
+    if (file) {
+      formData.append("attachment", file);
+    }
+    formData.append(
+      "data",
+      new Blob([JSON.stringify(data)], { type: "application/json" })
+    );
 
+    const response = await api.post("/workflow/standalone-outgoing", formData, {
+      headers: {
+        "Content-Type": undefined, // Để Axios tự động xử lý với FormData
+      },
+    });
+    return response.data;
+  },
   /**
    * Tạo văn bản đi trả lời cho văn bản đến
    * @param incomingDocId ID của văn bản đến cần trả lời
@@ -386,5 +421,80 @@ export const workflowAPI = {
       }
     );
     return response.data;
+  },
+
+  /**
+   * Văn thư trả lại văn bản cho trợ lý để chỉnh sửa theo thể thức yêu cầu của thủ trưởng
+   * @param responseId ID văn bản phản hồi cần trả lại
+   * @param comments Lý do, yêu cầu chỉnh sửa
+   * @param file File đính kèm (nếu có)
+   * @returns Kết quả xử lý
+   */
+  returnDocumentToSpecialist: async (
+    responseId: number,
+    documentWorkFlow: DocumentWorkflowDTO
+  ) => {
+    const response = await api.put(
+      `/workflow/${responseId}/format-correction`,
+      documentWorkFlow
+    );
+    return response.data;
+  },
+  getChildDepartments: async (departmentId: number | string) => {
+    const response = await api.get(
+      `/workflow/departments/${departmentId}/children`
+    );
+    return response.data;
+  },
+
+  /**
+   * Get the parent department of a department
+   * @param departmentId Department ID to get parent for
+   * @returns Parent department data or null if no parent exists
+   */
+  getParentDepartment: async (departmentId: number | string) => {
+    try {
+      const response = await api.get(`/departments/${departmentId}/parent`);
+      return response.data;
+    } catch (error) {
+      console.error("Error getting parent department:", error);
+      return null;
+    }
+  },
+
+  /**
+   * Forward document to parent department for approval
+   * @param documentId Document ID
+   * @param responseId Response ID (if reviewing a response)
+   * @param parentDepartmentId Parent department ID to forward to
+   * @param workflowData Workflow data with comments and status
+   * @returns Updated workflow status
+   */
+  forwardToParentDepartment: async (
+    documentId: number | string,
+    responseId: number | null,
+    parentDepartmentId: number | string,
+    workflowData: DocumentWorkflowDTO
+  ) => {
+    // If it's a response document, we use a different endpoint
+    if (responseId) {
+      const response = await api.put(
+        `/workflow/${responseId}/forward-to-parent-department`,
+        {
+          ...workflowData,
+          targetDepartmentId: parentDepartmentId,
+        }
+      );
+      return response.data;
+    } else {
+      const response = await api.put(
+        `/workflow/${documentId}/forward-to-parent-department`,
+        {
+          ...workflowData,
+          targetDepartmentId: parentDepartmentId,
+        }
+      );
+      return response.data;
+    }
   },
 };

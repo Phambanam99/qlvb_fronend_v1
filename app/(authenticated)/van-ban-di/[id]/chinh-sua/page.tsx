@@ -152,8 +152,21 @@ function EditOutgoingDocumentPage() {
         (item.description && item.description.toLowerCase().includes("từ chối"))
     );
 
+    // Sử dụng documentData.history thay vì _document.history
+    const wasReturnedByClerk = documentData.history?.some(
+      (item: any) =>
+        (item.newStatus === "format_correction" &&
+          item.previousStatus === "LEADER_APPROVED") ||
+        (item.comments &&
+          (item.comments.toLowerCase().includes("trả lại") ||
+            item.comments.toLowerCase().includes("chỉnh sửa thể thức"))) ||
+        (item.description &&
+          (item.description.toLowerCase().includes("trả lại") ||
+            item.description.toLowerCase().includes("chỉnh sửa thể thức")))
+    );
+
     // Nếu là trợ lý và văn bản đã bị từ chối
-    if (hasRole("ROLE_TRO_LY") && wasRejected) {
+    if (hasRole("ROLE_TRO_LY") && (wasRejected || wasReturnedByClerk)) {
       return true;
     }
 
@@ -370,7 +383,8 @@ function EditOutgoingDocumentPage() {
         document: documentObj,
         workflow: workflowData,
       };
-      // Update document
+
+      // Update document metadata first
       await workflowAPI.updateOutgoingDocumentWorkflow(
         documentId,
         documentData
@@ -378,10 +392,8 @@ function EditOutgoingDocumentPage() {
 
       // Upload new attachment if any
       if (attachment) {
-        const formData = new FormData();
-        formData.append("file", attachment);
-
-        await outgoingDocumentsAPI.updateOutgoingDocument(documentId, formData);
+        // Use uploadAttachment instead of updateOutgoingDocument for file uploads
+        await outgoingDocumentsAPI.uploadAttachment(documentId, attachment);
       }
 
       toast({

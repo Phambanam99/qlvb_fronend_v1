@@ -15,6 +15,7 @@ import {
   ThumbsDown,
   Send,
   Eye,
+  ArrowLeftCircle,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -80,6 +81,7 @@ export default function DocumentResponseList({
   const { addNotification } = useNotifications();
   const [responses, setResponses] = useState<DocumentResponse[]>([]);
   const [rejectionReason, setRejectionReason] = useState("");
+  const [returnToSpecialistReason, setReturnToSpecialistReason] = useState("");
   const [selectedResponseId, setSelectedResponseId] = useState<number | null>(
     null
   );
@@ -176,16 +178,6 @@ export default function DocumentResponseList({
     try {
       await workflowAPI.approveDocumentResponse(responseId, { comment: "" });
 
-      // Cập nhật danh sách văn bản
-      setResponses(
-        responses.map((response) => {
-          if (response.id === responseId) {
-            return { ...response, status: "leader_approved" };
-          }
-          return response;
-        })
-      );
-
       toast({
         title: "Thành công",
         description: "Đã chấp nhận văn bản trả lời",
@@ -209,7 +201,7 @@ export default function DocumentResponseList({
     try {
       await workflowAPI.rejectDocumentResponse(
         selectedResponseId,
-         rejectionReason
+        rejectionReason
       );
 
       // Cập nhật danh sách văn bản
@@ -239,6 +231,74 @@ export default function DocumentResponseList({
       toast({
         title: "Lỗi",
         description: "Không thể từ chối văn bản. Vui lòng thử lại sau.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Hàm mới: Văn thư trả lại văn bản cho trợ lý khi chưa đạt thể thức yêu cầu
+  const handleReturnToSpecialist = async () => {
+    if (!selectedResponseId) return;
+
+    setIsSubmitting(true);
+    const cmt: DocumentWorkflowDTO = {
+      documentId: selectedResponseId,
+      status: "format_correction",
+      statusDisplayName: "Cần chỉnh sửa thể thức",
+      comments: returnToSpecialistReason,
+    };
+    try {
+      // Gọi API để trả lại văn bản cho trợ lý
+      await workflowAPI.returnDocumentToSpecialist(
+        selectedResponseId,
+        cmt
+      );
+
+      // Cập nhật danh sách văn bản với trạng thái mới
+      setResponses(
+        responses.map((response) => {
+          if (response.id === selectedResponseId) {
+            return {
+              ...response,
+              status: "specialist_processing",
+              managerComment: returnToSpecialistReason,
+            };
+          }
+          return response;
+        })
+      );
+
+      // Thông báo cho người tạo văn bản
+      const selectedResponse = responses.find(
+        (r) => r.id === selectedResponseId
+      );
+      if (selectedResponse?.creator?.id) {
+        addNotification({
+          title: "Văn bản cần chỉnh sửa thể thức",
+          message: `Văn bản ${
+            selectedResponse.documentNumber || "#"
+          } đã được văn thư trả lại để chỉnh sửa theo yêu cầu`,
+          type: "warning",
+          link: `/van-ban-di/${selectedResponseId}/chinh-sua`,
+        });
+      }
+
+      toast({
+        title: "Thành công",
+        description: "Đã trả lại văn bản cho trợ lý để chỉnh sửa",
+      });
+
+      // Reset form
+      setReturnToSpecialistReason("");
+      setSelectedResponseId(null);
+    } catch (error) {
+      console.error("Error returning document to specialist:", error);
+      toast({
+        title: "Lỗi",
+        description:
+          "Không thể trả lại văn bản cho trợ lý. Vui lòng thử lại sau.",
         variant: "destructive",
       });
     } finally {
@@ -436,20 +496,70 @@ export default function DocumentResponseList({
                     </Dialog>
                   </div>
                 )}
-              {/* Nút Ban hành - Chỉ hiển thị cho văn thư khi văn bản đã được phê duyệt */}
+              {/* Nút Ban hành và Trả lại - Chỉ hiển thị cho văn thư khi văn bản đã được phê duyệt */}
               {response.status === "leader_approved" &&
                 hasRole("ROLE_VAN_THU") && (
                   <div className="flex justify-end space-x-2 mt-3">
+                    {/* Dialog Trả lại */}
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="border-orange-500 hover:bg-orange-50 text-orange-600"
+                          onClick={() => setSelectedResponseId(response.id)}
+                        >
+                          <ArrowLeftCircle className="mr-2 h-4 w-4" />
+                          Trả lại trợ lý
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Trả lại văn bản cho trợ lý</DialogTitle>
+                          <DialogDescription>
+                            Văn bản cần được chỉnh sửa thể thức để đạt yêu cầu
+                            của Thủ trưởng cục. Vui lòng nêu rõ nội dung cần
+                            chỉnh sửa.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <Textarea
+                          value={returnToSpecialistReason}
+                          onChange={(e) =>
+                            setReturnToSpecialistReason(e.target.value)
+                          }
+                          placeholder="Nhập yêu cầu chỉnh sửa..."
+                          className="min-h-[100px]"
+                        />
+                        <DialogFooter>
+                          <DialogClose asChild>
+                            <Button variant="outline">Hủy</Button>
+                          </DialogClose>
+                          <DialogClose asChild>
+                            <Button
+                              variant="primary"
+                              onClick={handleReturnToSpecialist}
+                              disabled={
+                                !returnToSpecialistReason.trim() || isSubmitting
+                              }
+                            >
+                              Trả lại để chỉnh sửa
+                            </Button>
+                          </DialogClose>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+
                     <Link href={`/van-ban-di/${response.id}/chinh-sua`}>
                       <Button
                         variant="outline"
                         size="sm"
-                        className="border-yellow-500 hover:bg-yellow-50 text-yellow-600 mr-2"
+                        className="border-yellow-500 hover:bg-yellow-50 text-yellow-600"
                       >
                         <Pencil className="mr-2 h-4 w-4" />
                         Kiểm tra và chỉnh sửa
                       </Button>
                     </Link>
+
                     <Button
                       variant="outline"
                       size="sm"

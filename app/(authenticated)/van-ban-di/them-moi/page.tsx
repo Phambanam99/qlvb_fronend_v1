@@ -57,8 +57,87 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
+// Import hooks and components
+import { useDepartmentSelection } from "@/hooks/use-department-selection";
+import { useDepartmentUsers } from "@/hooks/use-department-users";
+import { DocumentTypeSelector } from "./components/document-type-selector";
+import { SenderSelection } from "./components/sender-selection";
+
+// Leadership role configuration
+const leadershipRoleOrder: Record<string, number> = {
+  ROLE_CUC_TRUONG: 1,
+  ROLE_CUC_PHO: 2,
+  ROLE_CHINH_UY: 3,
+  ROLE_PHO_CHINH_UY: 4,
+  ROLE_TRUONG_PHONG: 5,
+  ROLE_PHO_PHONG: 6,
+  ROLE_TRAM_TRUONG: 7,
+  ROLE_PHO_TRAM_TRUONG: 8,
+  ROLE_CHINH_TRI_VIEN_TRAM: 9,
+  ROLE_CUM_TRUONG: 10,
+  ROLE_PHO_CUM_TRUONG: 11,
+  ROLE_CHINH_TRI_VIEN_CUM: 12,
+  ROLE_TRUONG_BAN: 13,
+};
+
+// Get role display name helper
+const getRoleDisplayName = (role: string): string => {
+  switch (role) {
+    case "ROLE_CUC_TRUONG":
+      return "Cục trưởng";
+    case "ROLE_CUC_PHO":
+      return "Cục phó";
+    case "ROLE_CHINH_UY":
+      return "Chính ủy";
+    case "ROLE_PHO_CHINH_UY":
+      return "Phó Chính ủy";
+    case "ROLE_TRUONG_PHONG":
+      return "Trưởng phòng";
+    case "ROLE_PHO_PHONG":
+      return "Phó phòng";
+    case "ROLE_TRAM_TRUONG":
+      return "Trạm trưởng";
+    case "ROLE_PHO_TRAM_TRUONG":
+      return "Phó Trạm trưởng";
+    case "ROLE_CHINH_TRI_VIEN_TRAM":
+      return "Chính trị viên trạm";
+    case "ROLE_CUM_TRUONG":
+      return "Cụm trưởng";
+    case "ROLE_PHO_CUM_TRUONG":
+      return "Phó cụm trưởng";
+    case "ROLE_CHINH_TRI_VIEN_CUM":
+      return "Chính trị viên cụm";
+    case "ROLE_TRUONG_BAN":
+      return "Trưởng Ban";
+    default:
+      return role.replace("ROLE_", "").replace(/_/g, " ").toLowerCase();
+  }
+};
+
 export default function AddOutgoingDocumentPage() {
   const { user } = useAuth();
+
+  // Use custom hooks
+  const {
+    departments,
+    expandedDepartments,
+    isLoading: isLoadingDepartmentList,
+    toggleDepartment,
+    findDepartmentById,
+  } = useDepartmentSelection();
+
+  const {
+    departmentUsers,
+    isLoadingUsers,
+    fetchDepartmentUsers,
+    getLeadershipRole,
+  } = useDepartmentUsers(leadershipRoleOrder);
+
+  // Helper function to find user by ID
+  const findUserById = (deptId: number, userId: number) => {
+    const users = departmentUsers[deptId] || [];
+    return users.find((user) => user.id === userId) || null;
+  };
 
   // Form state
   const [formRef, setFormRef] = useState<HTMLFormElement | null>(null);
@@ -67,6 +146,14 @@ export default function AddOutgoingDocumentPage() {
   const [approvers, setApprovers] = useState<any[]>([]);
   const [file, setFile] = useState<File | null>(null);
   const [replyToId, setReplyToId] = useState<string | null>(null);
+
+  // New state for document scope and sender
+  const [documentScope, setDocumentScope] = useState<"INTERNAL" | "EXTERNAL">(
+    "EXTERNAL"
+  );
+  const [selectedSender, setSelectedSender] = useState<number | string | null>(
+    null
+  );
 
   // Form data state
   const [formData, setFormData] = useState({
@@ -100,6 +187,28 @@ export default function AddOutgoingDocumentPage() {
       ...prev,
       [name]: value,
     }));
+  };
+
+  // Handler for document scope change
+  const handleScopeChange = (scope: "INTERNAL" | "EXTERNAL") => {
+    setDocumentScope(scope);
+    if (scope === "INTERNAL") {
+      // Clear recipient and approver when switching to internal
+      setFormData((prev) => ({
+        ...prev,
+        recipient: "",
+        approver: "",
+      }));
+    }
+  };
+
+  // Handler for sender selection
+  const handleSelectSender = (senderId: number | string) => {
+    setSelectedSender(senderId);
+  };
+
+  const handleClearSender = () => {
+    setSelectedSender(null);
   };
 
   // State for document types
@@ -185,7 +294,7 @@ export default function AddOutgoingDocumentPage() {
         name: newDocumentType,
         isActive: true,
       };
-      
+
       console.log("Creating Document Type:", documentTypeData);
       const createdType = await documentTypesAPI.createDocumentType(
         documentTypeData
@@ -203,14 +312,13 @@ export default function AddOutgoingDocumentPage() {
         message: "Đã thêm loại văn bản mới",
         type: "success",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating document type:", error);
-      setDocumentTypeError("Không thể tạo loại văn bản mới");
-      addNotification({
-        title: "Lỗi",
-        message: "Không thể tạo loại văn bản mới",
-        type: "error",
-      });
+      let errorMessage = "Có lỗi xảy ra khi thêm loại văn bản";
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+      setDocumentTypeError(errorMessage);
     } finally {
       setIsCreatingDocumentType(false);
     }
@@ -219,7 +327,22 @@ export default function AddOutgoingDocumentPage() {
   // Function to handle creating a new recipient
   const handleCreateRecipient = async () => {
     if (!newRecipient.trim()) {
-      setRecipientError("Tên người nhận không được để trống");
+      addNotification({
+        title: "Cảnh báo",
+        message: "Tên người nhận không được để trống",
+        type: "warning",
+      });
+      return;
+    }
+
+    // Check if recipient already exists
+    const recipientExists = recipients.some(
+      (recipient) =>
+        recipient.name.toLowerCase() === newRecipient.trim().toLowerCase()
+    );
+
+    if (recipientExists) {
+      setRecipientError("Người nhận này đã tồn tại trong hệ thống");
       return;
     }
 
@@ -227,75 +350,70 @@ export default function AddOutgoingDocumentPage() {
       setIsCreatingRecipient(true);
       setRecipientError(null);
 
-      // Gọi API để tạo người nhận mới (sử dụng API tạo người gửi tạm thời)
-      const senderData: SenderDTO = {
-        name: newRecipient.trim(),
+      const senderData: Partial<SenderDTO> = {
+        name: newRecipient,
+        isActive: true,
       };
 
+      console.log("Creating Recipient:", senderData);
       const createdRecipient = await senderApi.createSender(senderData);
+      console.log("Created Recipient:", createdRecipient);
 
-      // Thêm người nhận mới vào danh sách người nhận
-      setRecipients((prevRecipients) => [
-        ...prevRecipients,
-        {
-          id: createdRecipient.id,
-          name: createdRecipient.name,
-        },
-      ]);
+      // Add the new recipient to the list
+      setRecipients((prevRecipients) => [...prevRecipients, createdRecipient]);
 
-      // Đóng dialog và reset trường nhập
-      setIsRecipientDialogOpen(false);
+      // Set the new recipient as selected
+      setFormData((prev) => ({
+        ...prev,
+        recipient: createdRecipient.name,
+      }));
+
+      // Reset and close dialog
       setNewRecipient("");
+      setIsRecipientDialogOpen(false);
 
       addNotification({
         title: "Thành công",
         message: "Đã thêm người nhận mới",
         type: "success",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating recipient:", error);
-      addNotification({
-        title: "Lỗi",
-        message: "Không thể tạo người nhận mới",
-        type: "error",
-      });
+      let errorMessage = "Có lỗi xảy ra khi thêm người nhận";
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+      setRecipientError(errorMessage);
     } finally {
       setIsCreatingRecipient(false);
     }
   };
 
-  // Thêm useEffect để lấy thông tin văn bản đến nếu có replyToId
+  // Fetch incoming document if replyToId is provided
   useEffect(() => {
     const fetchIncomingDocument = async () => {
       if (!replyToId) return;
 
       try {
         setIsLoadingIncomingDoc(true);
-        const incomingDoc = await incomingDocumentsAPI.getIncomingDocumentById(
-          replyToId
+        const doc = await incomingDocumentsAPI.getDocumentById(
+          Number(replyToId)
         );
-        setIncomingDocument(incomingDoc.data);
+        setIncomingDocument(doc);
 
-        // Tự động điền thông tin dựa trên văn bản đến
-        if (incomingDoc) {
-          // Điền trích yếu
-          const titleInput = document.getElementById(
-            "title"
-          ) as HTMLInputElement;
-          if (titleInput) {
-            titleInput.value = `V/v trả lời văn bản số ${incomingDoc.data.documentNumber}`;
-          }
-
-          // Điền nơi nhận là đơn vị gửi văn bản đến
-          const recipientInput = document.getElementById(
-            "recipient"
-          ) as HTMLInputElement;
-          if (recipientInput && incomingDoc.data.issuingAuthority) {
-            recipientInput.value = incomingDoc.data.issuingAuthority;
-          }
-        }
+        // Pre-fill some form fields
+        setFormData((prev) => ({
+          ...prev,
+          title: `Trả lời: ${doc.title}`,
+          recipient: doc.issuingAuthority || "",
+        }));
       } catch (error) {
         console.error("Error fetching incoming document:", error);
+        addNotification({
+          title: "Lỗi",
+          message: "Không thể tải thông tin văn bản đến",
+          type: "error",
+        });
       } finally {
         setIsLoadingIncomingDoc(false);
       }
@@ -304,214 +422,234 @@ export default function AddOutgoingDocumentPage() {
     fetchIncomingDocument();
   }, [replyToId]);
 
-  // Thêm useEffect để lấy danh sách người phê duyệt
+  // Fetch approvers for external documents
   useEffect(() => {
-    const fetchApprovers = async () => {
-      try {
-        setIsLoadingApprovers(true);
+    if (documentScope === "EXTERNAL") {
+      const fetchApprovers = async () => {
+        try {
+          setIsLoadingApprovers(true);
+          const response = await departmentsAPI.getAllDepartments();
 
-        // Nếu người dùng chưa được load hoặc không có ID phòng ban
-        if (!user?.departmentId) {
+          // Flatten all users from all departments
+          let allUsers: any[] = [];
+          const processUsers = (users: any[]) => {
+            const leadershipUsers = users.filter((user) => {
+              const roles = user.roles || [];
+              return roles.some((role: any) =>
+                Object.keys(leadershipRoleOrder).includes(role.name)
+              );
+            });
+
+            return leadershipUsers.map((user) => ({
+              ...user,
+              highestRole: roles
+                .filter((role: any) =>
+                  Object.keys(leadershipRoleOrder).includes(role.name)
+                )
+                .sort(
+                  (a: any, b: any) =>
+                    leadershipRoleOrder[a.name] - leadershipRoleOrder[b.name]
+                )[0],
+            }));
+          };
+
+          const processDepartments = (departments: any[]) => {
+            if (!Array.isArray(departments)) {
+              // console.error("Expected departments to be an array, but got:", departments);
+              return;
+            }
+            departments.forEach((dept) => {
+              if (dept.users) {
+                allUsers = [...allUsers, ...processUsers(dept.users)];
+              }
+              if (dept.children) {
+                processDepartments(dept.children);
+              }
+            });
+          };
+
+          processDepartments(response);
+
+          setApprovers(allUsers);
+        } catch (error) {
+          console.error("Error fetching approvers:", error);
+          addNotification({
+            title: "Lỗi",
+            message: "Không thể tải danh sách người phê duyệt",
+            type: "error",
+          });
+        } finally {
           setIsLoadingApprovers(false);
-          return;
         }
+      };
 
-        // Lấy thông tin phòng ban hiện tại của người dùng
-        const department = await departmentsAPI.getDepartmentById(
-          user.departmentId
-        );
+      fetchApprovers();
+    }
+  }, [documentScope]);
 
-        // Lấy danh sách người dùng có vai trò trưởng phòng hoặc phó phòng trong phòng ban hiện tại
-        const departmentManagers = await usersAPI.getUsersByRoleAndDepartment(
-          ["ROLE_TRUONG_PHONG", 
-            "ROLE_PHO_PHONG", 
-            "ROLE_TRUONG_BAN", 
-            "ROLE_PHO_BAN",
-            "ROLE_CUM_TRUONG",
-            "ROLE_PHO_CUM_TRUONG",
-            "ROLE_TRAM_TRUONG"],
-          Number(user.departmentId)
-        );
-
-        if (departmentManagers && departmentManagers.length > 0) {
-          // Nếu có trưởng/phó phòng trong phòng ban hiện tại
-          setApprovers(
-            departmentManagers.map((manager) => ({
-              id: String(manager.id),
-              fullName: manager.fullName,
-              position: manager.roleDisplayNames || "",
-            }))
-          );
-        }
-      } catch (error) {
-        console.error("Error fetching approvers:", error);
-      } finally {
-        setIsLoadingApprovers(false);
-      }
-    };
-
-    fetchApprovers();
-  }, [user]);
-
-  // Fetch recipients (senders) on component mount
+  // Fetch recipients for external documents
   useEffect(() => {
-    const fetchRecipients = async () => {
-      try {
-        setIsLoadingRecipients(true);
-        const senders = await senderApi.getAllSenders();
-        setRecipients(senders || []);
-      } catch (error) {
-        console.error("Error fetching recipients:", error);
-        addNotification({
-          title: "Lỗi",
-          message: "Không thể tải danh sách nơi nhận",
-          type: "error",
-        });
-      } finally {
-        setIsLoadingRecipients(false);
-      }
-    };
+    if (documentScope === "EXTERNAL") {
+      const fetchRecipients = async () => {
+        try {
+          setIsLoadingRecipients(true);
+          const senders = await senderApi.getAllSenders();
+          setRecipients(senders);
+        } catch (error) {
+          console.error("Error fetching recipients:", error);
+          addNotification({
+            title: "Lỗi",
+            message: "Không thể tải danh sách nơi nhận",
+            type: "error",
+          });
+        } finally {
+          setIsLoadingRecipients(false);
+        }
+      };
 
-    fetchRecipients();
-  }, []);
+      fetchRecipients();
+    }
+  }, [documentScope]);
 
-  // Cập nhật hàm handleSubmit để sử dụng state thay vì DOM
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
+
+    if (!formData.documentNumber || !formData.title) {
+      addNotification({
+        title: "Lỗi",
+        message: "Vui lòng điền đầy đủ thông tin bắt buộc",
+        type: "error",
+      });
+      return;
+    }
 
     try {
-      // Sử dụng state formData thay vì truy xuất DOM
-      const _document: OutgoingDocumentDTO = {
+      setIsSubmitting(true);
+
+      const documentData: Partial<OutgoingDocumentDTO> = {
         documentNumber: formData.documentNumber,
-        signingDate: formData.sentDate
-          ? new Date(formData.sentDate)
-          : new Date(),
-        receivingDepartmentText: formData.recipient,
+        sentDate: formData.sentDate,
+        recipient:
+          documentScope === "EXTERNAL" ? formData.recipient : undefined,
         documentType: formData.documentType,
         title: formData.title,
-        summary: formData.content,
-        signerId: formData.approver ? Number(formData.approver) : 0,
+        content: formData.content,
+        priority: formData.priority,
+        note: formData.note,
+        authorId: user?.id,
+        status: "DRAFT",
+        approverId:
+          documentScope === "EXTERNAL" ? formData.approver : undefined,
+        replyToId: replyToId ? Number(replyToId) : undefined,
+        scope: documentScope,
+        senderId: selectedSender ? String(selectedSender) : undefined,
       };
 
-      const workflowData: DocumentWorkflowDTO = {
-        status: "REGISTERED",
-        statusDisplayName: "Đã đăng ký",
-        comments: formData.note,
-      };
+      console.log("Creating outgoing document:", documentData);
 
-      // Tạo object dữ liệu từ state
-      const documentData = {
-        document: _document,
-        workflow: workflowData,
-      };
+      const createdDocument = await outgoingDocumentsAPI.createDocument(
+        documentData
+      );
 
-      console.log("Document Data:", documentData);
-      if (replyToId) {
-        // Nếu đang trả lời văn bản, sử dụng API tạo văn bản trả lời
-        await workflowAPI.createResponseDocument(documentData, replyToId, file);
-
-        addNotification({
-          title: "Văn bản trả lời đã được tạo",
-          message: "Văn bản trả lời đã được lưu và chờ phê duyệt.",
-          type: "success",
-          link: "/van-ban-di",
-        });
-      } else {
-        // Nếu là văn bản đi thông thường
-        const data = {
-          document: documentData.document,
-          workflow: documentData.workflow,
-        };
-
-        await workflowAPI.createFullDocument(data, file);
-
-        addNotification({
-          title: "Văn bản đi đã được tạo",
-          message: "Văn bản đã được lưu và chờ phê duyệt.",
-          type: "success",
-          link: "/van-ban-di",
-        });
+      // Upload file if provided
+      if (file && createdDocument.id) {
+        const fileFormData = new FormData();
+        fileFormData.append("file", file);
+        await outgoingDocumentsAPI.uploadAttachment(
+          createdDocument.id,
+          fileFormData
+        );
       }
 
-      // Reset form và chuyển hướng
-      setIsSubmitting(false);
+      addNotification({
+        title: "Thành công",
+        message: `Đã tạo ${
+          documentScope === "INTERNAL" ? "văn bản nội bộ" : "văn bản đi"
+        } thành công`,
+        type: "success",
+      });
+
       router.push("/van-ban-di");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating document:", error);
       addNotification({
         title: "Lỗi",
-        message: "Không thể tạo văn bản đi. Vui lòng thử lại sau.",
+        message:
+          error.response?.data?.message || "Có lỗi xảy ra khi tạo văn bản",
         type: "error",
       });
+    } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Cập nhật hàm handleSaveDraft để sử dụng một file
   const handleSaveDraft = async () => {
-    setIsSubmitting(true);
+    if (!formData.documentNumber || !formData.title) {
+      addNotification({
+        title: "Lỗi",
+        message: "Vui lòng điền ít nhất số văn bản và trích yếu để lưu nháp",
+        type: "error",
+      });
+      return;
+    }
 
     try {
-      // Tạo FormData từ form
-      const form = document.querySelector("form") as HTMLFormElement;
-      const formData = new FormData(form);
+      setIsSubmitting(true);
 
-      // Tạo đối tượng dữ liệu từ FormData
-      const documentData = {
-        documentNumber: formData.get("documentNumber") as string,
-        sentDate: formData.get("sentDate") as string,
-        recipient: formData.get("recipient") as string,
-        documentType: formData.get("documentType") as string,
-        title: formData.get("title") as string,
-        content: formData.get("content") as string,
-        approver: formData.get("approver") as string,
-        priority: formData.get("priority") as string,
-        note: formData.get("note") as string,
-        status: "draft",
+      const documentData: Partial<OutgoingDocumentDTO> = {
+        documentNumber: formData.documentNumber,
+        sentDate: formData.sentDate,
+        recipient:
+          documentScope === "EXTERNAL" ? formData.recipient : undefined,
+        documentType: formData.documentType,
+        title: formData.title,
+        content: formData.content,
+        priority: formData.priority,
+        note: formData.note,
+        authorId: user?.id,
+        status: "DRAFT",
+        replyToId: replyToId ? Number(replyToId) : undefined,
+        scope: documentScope,
+        senderId: selectedSender ? String(selectedSender) : undefined,
       };
 
-      // Tạo FormData mới để gửi API
-      const apiFormData = new FormData();
+      console.log("Saving draft:", documentData);
 
-      // Thêm dữ liệu văn bản
-      apiFormData.append(
-        "data",
-        new Blob([JSON.stringify(documentData)], { type: "application/json" })
+      const savedDraft = await outgoingDocumentsAPI.createDocument(
+        documentData
       );
 
-      // Thêm file đính kèm (nếu có)
-      if (file) {
-        apiFormData.append("file", file);
+      // Upload file if provided
+      if (file && savedDraft.id) {
+        const fileFormData = new FormData();
+        fileFormData.append("file", file);
+        await outgoingDocumentsAPI.uploadAttachment(
+          savedDraft.id,
+          fileFormData
+        );
       }
 
-      // Gọi API để lưu bản nháp
-      await outgoingDocumentsAPI.saveDraft(apiFormData);
-
-      // Thêm thông báo
       addNotification({
-        title: "Bản nháp đã được lưu",
-        message: "Văn bản đã được lưu dưới dạng bản nháp.",
-        type: "info",
-        link: "/van-ban-di",
+        title: "Thành công",
+        message: "Đã lưu nháp văn bản",
+        type: "success",
       });
 
-      // Reset form và chuyển hướng
-      setIsSubmitting(false);
       router.push("/van-ban-di");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving draft:", error);
       addNotification({
         title: "Lỗi",
-        message: "Không thể lưu bản nháp. Vui lòng thử lại sau.",
+        message: error.response?.data?.message || "Có lỗi xảy ra khi lưu nháp",
         type: "error",
       });
+    } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
+    if (e.target.files && e.target.files[0]) {
       setFile(e.target.files[0]);
     }
   };
@@ -556,8 +694,9 @@ export default function AddOutgoingDocumentPage() {
       )}
 
       <form onSubmit={handleSubmit}>
-        <div className="grid gap-6 md:grid-cols-2">
-          <Card className="bg-card md:col-span-1">
+        <div className="grid gap-6 lg:grid-cols-2">
+          {/* Document Information Card */}
+          <Card className="bg-card">
             <CardHeader className="bg-primary/5 border-b">
               <CardTitle>Thông tin văn bản</CardTitle>
               <CardDescription>
@@ -565,9 +704,17 @@ export default function AddOutgoingDocumentPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6 pt-6">
+              {/* Document Type Selector */}
+              <DocumentTypeSelector
+                documentScope={documentScope}
+                onScopeChange={handleScopeChange}
+              />
+
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="documentNumber">Số văn bản</Label>
+                  <Label htmlFor="documentNumber">
+                    Số văn bản <span className="text-red-500">*</span>
+                  </Label>
                   <Input
                     id="documentNumber"
                     name="documentNumber"
@@ -588,95 +735,106 @@ export default function AddOutgoingDocumentPage() {
                     onChange={handleInputChange}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="recipient">Nơi nhận</Label>
-                  <div className="flex gap-2">
-                    <Select
-                      name="recipient"
-                      value={formData.recipient}
-                      onValueChange={(value) =>
-                        handleSelectChange("recipient", value)
-                      }
-                    >
-                      <SelectTrigger id="recipient" className="flex-1">
-                        <SelectValue placeholder="Chọn nơi nhận" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {isLoadingRecipients ? (
-                          <SelectItem value="loading" disabled>
-                            Đang tải danh sách nơi nhận...
-                          </SelectItem>
-                        ) : recipients.length === 0 ? (
-                          <SelectItem value="empty" disabled>
-                            Chưa có người nhận nào
-                          </SelectItem>
-                        ) : (
-                          recipients.map((recipient) => (
-                            <SelectItem
-                              key={recipient.id}
-                              value={String(recipient.id)}
-                            >
-                              {recipient.name}
+
+                {/* Only show recipient for external documents */}
+                {documentScope === "EXTERNAL" && (
+                  <div className="space-y-2">
+                    <Label htmlFor="recipient">
+                      Nơi nhận <span className="text-red-500">*</span>
+                    </Label>
+                    <div className="flex gap-2">
+                      <Select
+                        name="recipient"
+                        value={formData.recipient}
+                        onValueChange={(value) =>
+                          handleSelectChange("recipient", value)
+                        }
+                      >
+                        <SelectTrigger id="recipient" className="flex-1">
+                          <SelectValue placeholder="Chọn nơi nhận" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {isLoadingRecipients ? (
+                            <SelectItem value="loading" disabled>
+                              Đang tải danh sách nơi nhận...
                             </SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
-                    <Dialog
-                      open={isRecipientDialogOpen}
-                      onOpenChange={setIsRecipientDialogOpen}
-                    >
-                      <DialogTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="shrink-0"
-                        >
-                          <Plus className="h-4 w-4" />
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Thêm người nhận mới</DialogTitle>
-                          <DialogDescription>
-                            Nhập tên người nhận chưa có trong hệ thống
-                          </DialogDescription>
-                        </DialogHeader>
-                        <div className="space-y-4 py-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="newRecipient">Tên người nhận</Label>
-                            <Input
-                              id="newRecipient"
-                              value={newRecipient}
-                              onChange={(e) => setNewRecipient(e.target.value)}
-                              placeholder="Nhập tên người nhận mới"
-                            />
-                          </div>
-                        </div>
-                        <DialogFooter>
+                          ) : recipients.length === 0 ? (
+                            <SelectItem value="empty" disabled>
+                              Chưa có người nhận nào
+                            </SelectItem>
+                          ) : (
+                            recipients.map((recipient) => (
+                              <SelectItem
+                                key={recipient.id}
+                                value={String(recipient.name)}
+                              >
+                                {recipient.name}
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                      <Dialog
+                        open={isRecipientDialogOpen}
+                        onOpenChange={setIsRecipientDialogOpen}
+                      >
+                        <DialogTrigger asChild>
                           <Button
                             variant="outline"
-                            onClick={() => {
-                              setIsRecipientDialogOpen(false);
-                            }}
+                            size="icon"
+                            className="shrink-0"
                           >
-                            Hủy
+                            <Plus className="h-4 w-4" />
                           </Button>
-                          <Button
-                            onClick={handleCreateRecipient}
-                            disabled={
-                              isCreatingRecipient || !newRecipient.trim()
-                            }
-                          >
-                            {isCreatingRecipient
-                              ? "Đang thêm..."
-                              : "Thêm người nhận"}
-                          </Button>
-                        </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Thêm người nhận mới</DialogTitle>
+                            <DialogDescription>
+                              Nhập tên người nhận chưa có trong hệ thống
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="space-y-4 py-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="newRecipient">
+                                Tên người nhận
+                              </Label>
+                              <Input
+                                id="newRecipient"
+                                value={newRecipient}
+                                onChange={(e) =>
+                                  setNewRecipient(e.target.value)
+                                }
+                                placeholder="Nhập tên người nhận mới"
+                              />
+                            </div>
+                          </div>
+                          <DialogFooter>
+                            <Button
+                              variant="outline"
+                              onClick={() => {
+                                setIsRecipientDialogOpen(false);
+                              }}
+                            >
+                              Hủy
+                            </Button>
+                            <Button
+                              onClick={handleCreateRecipient}
+                              disabled={
+                                isCreatingRecipient || !newRecipient.trim()
+                              }
+                            >
+                              {isCreatingRecipient
+                                ? "Đang thêm..."
+                                : "Thêm người nhận"}
+                            </Button>
+                          </DialogFooter>
+                        </DialogContent>
+                      </Dialog>
+                    </div>
                   </div>
-                </div>
+                )}
+
                 <div className="space-y-2">
                   <Label htmlFor="documentType">Loại văn bản</Label>
                   <div className="flex gap-2">
@@ -774,8 +932,11 @@ export default function AddOutgoingDocumentPage() {
                   </div>
                 </div>
               </div>
+
               <div className="space-y-2">
-                <Label htmlFor="title">Trích yếu</Label>
+                <Label htmlFor="title">
+                  Trích yếu <span className="text-red-500">*</span>
+                </Label>
                 <Input
                   id="title"
                   name="title"
@@ -785,6 +946,7 @@ export default function AddOutgoingDocumentPage() {
                   onChange={handleInputChange}
                 />
               </div>
+
               <div className="space-y-2">
                 <Label htmlFor="content">Nội dung</Label>
                 <Textarea
@@ -796,6 +958,7 @@ export default function AddOutgoingDocumentPage() {
                   onChange={handleInputChange}
                 />
               </div>
+
               <div className="space-y-2">
                 <Label htmlFor="attachments">Tệp đính kèm</Label>
                 <div className="flex items-center gap-2">
@@ -830,108 +993,212 @@ export default function AddOutgoingDocumentPage() {
             </CardContent>
           </Card>
 
-          <Card className="bg-card md:col-span-1">
-            <CardHeader className="bg-primary/5 border-b">
-              <CardTitle>Thông tin phê duyệt</CardTitle>
-              <CardDescription>
-                Thông tin về người soạn thảo và phê duyệt
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6 pt-6">
-              <div className="space-y-2">
-                <Label>Người soạn thảo</Label>
-                <div className="rounded-md border p-3 bg-accent/30">
-                  <p className="font-medium">
-                    {user?.name || "Người dùng hiện tại"}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {user?.position || "Chức vụ"} -{" "}
-                    {user?.department || "Phòng ban"}
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="approver">Người phê duyệt</Label>
-                <Select name="approver">
-                  <SelectTrigger id="approver">
-                    <SelectValue placeholder="Chọn người phê duyệt" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {isLoadingApprovers ? (
-                      <SelectItem value="loading" disabled>
-                        Đang tải danh sách...
-                      </SelectItem>
-                    ) : approvers.length === 0 ? (
-                      <SelectItem value="empty" disabled>
-                        Không tìm thấy người phê duyệt
-                      </SelectItem>
-                    ) : (
-                      approvers.map((approver) => (
-                        <SelectItem key={approver.id} value={approver.id}>
-                          {approver.fullName} - {approver.position}
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="priority">Độ ưu tiên</Label>
-                <Select name="priority">
-                  <SelectTrigger id="priority">
-                    <SelectValue placeholder="Chọn độ ưu tiên" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="normal">Bình thường</SelectItem>
-                    <SelectItem value="high">Cao</SelectItem>
-                    <SelectItem value="urgent">Khẩn</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="note">Ghi chú</Label>
-                <Textarea
-                  id="note"
-                  name="note"
-                  placeholder="Nhập ghi chú cho người phê duyệt (nếu có)"
-                  rows={4}
-                  value={formData.note}
-                  onChange={handleInputChange}
-                />
-              </div>
-
-              <div className="rounded-md bg-amber-50 border border-amber-200 p-3">
-                <p className="text-sm text-amber-800">
-                  <span className="font-medium">Lưu ý:</span> Sau khi gửi, văn
-                  bản sẽ được chuyển đến người phê duyệt để xem xét trước khi
-                  ban hành chính thức.
-                </p>
-              </div>
-            </CardContent>
-            <CardFooter className="flex flex-col space-y-3">
-              <Button type="submit" className="w-full" disabled={isSubmitting}>
-                {isSubmitting ? (
-                  "Đang xử lý..."
+          {/* Sender and Approval Information */}
+          <div className="space-y-6">
+            {/* Sender Selection Card */}
+            {documentScope === "INTERNAL" && (<Card className="bg-card">
+              <CardHeader className="bg-primary/5 border-b">
+                <CardTitle>Thông tin người nhận</CardTitle>
+                <CardDescription>
+                  Chọn phòng ban hoặc cán bộ nhận văn bản
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pt-6">
+                {isLoadingDepartmentList ? (
+                  <div className="flex items-center justify-center p-4">
+                    <p>Đang tải danh sách phòng ban...</p>
+                  </div>
                 ) : (
-                  <>
-                    <Send className="mr-2 h-4 w-4" /> Lưu nháp
-                  </>
+                  <SenderSelection
+                    departments={departments}
+                    expandedDepartments={expandedDepartments}
+                    toggleDepartment={toggleDepartment}
+                    selectedSender={selectedSender}
+                    onSelectSender={handleSelectSender}
+                    departmentUsers={departmentUsers}
+                    isLoadingUsers={isLoadingUsers}
+                    onDepartmentExpand={fetchDepartmentUsers}
+                    getLeadershipRole={getLeadershipRole}
+                    getRoleDisplayName={getRoleDisplayName}
+                    findDepartmentById={findDepartmentById}
+                    findUserById={findUserById}
+                    onClearSender={handleClearSender}
+                  />
                 )}
-              </Button>
-              {/* <Button
-                type="button"
-                variant="outline"
-                className="w-full"
-                onClick={handleSaveDraft}
-                disabled={isSubmitting}
-              >
-                <Save className="mr-2 h-4 w-4" /> Lưu nháp
-              </Button> */}
-            </CardFooter>
-          </Card>
+              </CardContent>
+            </Card>)}
+
+            {/* Approval Information Card - Only for external documents */}
+            {documentScope === "EXTERNAL" && (
+              <Card className="bg-card">
+                <CardHeader className="bg-primary/5 border-b">
+                  <CardTitle>Thông tin phê duyệt</CardTitle>
+                  <CardDescription>
+                    Thông tin về người soạn thảo và phê duyệt
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6 pt-6">
+                  <div className="space-y-2">
+                    <Label>Người soạn thảo</Label>
+                    <div className="rounded-md border p-3 bg-accent/30">
+                      <p className="font-medium">
+                        {user?.name || "Người dùng hiện tại"}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {user?.position || "Chức vụ"} -{" "}
+                        {user?.department || "Phòng ban"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="approver">
+                      Người phê duyệt <span className="text-red-500">*</span>
+                    </Label>
+                    <Select
+                      name="approver"
+                      value={formData.approver}
+                      onValueChange={(value) =>
+                        handleSelectChange("approver", value)
+                      }
+                    >
+                      <SelectTrigger id="approver">
+                        <SelectValue placeholder="Chọn người phê duyệt" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {isLoadingApprovers ? (
+                          <SelectItem value="loading" disabled>
+                            Đang tải danh sách...
+                          </SelectItem>
+                        ) : approvers.length === 0 ? (
+                          <SelectItem value="empty" disabled>
+                            Không tìm thấy người phê duyệt
+                          </SelectItem>
+                        ) : (
+                          approvers.map((approver) => (
+                            <SelectItem
+                              key={approver.id}
+                              value={String(approver.id)}
+                            >
+                              {approver.fullName} - {approver.position}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="priority">Độ ưu tiên</Label>
+                    <Select
+                      name="priority"
+                      value={formData.priority}
+                      onValueChange={(value) =>
+                        handleSelectChange("priority", value)
+                      }
+                    >
+                      <SelectTrigger id="priority">
+                        <SelectValue placeholder="Chọn độ ưu tiên" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="normal">Bình thường</SelectItem>
+                        <SelectItem value="high">Cao</SelectItem>
+                        <SelectItem value="urgent">Khẩn</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="note">Ghi chú</Label>
+                    <Textarea
+                      id="note"
+                      name="note"
+                      placeholder="Nhập ghi chú cho người phê duyệt (nếu có)"
+                      rows={4}
+                      value={formData.note}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+
+                  <div className="rounded-md bg-amber-50 border border-amber-200 p-3">
+                    <p className="text-sm text-amber-800">
+                      <span className="font-medium">Lưu ý:</span> Sau khi gửi,
+                      văn bản sẽ được chuyển đến người phê duyệt để xem xét
+                      trước khi ban hành chính thức.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Internal Document Note */}
+            {documentScope === "INTERNAL" && (
+              <Card className="bg-green-50 border-green-200">
+                <CardContent className="pt-6">
+                  <div className="flex items-start gap-3">
+                    <div className="flex-shrink-0 mt-0.5">
+                      <div className="h-5 w-5 rounded-full bg-green-500 flex items-center justify-center">
+                        <span className="text-white text-xs font-bold">✓</span>
+                      </div>
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-sm font-medium text-green-800">
+                        Văn bản nội bộ
+                      </div>
+                      <div className="text-xs text-green-700 mt-1">
+                        Văn bản này sẽ được gửi trực tiếp trong nội bộ đơn vị mà
+                        không cần qua quy trình phê duyệt. Thích hợp cho các
+                        thông báo, hướng dẫn nội bộ.
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex flex-col sm:flex-row justify-between gap-4 mt-6">
+          <div className="flex gap-2">
+            <Button type="button" variant="outline" asChild>
+              <Link href="/van-ban-di">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Hủy
+              </Link>
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handleSaveDraft}
+              disabled={isSubmitting}
+            >
+              <Save className="mr-2 h-4 w-4" />
+              Lưu nháp
+            </Button>
+          </div>
+
+          <Button
+            type="submit"
+            disabled={
+              isSubmitting ||
+              (documentScope === "EXTERNAL" &&
+                (!formData.recipient || !formData.approver))
+            }
+            className="bg-primary hover:bg-primary/90"
+          >
+            {isSubmitting ? (
+              <>
+                <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-background border-t-transparent" />
+                Đang xử lý...
+              </>
+            ) : (
+              <>
+                <Send className="mr-2 h-4 w-4" />
+                {documentScope === "INTERNAL" ? "Gửi văn bản" : "Gửi phê duyệt"}
+              </>
+            )}
+          </Button>
         </div>
       </form>
     </div>

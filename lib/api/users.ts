@@ -1,4 +1,5 @@
 import api from "./config";
+import { PageResponse } from "./types";
 
 export interface UserDTO {
   id?: number;
@@ -14,6 +15,7 @@ export interface UserDTO {
   createdAt: string;
   updatedAt: string;
   roleDisplayNames?: string[];
+  status?: number;
 }
 
 export const usersAPI = {
@@ -25,6 +27,17 @@ export const usersAPI = {
     const response = await api.get("/users", { params });
     return response.data;
   },
+
+  /**
+   * Get paginated users with filtering
+   * @param params Object containing pagination and filter parameters
+   * @returns Paginated response with user data
+   */
+  getPaginatedUsers: async (params?: any): Promise<PageResponse<UserDTO>> => {
+    const response = await api.get("/users/paginated", { params });
+    return response.data;
+  },
+
   //get users by Department Id
   getUsersByDepartmentId: async (departmentId: number): Promise<UserDTO[]> => {
     const response = await api.get(`/users/department/${departmentId}`);
@@ -61,7 +74,7 @@ export const usersAPI = {
     id: string | number,
     userData: Partial<UserDTO>
   ): Promise<UserDTO> => {
-    const response = await api.put(`/users/${id}`, userData);
+    const response = await api.put(`/users/${id}/update`, userData);
     return response.data;
   },
 

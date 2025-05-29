@@ -10,13 +10,14 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
+  CardDescription,
 } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
-import { CalendarIcon, Send, UserCheck } from "lucide-react";
+import { AlertCircle, CalendarIcon, Send, UserCheck } from "lucide-react";
 import {
   Popover,
   PopoverContent,
@@ -31,10 +32,13 @@ import {
   DocumentWorkflowDTO,
   DocumentProcessingStatus,
   UserDTO,
+  DepartmentDTO,
 } from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
 import { useRouter } from "next/navigation";
-
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { Link } from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
 interface DepartmentHeadAssignmentProps {
   documentId: number;
   departmentId: number;
@@ -55,10 +59,46 @@ export default function DepartmentHeadAssignment({
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
+  const { user } = useAuth();
+
   // State cho danh sách cán bộ trong phòng
   const [departmentStaff, setDepartmentStaff] = useState<UserDTO[]>([]);
   const [isLoadingStaff, setIsLoadingStaff] = useState(true);
+
+  // State cho phòng ban con
+  const [childDepartments, setChildDepartments] = useState<DepartmentDTO[]>([]);
+  const [isLoadingChildDepts, setIsLoadingChildDepts] = useState(true);
+  const [hasChildDepts, setHasChildDepts] = useState(false);
+
   const { toast } = useToast();
+
+  // Tải danh sách phòng ban con
+  useEffect(() => {
+    const fetchChildDepartments = async () => {
+      if (!departmentId) {
+        setIsLoadingChildDepts(false);
+        return;
+      }
+
+      try {
+        setIsLoadingChildDepts(true);
+        const childDepts = await workflowAPI.getChildDepartments(departmentId);
+        setChildDepartments(Array.isArray(childDepts) ? childDepts : []);
+        setHasChildDepts(Array.isArray(childDepts) && childDepts.length > 0);
+      } catch (error) {
+        console.error("Error fetching child departments:", error);
+        toast({
+          title: "Lỗi",
+          description: "Không thể tải danh sách đơn vị con",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoadingChildDepts(false);
+      }
+    };
+
+    fetchChildDepartments();
+  }, [departmentId, toast]);
 
   // Tải danh sách cán bộ phòng ngay khi component được mount
   useEffect(() => {
@@ -95,6 +135,11 @@ export default function DepartmentHeadAssignment({
     setSelectedStaff(staffId);
   };
 
+  // Điều hướng đến trang phân phối văn bản
+  const handleDistributeToChildDepts = () => {
+    router.push(`/van-ban-den/${documentId}/chuyen-xu-ly`);
+  };
+
   // Xử lý khi submit form
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -118,6 +163,17 @@ export default function DepartmentHeadAssignment({
       return;
     }
 
+    // Nếu có phòng ban con, hiển thị cảnh báo và hướng dẫn
+    if (hasChildDepts) {
+      toast({
+        title: "Không thể phân công trực tiếp",
+        description:
+          "Đơn vị này có đơn vị con. Vui lòng phân phối văn bản cho đơn vị con trước.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       setIsSubmitting(true);
 
@@ -129,6 +185,7 @@ export default function DepartmentHeadAssignment({
         closureDeadline: deadline,
         assignedToId: selectedStaff,
         documentId: documentId,
+        // Thêm departmentId để API có thể kiểm tra
       };
 
       // Gửi dữ liệu phân công xử lý văn bản đến API
@@ -141,11 +198,12 @@ export default function DepartmentHeadAssignment({
 
       // Chuyển về trang chi tiết
       router.push(`/van-ban-den/${documentId}`);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Lỗi khi phân công xử lý:", error);
       toast({
         title: "Lỗi",
-        description: "Không thể phân công xử lý. Vui lòng thử lại sau.",
+        description:
+          error.message || "Không thể phân công xử lý. Vui lòng thử lại sau.",
         variant: "destructive",
       });
     } finally {
@@ -160,9 +218,41 @@ export default function DepartmentHeadAssignment({
           <UserCheck className="h-5 w-5" />
           Phân công xử lý văn bản
         </CardTitle>
+        {hasChildDepts && (
+          <CardDescription className="text-amber-500">
+            Đơn vị này có đơn vị con. Nên phân phối văn bản cho đơn vị con
+            trước.
+          </CardDescription>
+        )}
       </CardHeader>
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-4">
+          {/* Hiển thị cảnh báo nếu phòng ban có đơn vị con */}
+          {isLoadingChildDepts ? (
+            <div className="text-center text-muted-foreground">
+              Đang kiểm tra cấu trúc đơn vị...
+            </div>
+          ) : hasChildDepts ? (
+            <Alert variant="warning" className="bg-amber-50 border-amber-200">
+              <AlertCircle className="h-4 w-4 text-amber-600" />
+              <AlertTitle className="text-amber-800">
+                Lưu ý quan trọng
+              </AlertTitle>
+              <AlertDescription className="text-amber-700">
+                Đơn vị này có {childDepartments.length} đơn vị con. Theo quy
+                trình, bạn cần phân phối văn bản cho các đơn vị con trước khi
+                phân công cho cán bộ.
+                <Button
+                  variant="outline"
+                  className="mt-2 border-amber-500 text-amber-600 hover:bg-amber-50"
+                  onClick={handleDistributeToChildDepts}
+                >
+                  Phân phối cho đơn vị con
+                </Button>
+              </AlertDescription>
+            </Alert>
+          ) : null}
+
           {/* Phần chọn cán bộ xử lý */}
           <div className="space-y-2">
             <Label>Chọn cán bộ xử lý</Label>
@@ -195,12 +285,15 @@ export default function DepartmentHeadAssignment({
                       >
                         <RadioGroupItem
                           id={`staff-${staff.id}`}
-                          value={staff.id? staff.id.toString() : ""}
+                          value={staff.id ? staff.id.toString() : ""}
                           className="mr-3"
+                          disabled={hasChildDepts}
                         />
                         <label
                           htmlFor={`staff-${staff.id}`}
-                          className="flex items-center gap-2 cursor-pointer flex-1"
+                          className={`flex items-center gap-2 cursor-pointer flex-1 ${
+                            hasChildDepts ? "opacity-50" : ""
+                          }`}
                         >
                           <Avatar className="h-8 w-8 bg-primary/10">
                             <AvatarFallback className="text-xs text-primary">
@@ -212,7 +305,9 @@ export default function DepartmentHeadAssignment({
                               {staff.fullName}
                             </p>
                             <p className="text-xs text-muted-foreground">
-                              {staff.roleDisplayNames? staff.roleDisplayNames[0] : "Nhân viên"}
+                              {staff.roleDisplayNames
+                                ? staff.roleDisplayNames[0]
+                                : "Nhân viên"}
                             </p>
                           </div>
                         </label>
@@ -265,6 +360,7 @@ export default function DepartmentHeadAssignment({
                     "w-full justify-start text-left font-normal",
                     !deadline && "text-muted-foreground"
                   )}
+                  disabled={hasChildDepts}
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
                   {deadline ? format(deadline, "dd/MM/yyyy") : "Chọn thời hạn"}
@@ -290,6 +386,7 @@ export default function DepartmentHeadAssignment({
               value={comments}
               onChange={(e) => setComments(e.target.value)}
               rows={4}
+              disabled={hasChildDepts}
             />
           </div>
         </CardContent>
@@ -301,21 +398,31 @@ export default function DepartmentHeadAssignment({
           >
             Hủy
           </Button>
-          <Button
-            type="submit"
-            disabled={isSubmitting || selectedStaff === null || !deadline}
-          >
-            {isSubmitting ? (
-              <>
-                <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
-                Đang gửi...
-              </>
-            ) : (
-              <>
-                <Send className="mr-2 h-4 w-4" /> Phân công
-              </>
-            )}
-          </Button>
+          {hasChildDepts ? (
+            <Button
+              type="button"
+              onClick={handleDistributeToChildDepts}
+              className="bg-amber-600 hover:bg-amber-700"
+            >
+              <Send className="mr-2 h-4 w-4" /> Phân phối cho đơn vị con
+            </Button>
+          ) : (
+            <Button
+              type="submit"
+              disabled={isSubmitting || selectedStaff === null || !deadline}
+            >
+              {isSubmitting ? (
+                <>
+                  <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
+                  Đang gửi...
+                </>
+              ) : (
+                <>
+                  <Send className="mr-2 h-4 w-4" /> Phân công
+                </>
+              )}
+            </Button>
+          )}
         </CardFooter>
       </form>
     </Card>
