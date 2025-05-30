@@ -131,7 +131,12 @@ export default function AddOutgoingDocumentPage() {
   const handleSelectRecipientWithDepartments = (
     recipientId: number | string
   ) => {
-    handleSelectRecipient(recipientId, departments);
+    handleSelectRecipient(
+      recipientId,
+      departments,
+      departmentUsers,
+      getLeadershipRole
+    );
   };
 
   return (

@@ -574,6 +574,8 @@ export default function AddIncomingDocumentPage() {
                           documentPurpose === "PROCESS" ? "both" : "secondary"
                         }
                         maxHeight="400px"
+                        primaryButtonText="Chính"
+                        secondaryButtonText="Phụ"
                       />
                     )}
                   </div>

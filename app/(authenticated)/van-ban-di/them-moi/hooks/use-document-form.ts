@@ -184,10 +184,32 @@ export function useDocumentForm() {
     return childIds;
   };
 
+  // Helper function to get all leadership users from departments
+  const getAllLeadershipUsersFromDepartments = (
+    departmentIds: number[],
+    departmentUsers: Record<number, any[]>,
+    getLeadershipRole: any
+  ): string[] => {
+    const userIds: string[] = [];
+
+    departmentIds.forEach((deptId) => {
+      const users = departmentUsers[deptId] || [];
+      users.forEach((user) => {
+        if (getLeadershipRole && getLeadershipRole(user)) {
+          userIds.push(`${deptId}-${user.id}`);
+        }
+      });
+    });
+
+    return userIds;
+  };
+
   // Handler for multi-selection (internal documents)
   const handleSelectRecipient = (
     recipientId: number | string,
-    departments?: any[]
+    departments?: any[],
+    departmentUsers?: Record<number, any[]>,
+    getLeadershipRole?: any
   ) => {
     setSelectedRecipients((prev) => {
       if (prev.includes(recipientId)) {
@@ -196,8 +218,20 @@ export function useDocumentForm() {
           const department = departments.find((d) => d.id === recipientId);
           if (department) {
             const childIds = getAllChildDepartmentsFromTree(department);
-            const idsToRemove = [recipientId, ...childIds];
-            return prev.filter((id) => !idsToRemove.includes(id as number));
+            const allDeptIds = [recipientId, ...childIds];
+
+            // Get all leadership users from these departments
+            const leadershipUserIds =
+              departmentUsers && getLeadershipRole
+                ? getAllLeadershipUsersFromDepartments(
+                    allDeptIds,
+                    departmentUsers,
+                    getLeadershipRole
+                  )
+                : [];
+
+            const idsToRemove = [...allDeptIds, ...leadershipUserIds];
+            return prev.filter((id) => !idsToRemove.includes(id as any));
           }
         }
         return prev.filter((id) => id !== recipientId);
@@ -205,12 +239,26 @@ export function useDocumentForm() {
         // If not selected, add it and its children
         let newRecipients = [...prev, recipientId];
 
-        // If it's a department (not a composite user ID), also add all child departments
+        // If it's a department (not a composite user ID), also add all child departments and their leadership
         if (typeof recipientId === "number" && departments) {
           const department = departments.find((d) => d.id === recipientId);
           if (department) {
             const childIds = getAllChildDepartmentsFromTree(department);
+            const allDeptIds = [recipientId, ...childIds];
+
+            // Add all department IDs
             newRecipients = [...newRecipients, ...childIds];
+
+            // Add all leadership users from these departments
+            if (departmentUsers && getLeadershipRole) {
+              const leadershipUserIds = getAllLeadershipUsersFromDepartments(
+                allDeptIds,
+                departmentUsers,
+                getLeadershipRole
+              );
+              newRecipients = [...newRecipients, ...leadershipUserIds];
+            }
+
             // Remove duplicates
             newRecipients = [...new Set(newRecipients)];
           }
