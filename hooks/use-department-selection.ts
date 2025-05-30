@@ -123,27 +123,24 @@ export function useDepartmentSelection() {
     setSecondaryDepartments((prev) => prev.filter((id) => id !== departmentId));
   }, []);
 
-  const selectSecondaryDepartment = useCallback(
-    (departmentId: number) => {
-      if (departmentId === primaryDepartment) {
-        return; // Cannot be both primary and secondary
+  // Helper function to get all child department IDs recursively
+  const getAllChildDepartmentIds = useCallback(
+    (department: DepartmentNode): number[] => {
+      const childIds: number[] = [];
+
+      if (department.children && department.children.length > 0) {
+        department.children.forEach((child) => {
+          childIds.push(child.id);
+          // Recursively get children of children
+          const grandChildren = getAllChildDepartmentIds(child);
+          childIds.push(...grandChildren);
+        });
       }
 
-      setSecondaryDepartments((prev) => {
-        if (prev.includes(departmentId)) {
-          return prev.filter((id) => id !== departmentId);
-        } else {
-          return [...prev, departmentId];
-        }
-      });
+      return childIds;
     },
-    [primaryDepartment]
+    []
   );
-
-  const clearSelection = useCallback(() => {
-    setPrimaryDepartment(null);
-    setSecondaryDepartments([]);
-  }, []);
 
   const findDepartmentById = useCallback(
     (id: number): DepartmentNode | null => {
@@ -168,6 +165,44 @@ export function useDepartmentSelection() {
     },
     [departments]
   );
+
+  const selectSecondaryDepartment = useCallback(
+    (departmentId: number) => {
+      if (departmentId === primaryDepartment) {
+        return; // Cannot be both primary and secondary
+      }
+
+      setSecondaryDepartments((prev) => {
+        if (prev.includes(departmentId)) {
+          // If already selected, remove it and its children
+          const department = findDepartmentById(departmentId);
+          if (department) {
+            const childIds = getAllChildDepartmentIds(department);
+            const idsToRemove = [departmentId, ...childIds];
+            return prev.filter((id) => !idsToRemove.includes(id));
+          }
+          return prev.filter((id) => id !== departmentId);
+        } else {
+          // If not selected, add it and its children
+          const department = findDepartmentById(departmentId);
+          if (department) {
+            const childIds = getAllChildDepartmentIds(department);
+            const newIds = [departmentId, ...childIds];
+            // Remove duplicates and merge with existing
+            const combined = [...prev, ...newIds];
+            return [...new Set(combined)];
+          }
+          return [...prev, departmentId];
+        }
+      });
+    },
+    [primaryDepartment, findDepartmentById, getAllChildDepartmentIds]
+  );
+
+  const clearSelection = useCallback(() => {
+    setPrimaryDepartment(null);
+    setSecondaryDepartments([]);
+  }, []);
 
   const getSelectedDepartments = useCallback(() => {
     const selected: {

@@ -3,14 +3,17 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
-import { Building, X } from "lucide-react";
+import { Building, X, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface NotificationSectionProps {
   notificationScope: "ALL_UNITS" | "SPECIFIC_UNITS";
-  secondaryDepartments: number[];
+  secondaryDepartments: (number | string)[];
   findDepartmentById: (id: number) => any;
+  findUserById?: (deptId: number, userId: number) => any;
+  getLeadershipRole?: (user: any) => string | null;
+  getRoleDisplayName?: (role: string) => string;
   onScopeChange: (scope: "ALL_UNITS" | "SPECIFIC_UNITS") => void;
   onRemoveSecondaryDepartment: (deptId: number | string) => void;
   onClearSelection: () => void;
@@ -20,10 +23,53 @@ export function NotificationSection({
   notificationScope,
   secondaryDepartments,
   findDepartmentById,
+  findUserById,
+  getLeadershipRole,
+  getRoleDisplayName,
   onScopeChange,
   onRemoveSecondaryDepartment,
   onClearSelection,
 }: NotificationSectionProps) {
+  // Parse recipients info for display
+  const getRecipientsInfo = () => {
+    return secondaryDepartments
+      .map((recipientId) => {
+        if (typeof recipientId === "string" && recipientId.includes("-")) {
+          // Composite ID: "departmentId-userId"
+          const [deptId, userId] = recipientId.split("-").map(Number);
+          const dept = findDepartmentById(deptId);
+          const user = findUserById?.(deptId, userId);
+
+          if (dept && user) {
+            const role = getLeadershipRole?.(user);
+            return {
+              id: recipientId,
+              type: "user",
+              department: dept,
+              user: user,
+              role: role ? getRoleDisplayName?.(role) : null,
+            };
+          }
+        } else {
+          // Department ID only
+          const dept = findDepartmentById(Number(recipientId));
+          if (dept) {
+            return {
+              id: recipientId,
+              type: "department",
+              department: dept,
+              user: null,
+              role: null,
+            };
+          }
+        }
+        return null;
+      })
+      .filter(Boolean);
+  };
+
+  const recipientsInfo = getRecipientsInfo();
+
   return (
     <div className="space-y-4 border-t pt-4">
       <div className="flex items-center gap-2">
@@ -139,23 +185,35 @@ export function NotificationSection({
             ) : (
               <ScrollArea className="max-h-48 p-3">
                 <div className="flex flex-wrap gap-2 pr-4">
-                  {secondaryDepartments.map((deptId) => {
-                    const dept = findDepartmentById(deptId as number);
-                    if (!dept) return null;
-
+                  {recipientsInfo.map((recipient) => {
+                    if (!recipient) return null;
+                    const { id, type, department, user, role } =
+                      recipient as any;
                     return (
                       <Badge
-                        key={deptId}
+                        key={id}
                         variant="outline"
                         className="pl-3 pr-2 py-2 flex items-center gap-2 border-blue-500 bg-white text-blue-700 shadow-sm hover:shadow-md transition-shadow"
                       >
-                        <Building className="h-3 w-3" />
-                        <span className="font-medium">{dept.name}</span>
+                        {type === "department" ? (
+                          <Building className="h-3 w-3" />
+                        ) : (
+                          <Users className="h-3 w-3" />
+                        )}
+                        <span className="font-medium">{department.name}</span>
+                        {role && (
+                          <Badge
+                            variant="outline"
+                            className="pl-2 pr-2 py-1 text-xs text-blue-700"
+                          >
+                            {role}
+                          </Badge>
+                        )}
                         <Button
                           variant="ghost"
                           size="icon"
                           className="h-5 w-5 rounded-full text-blue-700 hover:bg-blue-100 ml-1"
-                          onClick={() => onRemoveSecondaryDepartment(deptId)}
+                          onClick={() => onRemoveSecondaryDepartment(id)}
                           type="button"
                         >
                           <X className="h-3 w-3" />

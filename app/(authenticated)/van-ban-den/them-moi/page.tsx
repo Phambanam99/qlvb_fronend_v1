@@ -316,6 +316,12 @@ export default function AddIncomingDocumentPage() {
     }
   };
 
+  // Helper function to find user by ID
+  const findUserById = (deptId: number, userId: number) => {
+    const users = departmentUsers[deptId] || [];
+    return users.find((user) => user.id === userId) || null;
+  };
+
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -515,8 +521,13 @@ export default function AddIncomingDocumentPage() {
               {documentPurpose === "NOTIFICATION" && (
                 <NotificationSection
                   notificationScope={notificationScope}
-                  secondaryDepartments={secondaryDepartments as number[]}
+                  secondaryDepartments={
+                    secondaryDepartments as (number | string)[]
+                  }
                   findDepartmentById={findDepartmentById}
+                  findUserById={findUserById}
+                  getLeadershipRole={getLeadershipRole}
+                  getRoleDisplayName={getRoleDisplayName}
                   onScopeChange={handleNotificationScopeChange}
                   onRemoveSecondaryDepartment={handleRemoveSecondaryDepartment}
                   onClearSelection={clearSelection}
