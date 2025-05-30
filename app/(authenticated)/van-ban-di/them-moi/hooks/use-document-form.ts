@@ -149,17 +149,20 @@ export function useDocumentForm() {
     }
 
     if (documentScope === "EXTERNAL") {
-      return formData.recipient && formData.approver;
+      return !!(formData.recipient && formData.approver);
     }
 
     return true;
   };
 
+  // Computed validation result
+  const formIsValid = isFormValid();
+
   // Submit handler
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!isFormValid()) {
+    if (!formIsValid) {
       addNotification({
         title: "Lỗi",
         message: "Vui lòng điền đầy đủ thông tin bắt buộc",
@@ -306,6 +309,6 @@ export function useDocumentForm() {
     handleSaveDraft,
 
     // Validation
-    isFormValid: isFormValid(),
+    formIsValid,
   };
 }
