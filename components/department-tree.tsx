@@ -36,6 +36,8 @@ interface Props {
   selectionMode?: "primary" | "secondary" | "both" | "none";
   maxHeight?: string;
   className?: string;
+  primaryButtonText?: string;
+  secondaryButtonText?: string;
 }
 
 export function DepartmentTree({
@@ -54,6 +56,8 @@ export function DepartmentTree({
   selectionMode = "both",
   maxHeight = "400px",
   className,
+  primaryButtonText,
+  secondaryButtonText,
 }: Props) {
   if (!departments || departments.length === 0) {
     return (
@@ -96,6 +100,8 @@ export function DepartmentTree({
               getLeadershipRole={getLeadershipRole}
               getRoleDisplayName={getRoleDisplayName}
               selectionMode={selectionMode}
+              primaryButtonText={primaryButtonText}
+              secondaryButtonText={secondaryButtonText}
             />
           ))}
         </div>
@@ -119,6 +125,8 @@ interface DepartmentNodeProps {
   getLeadershipRole?: (user: UserDTO) => string | null;
   getRoleDisplayName?: (role: string) => string;
   selectionMode?: "primary" | "secondary" | "both" | "none";
+  primaryButtonText?: string;
+  secondaryButtonText?: string;
 }
 
 function DepartmentNode({
@@ -136,6 +144,8 @@ function DepartmentNode({
   getLeadershipRole,
   getRoleDisplayName,
   selectionMode = "both",
+  primaryButtonText,
+  secondaryButtonText,
 }: DepartmentNodeProps) {
   const isExpanded = expandedDepartments.has(department.id);
   const hasChildren = department.children && department.children.length > 0;
@@ -251,11 +261,11 @@ function DepartmentNode({
             >
               {isPrimary ? (
                 <>
-                  <Check className="h-3 w-3 mr-1" />
-                  Xử lý chính
+                  <Check className="h-3 w-3 mr-1" />{" "}
+                  {primaryButtonText || "Chọn"}
                 </>
               ) : (
-                "Xử lý chính"
+                primaryButtonText || "Chọn"
               )}
             </Button>
           )}
@@ -282,7 +292,7 @@ function DepartmentNode({
               ) : selectionMode === "both" ? (
                 "Phối hợp"
               ) : (
-                "Nhận thông báo"
+                secondaryButtonText || "Nhận thông báo"
               )}
             </Button>
           )}
@@ -390,10 +400,11 @@ function DepartmentNode({
                           >
                             {isPrimaryUser ? (
                               <>
-                                <Check className="h-3 w-3 mr-1" /> Chính
+                                <Check className="h-3 w-3 mr-1" />{" "}
+                                {primaryButtonText || "Chọn"}
                               </>
                             ) : (
-                              "Chính"
+                              primaryButtonText || "Chọn"
                             )}
                           </Button>
                         )}
@@ -451,6 +462,8 @@ function DepartmentNode({
                   getLeadershipRole={getLeadershipRole}
                   getRoleDisplayName={getRoleDisplayName}
                   selectionMode={selectionMode}
+                  primaryButtonText={primaryButtonText}
+                  secondaryButtonText={secondaryButtonText}
                 />
               ))}
             </div>

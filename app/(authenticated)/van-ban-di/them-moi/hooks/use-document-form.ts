@@ -176,20 +176,12 @@ export function useDocumentForm() {
 
       const documentData: Partial<OutgoingDocumentDTO> = {
         documentNumber: formData.documentNumber,
-        sentDate: formData.sentDate,
-        recipient:
-          documentScope === "EXTERNAL" ? formData.recipient : undefined,
-        documentType: formData.documentType,
         title: formData.title,
-        priority: formData.priority,
-        note: formData.note,
-        authorId: user?.id,
+        documentType: formData.documentType,
+        receivingDepartmentText:
+          documentScope === "EXTERNAL" ? formData.recipient : undefined,
+        signingDate: new Date(formData.sentDate),
         status: "DRAFT",
-        approverId:
-          documentScope === "EXTERNAL" ? formData.approver : undefined,
-        replyToId: replyToId ? Number(replyToId) : undefined,
-        scope: documentScope,
-        senderId: selectedSender ? String(selectedSender) : undefined,
       };
 
       console.log("Creating outgoing document:", documentData);
@@ -242,18 +234,12 @@ export function useDocumentForm() {
 
       const documentData: Partial<OutgoingDocumentDTO> = {
         documentNumber: formData.documentNumber,
-        sentDate: formData.sentDate,
-        recipient:
-          documentScope === "EXTERNAL" ? formData.recipient : undefined,
-        documentType: formData.documentType,
         title: formData.title,
-        priority: formData.priority,
-        note: formData.note,
-        authorId: user?.id,
+        documentType: formData.documentType,
+        receivingDepartmentText:
+          documentScope === "EXTERNAL" ? formData.recipient : undefined,
+        signingDate: new Date(formData.sentDate),
         status: "DRAFT",
-        replyToId: replyToId ? Number(replyToId) : undefined,
-        scope: documentScope,
-        senderId: selectedSender ? String(selectedSender) : undefined,
       };
 
       console.log("Saving draft:", documentData);

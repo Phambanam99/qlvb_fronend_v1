@@ -80,7 +80,7 @@ export function SenderSelection({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <Label className="text-base font-medium">
-          Phòng ban/Cán bộ gửi <span className="text-red-500">*</span>
+          Phòng ban/Cán bộ nhận <span className="text-red-500">*</span>
         </Label>
         {selectedSender && (
           <Button
@@ -99,7 +99,7 @@ export function SenderSelection({
       <div className="min-h-[60px] p-3 border rounded-md bg-accent/50">
         {!selectedSender ? (
           <div className="w-full h-full flex items-center justify-center text-sm text-muted-foreground">
-            Chưa chọn phòng ban/cán bộ gửi
+            Chưa chọn phòng ban/cán bộ nhận
           </div>
         ) : senderInfo ? (
           <div className="flex items-center gap-3">
@@ -137,7 +137,7 @@ export function SenderSelection({
           </div>
         ) : (
           <div className="w-full h-full flex items-center justify-center text-sm text-muted-foreground">
-            Không tìm thấy thông tin người gửi
+            Không tìm thấy thông tin người nhận
           </div>
         )}
       </div>
@@ -166,8 +166,9 @@ export function SenderSelection({
             onDepartmentExpand={onDepartmentExpand}
             getLeadershipRole={getLeadershipRole}
             getRoleDisplayName={getRoleDisplayName}
-            selectionMode="secondary"
+            selectionMode="primary"
             maxHeight="300px"
+            primaryButtonText="Chọn"
           />
         </div>
 
