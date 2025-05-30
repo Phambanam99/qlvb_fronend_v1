@@ -258,6 +258,7 @@ function DepartmentNode({
                   : "hover:bg-red-50 hover:text-red-700 opacity-0 group-hover:opacity-100"
               )}
               onClick={handleSelectPrimary}
+              type="button"
             >
               {isPrimary ? (
                 <>
@@ -283,6 +284,7 @@ function DepartmentNode({
               )}
               onClick={handleSelectSecondary}
               disabled={isPrimary}
+              type="button"
             >
               {isSecondary ? (
                 <>
@@ -397,6 +399,7 @@ function DepartmentNode({
                             onClick={() =>
                               onSelectPrimaryDepartment?.(compositeId as any)
                             }
+                            type="button"
                           >
                             {isPrimaryUser ? (
                               <>
@@ -425,13 +428,15 @@ function DepartmentNode({
                               onSelectSecondaryDepartment?.(compositeId as any)
                             }
                             disabled={isPrimaryUser}
+                            type="button"
                           >
                             {isSecondaryUser ? (
                               <>
-                                <Check className="h-3 w-3 mr-1" /> Phụ
+                                <Check className="h-3 w-3 mr-1" />{" "}
+                                {secondaryButtonText || "Phụ"}
                               </>
                             ) : (
-                              "Phụ"
+                              secondaryButtonText || "Phụ"
                             )}
                           </Button>
                         )}
