@@ -1042,11 +1042,11 @@ export default function AddOutgoingDocumentPage() {
                     <Label>Người soạn thảo</Label>
                     <div className="rounded-md border p-3 bg-accent/30">
                       <p className="font-medium">
-                        {user?.name || "Người dùng hiện tại"}
+                        {user?.fullName || "Người dùng hiện tại"}
                       </p>
                       <p className="text-sm text-muted-foreground">
-                        {user?.position || "Chức vụ"} -{" "}
-                        {user?.department || "Phòng ban"}
+                        {user?.roleDisplayNames || "Chức vụ"} -{" "}
+                        {user?.departmentName || "Phòng ban"}
                       </p>
                     </div>
                   </div>
