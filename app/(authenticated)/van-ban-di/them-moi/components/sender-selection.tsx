@@ -22,6 +22,11 @@ interface SenderSelectionProps {
   findDepartmentById: (id: number) => any;
   findUserById: (deptId: number, userId: number) => UserDTO | null;
   onClearSender: () => void;
+  selectedRecipients?: (number | string)[];
+  onSelectRecipient?: (recipientId: number | string) => void;
+  onRemoveRecipient?: (recipientId: number | string) => void;
+  onClearAllRecipients?: () => void;
+  isMultiSelect?: boolean;
 }
 
 export function SenderSelection({
@@ -38,8 +43,13 @@ export function SenderSelection({
   findDepartmentById,
   findUserById,
   onClearSender,
+  selectedRecipients,
+  onSelectRecipient,
+  onRemoveRecipient,
+  onClearAllRecipients,
+  isMultiSelect,
 }: SenderSelectionProps) {
-  // Parse sender info
+  // Parse sender info for single selection
   const getSenderInfo = () => {
     if (!selectedSender) return null;
 
@@ -74,7 +84,48 @@ export function SenderSelection({
     return null;
   };
 
+  // Parse recipients info for multi-selection
+  const getRecipientsInfo = () => {
+    if (!selectedRecipients || selectedRecipients.length === 0) return [];
+
+    return selectedRecipients
+      .map((recipientId) => {
+        if (typeof recipientId === "string" && recipientId.includes("-")) {
+          // Composite ID: "departmentId-userId"
+          const [deptId, userId] = recipientId.split("-").map(Number);
+          const dept = findDepartmentById(deptId);
+          const user = findUserById(deptId, userId);
+
+          if (dept && user) {
+            const role = getLeadershipRole(user);
+            return {
+              id: recipientId,
+              type: "user",
+              department: dept,
+              user: user,
+              role: role ? getRoleDisplayName(role) : null,
+            };
+          }
+        } else {
+          // Department ID only
+          const dept = findDepartmentById(Number(recipientId));
+          if (dept) {
+            return {
+              id: recipientId,
+              type: "department",
+              department: dept,
+              user: null,
+              role: null,
+            };
+          }
+        }
+        return null;
+      })
+      .filter(Boolean);
+  };
+
   const senderInfo = getSenderInfo();
+  const recipientsInfo = getRecipientsInfo();
 
   return (
     <div className="space-y-4">
@@ -82,22 +133,75 @@ export function SenderSelection({
         <Label className="text-base font-medium">
           Phòng ban/Cán bộ nhận <span className="text-red-500">*</span>
         </Label>
-        {selectedSender && (
+        {((isMultiSelect &&
+          selectedRecipients &&
+          selectedRecipients.length > 0) ||
+          (!isMultiSelect && selectedSender)) && (
           <Button
             variant="ghost"
             size="sm"
             className="h-8 px-2 text-xs"
-            onClick={onClearSender}
+            onClick={isMultiSelect ? onClearAllRecipients : onClearSender}
             type="button"
           >
-            Bỏ chọn
+            {isMultiSelect ? "Bỏ chọn tất cả" : "Bỏ chọn"}
           </Button>
         )}
       </div>
 
-      {/* Selected Sender Display */}
+      {/* Selected Recipients Display */}
       <div className="min-h-[60px] p-3 border rounded-md bg-accent/50">
-        {!selectedSender ? (
+        {isMultiSelect ? (
+          // Multi-selection display
+          recipientsInfo.length === 0 ? (
+            <div className="w-full h-full flex items-center justify-center text-sm text-muted-foreground">
+              Chưa chọn phòng ban/cán bộ nhận
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <div className="text-xs text-muted-foreground mb-2">
+                Đã chọn {recipientsInfo.length} người nhận:
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {recipientsInfo.map((recipient: any) => (
+                  <Badge
+                    key={recipient.id}
+                    variant="outline"
+                    className="pl-3 pr-2 py-2 flex items-center gap-2 border-primary bg-primary/10 text-primary"
+                  >
+                    {recipient.type === "user" ? (
+                      <Users className="h-3 w-3" />
+                    ) : (
+                      <Building className="h-3 w-3" />
+                    )}
+                    <div className="text-left">
+                      <div className="font-medium">
+                        {recipient.type === "user"
+                          ? recipient.user?.fullName
+                          : recipient.department.name}
+                      </div>
+                      {recipient.type === "user" && (
+                        <div className="text-xs opacity-80">
+                          {recipient.role} - {recipient.department.name}
+                        </div>
+                      )}
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-5 w-5 rounded-full text-primary hover:bg-primary/20 ml-1"
+                      onClick={() => onRemoveRecipient?.(recipient.id)}
+                      type="button"
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )
+        ) : // Single selection display
+        !selectedSender ? (
           <div className="w-full h-full flex items-center justify-center text-sm text-muted-foreground">
             Chưa chọn phòng ban/cán bộ nhận
           </div>
@@ -158,17 +262,25 @@ export function SenderSelection({
             departments={departments}
             expandedDepartments={expandedDepartments}
             toggleDepartment={toggleDepartment}
-            onSelectPrimaryDepartment={onSelectSender}
-            primaryDepartment={selectedSender as any}
-            secondaryDepartments={[]}
+            onSelectPrimaryDepartment={
+              isMultiSelect ? undefined : onSelectSender
+            }
+            onSelectSecondaryDepartment={
+              isMultiSelect ? onSelectRecipient : undefined
+            }
+            primaryDepartment={isMultiSelect ? null : (selectedSender as any)}
+            secondaryDepartments={
+              isMultiSelect ? (selectedRecipients as any[]) || [] : []
+            }
             departmentUsers={departmentUsers}
             isLoadingUsers={isLoadingUsers}
             onDepartmentExpand={onDepartmentExpand}
             getLeadershipRole={getLeadershipRole}
             getRoleDisplayName={getRoleDisplayName}
-            selectionMode="primary"
+            selectionMode={isMultiSelect ? "secondary" : "primary"}
             maxHeight="300px"
             primaryButtonText="Chọn"
+            secondaryButtonText="Chọn"
           />
         </div>
 

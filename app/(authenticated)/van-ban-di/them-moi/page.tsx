@@ -101,6 +101,7 @@ export default function AddOutgoingDocumentPage() {
     formData,
     documentScope,
     selectedSender,
+    selectedRecipients,
     file,
     isSubmitting,
     replyToId,
@@ -111,6 +112,9 @@ export default function AddOutgoingDocumentPage() {
     handleScopeChange,
     handleSelectSender,
     handleClearSender,
+    handleSelectRecipient,
+    handleRemoveRecipient,
+    handleClearAllRecipients,
     handleFileChange,
     handleSubmit,
     handleSaveDraft,
@@ -121,6 +125,13 @@ export default function AddOutgoingDocumentPage() {
   const findUserById = (deptId: number, userId: number) => {
     const users = departmentUsers[deptId] || [];
     return users.find((user) => user.id === userId) || null;
+  };
+
+  // Wrapper function to pass departments to handleSelectRecipient
+  const handleSelectRecipientWithDepartments = (
+    recipientId: number | string
+  ) => {
+    handleSelectRecipient(recipientId, departments);
   };
 
   return (
@@ -201,6 +212,11 @@ export default function AddOutgoingDocumentPage() {
                       findDepartmentById={findDepartmentById}
                       findUserById={findUserById}
                       onClearSender={handleClearSender}
+                      selectedRecipients={selectedRecipients}
+                      onSelectRecipient={handleSelectRecipientWithDepartments}
+                      onRemoveRecipient={handleRemoveRecipient}
+                      onClearAllRecipients={handleClearAllRecipients}
+                      isMultiSelect={true}
                     />
                   )}
                 </CardContent>

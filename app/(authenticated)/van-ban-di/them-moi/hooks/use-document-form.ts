@@ -43,6 +43,11 @@ export function useDocumentForm() {
     null
   );
 
+  // Multi-selection for internal documents
+  const [selectedRecipients, setSelectedRecipients] = useState<
+    (number | string)[]
+  >([]);
+
   // Form data
   const [formData, setFormData] = useState<FormData>({
     documentNumber: "",
@@ -135,6 +140,95 @@ export function useDocumentForm() {
     setSelectedSender(null);
   };
 
+  // Helper function to get all child department IDs recursively
+  const getAllChildDepartmentIds = (
+    deptId: number,
+    departments: any[]
+  ): number[] => {
+    const childIds: number[] = [];
+
+    const findChildren = (parentId: number, depts: any[]) => {
+      depts.forEach((dept) => {
+        if (dept.parentId === parentId) {
+          childIds.push(dept.id);
+          findChildren(dept.id, depts);
+        }
+        if (dept.children) {
+          dept.children.forEach((child: any) => {
+            if (child.parentId === parentId) {
+              childIds.push(child.id);
+              findChildren(child.id, dept.children);
+            }
+          });
+        }
+      });
+    };
+
+    findChildren(deptId, departments);
+    return childIds;
+  };
+
+  // Helper function to get all child departments recursively from tree structure
+  const getAllChildDepartmentsFromTree = (department: any): number[] => {
+    const childIds: number[] = [];
+
+    if (department.children && department.children.length > 0) {
+      department.children.forEach((child: any) => {
+        childIds.push(child.id);
+        // Recursively get children of children
+        const grandChildren = getAllChildDepartmentsFromTree(child);
+        childIds.push(...grandChildren);
+      });
+    }
+
+    return childIds;
+  };
+
+  // Handler for multi-selection (internal documents)
+  const handleSelectRecipient = (
+    recipientId: number | string,
+    departments?: any[]
+  ) => {
+    setSelectedRecipients((prev) => {
+      if (prev.includes(recipientId)) {
+        // If already selected, remove it and its children
+        if (typeof recipientId === "number" && departments) {
+          const department = departments.find((d) => d.id === recipientId);
+          if (department) {
+            const childIds = getAllChildDepartmentsFromTree(department);
+            const idsToRemove = [recipientId, ...childIds];
+            return prev.filter((id) => !idsToRemove.includes(id as number));
+          }
+        }
+        return prev.filter((id) => id !== recipientId);
+      } else {
+        // If not selected, add it and its children
+        let newRecipients = [...prev, recipientId];
+
+        // If it's a department (not a composite user ID), also add all child departments
+        if (typeof recipientId === "number" && departments) {
+          const department = departments.find((d) => d.id === recipientId);
+          if (department) {
+            const childIds = getAllChildDepartmentsFromTree(department);
+            newRecipients = [...newRecipients, ...childIds];
+            // Remove duplicates
+            newRecipients = [...new Set(newRecipients)];
+          }
+        }
+
+        return newRecipients;
+      }
+    });
+  };
+
+  const handleRemoveRecipient = (recipientId: number | string) => {
+    setSelectedRecipients((prev) => prev.filter((id) => id !== recipientId));
+  };
+
+  const handleClearAllRecipients = () => {
+    setSelectedRecipients([]);
+  };
+
   // Handler for file change
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -150,6 +244,10 @@ export function useDocumentForm() {
 
     if (documentScope === "EXTERNAL") {
       return !!(formData.recipient && formData.approver);
+    }
+
+    if (documentScope === "INTERNAL") {
+      return selectedRecipients.length > 0;
     }
 
     return true;
@@ -278,6 +376,7 @@ export function useDocumentForm() {
     formData,
     documentScope,
     selectedSender,
+    selectedRecipients,
     file,
     isSubmitting,
     replyToId,
@@ -290,6 +389,9 @@ export function useDocumentForm() {
     handleScopeChange,
     handleSelectSender,
     handleClearSender,
+    handleSelectRecipient,
+    handleRemoveRecipient,
+    handleClearAllRecipients,
     handleFileChange,
     handleSubmit,
     handleSaveDraft,
