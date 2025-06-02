@@ -23,6 +23,8 @@ import {
   User,
   Check,
   Circle,
+  Search,
+  ChevronUp,
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
@@ -986,27 +988,52 @@ export default function CreateInternalOutgoingDocumentPage() {
                     {/* Search and expand/collapse controls */}
                     <div className="space-y-2">
                       <div className="flex gap-2">
-                        <Input
-                          placeholder="Tìm kiếm phòng ban hoặc cá nhân..."
-                          value={searchQuery}
-                          onChange={(e) => searchRecipients(e.target.value)}
-                          className="flex-1"
-                        />
+                        <div className="relative flex-1">
+                          <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                            <Search className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                          <Input
+                            placeholder="Tìm kiếm phòng ban hoặc cá nhân..."
+                            value={searchQuery}
+                            onChange={(e) => searchRecipients(e.target.value)}
+                            className="pl-10 pr-4"
+                          />
+                          {searchQuery && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSearchQuery("");
+                                setIsSearching(false);
+                                setSearchResults({
+                                  departments: [],
+                                  users: [],
+                                });
+                              }}
+                              className="absolute inset-y-0 right-2 flex items-center text-muted-foreground hover:text-foreground"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
                         <Button
                           type="button"
                           variant="outline"
                           size="sm"
+                          className="gap-1"
                           onClick={expandAllDepartments}
                         >
-                          Mở tất cả
+                          <ChevronDown className="h-3.5 w-3.5" />
+                          <span>Mở tất cả</span>
                         </Button>
                         <Button
                           type="button"
                           variant="outline"
                           size="sm"
+                          className="gap-1"
                           onClick={collapseAllDepartments}
                         >
-                          Thu gọn
+                          <ChevronUp className="h-3.5 w-3.5" />
+                          <span>Thu gọn</span>
                         </Button>
                       </div>
                     </div>
@@ -1015,81 +1042,181 @@ export default function CreateInternalOutgoingDocumentPage() {
                       <ScrollArea className="h-60 w-full">
                         <div className="p-2">
                           {isSearching && searchQuery ? (
-                            <div className="space-y-2">
+                            <div className="space-y-4">
                               {searchResults.departments.length === 0 &&
                               searchResults.users.length === 0 ? (
-                                <p className="text-sm text-muted-foreground p-2">
-                                  Không tìm thấy kết quả phù hợp
-                                </p>
+                                <div className="flex items-center justify-center py-6">
+                                  <p className="text-sm text-muted-foreground">
+                                    Không tìm thấy kết quả phù hợp
+                                  </p>
+                                </div>
                               ) : (
                                 <>
                                   {searchResults.departments.length > 0 && (
                                     <div className="mb-4">
-                                      <h4 className="text-sm font-medium mb-2">
-                                        Phòng ban
-                                      </h4>
-                                      {searchResults.departments.map((dept) => (
-                                        <div
-                                          key={`search-dept-${dept.id}`}
-                                          className={`flex items-center py-1 px-2 hover:bg-accent rounded-md ${
-                                            selectedRecipients.includes(
-                                              dept.id.toString()
-                                            )
-                                              ? "bg-accent"
-                                              : ""
-                                          }`}
-                                          onClick={() =>
-                                            handleRecipientSelection(
-                                              dept.id.toString()
-                                            )
+                                      <div className="flex items-center px-2 py-1 mb-2 text-sm font-medium">
+                                        <Building className="h-4 w-4 mr-2 text-primary" />
+                                        <span className="text-primary">
+                                          Phòng ban
+                                        </span>
+                                      </div>
+                                      <div className="space-y-1.5">
+                                        {searchResults.departments.map(
+                                          (dept) => {
+                                            const deptLevel =
+                                              departmentLevels[dept.id] || 0;
+                                            const gradientColor =
+                                              getDepartmentColor(deptLevel);
+                                            const departmentIcon =
+                                              getDepartmentIcon(deptLevel);
+                                            const isFullySelected =
+                                              isDepartmentFullySelected(dept);
+                                            const isPartiallySelected =
+                                              !isFullySelected &&
+                                              isDepartmentPartiallySelected(
+                                                dept
+                                              );
+
+                                            const SelectionIcon =
+                                              isFullySelected ? (
+                                                <Check className="h-4 w-4 text-white" />
+                                              ) : isPartiallySelected ? (
+                                                <div className="h-3 w-3 rounded-sm bg-white/60" />
+                                              ) : (
+                                                <Circle className="h-4 w-4 text-white/40" />
+                                              );
+
+                                            return (
+                                              <div
+                                                key={`search-dept-${dept.id}`}
+                                                className="flex items-center mb-1 rounded-md overflow-hidden transition-all"
+                                              >
+                                                <div
+                                                  className={`flex items-center w-full py-2 px-3 bg-gradient-to-r ${gradientColor} 
+                                                  cursor-pointer hover:brightness-110 transition-all`}
+                                                  onClick={() =>
+                                                    handleRecipientSelection(
+                                                      dept.id.toString()
+                                                    )
+                                                  }
+                                                >
+                                                  <div className="flex items-center flex-grow">
+                                                    <div className="flex items-center">
+                                                      {departmentIcon}
+                                                      <span className="text-white font-medium">
+                                                        {dept.name}
+                                                      </span>
+                                                    </div>
+
+                                                    {/* Child and user counts */}
+                                                    <div className="flex ml-3 gap-3">
+                                                      {dept.children &&
+                                                        dept.children.length >
+                                                          0 && (
+                                                          <span className="text-xs text-white/80 bg-white/20 px-2 py-0.5 rounded-full">
+                                                            {
+                                                              dept.children
+                                                                .length
+                                                            }{" "}
+                                                            đơn vị
+                                                          </span>
+                                                        )}
+                                                      {(
+                                                        departmentUsers[
+                                                          dept.id
+                                                        ] || []
+                                                      ).length > 0 && (
+                                                        <span className="text-xs text-white/80 bg-white/20 px-2 py-0.5 rounded-full">
+                                                          {
+                                                            (
+                                                              departmentUsers[
+                                                                dept.id
+                                                              ] || []
+                                                            ).length
+                                                          }{" "}
+                                                          người
+                                                        </span>
+                                                      )}
+                                                    </div>
+                                                  </div>
+
+                                                  {/* Selection indicator */}
+                                                  <div className="flex-shrink-0 ml-2">
+                                                    {SelectionIcon}
+                                                  </div>
+                                                </div>
+                                              </div>
+                                            );
                                           }
-                                        >
-                                          <span className="flex-grow cursor-pointer">
-                                            {dept.name}
-                                          </span>
-                                        </div>
-                                      ))}
+                                        )}
+                                      </div>
                                     </div>
                                   )}
 
                                   {searchResults.users.length > 0 && (
                                     <div>
-                                      <h4 className="text-sm font-medium mb-2">
-                                        Cá nhân
-                                      </h4>
-                                      {searchResults.users.map(
-                                        ({ departmentId, user }) => {
-                                          const userId = `${departmentId}-${user.id}`;
-                                          const department =
-                                            findDepartmentById(departmentId);
-                                          const departmentName = department
-                                            ? department.name
-                                            : "";
+                                      <div className="flex items-center px-2 py-1 mb-2 text-sm font-medium">
+                                        <Users className="h-4 w-4 mr-2 text-primary" />
+                                        <span className="text-primary">
+                                          Cá nhân
+                                        </span>
+                                      </div>
+                                      <div className="space-y-1">
+                                        {searchResults.users.map(
+                                          ({ departmentId, user }) => {
+                                            const userId = `${departmentId}-${user.id}`;
+                                            const department =
+                                              findDepartmentById(departmentId);
+                                            const departmentName = department
+                                              ? department.name
+                                              : "";
+                                            const isUserSelected =
+                                              selectedRecipients.includes(
+                                                userId
+                                              );
+                                            const leadershipRole =
+                                              getLeadershipRole(user);
 
-                                          return (
-                                            <div
-                                              key={`search-user-${userId}`}
-                                              className={`flex items-center py-1 px-2 hover:bg-accent rounded-md ${
-                                                selectedRecipients.includes(
-                                                  userId
-                                                )
-                                                  ? "bg-accent"
-                                                  : ""
-                                              }`}
-                                              onClick={() =>
-                                                handleRecipientSelection(userId)
-                                              }
-                                            >
-                                              <span className="flex-grow cursor-pointer text-sm">
-                                                {user.fullName}
-                                                <span className="ml-2 text-xs text-muted-foreground">
-                                                  ({departmentName})
+                                            return (
+                                              <div
+                                                key={`search-user-${userId}`}
+                                                className={`flex items-center py-1.5 px-3 rounded-md cursor-pointer
+                                                  ${
+                                                    isUserSelected
+                                                      ? "bg-accent text-accent-foreground"
+                                                      : "hover:bg-accent/20"
+                                                  }`}
+                                                onClick={() =>
+                                                  handleRecipientSelection(
+                                                    userId
+                                                  )
+                                                }
+                                              >
+                                                <User className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
+                                                <span className="flex-grow text-sm">
+                                                  {user.fullName}
+                                                  <span className="ml-2 text-xs text-muted-foreground">
+                                                    ({departmentName})
+                                                  </span>
+                                                  {leadershipRole && (
+                                                    <span className="ml-1 text-xs text-muted-foreground">
+                                                      -{" "}
+                                                      {leadershipRole.displayName ||
+                                                        leadershipRole.name.replace(
+                                                          "ROLE_",
+                                                          ""
+                                                        )}
+                                                    </span>
+                                                  )}
                                                 </span>
-                                              </span>
-                                            </div>
-                                          );
-                                        }
-                                      )}
+                                                {isUserSelected && (
+                                                  <Check className="h-3.5 w-3.5 text-accent-foreground" />
+                                                )}
+                                              </div>
+                                            );
+                                          }
+                                        )}
+                                      </div>
                                     </div>
                                   )}
                                 </>
