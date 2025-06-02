@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,15 +16,11 @@ import {
   Save,
   Send,
   X,
-  ChevronRight,
-  ChevronDown,
   Building,
-  Users,
   User,
-  Check,
-  Circle,
-  Search,
-  ChevronUp,
+  Users,
+  Calendar,
+  FileText,
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
@@ -49,7 +45,61 @@ import {
   usersAPI,
   departmentsAPI,
 } from "@/lib/api";
+import { DepartmentTree } from "@/components/department-tree";
+import { useDepartmentSelection } from "@/hooks/use-department-selection";
+import { useDepartmentUsers } from "@/hooks/use-department-users";
 import { ReplyDocumentInfo } from "../../components/reply-document-info";
+
+// Leadership role configuration
+const leadershipRoleOrder: Record<string, number> = {
+  ROLE_CUC_TRUONG: 1,
+  ROLE_CUC_PHO: 2,
+  ROLE_CHINH_UY: 3,
+  ROLE_PHO_CHINH_UY: 4,
+  ROLE_TRUONG_PHONG: 5,
+  ROLE_PHO_PHONG: 6,
+  ROLE_TRAM_TRUONG: 7,
+  ROLE_PHO_TRAM_TRUONG: 8,
+  ROLE_CHINH_TRI_VIEN_TRAM: 9,
+  ROLE_CUM_TRUONG: 10,
+  ROLE_PHO_CUM_TRUONG: 11,
+  ROLE_CHINH_TRI_VIEN_CUM: 12,
+  ROLE_TRUONG_BAN: 13,
+};
+
+// Get role display name helper
+const getRoleDisplayName = (role: string): string => {
+  switch (role) {
+    case "ROLE_CUC_TRUONG":
+      return "Cục trưởng";
+    case "ROLE_CUC_PHO":
+      return "Cục phó";
+    case "ROLE_CHINH_UY":
+      return "Chính ủy";
+    case "ROLE_PHO_CHINH_UY":
+      return "Phó Chính ủy";
+    case "ROLE_TRUONG_PHONG":
+      return "Trưởng phòng";
+    case "ROLE_PHO_PHONG":
+      return "Phó phòng";
+    case "ROLE_TRAM_TRUONG":
+      return "Trạm trưởng";
+    case "ROLE_PHO_TRAM_TRUONG":
+      return "Phó Trạm trưởng";
+    case "ROLE_CHINH_TRI_VIEN_TRAM":
+      return "Chính trị viên trạm";
+    case "ROLE_CUM_TRUONG":
+      return "Cụm trưởng";
+    case "ROLE_PHO_CUM_TRUONG":
+      return "Phó cụm trưởng";
+    case "ROLE_CHINH_TRI_VIEN_CUM":
+      return "Chính trị viên cụm";
+    case "ROLE_TRUONG_BAN":
+      return "Trưởng Ban";
+    default:
+      return role.replace("ROLE_", "").replace(/_/g, " ").toLowerCase();
+  }
+};
 
 export default function ReplyInternalDocumentPage() {
   const router = useRouter();
@@ -58,6 +108,28 @@ export default function ReplyInternalDocumentPage() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const replyToId = searchParams.get("replyToId");
+  const formRef = useRef<HTMLFormElement>(null);
+
+  // Use custom hooks for department selection
+  const {
+    departments,
+    expandedDepartments,
+    isLoading: isLoadingDepartmentList,
+    primaryDepartment,
+    secondaryDepartments,
+    toggleDepartment,
+    selectPrimaryDepartment,
+    selectSecondaryDepartment,
+    clearSelection,
+    findDepartmentById,
+  } = useDepartmentSelection();
+
+  const {
+    departmentUsers,
+    isLoadingUsers,
+    fetchDepartmentUsers,
+    getLeadershipRole,
+  } = useDepartmentUsers(leadershipRoleOrder);
 
   // State for form data
   const [formData, setFormData] = useState({
@@ -73,49 +145,11 @@ export default function ReplyInternalDocumentPage() {
   // State for file attachment and incoming document
   const [file, setFile] = useState<File | null>(null);
   const [incomingDocument, setIncomingDocument] = useState<any>(null);
-
-  // State for departments and recipients
-  const [departments, setDepartments] = useState<any[]>([]);
-  const [expandedDepartments, setExpandedDepartments] = useState<
-    Record<number, boolean>
-  >({});
-  const [departmentUsers, setDepartmentUsers] = useState<Record<number, any[]>>(
-    {}
-  );
-  const [selectedRecipients, setSelectedRecipients] = useState<string[]>([]);
-
-  // State for loading states
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isLoadingDepartments, setIsLoadingDepartments] = useState(true);
-  const [isLoadingUsers, setIsLoadingUsers] = useState<Record<number, boolean>>(
-    {}
-  );
   const [isLoadingIncomingDoc, setIsLoadingIncomingDoc] = useState(true);
-
-  // Add state for search
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<{
-    departments: any[];
-    users: { departmentId: number; user: any }[];
-  }>({ departments: [], users: [] });
-  const [isSearching, setIsSearching] = useState(false);
-
-  // Add state for department hierarchy levels
-  const [departmentLevels, setDepartmentLevels] = useState<
-    Record<number, number>
+  const [validationErrors, setValidationErrors] = useState<
+    Record<string, string>
   >({});
-
-  // Leadership role configuration
-  const leadershipRoleOrder: Record<string, number> = {
-    ROLE_CUC_TRUONG: 1,
-    ROLE_CUC_PHO: 2,
-    ROLE_CHINH_UY: 3,
-    ROLE_PHO_CHINH_UY: 4,
-    ROLE_TRUONG_PHONG: 5,
-    ROLE_PHO_PHONG: 6,
-    ROLE_TRAM_TRUONG: 7,
-    ROLE_PHO_TRAM_TRUONG: 8,
-  };
 
   // Fetch incoming document if replyToId is provided
   useEffect(() => {
@@ -146,7 +180,7 @@ export default function ReplyInternalDocumentPage() {
           (doc.data as any).senderDepartment?.id;
 
         if (senderDeptId) {
-          setSelectedRecipients([senderDeptId.toString()]);
+          selectSecondaryDepartment(senderDeptId);
         }
       } catch (error) {
         console.error("Error fetching incoming document:", error);
@@ -162,289 +196,7 @@ export default function ReplyInternalDocumentPage() {
     };
 
     fetchIncomingDocument();
-  }, [replyToId, router, toast]);
-
-  // Fetch departments
-  useEffect(() => {
-    const fetchDepartments = async () => {
-      try {
-        setIsLoadingDepartments(true);
-        const response = await departmentsAPI.getAllDepartments();
-        const departments = response.content || [];
-        setDepartments(departments);
-
-        // Calculate department levels
-        const levels: Record<number, number> = {};
-        calculateDepartmentLevels(departments, 0, levels);
-        setDepartmentLevels(levels);
-
-        // Pre-fetch users for all departments to display immediately
-        if (departments.length > 0) {
-          const deptIds = getAllDepartmentIds(departments);
-          await Promise.all(deptIds.map((id) => fetchDepartmentUsers(id)));
-        }
-      } catch (error) {
-        console.error("Error fetching departments:", error);
-        toast({
-          title: "Lỗi",
-          description: "Không thể tải danh sách phòng ban",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoadingDepartments(false);
-      }
-    };
-
-    fetchDepartments();
-  }, [toast]);
-
-  // Calculate department levels for hierarchy visualization
-  const calculateDepartmentLevels = (
-    departments: any[],
-    level: number,
-    result: Record<number, number>
-  ) => {
-    for (const dept of departments) {
-      result[dept.id] = level;
-      if (dept.children && dept.children.length > 0) {
-        calculateDepartmentLevels(dept.children, level + 1, result);
-      }
-    }
-  };
-
-  // Get all department IDs from nested structure
-  const getAllDepartmentIds = (departments: any[]): number[] => {
-    let ids: number[] = [];
-
-    for (const dept of departments) {
-      ids.push(dept.id);
-      if (dept.children && dept.children.length > 0) {
-        ids = [...ids, ...getAllDepartmentIds(dept.children)];
-      }
-    }
-
-    return ids;
-  };
-
-  // Toggle department expansion (only for UI, users are already loaded)
-  const toggleDepartment = (departmentId: number) => {
-    setExpandedDepartments((prev) => ({
-      ...prev,
-      [departmentId]: !prev[departmentId],
-    }));
-  };
-
-  // Fetch users for a department
-  const fetchDepartmentUsers = async (departmentId: number) => {
-    try {
-      setIsLoadingUsers((prev) => ({ ...prev, [departmentId]: true }));
-      const users = await usersAPI.getUsersByDepartmentId(departmentId);
-      setDepartmentUsers((prev) => ({ ...prev, [departmentId]: users }));
-    } catch (error) {
-      console.error(
-        `Error fetching users for department ${departmentId}:`,
-        error
-      );
-    } finally {
-      setIsLoadingUsers((prev) => ({ ...prev, [departmentId]: false }));
-    }
-  };
-
-  // Check if a user has a leadership role
-  const getLeadershipRole = (user: any) => {
-    if (!user.roles || user.roles.length === 0) return null;
-
-    // Find leadership roles and sort by priority
-    const leadershipRoles = user.roles
-      .filter((role: any) => role.name in leadershipRoleOrder)
-      .sort(
-        (a: any, b: any) =>
-          leadershipRoleOrder[a.name] - leadershipRoleOrder[b.name]
-      );
-
-    return leadershipRoles.length > 0 ? leadershipRoles[0] : null;
-  };
-
-  // Handle recipient selection with cascade selection
-  const handleRecipientSelection = (recipientId: string) => {
-    // Check if this is a department (not a user)
-    const { departmentId, userId } = parseRecipientId(recipientId);
-
-    if (!userId) {
-      // This is a department selection - cascade selection to all children
-      const department = findDepartmentById(departmentId);
-      if (department) {
-        if (selectedRecipients.includes(recipientId)) {
-          // If department is already selected, unselect it and all its children
-          setSelectedRecipients((prev) => {
-            const newSelected = [...prev];
-            // Remove this department
-            const index = newSelected.indexOf(recipientId);
-            if (index !== -1) {
-              newSelected.splice(index, 1);
-            }
-
-            // Remove all child departments and their users
-            const childDeptIds = getAllChildDepartmentsIds(department);
-            childDeptIds.forEach((deptId) => {
-              const deptIdStr = deptId.toString();
-              const deptIndex = newSelected.indexOf(deptIdStr);
-              if (deptIndex !== -1) {
-                newSelected.splice(deptIndex, 1);
-              }
-
-              // Remove all users of this department
-              const usersToRemove = newSelected.filter((id) =>
-                id.startsWith(`${deptId}-`)
-              );
-              usersToRemove.forEach((userId) => {
-                const userIndex = newSelected.indexOf(userId);
-                if (userIndex !== -1) {
-                  newSelected.splice(userIndex, 1);
-                }
-              });
-            });
-
-            // Remove all users of this department
-            const usersToRemove = newSelected.filter((id) =>
-              id.startsWith(`${departmentId}-`)
-            );
-            usersToRemove.forEach((userId) => {
-              const userIndex = newSelected.indexOf(userId);
-              if (userIndex !== -1) {
-                newSelected.splice(userIndex, 1);
-              }
-            });
-
-            return newSelected;
-          });
-        } else {
-          // If department is not selected, select it and all its children
-          setSelectedRecipients((prev) => {
-            const newSelected = [...prev];
-
-            // Add this department if not already included
-            if (!newSelected.includes(recipientId)) {
-              newSelected.push(recipientId);
-            }
-
-            // Add all child departments
-            const childDeptIds = getAllChildDepartmentsIds(department);
-            childDeptIds.forEach((deptId) => {
-              const deptIdStr = deptId.toString();
-              if (!newSelected.includes(deptIdStr)) {
-                newSelected.push(deptIdStr);
-              }
-
-              // Add all users of this department
-              const deptUsers = departmentUsers[deptId] || [];
-              deptUsers.forEach((user) => {
-                const userId = `${deptId}-${user.id}`;
-                if (!newSelected.includes(userId)) {
-                  newSelected.push(userId);
-                }
-              });
-            });
-
-            // Add all users of this department
-            const deptUsers = departmentUsers[departmentId] || [];
-            deptUsers.forEach((user) => {
-              const userId = `${departmentId}-${user.id}`;
-              if (!newSelected.includes(userId)) {
-                newSelected.push(userId);
-              }
-            });
-
-            return newSelected;
-          });
-
-          // Expand the department to show the selection
-          setExpandedDepartments((prev) => ({
-            ...prev,
-            [departmentId]: true,
-          }));
-        }
-      }
-    } else {
-      // This is a user selection - just toggle this specific user
-      setSelectedRecipients((prev) => {
-        if (prev.includes(recipientId)) {
-          return prev.filter((id) => id !== recipientId);
-        } else {
-          return [...prev, recipientId];
-        }
-      });
-    }
-  };
-
-  // Get all child department IDs recursively
-  const getAllChildDepartmentsIds = (department: any): number[] => {
-    let ids: number[] = [];
-
-    if (department.children && department.children.length > 0) {
-      department.children.forEach((child: any) => {
-        ids.push(child.id);
-        ids = [...ids, ...getAllChildDepartmentsIds(child)];
-      });
-    }
-
-    return ids;
-  };
-
-  // Remove a recipient
-  const removeRecipient = (recipientId: string) => {
-    setSelectedRecipients((prev) => prev.filter((id) => id !== recipientId));
-  };
-
-  // Find department by ID
-  const findDepartmentById = (id: number): any => {
-    let result = null;
-
-    const searchInDepartments = (departments: any[]) => {
-      for (const dept of departments) {
-        if (dept.id === id) {
-          result = dept;
-          return;
-        }
-        if (dept.children) {
-          searchInDepartments(dept.children);
-        }
-      }
-    };
-
-    searchInDepartments(departments);
-    return result;
-  };
-
-  // Parse recipient ID (format: "dept-user" or just "dept")
-  const parseRecipientId = (id: string) => {
-    const parts = id.split("-");
-    if (parts.length === 2) {
-      return { departmentId: parseInt(parts[0]), userId: parseInt(parts[1]) };
-    }
-    return { departmentId: parseInt(id), userId: null };
-  };
-
-  // Get recipient display name
-  const getRecipientDisplayName = (recipientId: string) => {
-    const { departmentId, userId } = parseRecipientId(recipientId);
-
-    if (userId) {
-      const users = departmentUsers[departmentId] || [];
-      const user = users.find((u) => u.id === userId);
-      const department = findDepartmentById(departmentId);
-      if (user && department) {
-        return `${user.fullName} - ${department.name}`;
-      }
-    } else {
-      const department = findDepartmentById(departmentId);
-      if (department) {
-        return department.name;
-      }
-    }
-
-    return recipientId;
-  };
+  }, [replyToId, router, toast, selectSecondaryDepartment]);
 
   // Input change handlers
   const handleInputChange = (
@@ -470,16 +222,47 @@ export default function ReplyInternalDocumentPage() {
     }
   };
 
+  // Helper function to find user by ID
+  const findUserById = (deptId: number, userId: number) => {
+    const users = departmentUsers[deptId] || [];
+    return users.find((user) => user.id === userId) || null;
+  };
+
+  // Handle secondary department selection
+  const handleSelectSecondaryDepartment = (deptId: number | string) => {
+    const id =
+      typeof deptId === "string" && deptId.includes("-")
+        ? deptId
+        : Number(deptId);
+    selectSecondaryDepartment(id as number);
+  };
+
+  // Validation function
+  const validateForm = () => {
+    const errors: Record<string, string> = {};
+
+    if (!formData.documentNumber.trim()) {
+      errors.documentNumber = "Số văn bản là bắt buộc";
+    }
+
+    if (!formData.title.trim()) {
+      errors.title = "Tiêu đề văn bản là bắt buộc";
+    }
+
+    if (secondaryDepartments.length === 0) {
+      errors.recipients = "Vui lòng chọn ít nhất một người nhận";
+    }
+
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   // Form submission handlers
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     // Validate form
-    if (
-      !formData.documentNumber ||
-      !formData.title ||
-      selectedRecipients.length === 0
-    ) {
+    if (!validateForm()) {
       toast({
         title: "Thiếu thông tin",
         description:
@@ -501,6 +284,18 @@ export default function ReplyInternalDocumentPage() {
     try {
       setIsSubmitting(true);
 
+      // Prepare document data - convert selected departments and users to the right format
+      const recipients = secondaryDepartments.map((id: number | string) => {
+        // Check if this is a composite ID (department-user)
+        if (typeof id === "string" && id.includes("-")) {
+          const [departmentId, userId] = id.split("-").map(Number);
+          return { departmentId, userId };
+        } else {
+          // Just a department
+          return { departmentId: Number(id) };
+        }
+      });
+
       // Prepare document data
       const documentData: any = {
         documentNumber: formData.documentNumber,
@@ -510,10 +305,7 @@ export default function ReplyInternalDocumentPage() {
         signingDate: formData.sentDate,
         priority: formData.priority,
         notes: formData.note,
-        recipients: selectedRecipients.map((id) => {
-          const { departmentId, userId } = parseRecipientId(id);
-          return { departmentId, userId: userId || undefined };
-        }),
+        recipients: recipients,
         status: "PENDING_APPROVAL", // Set status for submission (not draft)
         isInternal: true,
         incomingDocumentId: replyToId,
@@ -576,6 +368,18 @@ export default function ReplyInternalDocumentPage() {
     try {
       setIsSubmitting(true);
 
+      // Prepare document data - convert selected departments and users to the right format
+      const recipients = secondaryDepartments.map((id: number | string) => {
+        // Check if this is a composite ID (department-user)
+        if (typeof id === "string" && id.includes("-")) {
+          const [departmentId, userId] = id.split("-").map(Number);
+          return { departmentId, userId };
+        } else {
+          // Just a department
+          return { departmentId: Number(id) };
+        }
+      });
+
       // Prepare document data
       const documentData: any = {
         documentNumber: formData.documentNumber,
@@ -585,10 +389,7 @@ export default function ReplyInternalDocumentPage() {
         signingDate: formData.sentDate,
         priority: formData.priority,
         notes: formData.note,
-        recipients: selectedRecipients.map((id) => {
-          const { departmentId, userId } = parseRecipientId(id);
-          return { departmentId, userId: userId || undefined };
-        }),
+        recipients: recipients,
         status: "DRAFT", // Set status as draft
         isInternal: true,
         incomingDocumentId: replyToId,
@@ -622,302 +423,6 @@ export default function ReplyInternalDocumentPage() {
     }
   };
 
-  // Get hierarchical color based on department level
-  const getDepartmentColor = (level: number) => {
-    const colors = [
-      "from-blue-500 to-blue-600", // Top level
-      "from-indigo-500 to-indigo-600", // Second level
-      "from-purple-500 to-purple-600", // Third level
-      "from-violet-500 to-violet-600", // Fourth level
-      "from-fuchsia-500 to-fuchsia-600", // Fifth level
-    ];
-
-    return colors[Math.min(level, colors.length - 1)];
-  };
-
-  // Get icon for department based on level
-  const getDepartmentIcon = (level: number) => {
-    if (level === 0) return <Building className="h-4 w-4 mr-1.5 text-white" />;
-    if (level === 1) return <Building className="h-4 w-4 mr-1.5 text-white" />;
-    return <Building className="h-4 w-4 mr-1.5 text-white" />;
-  };
-
-  // Check if department is fully selected (all children and users)
-  const isDepartmentFullySelected = (department: any): boolean => {
-    // Check if this department is selected
-    if (!selectedRecipients.includes(department.id.toString())) return false;
-
-    // Check if all users in this department are selected
-    const users = departmentUsers[department.id] || [];
-    const allUsersSelected =
-      users.length === 0 ||
-      users.every((user) =>
-        selectedRecipients.includes(`${department.id}-${user.id}`)
-      );
-    if (!allUsersSelected) return false;
-
-    // Check if all child departments are fully selected
-    if (department.children && department.children.length > 0) {
-      return department.children.every((child: any) =>
-        isDepartmentFullySelected(child)
-      );
-    }
-
-    return true;
-  };
-
-  // Check if department is partially selected
-  const isDepartmentPartiallySelected = (department: any): boolean => {
-    // If fully selected, it's not partially selected
-    if (isDepartmentFullySelected(department)) return false;
-
-    // Check if this department itself is selected
-    if (selectedRecipients.includes(department.id.toString())) return true;
-
-    // Check if any users in this department are selected
-    const users = departmentUsers[department.id] || [];
-    const anyUserSelected = users.some((user) =>
-      selectedRecipients.includes(`${department.id}-${user.id}`)
-    );
-    if (anyUserSelected) return true;
-
-    // Check if any child department is partially or fully selected
-    if (department.children && department.children.length > 0) {
-      return department.children.some(
-        (child: any) =>
-          isDepartmentPartiallySelected(child) ||
-          isDepartmentFullySelected(child)
-      );
-    }
-
-    return false;
-  };
-
-  // Render department tree
-  const renderDepartmentTree = (department: any, level = 0) => {
-    const isExpanded = expandedDepartments[department.id] || false;
-    const hasChildren = department.children && department.children.length > 0;
-    const users = departmentUsers[department.id] || [];
-    const deptLevel = departmentLevels[department.id] || 0;
-
-    // Determine selection state
-    const isFullySelected = isDepartmentFullySelected(department);
-    const isPartiallySelected =
-      !isFullySelected && isDepartmentPartiallySelected(department);
-
-    // Selection icon
-    let SelectionIcon = isFullySelected ? (
-      <Check className="h-4 w-4 text-white" />
-    ) : isPartiallySelected ? (
-      <div className="h-3 w-3 rounded-sm bg-white/60" />
-    ) : (
-      <Circle className="h-4 w-4 text-white/40" />
-    );
-
-    const gradientColor = getDepartmentColor(deptLevel);
-    const departmentIcon = getDepartmentIcon(deptLevel);
-
-    return (
-      <div key={department.id} className="department-tree">
-        <div
-          className={`flex items-center mb-1 rounded-md overflow-hidden transition-all
-            ${
-              isFullySelected
-                ? "ring-2 ring-offset-1 ring-white/40"
-                : isPartiallySelected
-                ? "ring-1 ring-offset-1 ring-white/20"
-                : ""
-            }`}
-        >
-          {/* Department header with gradient */}
-          <div
-            className={`flex items-center w-full py-2 px-3 bg-gradient-to-r ${gradientColor} 
-              cursor-pointer hover:brightness-110 transition-all group`}
-            onClick={() => handleRecipientSelection(department.id.toString())}
-            style={{ paddingLeft: `${deptLevel * 8 + 12}px` }}
-          >
-            {/* Expand/collapse button */}
-            {hasChildren && (
-              <button
-                type="button"
-                className="mr-2 h-5 w-5 flex items-center justify-center rounded-full 
-                  bg-white/20 hover:bg-white/40 transition-colors"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggleDepartment(department.id);
-                }}
-              >
-                {isExpanded ? (
-                  <ChevronDown className="h-3 w-3 text-white" />
-                ) : (
-                  <ChevronRight className="h-3 w-3 text-white" />
-                )}
-              </button>
-            )}
-
-            {/* Department icon and name */}
-            <div className="flex items-center flex-grow">
-              <div className="flex items-center">
-                {departmentIcon}
-                <span className="text-white font-medium">
-                  {department.name}
-                </span>
-              </div>
-
-              {/* Child and user counts */}
-              <div className="flex ml-3 gap-3">
-                {hasChildren && (
-                  <span className="text-xs text-white/80 bg-white/20 px-2 py-0.5 rounded-full">
-                    {department.children.length} đơn vị
-                  </span>
-                )}
-                {users.length > 0 && (
-                  <span className="text-xs text-white/80 bg-white/20 px-2 py-0.5 rounded-full">
-                    {users.length} người
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Selection indicator */}
-            <div className="flex-shrink-0 ml-2">{SelectionIcon}</div>
-          </div>
-        </div>
-
-        {/* Users and child departments */}
-        <div className={`pl-6 ${isExpanded ? "block" : "hidden"}`}>
-          {/* Users */}
-          {users.length > 0 && (
-            <div className="mb-2 mt-1">
-              <div className="flex items-center text-xs text-muted-foreground mb-1 pl-2">
-                <Users className="h-3 w-3 mr-1.5" />
-                <span>Cá nhân trong đơn vị</span>
-              </div>
-              <div className="space-y-1">
-                {users.map((user) => {
-                  const userId = `${department.id}-${user.id}`;
-                  const isUserSelected = selectedRecipients.includes(userId);
-                  const leadershipRole = getLeadershipRole(user);
-
-                  return (
-                    <div
-                      key={userId}
-                      className={`flex items-center py-1.5 px-3 rounded-md cursor-pointer
-                        ${
-                          isUserSelected
-                            ? "bg-accent text-accent-foreground"
-                            : "hover:bg-accent/20"
-                        }`}
-                      style={{ marginLeft: `${deptLevel * 4}px` }}
-                      onClick={() => handleRecipientSelection(userId)}
-                    >
-                      <User className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
-                      <span className="flex-grow text-sm">
-                        {user.fullName}
-                        {leadershipRole && (
-                          <span className="ml-2 text-xs text-muted-foreground">
-                            (
-                            {leadershipRole.displayName ||
-                              leadershipRole.name.replace("ROLE_", "")}
-                            )
-                          </span>
-                        )}
-                      </span>
-                      {isUserSelected && (
-                        <Check className="h-3.5 w-3.5 text-accent-foreground" />
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Child departments */}
-          {hasChildren &&
-            department.children.map((child: any) =>
-              renderDepartmentTree(child)
-            )}
-        </div>
-      </div>
-    );
-  };
-
-  // Search for recipients
-  const searchRecipients = (query: string) => {
-    setSearchQuery(query);
-
-    if (!query.trim()) {
-      setIsSearching(false);
-      setSearchResults({ departments: [], users: [] });
-      return;
-    }
-
-    setIsSearching(true);
-
-    const normalizedQuery = query.toLowerCase().trim();
-
-    // Search in departments
-    const matchedDepartments = findMatchingDepartments(
-      departments,
-      normalizedQuery
-    );
-
-    // Search in users
-    const matchedUsers: { departmentId: number; user: any }[] = [];
-    Object.entries(departmentUsers).forEach(([deptId, users]) => {
-      const departmentId = Number(deptId);
-      users.forEach((user) => {
-        if (user.fullName.toLowerCase().includes(normalizedQuery)) {
-          matchedUsers.push({ departmentId, user });
-        }
-      });
-    });
-
-    setSearchResults({
-      departments: matchedDepartments,
-      users: matchedUsers,
-    });
-  };
-
-  // Find departments matching search query
-  const findMatchingDepartments = (
-    departmentList: any[],
-    query: string
-  ): any[] => {
-    const matches: any[] = [];
-
-    departmentList.forEach((dept) => {
-      if (dept.name.toLowerCase().includes(query)) {
-        matches.push(dept);
-      }
-
-      if (dept.children && dept.children.length > 0) {
-        const childMatches = findMatchingDepartments(dept.children, query);
-        matches.push(...childMatches);
-      }
-    });
-
-    return matches;
-  };
-
-  // Expand all departments
-  const expandAllDepartments = () => {
-    const allDeptIds = getAllDepartmentIds(departments);
-    const expanded: Record<number, boolean> = {};
-
-    allDeptIds.forEach((id) => {
-      expanded[id] = true;
-    });
-
-    setExpandedDepartments(expanded);
-  };
-
-  // Collapse all departments
-  const collapseAllDepartments = () => {
-    setExpandedDepartments({});
-  };
-
   if (isLoadingIncomingDoc) {
     return (
       <div className="flex h-[calc(100vh-4rem)] w-full items-center justify-center">
@@ -946,7 +451,7 @@ export default function ReplyInternalDocumentPage() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
         <div className="grid gap-6 md:grid-cols-2">
           {/* Document Information Card */}
           <Card>
@@ -969,7 +474,15 @@ export default function ReplyInternalDocumentPage() {
                     onChange={handleInputChange}
                     placeholder="Nhập số văn bản"
                     required
+                    className={
+                      validationErrors.documentNumber ? "border-red-500" : ""
+                    }
                   />
+                  {validationErrors.documentNumber && (
+                    <p className="text-sm text-red-500">
+                      {validationErrors.documentNumber}
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="sentDate">Ngày ban hành</Label>
@@ -991,7 +504,13 @@ export default function ReplyInternalDocumentPage() {
                   onChange={handleInputChange}
                   placeholder="Nhập tiêu đề văn bản"
                   required
+                  className={validationErrors.title ? "border-red-500" : ""}
                 />
+                {validationErrors.title && (
+                  <p className="text-sm text-red-500">
+                    {validationErrors.title}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -1070,327 +589,100 @@ export default function ReplyInternalDocumentPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="pt-6">
-                {isLoadingDepartments ? (
+                {isLoadingDepartmentList ? (
                   <div className="flex items-center justify-center p-4">
                     <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                     <span>Đang tải danh sách phòng ban...</span>
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {/* Search and expand/collapse controls */}
                     <div className="space-y-2">
-                      <div className="flex gap-2">
-                        <div className="relative flex-1">
-                          <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                            <Search className="h-4 w-4 text-muted-foreground" />
-                          </div>
-                          <Input
-                            placeholder="Tìm kiếm phòng ban hoặc cá nhân..."
-                            value={searchQuery}
-                            onChange={(e) => searchRecipients(e.target.value)}
-                            className="pl-10 pr-4"
-                          />
-                          {searchQuery && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSearchQuery("");
-                                setIsSearching(false);
-                                setSearchResults({
-                                  departments: [],
-                                  users: [],
-                                });
-                              }}
-                              className="absolute inset-y-0 right-2 flex items-center text-muted-foreground hover:text-foreground"
-                            >
-                              <X className="h-4 w-4" />
-                            </button>
-                          )}
-                        </div>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="gap-1"
-                          onClick={expandAllDepartments}
-                        >
-                          <ChevronDown className="h-3.5 w-3.5" />
-                          <span>Mở tất cả</span>
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="gap-1"
-                          onClick={collapseAllDepartments}
-                        >
-                          <ChevronUp className="h-3.5 w-3.5" />
-                          <span>Thu gọn</span>
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div className="border rounded-md">
-                      <ScrollArea className="h-60 w-full">
-                        <div className="p-2">
-                          {isSearching && searchQuery ? (
-                            <div className="space-y-4">
-                              {searchResults.departments.length === 0 &&
-                              searchResults.users.length === 0 ? (
-                                <div className="flex items-center justify-center py-6">
-                                  <p className="text-sm text-muted-foreground">
-                                    Không tìm thấy kết quả phù hợp
-                                  </p>
-                                </div>
-                              ) : (
-                                <>
-                                  {searchResults.departments.length > 0 && (
-                                    <div className="mb-4">
-                                      <div className="flex items-center px-2 py-1 mb-2 text-sm font-medium">
-                                        <Building className="h-4 w-4 mr-2 text-primary" />
-                                        <span className="text-primary">
-                                          Phòng ban
-                                        </span>
-                                      </div>
-                                      <div className="space-y-1.5">
-                                        {searchResults.departments.map(
-                                          (dept) => {
-                                            const deptLevel =
-                                              departmentLevels[dept.id] || 0;
-                                            const gradientColor =
-                                              getDepartmentColor(deptLevel);
-                                            const departmentIcon =
-                                              getDepartmentIcon(deptLevel);
-                                            const isFullySelected =
-                                              isDepartmentFullySelected(dept);
-                                            const isPartiallySelected =
-                                              !isFullySelected &&
-                                              isDepartmentPartiallySelected(
-                                                dept
-                                              );
-
-                                            const SelectionIcon =
-                                              isFullySelected ? (
-                                                <Check className="h-4 w-4 text-white" />
-                                              ) : isPartiallySelected ? (
-                                                <div className="h-3 w-3 rounded-sm bg-white/60" />
-                                              ) : (
-                                                <Circle className="h-4 w-4 text-white/40" />
-                                              );
-
-                                            return (
-                                              <div
-                                                key={`search-dept-${dept.id}`}
-                                                className="flex items-center mb-1 rounded-md overflow-hidden transition-all"
-                                              >
-                                                <div
-                                                  className={`flex items-center w-full py-2 px-3 bg-gradient-to-r ${gradientColor} 
-                                                  cursor-pointer hover:brightness-110 transition-all`}
-                                                  onClick={() =>
-                                                    handleRecipientSelection(
-                                                      dept.id.toString()
-                                                    )
-                                                  }
-                                                >
-                                                  <div className="flex items-center flex-grow">
-                                                    <div className="flex items-center">
-                                                      {departmentIcon}
-                                                      <span className="text-white font-medium">
-                                                        {dept.name}
-                                                      </span>
-                                                    </div>
-
-                                                    {/* Child and user counts */}
-                                                    <div className="flex ml-3 gap-3">
-                                                      {dept.children &&
-                                                        dept.children.length >
-                                                          0 && (
-                                                          <span className="text-xs text-white/80 bg-white/20 px-2 py-0.5 rounded-full">
-                                                            {
-                                                              dept.children
-                                                                .length
-                                                            }{" "}
-                                                            đơn vị
-                                                          </span>
-                                                        )}
-                                                      {(
-                                                        departmentUsers[
-                                                          dept.id
-                                                        ] || []
-                                                      ).length > 0 && (
-                                                        <span className="text-xs text-white/80 bg-white/20 px-2 py-0.5 rounded-full">
-                                                          {
-                                                            (
-                                                              departmentUsers[
-                                                                dept.id
-                                                              ] || []
-                                                            ).length
-                                                          }{" "}
-                                                          người
-                                                        </span>
-                                                      )}
-                                                    </div>
-                                                  </div>
-
-                                                  {/* Selection indicator */}
-                                                  <div className="flex-shrink-0 ml-2">
-                                                    {SelectionIcon}
-                                                  </div>
-                                                </div>
-                                              </div>
-                                            );
-                                          }
-                                        )}
-                                      </div>
-                                    </div>
-                                  )}
-
-                                  {searchResults.users.length > 0 && (
-                                    <div>
-                                      <div className="flex items-center px-2 py-1 mb-2 text-sm font-medium">
-                                        <Users className="h-4 w-4 mr-2 text-primary" />
-                                        <span className="text-primary">
-                                          Cá nhân
-                                        </span>
-                                      </div>
-                                      <div className="space-y-1">
-                                        {searchResults.users.map(
-                                          ({ departmentId, user }) => {
-                                            const userId = `${departmentId}-${user.id}`;
-                                            const department =
-                                              findDepartmentById(departmentId);
-                                            const departmentName = department
-                                              ? department.name
-                                              : "";
-                                            const isUserSelected =
-                                              selectedRecipients.includes(
-                                                userId
-                                              );
-                                            const leadershipRole =
-                                              getLeadershipRole(user);
-
-                                            return (
-                                              <div
-                                                key={`search-user-${userId}`}
-                                                className={`flex items-center py-1.5 px-3 rounded-md cursor-pointer
-                                                  ${
-                                                    isUserSelected
-                                                      ? "bg-accent text-accent-foreground"
-                                                      : "hover:bg-accent/20"
-                                                  }`}
-                                                onClick={() =>
-                                                  handleRecipientSelection(
-                                                    userId
-                                                  )
-                                                }
-                                              >
-                                                <User className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
-                                                <span className="flex-grow text-sm">
-                                                  {user.fullName}
-                                                  <span className="ml-2 text-xs text-muted-foreground">
-                                                    ({departmentName})
-                                                  </span>
-                                                  {leadershipRole && (
-                                                    <span className="ml-1 text-xs text-muted-foreground">
-                                                      -{" "}
-                                                      {leadershipRole.displayName ||
-                                                        leadershipRole.name.replace(
-                                                          "ROLE_",
-                                                          ""
-                                                        )}
-                                                    </span>
-                                                  )}
-                                                </span>
-                                                {isUserSelected && (
-                                                  <Check className="h-3.5 w-3.5 text-accent-foreground" />
-                                                )}
-                                              </div>
-                                            );
-                                          }
-                                        )}
-                                      </div>
-                                    </div>
-                                  )}
-                                </>
-                              )}
-                            </div>
-                          ) : (
-                            // Original department tree
-                            departments.map((department) =>
-                              renderDepartmentTree(department)
-                            )
-                          )}
-                        </div>
-                      </ScrollArea>
-                    </div>
-
-                    {/* Selected recipients */}
-                    <div>
                       <Label>
-                        Đã chọn <span className="text-red-500">*</span>
-                      </Label>
-                      <div className="border rounded-md p-2 min-h-[100px] mt-1">
-                        {selectedRecipients.length === 0 ? (
-                          <p className="text-sm text-muted-foreground">
-                            Chưa có người nhận nào được chọn
-                          </p>
-                        ) : (
-                          <div className="flex flex-wrap gap-2">
-                            {selectedRecipients.map((id) => (
-                              <Badge
-                                key={id}
-                                variant="secondary"
-                                className="flex items-center gap-1"
-                              >
-                                {getRecipientDisplayName(id)}
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-4 w-4 p-0 hover:bg-transparent"
-                                  onClick={() => removeRecipient(id)}
-                                >
-                                  <X className="h-3 w-3" />
-                                </Button>
-                              </Badge>
-                            ))}
-                          </div>
+                        Danh sách phòng ban và người dùng{" "}
+                        {validationErrors.recipients && (
+                          <span className="text-red-500">*</span>
                         )}
+                      </Label>
+                      <div className="border rounded-md overflow-hidden">
+                        <div className="bg-primary/5 px-4 py-2 border-b flex items-center justify-between">
+                          <span className="text-sm font-medium">
+                            Chọn người nhận văn bản
+                          </span>
+                        </div>
+                        <div className="max-h-[400px] overflow-y-auto">
+                          <DepartmentTree
+                            departments={departments}
+                            expandedDepartments={new Set(expandedDepartments)}
+                            toggleDepartment={toggleDepartment}
+                            onSelectSecondaryDepartment={
+                              handleSelectSecondaryDepartment
+                            }
+                            secondaryDepartments={secondaryDepartments as any}
+                            departmentUsers={departmentUsers}
+                            isLoadingUsers={isLoadingUsers}
+                            onDepartmentExpand={fetchDepartmentUsers}
+                            getLeadershipRole={getLeadershipRole}
+                            getRoleDisplayName={getRoleDisplayName}
+                            selectionMode="secondary"
+                            maxHeight="400px"
+                            secondaryButtonText="Chọn"
+                          />
+                        </div>
                       </div>
+                      {validationErrors.recipients && (
+                        <p className="text-sm text-red-500">
+                          {validationErrors.recipients}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-4 text-xs mt-1">
+                      <div className="flex items-center gap-1">
+                        <div className="w-3 h-3 rounded-sm border border-blue-500 bg-white"></div>
+                        <span>Người nhận</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Building className="h-3 w-3 text-muted-foreground" />
+                        <span>Đơn vị lớn</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Users className="h-3 w-3 text-muted-foreground" />
+                        <span>Đơn vị nhỏ</span>
+                      </div>
+                    </div>
+
+                    <div className="mt-6 space-y-2">
+                      <div className="flex justify-center space-x-2">
+                        <Button
+                          type="submit"
+                          className="w-full"
+                          disabled={isSubmitting}
+                        >
+                          {isSubmitting ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          ) : (
+                            <Send className="mr-2 h-4 w-4" />
+                          )}
+                          Gửi văn bản
+                        </Button>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full"
+                        onClick={handleSaveDraft}
+                        disabled={isSubmitting}
+                      >
+                        {isSubmitting ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <Save className="mr-2 h-4 w-4" />
+                        )}
+                        Lưu nháp
+                      </Button>
                     </div>
                   </div>
                 )}
-
-                <div className="mt-6 space-y-2">
-                  <div className="flex justify-center space-x-2">
-                    <Button
-                      type="submit"
-                      className="w-full"
-                      disabled={isSubmitting}
-                    >
-                      {isSubmitting ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <Send className="mr-2 h-4 w-4" />
-                      )}
-                      Gửi văn bản
-                    </Button>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full"
-                    onClick={handleSaveDraft}
-                    disabled={isSubmitting}
-                  >
-                    {isSubmitting ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <Save className="mr-2 h-4 w-4" />
-                    )}
-                    Lưu nháp
-                  </Button>
-                </div>
               </CardContent>
             </Card>
 
