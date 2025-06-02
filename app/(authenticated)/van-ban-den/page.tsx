@@ -52,6 +52,51 @@ const FULL_ACCESS_ROLES = [
   "ROLE_PHO_CHINH_UY",
 ];
 
+// Define the simplified status groups
+const SIMPLIFIED_STATUS_GROUPS = {
+  pending: {
+    code: "pending",
+    displayName: "Đang xử lý",
+    statuses: [
+      "distributed",
+      "dept_assigned",
+      "specialist_processing",
+      "specialist_submitted",
+      "leader_reviewing",
+      "department_reviewing",
+    ],
+  },
+  completed: {
+    code: "completed",
+    displayName: "Đã xử lý",
+    statuses: [
+      "leader_approved",
+      "leader_commented",
+      "department_approved",
+      "department_commented",
+      "published",
+      "completed",
+      "archived",
+    ],
+  },
+  not_processed: {
+    code: "not_processed",
+    displayName: "Chưa xử lý",
+    statuses: ["draft", "registered", "pending_approval"],
+  },
+};
+
+// Helper function to get simplified status group based on detailed status
+const getSimplifiedStatusGroup = (detailedStatus: string) => {
+  for (const [key, group] of Object.entries(SIMPLIFIED_STATUS_GROUPS)) {
+    if (group.statuses.includes(detailedStatus)) {
+      return { code: group.code, displayName: group.displayName };
+    }
+  }
+  // Default to pending if not found
+  return { code: "pending", displayName: "Đang xử lý" };
+};
+
 export default function IncomingDocumentsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -341,7 +386,7 @@ export default function IncomingDocumentsPage() {
           childIds.push(child.id);
           collectChildIds(child);
         });
-      }documentType
+      }
     };
 
     collectChildIds(selectedDept);
@@ -362,9 +407,21 @@ export default function IncomingDocumentsPage() {
       docTitle.includes(searchLower) ||
       docAuthority.includes(searchLower);
 
-    // Lọc theo trạng thái
+    // Lọc theo trạng thái (simplified)
     const matchesStatus =
-      statusFilter === "all" || doc.processingStatus === statusFilter;
+      statusFilter === "all" ||
+      (statusFilter === "pending" &&
+        SIMPLIFIED_STATUS_GROUPS.pending.statuses.includes(
+          doc.processingStatus
+        )) ||
+      (statusFilter === "completed" &&
+        SIMPLIFIED_STATUS_GROUPS.completed.statuses.includes(
+          doc.processingStatus
+        )) ||
+      (statusFilter === "not_processed" &&
+        SIMPLIFIED_STATUS_GROUPS.not_processed.statuses.includes(
+          doc.processingStatus
+        ));
 
     // Lọc theo phòng ban và phòng ban con
     let matchesDepartment = true;
@@ -402,8 +459,23 @@ export default function IncomingDocumentsPage() {
   });
 
   const getStatusBadge = (status: string, displayStatus: string) => {
-    const badgeInfo = getStatusBadgeInfo(status, displayStatus);
-    return <Badge variant={badgeInfo.variant}>{badgeInfo.text}</Badge>;
+    // Get the simplified status group first
+    const simplifiedStatus = getSimplifiedStatusGroup(status);
+
+    // Determine badge variant based on simplified status
+    let variant: "default" | "outline" | "secondary" | "destructive" =
+      "default";
+
+    if (simplifiedStatus.code === "pending") {
+      variant = "secondary"; // In progress - use secondary (usually gray/neutral)
+    } else if (simplifiedStatus.code === "completed") {
+      variant = "default"; // Completed - use default (usually primary color)
+    } else if (simplifiedStatus.code === "not_processed") {
+      variant = "outline"; // Not processed yet - use outline
+    }
+
+    // Return badge with the original status text but styled based on simplified group
+    return <Badge variant={variant}>{displayStatus}</Badge>;
   };
 
   const getAssignmentBadge = (primaryId: string) => {
@@ -544,9 +616,9 @@ export default function IncomingDocumentsPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Tất cả</SelectItem>
-              {statuses.map((status) => (
-                <SelectItem key={status.code} value={status.code}>
-                  {status.displayName}
+              {Object.entries(SIMPLIFIED_STATUS_GROUPS).map(([key, group]) => (
+                <SelectItem key={key} value={key}>
+                  {group.displayName}
                 </SelectItem>
               ))}
             </SelectContent>

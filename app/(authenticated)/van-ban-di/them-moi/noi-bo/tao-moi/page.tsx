@@ -39,7 +39,13 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { workflowAPI, usersAPI, departmentsAPI } from "@/lib/api";
+import {
+  workflowAPI,
+  usersAPI,
+  departmentsAPI,
+  documentTypesAPI,
+  DocumentTypeDTO,
+} from "@/lib/api";
 import { DepartmentTree } from "@/components/department-tree";
 import { useDepartmentSelection } from "@/hooks/use-department-selection";
 import { useDepartmentUsers } from "@/hooks/use-department-users";
@@ -141,6 +147,32 @@ export default function CreateInternalOutgoingDocumentPage() {
     Record<string, string>
   >({});
 
+  // State for document types
+  const [documentTypes, setDocumentTypes] = useState<DocumentTypeDTO[]>([]);
+  const [isLoadingDocumentTypes, setIsLoadingDocumentTypes] = useState(false);
+
+  // Load document types on component mount
+  useEffect(() => {
+    const fetchDocumentTypes = async () => {
+      try {
+        setIsLoadingDocumentTypes(true);
+        const types = await documentTypesAPI.getAllDocumentTypes();
+        setDocumentTypes(types);
+      } catch (error) {
+        console.error("Error fetching document types:", error);
+        toast({
+          title: "Lỗi",
+          description: "Không thể tải danh sách loại văn bản",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoadingDocumentTypes(false);
+      }
+    };
+
+    fetchDocumentTypes();
+  }, [toast]);
+
   // Input change handlers
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -239,7 +271,7 @@ export default function CreateInternalOutgoingDocumentPage() {
           return { departmentId: Number(id) };
         }
       });
-
+      console.log("recipients ", recipients);
       // Prepare document data
       const documentData: any = {
         documentNumber: formData.documentNumber,
@@ -253,7 +285,7 @@ export default function CreateInternalOutgoingDocumentPage() {
         status: "PENDING_APPROVAL", // Set status for submission (not draft)
         isInternal: true,
       };
-
+      console.log("documentData ", documentData);
       // Call API to create internal outgoing document
       await workflowAPI.createInternalOutgoingDocument(
         documentData,
@@ -446,13 +478,33 @@ export default function CreateInternalOutgoingDocumentPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="documentType">Loại văn bản</Label>
-                <Input
-                  id="documentType"
-                  name="documentType"
+                <Select
                   value={formData.documentType}
-                  onChange={handleInputChange}
-                  placeholder="Nhập loại văn bản"
-                />
+                  onValueChange={(value) =>
+                    handleSelectChange("documentType", value)
+                  }
+                >
+                  <SelectTrigger id="documentType">
+                    <SelectValue placeholder="Chọn loại văn bản" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {isLoadingDocumentTypes ? (
+                      <SelectItem value="loading" disabled>
+                        Đang tải danh sách loại văn bản...
+                      </SelectItem>
+                    ) : documentTypes.length === 0 ? (
+                      <SelectItem value="empty" disabled>
+                        Chưa có loại văn bản nào
+                      </SelectItem>
+                    ) : (
+                      documentTypes.map((type) => (
+                        <SelectItem key={type.id} value={type.name}>
+                          {type.name}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2">
