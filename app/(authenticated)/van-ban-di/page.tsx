@@ -24,9 +24,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Filter, Loader2, AlertCircle } from "lucide-react";
+import {
+  Plus,
+  Search,
+  Filter,
+  Loader2,
+  AlertCircle,
+  FileText,
+  Globe,
+  Building2,
+} from "lucide-react";
 import Link from "next/link";
 import { outgoingDocumentsAPI } from "@/lib/api/outgoingDocuments";
 import { useToast } from "@/components/ui/use-toast";
@@ -34,7 +44,9 @@ import { useOutgoingDocuments } from "@/lib/store";
 import { getStatusBadgeInfo } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
 import { useHierarchicalDepartments } from "@/hooks/use-hierarchical-departments";
+import { getSentDocuments } from "@/lib/api/internalDocumentApi";
 
+// Interface for external documents (original format)
 interface OutgoingDocument {
   id: number | string;
   number: string;
@@ -46,6 +58,50 @@ interface OutgoingDocument {
   departmentName?: string;
 }
 
+// Interface for internal documents (new format from API)
+interface InternalDocument {
+  id: number;
+  documentNumber: string;
+  title: string;
+  summary: string;
+  documentType: string;
+  signingDate: string;
+  priority: "NORMAL" | "HIGH" | "URGENT";
+  notes?: string;
+  status: "DRAFT" | "SENT" | "APPROVED";
+  isInternal: boolean | null;
+  senderId: number;
+  senderName: string;
+  senderDepartment: string;
+  recipients: {
+    id: number;
+    departmentId: number;
+    departmentName: string;
+    userId?: number;
+    userName?: string;
+    isRead: boolean;
+    readAt?: string;
+    receivedAt: string;
+    notes?: string;
+  }[];
+  attachments: {
+    id: number;
+    filename: string;
+    contentType: string;
+    fileSize: number;
+    uploadedAt: string;
+    uploadedByName?: string;
+    description?: string;
+  }[];
+  replyToId?: number;
+  replyToTitle?: string;
+  replyCount: number;
+  createdAt: string;
+  updatedAt: string;
+  isRead: boolean;
+  readAt?: string;
+}
+
 export default function OutgoingDocumentsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -54,6 +110,12 @@ export default function OutgoingDocumentsPage() {
   const [pageSize, setPageSize] = useState(10);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
+  const [activeTab, setActiveTab] = useState("internal");
+  const [internalDocuments, setInternalDocuments] = useState<
+    InternalDocument[]
+  >([]);
+  const [loadingInternal, setLoadingInternal] = useState(false);
+
   const { toast } = useToast();
   const { outgoingDocuments, loading, setOutgoingDocuments, setLoading } =
     useOutgoingDocuments();
@@ -75,10 +137,61 @@ export default function OutgoingDocumentsPage() {
     "ROLE_PHO_CHINH_UY",
   ]);
 
-  const fetchDocuments = async (page = currentPage, size = pageSize) => {
+  // Fetch internal documents
+  const fetchInternalDocuments = async (
+    page = currentPage,
+    size = pageSize
+  ) => {
+    try {
+      setLoadingInternal(true);
+      console.log("Fetching internal documents with pagination:", {
+        page,
+        size,
+      });
+
+      const response = await getSentDocuments(page, size);
+
+      if (response && response.content) {
+        console.log("Internal documents response:", response);
+        setInternalDocuments(response.content);
+
+        // Set pagination info if available
+        if (response.totalElements !== undefined) {
+          setTotalItems(
+            Math.max(response.totalElements, response.content.length)
+          );
+        } else {
+          setTotalItems(response.content.length);
+        }
+
+        if (response.totalPages !== undefined) {
+          setTotalPages(Math.max(response.totalPages, 1));
+        } else {
+          setTotalPages(1);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching internal documents:", error);
+      toast({
+        title: "Lỗi",
+        description:
+          "Không thể tải dữ liệu văn bản nội bộ. Vui lòng thử lại sau.",
+        variant: "destructive",
+      });
+      setInternalDocuments([]);
+    } finally {
+      setLoadingInternal(false);
+    }
+  };
+
+  // Fetch external documents (original function)
+  const fetchExternalDocuments = async (
+    page = currentPage,
+    size = pageSize
+  ) => {
     try {
       setLoading(true);
-      console.log("Fetching outgoing documents with pagination:", {
+      console.log("Fetching external documents with pagination:", {
         page,
         size,
       });
@@ -86,8 +199,6 @@ export default function OutgoingDocumentsPage() {
       const response = await outgoingDocumentsAPI.getAllDocuments(page, size);
 
       if (response && response.documents) {
-        console.log("Raw API response:", response);
-
         const formattedDocuments = response.documents.map((doc) => ({
           id: doc.id,
           number: doc.number || "Chưa có số",
@@ -99,53 +210,18 @@ export default function OutgoingDocumentsPage() {
           departmentName: doc.draftingDepartment || "Chưa xác định",
         }));
 
-        console.log("Processed documents for UI:", formattedDocuments);
-
         setOutgoingDocuments(formattedDocuments);
 
-        // Đảm bảo totalItems không là 0
-        if (response.totalElements !== undefined) {
-          setTotalItems(
-            Math.max(response.totalElements, response.documents.length)
-          );
-        } else if (response.numberOfElements !== undefined) {
-          setTotalItems(
-            Math.max(response.numberOfElements, response.documents.length)
-          );
-        } else {
-          setTotalItems(
-            Math.max(
-              response.documents.length + page * size,
-              response.documents.length
-            )
-          );
-        }
-
-        if (response.totalPages !== undefined) {
-          setTotalPages(Math.max(response.totalPages, 1));
-        } else {
-          const estimatedTotalPages =
-            response.documents.length < size ? Math.max(page + 1, 1) : page + 2;
-          setTotalPages(estimatedTotalPages);
-        }
-
-        console.log(
-          "Fetched documents:",
-          response.documents.length,
-          "Total items:",
-          response.documents.length > 0
-            ? response.totalElements || response.documents.length
-            : 0
-        );
-      } else {
-        console.error("Invalid response format:", response);
-        throw new Error("Không thể tải dữ liệu văn bản đi");
+        // External documents don't have pagination info, so set basic values
+        setTotalItems(response.documents.length);
+        setTotalPages(1);
       }
     } catch (error) {
-      console.error("Error fetching outgoing documents:", error);
+      console.error("Error fetching external documents:", error);
       toast({
         title: "Lỗi",
-        description: "Không thể tải dữ liệu văn bản đi. Vui lòng thử lại sau.",
+        description:
+          "Không thể tải dữ liệu văn bản bên ngoài. Vui lòng thử lại sau.",
         variant: "destructive",
       });
       setOutgoingDocuments([]);
@@ -154,50 +230,46 @@ export default function OutgoingDocumentsPage() {
     }
   };
 
+  // Main fetch function that determines which documents to load
+  const fetchDocuments = async (page = currentPage, size = pageSize) => {
+    if (activeTab === "internal") {
+      await fetchInternalDocuments(page, size);
+    } else {
+      await fetchExternalDocuments(page, size);
+    }
+  };
+
   useEffect(() => {
     if (!user || loadingDepartments) {
       console.log(
-        "Văn bản đi: Chưa có thông tin người dùng hoặc đang tải phòng ban, chờ tải..."
+        "Chưa có thông tin người dùng hoặc đang tải phòng ban, chờ tải..."
       );
       return;
     }
 
-    console.log("Văn bản đi: User đã tải xong, có thể tải dữ liệu", {
-      userId: user.id,
-      isAuthenticated,
-      roles: user?.roles,
-    });
-
     setCurrentPage(0);
-
     setTimeout(() => {
-      console.log("Văn bản đi: Đang tải dữ liệu lần đầu...");
       fetchDocuments(0, pageSize);
     }, 50);
-  }, [user?.id, statusFilter, loadingDepartments]);
+  }, [user?.id, statusFilter, activeTab, loadingDepartments]);
 
   useEffect(() => {
     if (user && (currentPage > 0 || pageSize !== 10)) {
-      console.log("Văn bản đi: Đang tải dữ liệu theo trang...", {
-        currentPage,
-        pageSize,
-      });
       const controller = new AbortController();
       fetchDocuments(currentPage, pageSize);
       return () => controller.abort();
     }
   }, [currentPage, pageSize, user?.id]);
 
+  // Helper functions for filtering and formatting
   const getChildDepartmentIds = (departmentId: string) => {
     if (departmentId === "all") return [];
-
     const selectedDept = visibleDepartments.find(
       (d) => d.id.toString() === departmentId
     );
     if (!selectedDept) return [];
 
     const childIds: number[] = [];
-
     const collectChildIds = (dept: (typeof visibleDepartments)[0]) => {
       if (dept.children && dept.children.length > 0) {
         dept.children.forEach((child) => {
@@ -211,58 +283,6 @@ export default function OutgoingDocumentsPage() {
     return [Number(departmentId), ...childIds];
   };
 
-  const filteredDocuments = outgoingDocuments.filter((doc) => {
-    // Kiểm tra an toàn để tránh lỗi toLowerCase() trên null/undefined
-    const docNumber = (doc.number || "").toLowerCase();
-    const docTitle = (doc.title || "").toLowerCase();
-    const docRecipient = (doc.recipient || "").toLowerCase();
-    const searchLower = searchQuery.toLowerCase();
-
-    // Lọc theo tìm kiếm
-    const matchesSearch =
-      searchQuery === "" ||
-      docNumber.includes(searchLower) ||
-      docTitle.includes(searchLower) ||
-      docRecipient.includes(searchLower);
-
-    // Lọc theo trạng thái
-    const matchesStatus = statusFilter === "all" || doc.status === statusFilter;
-
-    // Lọc theo phòng ban và phòng ban con
-    let matchesDepartment = true;
-    if (departmentFilter !== "all") {
-      const departmentIds = getChildDepartmentIds(departmentFilter);
-      matchesDepartment =
-        doc.departmentId != null
-          ? departmentIds.includes(Number(doc.departmentId))
-          : false;
-    } else if (!hasFullAccess && userDepartmentIds.length > 0) {
-      // Chỉ áp dụng lọc theo phòng ban người dùng nếu không có quyền xem tất cả
-      // và người dùng có phòng ban
-      matchesDepartment =
-        doc.departmentId != null
-          ? userDepartmentIds.includes(Number(doc.departmentId))
-          : userDepartmentIds.length === 0; // Hiển thị văn bản không có phòng ban nếu người dùng không có phòng ban
-    }
-
-    // Thêm debug log để xem lọc dữ liệu
-    const result = matchesSearch && matchesStatus && matchesDepartment;
-    if (!result) {
-      console.debug(
-        `Văn bản bị lọc: ID=${doc.id}, Số=${doc.number}, Tiêu đề=${doc.title}`,
-        {
-          matchesSearch,
-          matchesStatus,
-          matchesDepartment,
-          departmentId: doc.departmentId,
-          userDeptIds: userDepartmentIds,
-        }
-      );
-    }
-
-    return result;
-  });
-
   const handleDepartmentFilterChange = (value: string) => {
     setDepartmentFilter(value);
     setCurrentPage(0);
@@ -273,7 +293,88 @@ export default function OutgoingDocumentsPage() {
     return <Badge variant={badgeInfo.variant}>{badgeInfo.text}</Badge>;
   };
 
-  if (loading || loadingDepartments) {
+  const getPriorityBadge = (priority: string) => {
+    const variants = {
+      NORMAL: { variant: "outline" as const, text: "Bình thường" },
+      HIGH: { variant: "secondary" as const, text: "Cao" },
+      URGENT: { variant: "destructive" as const, text: "Khẩn" },
+    };
+    const info = variants[priority as keyof typeof variants] || variants.NORMAL;
+    return <Badge variant={info.variant}>{info.text}</Badge>;
+  };
+
+  const formatDate = (dateString: string) => {
+    try {
+      return new Date(dateString).toLocaleDateString("vi-VN");
+    } catch {
+      return dateString || "-";
+    }
+  };
+
+  const getRecipientSummary = (recipients: InternalDocument["recipients"]) => {
+    if (!recipients || recipients.length === 0) return "Chưa có người nhận";
+
+    if (recipients.length === 1) {
+      return recipients[0].userName || recipients[0].departmentName;
+    }
+
+    return `${recipients[0].departmentName} và ${recipients.length - 1} khác`;
+  };
+
+  // Filter functions
+  const filteredExternalDocuments = outgoingDocuments.filter((doc) => {
+    const docNumber = (doc.number || "").toLowerCase();
+    const docTitle = (doc.title || "").toLowerCase();
+    const docRecipient = (doc.recipient || "").toLowerCase();
+    const searchLower = searchQuery.toLowerCase();
+
+    const matchesSearch =
+      searchQuery === "" ||
+      docNumber.includes(searchLower) ||
+      docTitle.includes(searchLower) ||
+      docRecipient.includes(searchLower);
+
+    const matchesStatus = statusFilter === "all" || doc.status === statusFilter;
+
+    let matchesDepartment = true;
+    if (departmentFilter !== "all") {
+      const departmentIds = getChildDepartmentIds(departmentFilter);
+      matchesDepartment =
+        doc.departmentId != null
+          ? departmentIds.includes(Number(doc.departmentId))
+          : false;
+    } else if (!hasFullAccess && userDepartmentIds.length > 0) {
+      matchesDepartment =
+        doc.departmentId != null
+          ? userDepartmentIds.includes(Number(doc.departmentId))
+          : userDepartmentIds.length === 0;
+    }
+
+    return matchesSearch && matchesStatus && matchesDepartment;
+  });
+
+  const filteredInternalDocuments = internalDocuments.filter((doc) => {
+    const docNumber = (doc.documentNumber || "").toLowerCase();
+    const docTitle = (doc.title || "").toLowerCase();
+    const searchLower = searchQuery.toLowerCase();
+
+    const matchesSearch =
+      searchQuery === "" ||
+      docNumber.includes(searchLower) ||
+      docTitle.includes(searchLower);
+
+    const matchesStatus = statusFilter === "all" || doc.status === statusFilter;
+
+    return matchesSearch && matchesStatus;
+  });
+
+  const isLoading = activeTab === "internal" ? loadingInternal : loading;
+  const currentDocuments =
+    activeTab === "internal"
+      ? filteredInternalDocuments
+      : filteredExternalDocuments;
+
+  if (isLoading || loadingDepartments) {
     return (
       <div className="flex h-[80vh] items-center justify-center">
         <div className="text-center">
@@ -281,27 +382,6 @@ export default function OutgoingDocumentsPage() {
           <p className="mt-2 text-sm text-muted-foreground">
             Đang tải dữ liệu...
           </p>
-        </div>
-      </div>
-    );
-  }
-
-  if (outgoingDocuments.length === 0) {
-    return (
-      <div className="flex h-[80vh] items-center justify-center">
-        <div className="text-center">
-          <div className="rounded-full bg-amber-100 p-3 mx-auto w-16 h-16 flex items-center justify-center">
-            <AlertCircle className="h-8 w-8 text-amber-500" />
-          </div>
-          <h2 className="mt-4 text-xl font-semibold">Không có văn bản nào</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Chưa có văn bản đi nào trong hệ thống
-          </p>
-          <Button asChild className="mt-4">
-            <Link href="/van-ban-di/them-moi">
-              <Plus className="mr-2 h-4 w-4" /> Thêm mới
-            </Link>
-          </Button>
         </div>
       </div>
     );
@@ -328,7 +408,7 @@ export default function OutgoingDocumentsPage() {
             />
           </div>
 
-          {hasFullAccess && (
+          {hasFullAccess && activeTab === "external" && (
             <Select
               value={departmentFilter}
               onValueChange={handleDepartmentFilterChange}
@@ -350,6 +430,7 @@ export default function OutgoingDocumentsPage() {
             </Select>
           )}
         </div>
+
         <div className="flex w-full sm:w-auto items-center space-x-3">
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-full sm:w-[180px] border-primary/20">
@@ -358,8 +439,10 @@ export default function OutgoingDocumentsPage() {
             <SelectContent>
               <SelectItem value="all">Tất cả</SelectItem>
               <SelectItem value="draft">Bản nháp</SelectItem>
+              <SelectItem value="DRAFT">Bản nháp</SelectItem>
               <SelectItem value="pending_approval">Chờ phê duyệt</SelectItem>
               <SelectItem value="approved">Đã phê duyệt</SelectItem>
+              <SelectItem value="SENT">Đã gửi</SelectItem>
               <SelectItem value="sent">Đã gửi</SelectItem>
             </SelectContent>
           </Select>
@@ -378,138 +461,262 @@ export default function OutgoingDocumentsPage() {
         </div>
       </div>
 
-      <Card className="border-primary/10 shadow-sm">
-        <CardHeader className="bg-primary/5 border-b">
-          <CardTitle>Danh sách văn bản đi</CardTitle>
-          <CardDescription>
-            Danh sách các văn bản đi đã được tạo
-            {departmentFilter !== "all" &&
-              " - Lọc theo phòng ban: " +
-                visibleDepartments.find(
-                  (d) => d.id.toString() === departmentFilter
-                )?.name}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader className="bg-accent/50">
-              <TableRow>
-                <TableHead>Số văn bản</TableHead>
-                <TableHead className="hidden md:table-cell">Ngày gửi</TableHead>
-                <TableHead>Trích yếu</TableHead>
-                <TableHead className="hidden md:table-cell">Nơi nhận</TableHead>
-                <TableHead>Trạng thái</TableHead>
-                {hasFullAccess && (
-                  <TableHead className="hidden md:table-cell">Đơn vị</TableHead>
-                )}
-                <TableHead className="text-right">Thao tác</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredDocuments.length > 0 ? (
-                filteredDocuments.map((doc) => (
-                  <TableRow key={doc.id} className="hover:bg-accent/30">
-                    <TableCell className="font-medium">{doc.number}</TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      {doc.sentDate}
-                    </TableCell>
-                    <TableCell className="max-w-[300px] truncate">
-                      {doc.title}
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      {doc.recipient}
-                    </TableCell>
-                    <TableCell>{getStatusBadge(doc.status)}</TableCell>
-                    {hasFullAccess && (
-                      <TableCell className="hidden md:table-cell">
-                        {doc.departmentName}
-                      </TableCell>
-                    )}
-                    <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="hover:bg-primary/10 hover:text-primary"
-                        asChild
-                      >
-                        <Link href={`/van-ban-di/${doc.id}`}>Chi tiết</Link>
-                      </Button>
-                    </TableCell>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="internal" className="flex items-center gap-2">
+            <Building2 className="h-4 w-4" />
+            Văn bản nội bộ
+          </TabsTrigger>
+          <TabsTrigger value="external" className="flex items-center gap-2">
+            <Globe className="h-4 w-4" />
+            Văn bản bên ngoài
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="internal" className="mt-6">
+          <Card className="border-primary/10 shadow-sm">
+            <CardHeader className="bg-primary/5 border-b">
+              <CardTitle>Danh sách văn bản đi nội bộ</CardTitle>
+              <CardDescription>
+                Các văn bản nội bộ đã được gửi trong tổ chức
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader className="bg-accent/50">
+                  <TableRow>
+                    <TableHead>Số văn bản</TableHead>
+                    <TableHead className="hidden md:table-cell">
+                      Ngày ký
+                    </TableHead>
+                    <TableHead>Tiêu đề</TableHead>
+                    <TableHead className="hidden lg:table-cell">Loại</TableHead>
+                    <TableHead className="hidden md:table-cell">
+                      Người nhận
+                    </TableHead>
+                    <TableHead>Độ ưu tiên</TableHead>
+                    <TableHead>Trạng thái</TableHead>
+                    <TableHead className="text-right">Thao tác</TableHead>
                   </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell
-                    colSpan={hasFullAccess ? 7 : 6}
-                    className="h-24 text-center"
-                  >
-                    Không có văn bản nào phù hợp với điều kiện tìm kiếm
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-        {/* Phân trang - Chỉ hiển thị khi có văn bản đã lọc */}
-        {filteredDocuments.length > 0 && (
-          <div className="flex items-center justify-between px-4 py-4 border-t">
-            <div className="text-sm text-muted-foreground">
-              Hiển thị {filteredDocuments.length} / {totalItems || 0} văn bản
+                </TableHeader>
+                <TableBody>
+                  {filteredInternalDocuments.length > 0 ? (
+                    filteredInternalDocuments.map((doc) => (
+                      <TableRow key={doc.id} className="hover:bg-accent/30">
+                        <TableCell className="font-medium">
+                          {doc.documentNumber}
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          {formatDate(doc.signingDate)}
+                        </TableCell>
+                        <TableCell className="max-w-[300px] truncate">
+                          {doc.title}
+                        </TableCell>
+                        <TableCell className="hidden lg:table-cell">
+                          {doc.documentType}
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          {getRecipientSummary(doc.recipients)}
+                        </TableCell>
+                        <TableCell>{getPriorityBadge(doc.priority)}</TableCell>
+                        <TableCell>{getStatusBadge(doc.status)}</TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="hover:bg-primary/10 hover:text-primary"
+                            asChild
+                          >
+                            <Link href={`/van-ban-di/noi-bo/${doc.id}`}>
+                              Chi tiết
+                            </Link>
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={8} className="h-24 text-center">
+                        {currentDocuments.length === 0 && !isLoading
+                          ? "Chưa có văn bản nội bộ nào"
+                          : "Không có văn bản nào phù hợp với điều kiện tìm kiếm"}
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="external" className="mt-6">
+          <Card className="border-primary/10 shadow-sm">
+            <CardHeader className="bg-primary/5 border-b">
+              <CardTitle>Danh sách văn bản đi bên ngoài</CardTitle>
+              <CardDescription>
+                Các văn bản gửi ra bên ngoài tổ chức
+                {departmentFilter !== "all" &&
+                  " - Lọc theo phòng ban: " +
+                    visibleDepartments.find(
+                      (d) => d.id.toString() === departmentFilter
+                    )?.name}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader className="bg-accent/50">
+                  <TableRow>
+                    <TableHead>Số văn bản</TableHead>
+                    <TableHead className="hidden md:table-cell">
+                      Ngày gửi
+                    </TableHead>
+                    <TableHead>Trích yếu</TableHead>
+                    <TableHead className="hidden md:table-cell">
+                      Nơi nhận
+                    </TableHead>
+                    <TableHead>Trạng thái</TableHead>
+                    {hasFullAccess && (
+                      <TableHead className="hidden md:table-cell">
+                        Đơn vị
+                      </TableHead>
+                    )}
+                    <TableHead className="text-right">Thao tác</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredExternalDocuments.length > 0 ? (
+                    filteredExternalDocuments.map((doc) => (
+                      <TableRow key={doc.id} className="hover:bg-accent/30">
+                        <TableCell className="font-medium">
+                          {doc.number}
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          {doc.sentDate}
+                        </TableCell>
+                        <TableCell className="max-w-[300px] truncate">
+                          {doc.title}
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          {doc.recipient}
+                        </TableCell>
+                        <TableCell>{getStatusBadge(doc.status)}</TableCell>
+                        {hasFullAccess && (
+                          <TableCell className="hidden md:table-cell">
+                            {doc.departmentName}
+                          </TableCell>
+                        )}
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="hover:bg-primary/10 hover:text-primary"
+                            asChild
+                          >
+                            <Link href={`/van-ban-di/${doc.id}`}>Chi tiết</Link>
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell
+                        colSpan={hasFullAccess ? 7 : 6}
+                        className="h-24 text-center"
+                      >
+                        {currentDocuments.length === 0 && !isLoading
+                          ? "Chưa có văn bản bên ngoài nào"
+                          : "Không có văn bản nào phù hợp với điều kiện tìm kiếm"}
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      {/* Pagination Controls */}
+      {currentDocuments.length > 0 && (
+        <div className="flex items-center justify-between px-4 py-4 border-t">
+          <div className="text-sm text-muted-foreground">
+            Hiển thị {currentDocuments.length} / {totalItems || 0} văn bản
+          </div>
+          <div className="flex items-center space-x-6 lg:space-x-8">
+            <div className="flex items-center space-x-2">
+              <p className="text-sm font-medium">Số văn bản mỗi trang</p>
+              <Select
+                value={String(pageSize)}
+                onValueChange={(value) => {
+                  setPageSize(Number(value));
+                  setCurrentPage(0);
+                }}
+              >
+                <SelectTrigger className="h-8 w-[70px]">
+                  <SelectValue placeholder={pageSize} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="5">5</SelectItem>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="20">20</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <div className="flex items-center space-x-6 lg:space-x-8">
-              <div className="flex items-center space-x-2">
-                <p className="text-sm font-medium">Số văn bản mỗi trang</p>
-                <Select
-                  value={String(pageSize)}
-                  onValueChange={(value) => {
-                    setPageSize(Number(value));
-                    setCurrentPage(0);
-                  }}
-                >
-                  <SelectTrigger className="h-8 w-[70px]">
-                    <SelectValue placeholder={pageSize} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="5">5</SelectItem>
-                    <SelectItem value="10">10</SelectItem>
-                    <SelectItem value="20">20</SelectItem>
-                    <SelectItem value="50">50</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex w-[100px] items-center justify-center text-sm font-medium">
-                Trang {currentPage + 1} / {Math.max(totalPages, 1)}
-              </div>
-              <div className="flex items-center space-x-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    const newPage = Math.max(0, currentPage - 1);
-                    setCurrentPage(newPage);
-                    fetchDocuments(newPage, pageSize);
-                  }}
-                  disabled={currentPage <= 0 || loading}
-                >
-                  Trước
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    const newPage = currentPage + 1;
-                    setCurrentPage(newPage);
-                    fetchDocuments(newPage, pageSize);
-                  }}
-                  disabled={outgoingDocuments.length < pageSize || loading}
-                >
-                  Tiếp
-                </Button>
-              </div>
+            <div className="flex w-[100px] items-center justify-center text-sm font-medium">
+              Trang {currentPage + 1} / {Math.max(totalPages, 1)}
+            </div>
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const newPage = Math.max(0, currentPage - 1);
+                  setCurrentPage(newPage);
+                  fetchDocuments(newPage, pageSize);
+                }}
+                disabled={currentPage <= 0 || isLoading}
+              >
+                Trước
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const newPage = currentPage + 1;
+                  setCurrentPage(newPage);
+                  fetchDocuments(newPage, pageSize);
+                }}
+                disabled={currentDocuments.length < pageSize || isLoading}
+              >
+                Tiếp
+              </Button>
             </div>
           </div>
-        )}
-      </Card>
+        </div>
+      )}
+
+      {/* Empty state */}
+      {currentDocuments.length === 0 && !isLoading && (
+        <div className="flex h-[40vh] items-center justify-center">
+          <div className="text-center">
+            <div className="rounded-full bg-amber-100 p-3 mx-auto w-16 h-16 flex items-center justify-center">
+              <AlertCircle className="h-8 w-8 text-amber-500" />
+            </div>
+            <h2 className="mt-4 text-xl font-semibold">Không có văn bản nào</h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {activeTab === "internal"
+                ? "Chưa có văn bản nội bộ nào trong hệ thống"
+                : "Chưa có văn bản bên ngoài nào trong hệ thống"}
+            </p>
+            <Button asChild className="mt-4">
+              <Link href="/van-ban-di/them-moi">
+                <Plus className="mr-2 h-4 w-4" /> Thêm mới
+              </Link>
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
