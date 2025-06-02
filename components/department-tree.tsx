@@ -320,14 +320,9 @@ function DepartmentNode({
           {!isLoading && users.length > 0 && (
             <div className="space-y-1 mb-3">
               {users
-                .filter((user) => getLeadershipRole?.(user))
+                // No filtering - show all users
                 .map((user) => {
                   const leadershipRole = getLeadershipRole?.(user);
-                  console.log(
-                    "leadershipRole ",
-                    leadershipRole,
-                    user.departmentName
-                  );
                   const roleDisplayName = leadershipRole
                     ? getRoleDisplayName?.(leadershipRole)
                     : null;
