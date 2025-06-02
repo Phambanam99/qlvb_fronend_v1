@@ -354,6 +354,9 @@ export default function CreateInternalOutgoingDocumentPage() {
     }
   };
 
+  // Create a function that always returns null to show all users
+  const showAllUsers = (user: any) => null;
+
   return (
     <div className="container py-6 max-w-5xl">
       <div className="flex items-center space-x-2 mb-6">
@@ -537,7 +540,7 @@ export default function CreateInternalOutgoingDocumentPage() {
                             departmentUsers={departmentUsers}
                             isLoadingUsers={isLoadingUsers}
                             onDepartmentExpand={fetchDepartmentUsers}
-                            getLeadershipRole={getLeadershipRole}
+                            getLeadershipRole={showAllUsers}
                             getRoleDisplayName={getRoleDisplayName}
                             selectionMode="secondary"
                             maxHeight="400px"

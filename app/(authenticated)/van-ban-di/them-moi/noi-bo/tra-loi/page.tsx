@@ -423,6 +423,9 @@ export default function ReplyInternalDocumentPage() {
     }
   };
 
+  // Create a function that always returns null to show all users
+  const showAllUsers = (user: any) => null;
+
   if (isLoadingIncomingDoc) {
     return (
       <div className="flex h-[calc(100vh-4rem)] w-full items-center justify-center">
@@ -621,7 +624,7 @@ export default function ReplyInternalDocumentPage() {
                             departmentUsers={departmentUsers}
                             isLoadingUsers={isLoadingUsers}
                             onDepartmentExpand={fetchDepartmentUsers}
-                            getLeadershipRole={getLeadershipRole}
+                            getLeadershipRole={showAllUsers}
                             getRoleDisplayName={getRoleDisplayName}
                             selectionMode="secondary"
                             maxHeight="400px"
