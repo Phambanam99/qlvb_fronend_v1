@@ -42,8 +42,9 @@ import {
   downloadAttachment,
   markDocumentAsRead,
   getInternalDocumentHistory,
+  getDocumentStats,
+  getDocumentReplies,
 } from "@/lib/api/internalDocumentApi";
-import { unifiedDocumentsAPI } from "@/lib/api/unified-documents";
 
 interface InternalDocumentDetail {
   id: number;
@@ -102,14 +103,30 @@ interface DocumentHistory {
   userAgent?: string;
 }
 
+interface DocumentStats {
+  replyCount: number;
+  historyCount: number;
+  isRead: boolean;
+  readAt?: string;
+  createdAt: string;
+  lastActivity: string;
+}
+
 export default function InternalDocumentReceivedDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();
   const [document, setDocument] = useState<InternalDocumentDetail | null>(null);
   const [documentHistory, setDocumentHistory] = useState<DocumentHistory[]>([]);
+  const [documentStats, setDocumentStats] = useState<DocumentStats | null>(
+    null
+  );
+  const [documentReplies, setDocumentReplies] = useState<
+    InternalDocumentDetail[]
+  >([]);
   const [loading, setLoading] = useState(true);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [loadingStats, setLoadingStats] = useState(false);
   const [markingAsRead, setMarkingAsRead] = useState(false);
 
   const documentId = params.id as string;
@@ -138,27 +155,38 @@ export default function InternalDocumentReceivedDetailPage() {
   }, [documentId, toast]);
 
   useEffect(() => {
-    const fetchHistory = async () => {
+    const fetchHistoryAndStats = async () => {
+      if (!documentId || !document) return;
+
       try {
+        // Fetch history
         setLoadingHistory(true);
-        // Try to get history from unified documents API or workflow API
-        const historyResponse =
-          await unifiedDocumentsAPI.getDocumentWorkflowHistory(
-            Number(documentId)
-          );
+        const historyResponse = await getInternalDocumentHistory(
+          Number(documentId)
+        );
         setDocumentHistory(historyResponse || []);
+
+        // Fetch stats
+        setLoadingStats(true);
+        const statsResponse = await getDocumentStats(Number(documentId));
+        setDocumentStats(statsResponse);
+
+        // Fetch replies
+        const repliesResponse = await getDocumentReplies(Number(documentId));
+        setDocumentReplies(repliesResponse || []);
       } catch (error) {
-        console.error("Error fetching document history:", error);
-        // Fallback to empty history if API not available
+        console.error("Error fetching document history/stats:", error);
+        // Fallback to empty data if API not available
         setDocumentHistory([]);
+        setDocumentStats(null);
+        setDocumentReplies([]);
       } finally {
         setLoadingHistory(false);
+        setLoadingStats(false);
       }
     };
 
-    if (documentId && document) {
-      fetchHistory();
-    }
+    fetchHistoryAndStats();
   }, [documentId, document]);
 
   const formatDate = (dateString: string) => {
@@ -481,6 +509,11 @@ export default function InternalDocumentReceivedDetailPage() {
               <CardTitle className="flex items-center gap-2">
                 <Clock className="h-5 w-5" />
                 Lịch sử tương tác
+                {documentStats && (
+                  <Badge variant="outline" className="ml-2">
+                    {documentStats.historyCount} hoạt động
+                  </Badge>
+                )}
               </CardTitle>
               <CardDescription>
                 Theo dõi các hoạt động và tương tác với văn bản
@@ -510,14 +543,13 @@ export default function InternalDocumentReceivedDetailPage() {
                             {getActionDisplayName(entry.action)}
                           </p>
                           <time className="text-sm text-gray-500">
-                            {formatDate(entry.performedAt || entry.timestamp)}
+                            {formatDate(entry.performedAt)}
                           </time>
                         </div>
                         <p className="text-sm text-gray-500">
                           Bởi:{" "}
                           {entry.performedBy?.fullName ||
                             entry.performedBy?.name ||
-                            entry.actorName ||
                             "Hệ thống"}
                         </p>
                         {entry.details && (
@@ -537,6 +569,66 @@ export default function InternalDocumentReceivedDetailPage() {
               )}
             </CardContent>
           </Card>
+
+          {/* Document Replies */}
+          {documentReplies && documentReplies.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <MessageSquare className="h-5 w-5" />
+                  Văn bản trả lời ({documentReplies.length})
+                </CardTitle>
+                <CardDescription>
+                  Danh sách các văn bản trả lời cho văn bản này
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {documentReplies.map((reply) => (
+                    <div
+                      key={reply.id}
+                      className="border rounded-lg p-4 hover:bg-gray-50"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <h4 className="font-medium text-sm">
+                              {reply.documentNumber}
+                            </h4>
+                            {getPriorityBadge(reply.priority)}
+                            {getStatusBadge(reply.status)}
+                          </div>
+                          <h5 className="font-semibold text-base mb-2">
+                            {reply.title}
+                          </h5>
+                          {reply.summary && (
+                            <p className="text-sm text-gray-600 mb-2 line-clamp-2">
+                              {reply.summary}
+                            </p>
+                          )}
+                          <div className="flex items-center gap-4 text-xs text-gray-500">
+                            <span>
+                              <User className="h-3 w-3 inline mr-1" />
+                              {reply.senderName}
+                            </span>
+                            <span>
+                              <Calendar className="h-3 w-3 inline mr-1" />
+                              {formatDate(reply.createdAt)}
+                            </span>
+                          </div>
+                        </div>
+                        <Button variant="outline" size="sm" asChild>
+                          <Link href={`/van-ban-den/noi-bo/${reply.id}`}>
+                            Xem chi tiết
+                          </Link>
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Attachments */}
           {document.attachments.length > 0 && (
@@ -651,25 +743,39 @@ export default function InternalDocumentReceivedDetailPage() {
                   </div>
                 </div>
 
-                {document.readAt && (
+                {(document.readAt || documentStats?.readAt) && (
                   <div className="flex items-center gap-2">
                     <Eye className="h-4 w-4 text-muted-foreground" />
                     <div>
                       <p className="text-sm font-medium">Thời gian đọc</p>
                       <p className="text-sm text-muted-foreground">
-                        {formatDate(document.readAt)}
+                        {formatDate(
+                          document.readAt || documentStats?.readAt || ""
+                        )}
                       </p>
                     </div>
                   </div>
                 )}
 
-                {document.replyCount > 0 && (
+                {documentStats && documentStats.replyCount > 0 && (
                   <div className="flex items-center gap-2">
                     <MessageSquare className="h-4 w-4 text-muted-foreground" />
                     <div>
                       <p className="text-sm font-medium">Số phản hồi</p>
                       <p className="text-sm text-muted-foreground">
-                        {document.replyCount} phản hồi
+                        {documentStats.replyCount} phản hồi
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {documentStats && (
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm font-medium">Hoạt động cuối</p>
+                      <p className="text-sm text-muted-foreground">
+                        {formatDate(documentStats.lastActivity)}
                       </p>
                     </div>
                   </div>

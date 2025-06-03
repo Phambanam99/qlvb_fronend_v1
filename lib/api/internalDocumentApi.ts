@@ -182,6 +182,21 @@ export const getInternalDocumentHistory = async (id: number) => {
   return response.data;
 };
 
+export const getDocumentReplies = async (id: number) => {
+  const response = await api.get(`/internal-documents/${id}/replies`);
+  return response.data;
+};
+
+export const getDocumentThread = async (id: number) => {
+  const response = await api.get(`/internal-documents/${id}/thread`);
+  return response.data;
+};
+
+export const getDocumentStats = async (id: number) => {
+  const response = await api.get(`/internal-documents/${id}/stats`);
+  return response.data;
+};
+
 export const downloadAttachment = async (
   documentId: number,
   attachmentId: number
