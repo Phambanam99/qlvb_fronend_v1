@@ -175,6 +175,7 @@ export default function InternalDocumentReceivedDetailPage() {
         const historyResponse = await getInternalDocumentHistory(
           Number(documentId)
         );
+        console.log("Debug history:", historyResponse);
         setDocumentHistory(historyResponse || []);
 
         // Fetch stats
@@ -447,8 +448,9 @@ export default function InternalDocumentReceivedDetailPage() {
                   <label className="text-sm font-medium text-muted-foreground">
                     Tóm tắt nội dung
                   </label>
-                  <p className="whitespace-pre-wrap">
-                    {documentDetail.summary}
+                  <p className="whitespace-pre-wrap" 
+                  dangerouslySetInnerHTML={{ __html: documentDetail.summary }} >
+                   
                   </p>
                 </div>
               )}
@@ -616,8 +618,10 @@ export default function InternalDocumentReceivedDetailPage() {
                             {reply.title}
                           </h5>
                           {reply.summary && (
-                            <p className="text-sm text-gray-600 mb-2 line-clamp-2">
-                              {reply.summary}
+                            <p className="text-sm text-gray-600 mb-2 line-clamp-2"
+                            dangerouslySetInnerHTML={{ __html: reply.summary }}
+                            >
+                              
                             </p>
                           )}
                           <div className="flex items-center gap-4 text-xs text-gray-500">

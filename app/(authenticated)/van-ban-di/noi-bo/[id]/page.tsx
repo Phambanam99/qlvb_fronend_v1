@@ -293,7 +293,7 @@ export default function InternalDocumentDetailPage() {
                   <label className="text-sm font-medium text-muted-foreground">
                     Tóm tắt nội dung
                   </label>
-                  <p className="whitespace-pre-wrap">{_document.summary}</p>
+                  <p className="whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: _document.summary }} ></p>
                 </div>
               )}
 

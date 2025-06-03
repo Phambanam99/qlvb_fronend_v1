@@ -431,8 +431,10 @@ export default function ReplyInternalDocumentPage() {
                 <label className="text-sm font-medium text-muted-foreground">
                   Nội dung
                 </label>
-                <p className="whitespace-pre-wrap text-sm">
-                  {originalDocument.summary}
+                <p className="whitespace-pre-wrap text-sm"
+                  dangerouslySetInnerHTML={{ __html: originalDocument.summary }}
+                >
+                  
                 </p>
               </div>
             )}

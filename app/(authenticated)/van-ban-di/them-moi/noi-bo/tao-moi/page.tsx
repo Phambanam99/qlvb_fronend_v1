@@ -28,7 +28,6 @@ import { useNotifications } from "@/lib/notifications-context";
 import { useToast } from "@/components/ui/use-toast";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { DatePicker } from "@/components/ui/date-picker";
 import {
   Select,
@@ -50,6 +49,7 @@ import { DepartmentTree } from "@/components/department-tree";
 import { useDepartmentSelection } from "@/hooks/use-department-selection";
 import { useDepartmentUsers } from "@/hooks/use-department-users";
 import { createInternalDocument } from "@/lib/api/internalDocumentApi";
+import { RichTextEditor } from "@/components/ui";
 // Leadership role configuration
 const leadershipRoleOrder: Record<string, number> = {
   ROLE_CUC_TRUONG: 1,
@@ -174,11 +174,13 @@ export default function CreateInternalOutgoingDocumentPage() {
   }, [toast]);
 
   // Input change handlers
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleRichTextChange = (name: string) => (html: string) => {
+    setFormData((prev) => ({ ...prev, [name]: html }));
   };
 
   const handleSelectChange = (name: string, value: string) => {
@@ -287,10 +289,7 @@ export default function CreateInternalOutgoingDocumentPage() {
       };
       console.log("documentData ", documentData);
       // Call API to create internal outgoing document
-      await createInternalDocument(
-        documentData,
-        file ? [file] : undefined
-      );
+      await createInternalDocument(documentData, file ? [file] : undefined);
 
       // Show success notification
       toast({
@@ -466,13 +465,11 @@ export default function CreateInternalOutgoingDocumentPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="content">Nội dung</Label>
-                <Textarea
-                  id="content"
-                  name="content"
-                  value={formData.content}
-                  onChange={handleInputChange}
+                <RichTextEditor
+                  content={formData.content}
+                  onChange={handleRichTextChange("content")}
                   placeholder="Nhập nội dung văn bản"
-                  rows={5}
+                  minHeight="200px"
                 />
               </div>
 
@@ -538,13 +535,11 @@ export default function CreateInternalOutgoingDocumentPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="note">Ghi chú</Label>
-                <Textarea
-                  id="note"
-                  name="note"
-                  value={formData.note}
-                  onChange={handleInputChange}
+                <RichTextEditor
+                  content={formData.note}
+                  onChange={handleRichTextChange("note")}
                   placeholder="Nhập ghi chú (nếu có)"
-                  rows={3}
+                  minHeight="100px"
                 />
               </div>
             </CardContent>
