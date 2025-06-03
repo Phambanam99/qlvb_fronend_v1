@@ -177,6 +177,38 @@ export const replyToDocument = async (id: number, document: any) => {
   return response.data;
 };
 
+export const replyToDocumentWithAttachments = async (
+  id: number,
+  document: any,
+  files?: File[],
+  descriptions?: string[]
+) => {
+  const formData = new FormData();
+  formData.append("document", JSON.stringify(document));
+
+  if (files) {
+    files.forEach((file) => {
+      formData.append("files", file);
+    });
+  }
+
+  if (descriptions) {
+    descriptions.forEach((desc) => {
+      formData.append("descriptions", desc);
+    });
+  }
+
+  const response = await api.post(
+    `/internal-documents/${id}/reply-with-attachments`,
+    formData,
+    {
+      headers: { "Content-Type": "multipart/form-data" },
+    }
+  );
+
+  return response.data;
+};
+
 export const getInternalDocumentHistory = async (id: number) => {
   const response = await api.get(`/internal-documents/${id}/history`);
   return response.data;

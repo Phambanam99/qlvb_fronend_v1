@@ -116,7 +116,8 @@ export default function InternalDocumentReceivedDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();
-  const [document, setDocument] = useState<InternalDocumentDetail | null>(null);
+  const [documentDetail, setDocumentDetail] =
+    useState<InternalDocumentDetail | null>(null);
   const [documentHistory, setDocumentHistory] = useState<DocumentHistory[]>([]);
   const [documentStats, setDocumentStats] = useState<DocumentStats | null>(
     null
@@ -136,7 +137,7 @@ export default function InternalDocumentReceivedDetailPage() {
       try {
         setLoading(true);
         const response = await getDocumentById(Number(documentId));
-        setDocument(response);
+        setDocumentDetail(response);
       } catch (error) {
         console.error("Error fetching document:", error);
         toast({
@@ -156,7 +157,7 @@ export default function InternalDocumentReceivedDetailPage() {
 
   useEffect(() => {
     const fetchHistoryAndStats = async () => {
-      if (!documentId || !document) return;
+      if (!documentId || !documentDetail) return;
 
       try {
         // Fetch history
@@ -187,7 +188,7 @@ export default function InternalDocumentReceivedDetailPage() {
     };
 
     fetchHistoryAndStats();
-  }, [documentId, document]);
+  }, [documentId, documentDetail]);
 
   const formatDate = (dateString: string) => {
     try {
@@ -238,12 +239,12 @@ export default function InternalDocumentReceivedDetailPage() {
       // Create blob and download
       const blob = new Blob([response.data]);
       const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
+      const link = window.document.createElement("a");
       link.href = url;
       link.download = filename;
-      document.body.appendChild(link);
+      window.document.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);
+      window.document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
 
       toast({
@@ -261,13 +262,13 @@ export default function InternalDocumentReceivedDetailPage() {
   };
 
   const handleMarkAsRead = async () => {
-    if (!document) return;
+    if (!documentDetail) return;
 
     try {
       setMarkingAsRead(true);
-      await markDocumentAsRead(document.id);
-      setDocument({
-        ...document,
+      await markDocumentAsRead(documentDetail.id);
+      setDocumentDetail({
+        ...documentDetail,
         isRead: true,
         readAt: new Date().toISOString(),
       });
@@ -342,7 +343,7 @@ export default function InternalDocumentReceivedDetailPage() {
     );
   }
 
-  if (!document) {
+  if (!documentDetail) {
     return (
       <div className="flex h-[80vh] items-center justify-center">
         <div className="text-center">
@@ -374,7 +375,7 @@ export default function InternalDocumentReceivedDetailPage() {
             Chi tiết văn bản nội bộ nhận được
           </h1>
           <p className="text-muted-foreground">
-            Thông tin chi tiết của văn bản {document.documentNumber}
+            Thông tin chi tiết của văn bản {documentDetail.documentNumber}
           </p>
         </div>
       </div>
@@ -396,20 +397,20 @@ export default function InternalDocumentReceivedDetailPage() {
                   <label className="text-sm font-medium text-muted-foreground">
                     Số văn bản
                   </label>
-                  <p className="font-medium">{document.documentNumber}</p>
+                  <p className="font-medium">{documentDetail.documentNumber}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">
                     Loại văn bản
                   </label>
-                  <p className="font-medium">{document.documentType}</p>
+                  <p className="font-medium">{documentDetail.documentType}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">
                     Ngày ký
                   </label>
                   <p className="font-medium">
-                    {formatDate(document.signingDate)}
+                    {formatDate(documentDetail.signingDate)}
                   </p>
                 </div>
                 <div>
@@ -417,7 +418,7 @@ export default function InternalDocumentReceivedDetailPage() {
                     Độ ưu tiên
                   </label>
                   <div className="mt-1">
-                    {getPriorityBadge(document.priority)}
+                    {getPriorityBadge(documentDetail.priority)}
                   </div>
                 </div>
               </div>
@@ -428,80 +429,83 @@ export default function InternalDocumentReceivedDetailPage() {
                 <label className="text-sm font-medium text-muted-foreground">
                   Tiêu đề
                 </label>
-                <p className="font-medium text-lg">{document.title}</p>
+                <p className="font-medium text-lg">{documentDetail.title}</p>
               </div>
 
-              {document.summary && (
+              {documentDetail.summary && (
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">
                     Tóm tắt nội dung
                   </label>
-                  <p className="whitespace-pre-wrap">{document.summary}</p>
+                  <p className="whitespace-pre-wrap">
+                    {documentDetail.summary}
+                  </p>
                 </div>
               )}
 
-              {document.notes && (
+              {documentDetail.notes && (
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">
                     Ghi chú
                   </label>
-                  <p className="whitespace-pre-wrap">{document.notes}</p>
+                  <p className="whitespace-pre-wrap">{documentDetail.notes}</p>
                 </div>
               )}
             </CardContent>
           </Card>
 
           {/* Recipients Table */}
-          {document.recipients && document.recipients.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="h-5 w-5" />
-                  Danh sách người nhận ({document.recipients.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Đơn vị</TableHead>
-                      <TableHead>Người nhận</TableHead>
-                      <TableHead>Trạng thái</TableHead>
-                      <TableHead>Thời gian nhận</TableHead>
-                      <TableHead>Thời gian đọc</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {document.recipients.map((recipient) => (
-                      <TableRow key={recipient.id}>
-                        <TableCell className="font-medium">
-                          {recipient.departmentName}
-                        </TableCell>
-                        <TableCell>
-                          {recipient.userName || "Toàn đơn vị"}
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={recipient.isRead ? "default" : "outline"}
-                          >
-                            {recipient.isRead ? "Đã đọc" : "Chưa đọc"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {formatDate(recipient.receivedAt)}
-                        </TableCell>
-                        <TableCell>
-                          {recipient.readAt
-                            ? formatDate(recipient.readAt)
-                            : "-"}
-                        </TableCell>
+          {documentDetail.recipients &&
+            documentDetail.recipients.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="h-5 w-5" />
+                    Danh sách người nhận ({documentDetail.recipients.length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Đơn vị</TableHead>
+                        <TableHead>Người nhận</TableHead>
+                        <TableHead>Trạng thái</TableHead>
+                        <TableHead>Thời gian nhận</TableHead>
+                        <TableHead>Thời gian đọc</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          )}
+                    </TableHeader>
+                    <TableBody>
+                      {documentDetail.recipients.map((recipient) => (
+                        <TableRow key={recipient.id}>
+                          <TableCell className="font-medium">
+                            {recipient.departmentName}
+                          </TableCell>
+                          <TableCell>
+                            {recipient.userName || "Toàn đơn vị"}
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={recipient.isRead ? "default" : "outline"}
+                            >
+                              {recipient.isRead ? "Đã đọc" : "Chưa đọc"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {formatDate(recipient.receivedAt)}
+                          </TableCell>
+                          <TableCell>
+                            {recipient.readAt
+                              ? formatDate(recipient.readAt)
+                              : "-"}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            )}
 
           {/* Interaction History */}
           <Card>
@@ -631,17 +635,17 @@ export default function InternalDocumentReceivedDetailPage() {
           )}
 
           {/* Attachments */}
-          {document.attachments.length > 0 && (
+          {documentDetail.attachments.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Paperclip className="h-5 w-5" />
-                  File đính kèm ({document.attachments.length})
+                  File đính kèm ({documentDetail.attachments.length})
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {document.attachments.map((attachment) => (
+                  {documentDetail.attachments.map((attachment) => (
                     <div
                       key={attachment.id}
                       className="flex items-center justify-between p-3 border rounded-lg"
@@ -697,8 +701,10 @@ export default function InternalDocumentReceivedDetailPage() {
                   Trạng thái đọc
                 </label>
                 <div className="mt-1">
-                  <Badge variant={document.isRead ? "default" : "outline"}>
-                    {document.isRead ? "Đã đọc" : "Chưa đọc"}
+                  <Badge
+                    variant={documentDetail.isRead ? "default" : "outline"}
+                  >
+                    {documentDetail.isRead ? "Đã đọc" : "Chưa đọc"}
                   </Badge>
                 </div>
               </div>
@@ -707,7 +713,9 @@ export default function InternalDocumentReceivedDetailPage() {
                 <label className="text-sm font-medium text-muted-foreground">
                   Trạng thái văn bản
                 </label>
-                <div className="mt-1">{getStatusBadge(document.status)}</div>
+                <div className="mt-1">
+                  {getStatusBadge(documentDetail.status)}
+                </div>
               </div>
 
               <Separator />
@@ -718,7 +726,7 @@ export default function InternalDocumentReceivedDetailPage() {
                   <div>
                     <p className="text-sm font-medium">Người gửi</p>
                     <p className="text-sm text-muted-foreground">
-                      {document.senderName}
+                      {documentDetail.senderName}
                     </p>
                   </div>
                 </div>
@@ -728,7 +736,7 @@ export default function InternalDocumentReceivedDetailPage() {
                   <div>
                     <p className="text-sm font-medium">Đơn vị gửi</p>
                     <p className="text-sm text-muted-foreground">
-                      {document.senderDepartment}
+                      {documentDetail.senderDepartment}
                     </p>
                   </div>
                 </div>
@@ -738,19 +746,19 @@ export default function InternalDocumentReceivedDetailPage() {
                   <div>
                     <p className="text-sm font-medium">Thời gian nhận</p>
                     <p className="text-sm text-muted-foreground">
-                      {formatDate(document.createdAt)}
+                      {formatDate(documentDetail.createdAt)}
                     </p>
                   </div>
                 </div>
 
-                {(document.readAt || documentStats?.readAt) && (
+                {(documentDetail.readAt || documentStats?.readAt) && (
                   <div className="flex items-center gap-2">
                     <Eye className="h-4 w-4 text-muted-foreground" />
                     <div>
                       <p className="text-sm font-medium">Thời gian đọc</p>
                       <p className="text-sm text-muted-foreground">
                         {formatDate(
-                          document.readAt || documentStats?.readAt || ""
+                          documentDetail.readAt || documentStats?.readAt || ""
                         )}
                       </p>
                     </div>
@@ -790,7 +798,7 @@ export default function InternalDocumentReceivedDetailPage() {
               <CardTitle className="text-lg">Thao tác</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {!document.isRead && (
+              {!documentDetail.isRead && (
                 <Button
                   className="w-full"
                   onClick={handleMarkAsRead}
@@ -810,9 +818,11 @@ export default function InternalDocumentReceivedDetailPage() {
                 </Button>
               )}
 
-              {document.replyToId && (
+              {documentDetail.replyToId && (
                 <Button className="w-full" variant="outline" asChild>
-                  <Link href={`/van-ban-den/noi-bo/${document.replyToId}`}>
+                  <Link
+                    href={`/van-ban-den/noi-bo/${documentDetail.replyToId}`}
+                  >
                     <MessageSquare className="h-4 w-4 mr-2" />
                     Xem văn bản gốc
                   </Link>
@@ -820,7 +830,7 @@ export default function InternalDocumentReceivedDetailPage() {
               )}
 
               <Button className="w-full" variant="outline" asChild>
-                <Link href={`/van-ban-den/noi-bo/${document.id}/reply`}>
+                <Link href={`/van-ban-den/noi-bo/${documentDetail.id}/reply`}>
                   <MessageSquare className="h-4 w-4 mr-2" />
                   Trả lời văn bản
                 </Link>
