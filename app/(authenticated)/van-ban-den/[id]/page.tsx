@@ -27,19 +27,26 @@ import { workflowAPI } from "@/lib/api/workflow";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/components/ui/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
-import { use } from "react";
 import { DepartmentDTO } from "@/lib/api";
 import { de } from "date-fns/locale";
 import { useRouter } from "next/navigation";
+import { downloadPdfWithWatermark, isPdfFile } from "@/lib/utils/pdf-watermark";
 
 export default function DocumentDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const unwrappedParams = use(params);
-  const { id } = unwrappedParams;
-  const documentId = Number.parseInt(id);
+  const [resolvedParams, setResolvedParams] = useState<{ id: string } | null>(
+    null
+  );
+
+  // Resolve params Promise
+  useEffect(() => {
+    params.then(setResolvedParams);
+  }, [params]);
+
+  const documentId = resolvedParams ? Number.parseInt(resolvedParams.id) : null;
   const { user, hasRole } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
@@ -54,6 +61,8 @@ export default function DocumentDetailPage({
   const [departments, setDepartments] = useState<DepartmentDTO[]>([]);
   useEffect(() => {
     const fetchDepartments = async () => {
+      if (!documentId) return;
+
       try {
         const response = await incomingDocumentsAPI.getAllDepartments(
           documentId
@@ -176,18 +185,50 @@ export default function DocumentDetailPage({
       return;
     }
 
+    if (!documentId) {
+      toast({
+        title: "Lỗi",
+        description: "Không xác định được ID văn bản",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       const blob = await incomingDocumentsAPI.downloadIncomingAttachment(
         documentId
       );
 
-      const url = window.URL.createObjectURL(blob);
-
-      const a = document.createElement("a");
-      a.href = url;
-
       const filename =
         _document.attachmentFilename.split("/").pop() || "document.pdf";
+
+      // Kiểm tra nếu là file PDF và có thông tin người dùng thì thêm watermark
+      if (isPdfFile(filename) && user?.fullName) {
+        try {
+          await downloadPdfWithWatermark(blob, filename, user.fullName);
+
+          toast({
+            title: "Thành công",
+            description: `Đã tải xuống file PDF với watermark: ${filename}`,
+          });
+          return;
+        } catch (watermarkError) {
+          console.error(
+            "Error adding watermark, falling back to normal download:",
+            watermarkError
+          );
+          toast({
+            title: "Cảnh báo",
+            description: "Không thể thêm watermark, tải xuống file gốc",
+            variant: "destructive",
+          });
+        }
+      }
+
+      // Tải xuống bình thường cho non-PDF hoặc khi watermark thất bại
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
       a.download = filename;
 
       document.body.appendChild(a);
@@ -210,7 +251,7 @@ export default function DocumentDetailPage({
   };
 
   const handleResponse = async () => {
-    if (!_document || !user) return;
+    if (!_document || !user || !documentId) return;
 
     try {
       // First, check if there's an existing draft related to this document that was rejected
@@ -942,7 +983,7 @@ export default function DocumentDetailPage({
                     return (
                       <div className="w-full text-center text-amber-600 text-sm py-1">
                         Văn bản đã được phân công cho cán bộ của{" "}
-                        {user?.department} xử lý
+                        {user?.departmentName} xử lý
                       </div>
                     );
                   }
