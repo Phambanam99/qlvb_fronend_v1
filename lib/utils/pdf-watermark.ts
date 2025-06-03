@@ -136,12 +136,12 @@ export async function addUserWatermarkToPdf(
   userFullName: string,
   pdfData: Blob | ArrayBuffer | Uint8Array
 ): Promise<Uint8Array> {
-  const watermarkText = `Downloaded by: ${userFullName}`;
+  const watermarkText = `${userFullName}`;
 
   return addWatermarkToPdf(pdfData, {
     text: watermarkText,
     opacity: 0.25,
-    fontSize: 36,
+    fontSize: 56,
     color: [0.6, 0.6, 0.6],
     angle: -45,
   });
