@@ -27,7 +27,7 @@ import { useNotifications } from "@/lib/notifications-context";
 import { useToast } from "@/components/ui/use-toast";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { DatePicker } from "@/components/ui/date-picker";
 import {
   Select,
@@ -41,6 +41,7 @@ import { Separator } from "@/components/ui/separator";
 import {
   getDocumentById,
   replyToDocument,
+  replyToDocumentWithAttachments,
 } from "@/lib/api/internalDocumentApi";
 import { documentTypesAPI, DocumentTypeDTO } from "@/lib/api";
 
@@ -146,6 +147,11 @@ export default function ReplyInternalDocumentPage() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  // Handler for RichTextEditor components
+  const handleRichTextChange = (name: string) => (html: string) => {
+    setFormData((prev) => ({ ...prev, [name]: html }));
+  };
+
   const handleSelectChange = (name: string, value: string) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
@@ -238,9 +244,13 @@ export default function ReplyInternalDocumentPage() {
           },
         ],
       };
-
+      console.log(file);
       // Call API to create reply
-      await replyToDocument(Number(originalDocumentId), replyData);
+      await replyToDocumentWithAttachments(
+        Number(originalDocumentId),
+        replyData,
+        file ? [file] : undefined
+      );
 
       // Show success notification
       toast({
@@ -494,15 +504,12 @@ export default function ReplyInternalDocumentPage() {
                 <Label htmlFor="summary">
                   Nội dung trả lời <span className="text-red-500">*</span>
                 </Label>
-                <Textarea
-                  id="summary"
-                  name="summary"
-                  value={formData.summary}
-                  onChange={handleInputChange}
+                <RichTextEditor
+                  content={formData.summary}
+                  onChange={handleRichTextChange("summary")}
                   placeholder="Nhập nội dung trả lời"
-                  rows={6}
-                  required
                   className={validationErrors.summary ? "border-red-500" : ""}
+                  minHeight="150px"
                 />
                 {validationErrors.summary && (
                   <p className="text-sm text-red-500">
@@ -575,13 +582,11 @@ export default function ReplyInternalDocumentPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="notes">Ghi chú</Label>
-                <Textarea
-                  id="notes"
-                  name="notes"
-                  value={formData.notes}
-                  onChange={handleInputChange}
+                <RichTextEditor
+                  content={formData.notes}
+                  onChange={handleRichTextChange("notes")}
                   placeholder="Nhập ghi chú (nếu có)"
-                  rows={3}
+                  minHeight="100px"
                 />
               </div>
 
