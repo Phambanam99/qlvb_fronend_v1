@@ -35,10 +35,13 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/components/ui/use-toast";
+import { useAuth } from "@/lib/auth-context";
 import {
   getDocumentById,
   downloadAttachment,
 } from "@/lib/api/internalDocumentApi";
+import { useDocumentReadStatus } from "@/hooks/use-document-read-status";
+import { downloadPdfWithWatermark, isPdfFile } from "@/lib/utils/pdf-watermark";
 
 interface InternalDocumentDetail {
   id: number;
@@ -87,7 +90,11 @@ export default function InternalDocumentDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();
-  const [_document, setDocument] = useState<InternalDocumentDetail | null>(null);
+  const { user } = useAuth();
+  const { markAsRead: globalMarkAsRead } = useDocumentReadStatus();
+  const [_document, setDocument] = useState<InternalDocumentDetail | null>(
+    null
+  );
   const [loading, setLoading] = useState(true);
 
   const documentId = params.id as string;
@@ -98,6 +105,10 @@ export default function InternalDocumentDetailPage() {
         setLoading(true);
         const response = await getDocumentById(Number(documentId));
         setDocument(response);
+
+        if (response && response.isRead) {
+          globalMarkAsRead(Number(documentId));
+        }
       } catch (error) {
         console.error("Error fetching document:", error);
         toast({
@@ -113,7 +124,7 @@ export default function InternalDocumentDetailPage() {
     if (documentId) {
       fetchDocument();
     }
-  }, [documentId, toast]);
+  }, [documentId, toast, globalMarkAsRead]);
 
   const formatDate = (dateString: string) => {
     try {
@@ -153,7 +164,8 @@ export default function InternalDocumentDetailPage() {
 
   const handleDownloadAttachment = async (
     attachmentId: number,
-    filename: string
+    filename: string,
+    contentType?: string
   ) => {
     try {
       const response = await downloadAttachment(
@@ -161,7 +173,32 @@ export default function InternalDocumentDetailPage() {
         attachmentId
       );
 
-      // Create blob and download
+      if (isPdfFile(filename, contentType) && user?.fullName) {
+        try {
+          await downloadPdfWithWatermark(
+            response.data,
+            filename,
+            user.fullName
+          );
+
+          toast({
+            title: "Thành công",
+            description: `Đã tải xuống file PDF với watermark: ${filename}`,
+          });
+          return;
+        } catch (watermarkError) {
+          console.error(
+            "Error adding watermark, falling back to normal download:",
+            watermarkError
+          );
+          toast({
+            title: "Cảnh báo",
+            description: "Không thể thêm watermark, tải xuống file gốc",
+            variant: "destructive",
+          });
+        }
+      }
+
       const blob = new Blob([response.data]);
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -293,7 +330,10 @@ export default function InternalDocumentDetailPage() {
                   <label className="text-sm font-medium text-muted-foreground">
                     Tóm tắt nội dung
                   </label>
-                  <p className="whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: _document.summary }} ></p>
+                  <p
+                    className="whitespace-pre-wrap"
+                    dangerouslySetInnerHTML={{ __html: _document.summary }}
+                  ></p>
                 </div>
               )}
 
@@ -396,7 +436,8 @@ export default function InternalDocumentDetailPage() {
                         onClick={() =>
                           handleDownloadAttachment(
                             attachment.id,
-                            attachment.filename
+                            attachment.filename,
+                            attachment.contentType
                           )
                         }
                       >

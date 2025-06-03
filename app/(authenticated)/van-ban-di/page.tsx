@@ -45,6 +45,8 @@ import { getStatusBadgeInfo } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
 import { useHierarchicalDepartments } from "@/hooks/use-hierarchical-departments";
 import { getSentDocuments } from "@/lib/api/internalDocumentApi";
+import { useDocumentReadStatus } from "@/hooks/use-document-read-status";
+import { usePageVisibility } from "@/hooks/use-page-visibility";
 
 // Interface for external documents (original format)
 interface OutgoingDocument {
@@ -128,6 +130,11 @@ export default function OutgoingDocumentsPage() {
     userDepartmentIds,
   } = useHierarchicalDepartments();
 
+  // Sử dụng hooks trạng thái đọc và page visibility
+  const { subscribe, getReadStatus, updateMultipleReadStatus } =
+    useDocumentReadStatus();
+  const isPageVisible = usePageVisibility();
+
   const hasFullAccess = hasRole([
     "ROLE_ADMIN",
     "ROLE_VAN_THU",
@@ -136,6 +143,21 @@ export default function OutgoingDocumentsPage() {
     "ROLE_CHINH_UY",
     "ROLE_PHO_CHINH_UY",
   ]);
+
+  // Subscribe to read status changes
+  useEffect(() => {
+    return subscribe();
+  }, [subscribe]);
+
+  // Refresh data when page becomes visible again
+  useEffect(() => {
+    if (isPageVisible && user && !loadingDepartments) {
+      console.log("Page became visible, refreshing documents...");
+      setTimeout(() => {
+        fetchDocuments(currentPage, pageSize);
+      }, 100);
+    }
+  }, [isPageVisible]);
 
   // Fetch internal documents
   const fetchInternalDocuments = async (
@@ -153,7 +175,37 @@ export default function OutgoingDocumentsPage() {
 
       if (response && response.content) {
         console.log("Internal documents response:", response);
-        setInternalDocuments(response.content);
+
+        // Cập nhật trạng thái đọc từ global state cho văn bản đi
+        const documentsWithUpdatedReadStatus = response.content.map(
+          (doc: InternalDocument) => {
+            const globalReadStatus = getReadStatus(doc.id);
+            // Đối với văn bản đi, trạng thái đọc được tính dựa trên recipients
+            if (
+              globalReadStatus.isRead !== undefined &&
+              globalReadStatus.isRead !== doc.isRead
+            ) {
+              return {
+                ...doc,
+                isRead: globalReadStatus.isRead,
+                readAt: globalReadStatus.readAt || doc.readAt,
+              };
+            }
+            return doc;
+          }
+        );
+
+        setInternalDocuments(documentsWithUpdatedReadStatus);
+
+        // Cập nhật global read status với data từ server
+        const readStatusUpdates = response.content.map(
+          (doc: InternalDocument) => ({
+            id: doc.id,
+            isRead: doc.isRead,
+            readAt: doc.readAt,
+          })
+        );
+        updateMultipleReadStatus(readStatusUpdates);
 
         // Set pagination info if available
         if (response.totalElements !== undefined) {

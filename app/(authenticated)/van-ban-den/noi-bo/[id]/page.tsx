@@ -46,6 +46,8 @@ import {
   getDocumentReplies,
 } from "@/lib/api/internalDocumentApi";
 import { useDocumentReadStatus } from "@/hooks/use-document-read-status";
+import { useAuth } from "@/lib/auth-context";
+import { downloadPdfWithWatermark, isPdfFile } from "@/lib/utils/pdf-watermark";
 
 interface InternalDocumentDetail {
   id: number;
@@ -117,6 +119,7 @@ export default function InternalDocumentReceivedDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();
+  const { user } = useAuth();
   const [documentDetail, setDocumentDetail] =
     useState<InternalDocumentDetail | null>(null);
   const [documentHistory, setDocumentHistory] = useState<DocumentHistory[]>([]);
@@ -246,7 +249,8 @@ export default function InternalDocumentReceivedDetailPage() {
 
   const handleDownloadAttachment = async (
     attachmentId: number,
-    filename: string
+    filename: string,
+    contentType?: string
   ) => {
     try {
       const response = await downloadAttachment(
@@ -254,7 +258,34 @@ export default function InternalDocumentReceivedDetailPage() {
         attachmentId
       );
 
-      // Create blob and download
+      // Kiểm tra nếu là file PDF thì thêm watermark
+      if (isPdfFile(filename, contentType) && user?.fullName) {
+        try {
+          await downloadPdfWithWatermark(
+            response.data,
+            filename,
+            user.fullName
+          );
+
+          toast({
+            title: "Thành công",
+            description: `Đã tải xuống file PDF với watermark: ${filename}`,
+          });
+          return;
+        } catch (watermarkError) {
+          console.error(
+            "Error adding watermark, falling back to normal download:",
+            watermarkError
+          );
+          toast({
+            title: "Cảnh báo",
+            description: "Không thể thêm watermark, tải xuống file gốc",
+            variant: "destructive",
+          });
+        }
+      }
+
+      // Tải xuống bình thường cho non-PDF hoặc khi watermark thất bại
       const blob = new Blob([response.data]);
       const url = window.URL.createObjectURL(blob);
       const link = window.document.createElement("a");
@@ -699,7 +730,8 @@ export default function InternalDocumentReceivedDetailPage() {
                         onClick={() =>
                           handleDownloadAttachment(
                             attachment.id,
-                            attachment.filename
+                            attachment.filename,
+                            attachment.contentType
                           )
                         }
                       >
