@@ -45,7 +45,10 @@ export function getStatusBadgeInfo(
       variant: "secondary",
       display: "Trợ lý đã trình",
     },
-    leaderReviewing: { variant: "secondary", display: "Thủ trưởng đang xem xét" },
+    leaderReviewing: {
+      variant: "secondary",
+      display: "Thủ trưởng đang xem xét",
+    },
     leaderApproved: { variant: "success", display: "Thủ trưởng đã phê duyệt" },
     leaderCommented: {
       variant: "secondary",
@@ -55,22 +58,33 @@ export function getStatusBadgeInfo(
     completed: { variant: "success", display: "Hoàn thành" },
     rejected: { variant: "destructive", display: "Từ chối" },
     archived: { variant: "outline", display: "Lưu trữ" },
-   
-    // Văn bản đi
+
+    // Văn bản đi - lowercase versions
     sent: { variant: "success", display: "Đã gửi" },
     approved: { variant: "success", display: "Đã phê duyệt" },
 
+    // Văn bản đi nội bộ - uppercase versions (từ API)
+    DRAFT: { variant: "outline", display: "Bản nháp" },
+    SENT: { variant: "success", display: "Đã gửi" },
+    APPROVED: { variant: "success", display: "Đã phê duyệt" },
+
     // Văn bản phản hồi
     pendingLeaderReview: { variant: "outline", display: "Chờ ý kiến chỉ huy" },
-    departmentReviewing: { variant: "outline", display: "Chỉ huy đang xem xét" },
+    departmentReviewing: {
+      variant: "outline",
+      display: "Chỉ huy đang xem xét",
+    },
     departmentApproved: { variant: "success", display: "Chỉ huy đã phê duyệt" },
-    departmentCommented: { variant: "secondary", display: "Chỉ huy đã cho ý kiến" },
+    departmentCommented: {
+      variant: "secondary",
+      display: "Chỉ huy đã cho ý kiến",
+    },
     formatCorrection: {
       variant: "secondary",
       display: "Cần chỉnh sửa thể thức",
     },
     formatCorrected: {
-      variant: "secondary", 
+      variant: "secondary",
       display: "Đã chỉnh sửa thể thức",
     },
   };
