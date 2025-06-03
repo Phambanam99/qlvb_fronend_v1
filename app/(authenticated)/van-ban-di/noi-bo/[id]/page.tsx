@@ -173,13 +173,11 @@ export default function InternalDocumentDetailPage() {
         attachmentId
       );
 
+      const pdfBlob = response.data;
+
       if (isPdfFile(filename, contentType) && user?.fullName) {
         try {
-          await downloadPdfWithWatermark(
-            response.data,
-            filename,
-            user.fullName
-          );
+          await downloadPdfWithWatermark(pdfBlob, filename, user.fullName);
 
           toast({
             title: "Thành công",
@@ -199,8 +197,7 @@ export default function InternalDocumentDetailPage() {
         }
       }
 
-      const blob = new Blob([response.data]);
-      const url = window.URL.createObjectURL(blob);
+      const url = window.URL.createObjectURL(pdfBlob);
       const link = document.createElement("a");
       link.href = url;
       link.download = filename;

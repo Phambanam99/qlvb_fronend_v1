@@ -258,11 +258,14 @@ export default function InternalDocumentReceivedDetailPage() {
         attachmentId
       );
 
+      // response.data là Blob từ API
+      const fileBlob = response.data;
+
       // Kiểm tra nếu là file PDF thì thêm watermark
       if (isPdfFile(filename, contentType) && user?.fullName) {
         try {
           await downloadPdfWithWatermark(
-            response.data,
+            fileBlob, // Truyền blob trực tiếp
             filename,
             user.fullName
           );
@@ -286,8 +289,7 @@ export default function InternalDocumentReceivedDetailPage() {
       }
 
       // Tải xuống bình thường cho non-PDF hoặc khi watermark thất bại
-      const blob = new Blob([response.data]);
-      const url = window.URL.createObjectURL(blob);
+      const url = window.URL.createObjectURL(fileBlob);
       const link = window.document.createElement("a");
       link.href = url;
       link.download = filename;

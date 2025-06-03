@@ -10,15 +10,33 @@ interface WatermarkOptions {
 
 /**
  * Thêm watermark vào file PDF
- * @param pdfBytes - Bytes của file PDF gốc
+ * @param pdfData - Blob, ArrayBuffer hoặc Uint8Array của file PDF gốc
  * @param options - Tùy chọn watermark
  * @returns Bytes của file PDF đã có watermark
  */
 export async function addWatermarkToPdf(
-  pdfBytes: ArrayBuffer | Uint8Array,
+  pdfData: Blob | ArrayBuffer | Uint8Array,
   options: WatermarkOptions
 ): Promise<Uint8Array> {
   try {
+    let pdfBytes: ArrayBuffer;
+
+    // Convert input data to ArrayBuffer
+    if (pdfData instanceof Blob) {
+      pdfBytes = await pdfData.arrayBuffer();
+    } else if (pdfData instanceof Uint8Array) {
+      pdfBytes = pdfData.buffer.slice(
+        pdfData.byteOffset,
+        pdfData.byteOffset + pdfData.byteLength
+      );
+    } else if (pdfData instanceof ArrayBuffer) {
+      pdfBytes = pdfData;
+    } else {
+      throw new Error(
+        "Invalid PDF data format. Expected Blob, ArrayBuffer, or Uint8Array"
+      );
+    }
+
     // Load PDF document
     const pdfDoc = await PDFDocument.load(pdfBytes);
 
@@ -100,23 +118,27 @@ export async function addWatermarkToPdf(
     return await pdfDoc.save();
   } catch (error) {
     console.error("Error adding watermark to PDF:", error);
-    throw new Error("Failed to add watermark to PDF");
+    throw new Error(
+      `Failed to add watermark to PDF: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`
+    );
   }
 }
 
 /**
  * Tạo watermark với tên người dùng
  * @param userFullName - Tên đầy đủ của người dùng
- * @param pdfBytes - Bytes của file PDF gốc
+ * @param pdfData - Blob, ArrayBuffer hoặc Uint8Array của file PDF gốc
  * @returns Bytes của file PDF đã có watermark
  */
 export async function addUserWatermarkToPdf(
   userFullName: string,
-  pdfBytes: ArrayBuffer | Uint8Array
+  pdfData: Blob | ArrayBuffer | Uint8Array
 ): Promise<Uint8Array> {
   const watermarkText = `Downloaded by: ${userFullName}`;
 
-  return addWatermarkToPdf(pdfBytes, {
+  return addWatermarkToPdf(pdfData, {
     text: watermarkText,
     opacity: 0.25,
     fontSize: 36,
@@ -127,18 +149,18 @@ export async function addUserWatermarkToPdf(
 
 /**
  * Download file PDF với watermark
- * @param pdfBytes - Bytes của file PDF gốc
+ * @param pdfData - Blob, ArrayBuffer hoặc Uint8Array của file PDF gốc
  * @param fileName - Tên file để download
  * @param userFullName - Tên đầy đủ của người dùng
  */
 export async function downloadPdfWithWatermark(
-  pdfBytes: ArrayBuffer | Uint8Array,
+  pdfData: Blob | ArrayBuffer | Uint8Array,
   fileName: string,
   userFullName: string
 ): Promise<void> {
   try {
     // Add watermark
-    const watermarkedPdf = await addUserWatermarkToPdf(userFullName, pdfBytes);
+    const watermarkedPdf = await addUserWatermarkToPdf(userFullName, pdfData);
 
     // Create blob and download
     const blob = new Blob([watermarkedPdf], { type: "application/pdf" });
