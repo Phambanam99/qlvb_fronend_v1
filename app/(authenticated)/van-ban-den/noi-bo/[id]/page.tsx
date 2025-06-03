@@ -32,6 +32,8 @@ import {
   MessageSquare,
   Paperclip,
   Eye,
+  Send,
+  Edit,
 } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/components/ui/use-toast";
@@ -39,7 +41,9 @@ import {
   getDocumentById,
   downloadAttachment,
   markDocumentAsRead,
+  getInternalDocumentHistory,
 } from "@/lib/api/internalDocumentApi";
+import { unifiedDocumentsAPI } from "@/lib/api/unified-documents";
 
 interface InternalDocumentDetail {
   id: number;
@@ -84,12 +88,28 @@ interface InternalDocumentDetail {
   readAt?: string;
 }
 
+interface DocumentHistory {
+  id: number;
+  action: string;
+  details: string;
+  performedBy: {
+    id: number;
+    name: string;
+    fullName: string;
+  };
+  performedAt: string;
+  ipAddress?: string;
+  userAgent?: string;
+}
+
 export default function InternalDocumentReceivedDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();
   const [document, setDocument] = useState<InternalDocumentDetail | null>(null);
+  const [documentHistory, setDocumentHistory] = useState<DocumentHistory[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingHistory, setLoadingHistory] = useState(false);
   const [markingAsRead, setMarkingAsRead] = useState(false);
 
   const documentId = params.id as string;
@@ -116,6 +136,30 @@ export default function InternalDocumentReceivedDetailPage() {
       fetchDocument();
     }
   }, [documentId, toast]);
+
+  useEffect(() => {
+    const fetchHistory = async () => {
+      try {
+        setLoadingHistory(true);
+        // Try to get history from unified documents API or workflow API
+        const historyResponse =
+          await unifiedDocumentsAPI.getDocumentWorkflowHistory(
+            Number(documentId)
+          );
+        setDocumentHistory(historyResponse || []);
+      } catch (error) {
+        console.error("Error fetching document history:", error);
+        // Fallback to empty history if API not available
+        setDocumentHistory([]);
+      } finally {
+        setLoadingHistory(false);
+      }
+    };
+
+    if (documentId && document) {
+      fetchHistory();
+    }
+  }, [documentId, document]);
 
   const formatDate = (dateString: string) => {
     try {
@@ -212,6 +256,48 @@ export default function InternalDocumentReceivedDetailPage() {
       });
     } finally {
       setMarkingAsRead(false);
+    }
+  };
+
+  const getActionIcon = (action: string) => {
+    switch (action.toUpperCase()) {
+      case "CREATED":
+        return <FileText className="h-4 w-4 text-green-500" />;
+      case "READ":
+        return <Eye className="h-4 w-4 text-blue-500" />;
+      case "REPLIED":
+        return <MessageSquare className="h-4 w-4 text-purple-500" />;
+      case "SENT":
+        return <Send className="h-4 w-4 text-green-500" />;
+      case "UPDATED":
+        return <Edit className="h-4 w-4 text-orange-500" />;
+      case "ATTACHMENT_ADDED":
+        return <Paperclip className="h-4 w-4 text-gray-500" />;
+      default:
+        return <Clock className="h-4 w-4 text-gray-500" />;
+    }
+  };
+
+  const getActionDisplayName = (action: string) => {
+    switch (action.toUpperCase()) {
+      case "CREATED":
+        return "Tạo văn bản";
+      case "READ":
+        return "Đọc văn bản";
+      case "REPLIED":
+        return "Trả lời văn bản";
+      case "SENT":
+        return "Gửi văn bản";
+      case "UPDATED":
+        return "Cập nhật văn bản";
+      case "ATTACHMENT_ADDED":
+        return "Thêm file đính kèm";
+      case "ATTACHMENT_REMOVED":
+        return "Xóa file đính kèm";
+      case "FORWARDED":
+        return "Chuyển tiếp văn bản";
+      default:
+        return action;
     }
   };
 
@@ -332,6 +418,121 @@ export default function InternalDocumentReceivedDetailPage() {
                     Ghi chú
                   </label>
                   <p className="whitespace-pre-wrap">{document.notes}</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Recipients Table */}
+          {document.recipients && document.recipients.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  Danh sách người nhận ({document.recipients.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Đơn vị</TableHead>
+                      <TableHead>Người nhận</TableHead>
+                      <TableHead>Trạng thái</TableHead>
+                      <TableHead>Thời gian nhận</TableHead>
+                      <TableHead>Thời gian đọc</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {document.recipients.map((recipient) => (
+                      <TableRow key={recipient.id}>
+                        <TableCell className="font-medium">
+                          {recipient.departmentName}
+                        </TableCell>
+                        <TableCell>
+                          {recipient.userName || "Toàn đơn vị"}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={recipient.isRead ? "default" : "outline"}
+                          >
+                            {recipient.isRead ? "Đã đọc" : "Chưa đọc"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {formatDate(recipient.receivedAt)}
+                        </TableCell>
+                        <TableCell>
+                          {recipient.readAt
+                            ? formatDate(recipient.readAt)
+                            : "-"}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Interaction History */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Clock className="h-5 w-5" />
+                Lịch sử tương tác
+              </CardTitle>
+              <CardDescription>
+                Theo dõi các hoạt động và tương tác với văn bản
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loadingHistory ? (
+                <div className="flex items-center justify-center p-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  <span className="ml-2 text-sm text-muted-foreground">
+                    Đang tải lịch sử...
+                  </span>
+                </div>
+              ) : documentHistory.length > 0 ? (
+                <div className="space-y-4">
+                  {documentHistory.map((entry, index) => (
+                    <div
+                      key={entry.id || index}
+                      className="flex items-start space-x-3 border-l-2 border-gray-200 pl-4 pb-4 last:pb-0"
+                    >
+                      <div className="flex-shrink-0 mt-1">
+                        {getActionIcon(entry.action)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-medium text-gray-900">
+                            {getActionDisplayName(entry.action)}
+                          </p>
+                          <time className="text-sm text-gray-500">
+                            {formatDate(entry.performedAt || entry.timestamp)}
+                          </time>
+                        </div>
+                        <p className="text-sm text-gray-500">
+                          Bởi:{" "}
+                          {entry.performedBy?.fullName ||
+                            entry.performedBy?.name ||
+                            entry.actorName ||
+                            "Hệ thống"}
+                        </p>
+                        {entry.details && (
+                          <p className="text-sm text-gray-600 mt-1">
+                            {entry.details}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <Clock className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-500">Chưa có lịch sử tương tác nào</p>
                 </div>
               )}
             </CardContent>

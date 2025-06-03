@@ -177,6 +177,11 @@ export const replyToDocument = async (id: number, document: any) => {
   return response.data;
 };
 
+export const getInternalDocumentHistory = async (id: number) => {
+  const response = await api.get(`/internal-documents/${id}/history`);
+  return response.data;
+};
+
 export const downloadAttachment = async (
   documentId: number,
   attachmentId: number
