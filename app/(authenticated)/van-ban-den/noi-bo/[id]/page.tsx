@@ -45,6 +45,7 @@ import {
   getDocumentStats,
   getDocumentReplies,
 } from "@/lib/api/internalDocumentApi";
+import { useDocumentReadStatus } from "@/hooks/use-document-read-status";
 
 interface InternalDocumentDetail {
   id: number;
@@ -130,6 +131,8 @@ export default function InternalDocumentReceivedDetailPage() {
   const [loadingStats, setLoadingStats] = useState(false);
   const [markingAsRead, setMarkingAsRead] = useState(false);
 
+  const { markAsRead: globalMarkAsRead } = useDocumentReadStatus();
+
   const documentId = params.id as string;
 
   useEffect(() => {
@@ -140,13 +143,16 @@ export default function InternalDocumentReceivedDetailPage() {
         console.log("Debug document:", response);
         console.log("Debug attachments:", response?.attachments);
 
-        // Đảm bảo attachments luôn là mảng
         if (response) {
           const documentWithAttachments = {
             ...response,
             attachments: response.attachments || [],
           };
           setDocumentDetail(documentWithAttachments);
+
+          if (response.isRead) {
+            globalMarkAsRead(Number(documentId));
+          }
         }
       } catch (error) {
         console.error("Error fetching document:", error);
@@ -163,7 +169,7 @@ export default function InternalDocumentReceivedDetailPage() {
     if (documentId) {
       fetchDocument();
     }
-  }, [documentId, toast]);
+  }, [documentId, toast, globalMarkAsRead]);
 
   useEffect(() => {
     const fetchHistoryAndStats = async () => {
@@ -181,6 +187,7 @@ export default function InternalDocumentReceivedDetailPage() {
         // Fetch stats
         setLoadingStats(true);
         const statsResponse = await getDocumentStats(Number(documentId));
+        console.log("Debug stats:", statsResponse);
         setDocumentStats(statsResponse);
 
         // Fetch replies
@@ -283,6 +290,9 @@ export default function InternalDocumentReceivedDetailPage() {
         isRead: true,
         readAt: new Date().toISOString(),
       });
+
+      globalMarkAsRead(documentDetail.id);
+
       toast({
         title: "Thành công",
         description: "Đã đánh dấu văn bản là đã đọc",
@@ -448,10 +458,10 @@ export default function InternalDocumentReceivedDetailPage() {
                   <label className="text-sm font-medium text-muted-foreground">
                     Tóm tắt nội dung
                   </label>
-                  <p className="whitespace-pre-wrap" 
-                  dangerouslySetInnerHTML={{ __html: documentDetail.summary }} >
-                   
-                  </p>
+                  <p
+                    className="whitespace-pre-wrap"
+                    dangerouslySetInnerHTML={{ __html: documentDetail.summary }}
+                  ></p>
                 </div>
               )}
 
@@ -618,11 +628,12 @@ export default function InternalDocumentReceivedDetailPage() {
                             {reply.title}
                           </h5>
                           {reply.summary && (
-                            <p className="text-sm text-gray-600 mb-2 line-clamp-2"
-                            dangerouslySetInnerHTML={{ __html: reply.summary }}
-                            >
-                              
-                            </p>
+                            <p
+                              className="text-sm text-gray-600 mb-2 line-clamp-2"
+                              dangerouslySetInnerHTML={{
+                                __html: reply.summary,
+                              }}
+                            ></p>
                           )}
                           <div className="flex items-center gap-4 text-xs text-gray-500">
                             <span>

@@ -57,6 +57,8 @@ import {
   getDocumentStats,
   getDocumentReplies,
 } from "@/lib/api/internalDocumentApi";
+import { useDocumentReadStatus } from "@/hooks/use-document-read-status";
+import { usePageVisibility } from "@/hooks/use-page-visibility";
 
 // Role có quyền xem toàn bộ văn bản
 const FULL_ACCESS_ROLES = [
@@ -182,6 +184,13 @@ export default function IncomingDocumentsPage() {
     hasFullAccess: hasFullDepartmentAccess,
   } = useHierarchicalDepartments();
 
+  // Sử dụng hook quản lý trạng thái đọc
+  const { subscribe, getReadStatus, updateMultipleReadStatus } =
+    useDocumentReadStatus();
+
+  // Sử dụng hook page visibility để refresh khi trang được focus lại
+  const isPageVisible = usePageVisibility();
+
   // Pagination states
   const [currentPage, setCurrentPage] = useState<number>(0);
   const [pageSize, setPageSize] = useState<number>(10);
@@ -284,7 +293,37 @@ export default function IncomingDocumentsPage() {
 
       if (response && response.content) {
         console.log("Internal received documents response:", response);
-        setInternalDocuments(response.content);
+
+        // Cập nhật trạng thái đọc từ global state
+        const documentsWithUpdatedReadStatus = response.content.map(
+          (doc: InternalDocument) => {
+            const globalReadStatus = getReadStatus(doc.id);
+            // Nếu có trạng thái đọc trong global state, sử dụng nó
+            if (
+              globalReadStatus.isRead !== undefined &&
+              globalReadStatus.isRead !== doc.isRead
+            ) {
+              return {
+                ...doc,
+                isRead: globalReadStatus.isRead,
+                readAt: globalReadStatus.readAt || doc.readAt,
+              };
+            }
+            return doc;
+          }
+        );
+
+        setInternalDocuments(documentsWithUpdatedReadStatus);
+
+        // Cập nhật global read status với data từ server
+        const readStatusUpdates = response.content.map(
+          (doc: InternalDocument) => ({
+            id: doc.id,
+            isRead: doc.isRead,
+            readAt: doc.readAt,
+          })
+        );
+        updateMultipleReadStatus(readStatusUpdates);
 
         // Set pagination info if available
         if (response.totalElements !== undefined) {
@@ -554,6 +593,22 @@ export default function IncomingDocumentsPage() {
     );
   };
 
+  // Subscribe to read status changes
+  useEffect(() => {
+    return subscribe();
+  }, [subscribe]);
+
+  // Refresh data when page becomes visible again (user comes back from detail page)
+  useEffect(() => {
+    if (isPageVisible && user && !loadingDepartments) {
+      console.log("Page became visible, refreshing documents...");
+      // Small delay to ensure any pending state updates are complete
+      setTimeout(() => {
+        fetchDocuments(currentPage, pageSize);
+      }, 100);
+    }
+  }, [isPageVisible]);
+
   if (isLoading || loadingDepartments) {
     return (
       <div className="flex h-[80vh] items-center justify-center">
@@ -719,43 +774,58 @@ export default function IncomingDocumentsPage() {
                 </TableHeader>
                 <TableBody>
                   {filteredInternalDocuments.length > 0 ? (
-                    filteredInternalDocuments.map((doc) => (
-                      <TableRow key={doc.id} className="hover:bg-accent/30">
-                        <TableCell className="font-medium">
-                          {doc.documentNumber}
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell">
-                          {formatDate(doc.signingDate)}
-                        </TableCell>
-                        <TableCell className="max-w-[300px] truncate">
-                          {doc.title}
-                        </TableCell>
-                        <TableCell className="hidden lg:table-cell">
-                          {doc.documentType}
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell">
-                          {doc.senderName}
-                        </TableCell>
-                        <TableCell>{getPriorityBadge(doc.priority)}</TableCell>
-                        <TableCell>
-                          <Badge variant={doc.isRead ? "default" : "outline"}>
-                            {doc.isRead ? "Đã đọc" : "Chưa đọc"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="hover:bg-primary/10 hover:text-primary"
-                            asChild
-                          >
-                            <Link href={`/van-ban-den/noi-bo/${doc.id}`}>
-                              Chi tiết
-                            </Link>
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))
+                    filteredInternalDocuments.map((doc) => {
+                      // Lấy trạng thái đọc từ global state
+                      const globalReadStatus = getReadStatus(doc.id);
+                      const currentReadStatus =
+                        globalReadStatus.isRead !== undefined
+                          ? globalReadStatus.isRead
+                          : doc.isRead;
+
+                      return (
+                        <TableRow key={doc.id} className="hover:bg-accent/30">
+                          <TableCell className="font-medium">
+                            {doc.documentNumber}
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell">
+                            {formatDate(doc.signingDate)}
+                          </TableCell>
+                          <TableCell className="max-w-[300px] truncate">
+                            {doc.title}
+                          </TableCell>
+                          <TableCell className="hidden lg:table-cell">
+                            {doc.documentType}
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell">
+                            {doc.senderName}
+                          </TableCell>
+                          <TableCell>
+                            {getPriorityBadge(doc.priority)}
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={
+                                currentReadStatus ? "default" : "outline"
+                              }
+                            >
+                              {currentReadStatus ? "Đã đọc" : "Chưa đọc"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="hover:bg-primary/10 hover:text-primary"
+                              asChild
+                            >
+                              <Link href={`/van-ban-den/noi-bo/${doc.id}`}>
+                                Chi tiết
+                              </Link>
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
                   ) : (
                     <TableRow>
                       <TableCell colSpan={8} className="h-24 text-center">
