@@ -203,7 +203,7 @@ export default function OutgoingDocumentForm({
         if (isMounted) {
           setDepartments(departmentsData.content || []);
         }
-
+        console.log("oke")
         // 2. Lấy danh sách người phê duyệt
         if (user?.departmentId) {
           try {
@@ -212,10 +212,10 @@ export default function OutgoingDocumentForm({
             );
 
             // Lấy danh sách người dùng có vai trò lãnh đạo trong phòng ban
-            const usersResponse = await usersAPI.getUsersByRoleAndDepartment(
-              ["ROLE_LEADER"],
-              Number(user.departmentId)
+            const usersResponse = await usersAPI.getUserForApproval(
+              user.id || 0
             );
+            console.log("check",usersResponse);
             const leaderUsers = usersResponse;
 
             // Lấy danh sách người dùng có vai trò lãnh đạo cấp cao
@@ -810,8 +810,8 @@ export default function OutgoingDocumentForm({
                       {user?.name || "Người dùng hiện tại"}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      {user?.position || "Chức vụ"} -{" "}
-                      {user?.department || "Phòng ban"}
+                      {user?.roleDisplayNames || "Chức vụ"} -{" "}
+                      {user?.departmentName  || "Phòng ban"}
                     </p>
                   </div>
                 </div>

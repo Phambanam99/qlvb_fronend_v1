@@ -8,6 +8,7 @@ import {
   incomingDocumentsAPI,
   outgoingDocumentsAPI,
   OutgoingDocumentDTO,
+  workflowAPI,
 } from "@/lib/api";
 
 interface FormData {
@@ -320,36 +321,73 @@ export function useDocumentForm() {
     try {
       setIsSubmitting(true);
 
-      const documentData: Partial<OutgoingDocumentDTO> = {
+      // Prepare document data
+      const documentData: any = {
         documentNumber: formData.documentNumber,
         title: formData.title,
+        summary: formData.content,
         documentType: formData.documentType,
         receivingDepartmentText:
           documentScope === "EXTERNAL" ? formData.recipient : undefined,
         signingDate: new Date(formData.sentDate),
+        approverId: formData.approver,
+        priority: formData.priority,
+        notes: formData.note,
         status: "DRAFT",
       };
 
-      console.log("Creating outgoing document:", documentData);
+      // If it's a reply to an incoming document
+      if (replyToId) {
+        console.log(
+          "Creating response document for incoming document:",
+          replyToId
+        );
 
-      // Note: This will need to be updated when the API method is available
-      // const createdDocument = await outgoingDocumentsAPI.createDocument(documentData);
+        // Call API to create response document
+        await workflowAPI.createResponseDocument(
+          documentData,
+          replyToId,
+          file || undefined
+        );
 
-      // Upload file if provided
-      // if (file && createdDocument.id) {
-      //   const fileFormData = new FormData();
-      //   fileFormData.append("file", file);
-      //   await outgoingDocumentsAPI.uploadAttachment(createdDocument.id, fileFormData);
-      // }
+        addNotification({
+          title: "Thành công",
+          message: "Đã tạo văn bản trả lời thành công",
+          type: "success",
+        });
+      }
+      // If it's a new standalone outgoing document
+      else {
+        console.log("Creating new standalone outgoing document");
 
-      addNotification({
-        title: "Thành công",
-        message: `Đã tạo ${
-          documentScope === "INTERNAL" ? "văn bản nội bộ" : "văn bản đi"
-        } thành công`,
-        type: "success",
-      });
+        // Create FormData for file upload
+        const formDataToSubmit = new FormData();
 
+        // Add all document data fields to FormData
+        Object.entries(documentData).forEach(([key, value]) => {
+          if (value !== undefined && value !== null) {
+            formDataToSubmit.append(key, String(value));
+          }
+        });
+
+        // Add file if exists
+        if (file) {
+          formDataToSubmit.append("file", file);
+        }
+
+        // Call API to create outgoing document
+        await workflowAPI.createOugoingAlone(documentData, file || null);
+
+        addNotification({
+          title: "Thành công",
+          message: `Đã tạo ${
+            documentScope === "INTERNAL" ? "văn bản nội bộ" : "văn bản đi"
+          } thành công`,
+          type: "success",
+        });
+      }
+
+      // Redirect to outgoing documents list
       router.push("/van-ban-di");
     } catch (error: any) {
       console.error("Error creating document:", error);
@@ -378,27 +416,42 @@ export function useDocumentForm() {
     try {
       setIsSubmitting(true);
 
-      const documentData: Partial<OutgoingDocumentDTO> = {
+      // Prepare document data with DRAFT status
+      const documentData: any = {
         documentNumber: formData.documentNumber,
         title: formData.title,
+        summary: formData.content,
         documentType: formData.documentType,
         receivingDepartmentText:
           documentScope === "EXTERNAL" ? formData.recipient : undefined,
         signingDate: new Date(formData.sentDate),
+        approverId: formData.approver,
+        priority: formData.priority,
+        notes: formData.note,
         status: "DRAFT",
       };
 
-      console.log("Saving draft:", documentData);
+      // If it's a reply to an incoming document
+      if (replyToId) {
+        console.log(
+          "Saving draft response document for incoming document:",
+          replyToId
+        );
 
-      // Note: This will need to be updated when the API method is available
-      // const savedDraft = await outgoingDocumentsAPI.createDocument(documentData);
+        // Call API to create response document as draft
+        await workflowAPI.createResponseDocument(
+          documentData,
+          replyToId,
+          file || undefined
+        );
+      }
+      // If it's a new standalone outgoing document
+      else {
+        console.log("Saving draft standalone outgoing document");
 
-      // Upload file if provided
-      // if (file && savedDraft.id) {
-      //   const fileFormData = new FormData();
-      //   fileFormData.append("file", file);
-      //   await outgoingDocumentsAPI.uploadAttachment(savedDraft.id, fileFormData);
-      // }
+        // Call API to create outgoing document as draft
+        await workflowAPI.createOugoingAlone(documentData, file || null);
+      }
 
       addNotification({
         title: "Thành công",

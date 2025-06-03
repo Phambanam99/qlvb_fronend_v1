@@ -157,4 +157,9 @@ export const usersAPI = {
     const response = await api.post(`/users/${id}/reject`);
     return response.data;
   },
+
+  getUserForApproval: async (id: string | number): Promise<UserDTO[]> => {
+    const response = await api.get(`/users/${id}/for-approval`);
+    return response.data;
+  },
 };

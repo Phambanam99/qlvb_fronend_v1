@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { departmentsAPI } from "@/lib/api";
+import { departmentsAPI, usersAPI } from "@/lib/api";
 import { useNotifications } from "@/lib/notifications-context";
 import { UserDTO } from "@/lib/api";
 
@@ -40,54 +40,36 @@ export function ApprovalSection({
   // Fetch approvers
   useEffect(() => {
     const fetchApprovers = async () => {
+      if (!user || !user.id) {
+        console.error("No user ID available");
+        return;
+      }
+
       try {
         setIsLoadingApprovers(true);
-        const response = await departmentsAPI.getAllDepartments();
 
-        // Flatten all users from all departments
-        let allUsers: any[] = [];
-        const processUsers = (users: any[]) => {
-          const leadershipUsers = users.filter((user) => {
-            const roles = user.roles || [];
-            return roles.some((role: any) =>
-              Object.keys(leadershipRoleOrder).includes(role.name)
-            );
-          });
+        // Use the same approach as in OutgoingDocumentForm.tsx
+        // 1. Get users who can approve for the current user
+        const leaderUsers = await usersAPI.getUserForApproval(user.id);
 
-          return leadershipUsers.map((user) => ({
-            ...user,
-            highestRole: user.roles
-              .filter((role: any) =>
-                Object.keys(leadershipRoleOrder).includes(role.name)
-              )
-              .sort(
-                (a: any, b: any) =>
-                  leadershipRoleOrder[a.name] - leadershipRoleOrder[b.name]
-              )[0],
-          }));
-        };
+        // 2. Get senior leaders across all departments
+        const seniorLeadersResponse =
+          await usersAPI.getUsersByRoleAndDepartment(
+            ["ROLE_SENIOR_LEADER"],
+            0 // 0 to get from all departments
+          );
 
-        const processDepartments = (departments: any[]) => {
-          if (!Array.isArray(departments)) {
-            return;
-          }
-          departments.forEach((dept) => {
-            if (dept.users) {
-              allUsers = [...allUsers, ...processUsers(dept.users)];
-            }
-            if (dept.children) {
-              processDepartments(dept.children);
-            }
-          });
-        };
+        // 3. Combine both lists
+        const allApprovers = [...leaderUsers, ...seniorLeadersResponse];
 
-        // Handle both array and paginated response
-        const departmentData = Array.isArray(response)
-          ? response
-          : response.content || [];
-        processDepartments(departmentData);
+        // 4. Remove duplicates if any (by ID)
+        const uniqueApprovers = allApprovers.filter(
+          (approver, index, self) =>
+            index === self.findIndex((a) => a.id === approver.id)
+        );
 
-        setApprovers(allUsers);
+        console.log("Fetched approvers:", uniqueApprovers);
+        setApprovers(uniqueApprovers);
       } catch (error) {
         console.error("Error fetching approvers:", error);
         addNotification({
@@ -101,7 +83,7 @@ export function ApprovalSection({
     };
 
     fetchApprovers();
-  }, [leadershipRoleOrder, addNotification]);
+  }, [user, addNotification]);
 
   return (
     <div className="space-y-6">
@@ -141,7 +123,7 @@ export function ApprovalSection({
             ) : (
               approvers.map((approver) => (
                 <SelectItem key={approver.id} value={String(approver.id)}>
-                  {approver.fullName} - {approver.position}
+                  {approver.fullName} - {approver.roleDisplayNames}
                 </SelectItem>
               ))
             )}

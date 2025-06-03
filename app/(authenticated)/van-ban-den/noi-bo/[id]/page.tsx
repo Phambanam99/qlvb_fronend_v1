@@ -38,6 +38,7 @@ import { useToast } from "@/components/ui/use-toast";
 import {
   getDocumentById,
   downloadAttachment,
+  markDocumentAsRead,
 } from "@/lib/api/internalDocumentApi";
 
 interface InternalDocumentDetail {
@@ -83,12 +84,13 @@ interface InternalDocumentDetail {
   readAt?: string;
 }
 
-export default function InternalDocumentDetailPage() {
+export default function InternalDocumentReceivedDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();
-  const [_document, setDocument] = useState<InternalDocumentDetail | null>(null);
+  const [document, setDocument] = useState<InternalDocumentDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [markingAsRead, setMarkingAsRead] = useState(false);
 
   const documentId = params.id as string;
 
@@ -137,7 +139,7 @@ export default function InternalDocumentDetailPage() {
       SENT: { variant: "default" as const, text: "Đã gửi" },
       APPROVED: { variant: "secondary" as const, text: "Đã phê duyệt" },
     };
-    const info = variants[status as keyof typeof variants] || variants.DRAFT;
+    const info = variants[status as keyof typeof variants] || variants.SENT;
     return <Badge variant={info.variant}>{info.text}</Badge>;
   };
 
@@ -186,6 +188,33 @@ export default function InternalDocumentDetailPage() {
     }
   };
 
+  const handleMarkAsRead = async () => {
+    if (!document) return;
+
+    try {
+      setMarkingAsRead(true);
+      await markDocumentAsRead(document.id);
+      setDocument({
+        ...document,
+        isRead: true,
+        readAt: new Date().toISOString(),
+      });
+      toast({
+        title: "Thành công",
+        description: "Đã đánh dấu văn bản là đã đọc",
+      });
+    } catch (error) {
+      console.error("Error marking as read:", error);
+      toast({
+        title: "Lỗi",
+        description: "Không thể đánh dấu văn bản đã đọc. Vui lòng thử lại sau.",
+        variant: "destructive",
+      });
+    } finally {
+      setMarkingAsRead(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex h-[80vh] items-center justify-center">
@@ -199,7 +228,7 @@ export default function InternalDocumentDetailPage() {
     );
   }
 
-  if (!_document) {
+  if (!document) {
     return (
       <div className="flex h-[80vh] items-center justify-center">
         <div className="text-center">
@@ -208,7 +237,7 @@ export default function InternalDocumentDetailPage() {
             Văn bản nội bộ không tồn tại hoặc đã bị xóa
           </p>
           <Button asChild className="mt-4">
-            <Link href="/van-ban-di">
+            <Link href="/van-ban-den">
               <ArrowLeft className="mr-2 h-4 w-4" /> Quay lại danh sách
             </Link>
           </Button>
@@ -222,16 +251,16 @@ export default function InternalDocumentDetailPage() {
       {/* Header */}
       <div className="flex items-center space-x-4">
         <Button variant="outline" size="icon" asChild>
-          <Link href="/van-ban-di">
+          <Link href="/van-ban-den">
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>
         <div className="space-y-1">
           <h1 className="text-2xl font-bold tracking-tight text-primary">
-            Chi tiết văn bản nội bộ
+            Chi tiết văn bản nội bộ nhận được
           </h1>
           <p className="text-muted-foreground">
-            Thông tin chi tiết của văn bản {_document.documentNumber}
+            Thông tin chi tiết của văn bản {document.documentNumber}
           </p>
         </div>
       </div>
@@ -253,20 +282,20 @@ export default function InternalDocumentDetailPage() {
                   <label className="text-sm font-medium text-muted-foreground">
                     Số văn bản
                   </label>
-                  <p className="font-medium">{_document.documentNumber}</p>
+                  <p className="font-medium">{document.documentNumber}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">
                     Loại văn bản
                   </label>
-                  <p className="font-medium">{_document.documentType}</p>
+                  <p className="font-medium">{document.documentType}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">
                     Ngày ký
                   </label>
                   <p className="font-medium">
-                    {formatDate(_document.signingDate)}
+                    {formatDate(document.signingDate)}
                   </p>
                 </div>
                 <div>
@@ -274,7 +303,7 @@ export default function InternalDocumentDetailPage() {
                     Độ ưu tiên
                   </label>
                   <div className="mt-1">
-                    {getPriorityBadge(_document.priority)}
+                    {getPriorityBadge(document.priority)}
                   </div>
                 </div>
               </div>
@@ -285,90 +314,41 @@ export default function InternalDocumentDetailPage() {
                 <label className="text-sm font-medium text-muted-foreground">
                   Tiêu đề
                 </label>
-                <p className="font-medium text-lg">{_document.title}</p>
+                <p className="font-medium text-lg">{document.title}</p>
               </div>
 
-              {_document.summary && (
+              {document.summary && (
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">
                     Tóm tắt nội dung
                   </label>
-                  <p className="whitespace-pre-wrap">{_document.summary}</p>
+                  <p className="whitespace-pre-wrap">{document.summary}</p>
                 </div>
               )}
 
-              {_document.notes && (
+              {document.notes && (
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">
                     Ghi chú
                   </label>
-                  <p className="whitespace-pre-wrap">{_document.notes}</p>
+                  <p className="whitespace-pre-wrap">{document.notes}</p>
                 </div>
               )}
             </CardContent>
           </Card>
 
-          {/* Recipients */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                Danh sách người nhận ({_document.recipients.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Đơn vị</TableHead>
-                    <TableHead>Người nhận</TableHead>
-                    <TableHead>Trạng thái</TableHead>
-                    <TableHead>Thời gian nhận</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {_document.recipients.map((recipient) => (
-                    <TableRow key={recipient.id}>
-                      <TableCell className="font-medium">
-                        {recipient.departmentName}
-                      </TableCell>
-                      <TableCell>
-                        {recipient.userName || "Toàn bộ đơn vị"}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={recipient.isRead ? "default" : "outline"}
-                        >
-                          {recipient.isRead ? "Đã đọc" : "Chưa đọc"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {formatDate(recipient.receivedAt)}
-                        {recipient.readAt && (
-                          <div className="text-sm text-muted-foreground">
-                            Đọc: {formatDate(recipient.readAt)}
-                          </div>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-
           {/* Attachments */}
-          {_document.attachments.length > 0 && (
+          {document.attachments.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Paperclip className="h-5 w-5" />
-                  File đính kèm ({_document.attachments.length})
+                  File đính kèm ({document.attachments.length})
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {_document.attachments.map((attachment) => (
+                  {document.attachments.map((attachment) => (
                     <div
                       key={attachment.id}
                       className="flex items-center justify-between p-3 border rounded-lg"
@@ -421,9 +401,20 @@ export default function InternalDocumentDetailPage() {
             <CardContent className="space-y-4">
               <div>
                 <label className="text-sm font-medium text-muted-foreground">
-                  Trạng thái hiện tại
+                  Trạng thái đọc
                 </label>
-                <div className="mt-1">{getStatusBadge(_document.status)}</div>
+                <div className="mt-1">
+                  <Badge variant={document.isRead ? "default" : "outline"}>
+                    {document.isRead ? "Đã đọc" : "Chưa đọc"}
+                  </Badge>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">
+                  Trạng thái văn bản
+                </label>
+                <div className="mt-1">{getStatusBadge(document.status)}</div>
               </div>
 
               <Separator />
@@ -434,7 +425,7 @@ export default function InternalDocumentDetailPage() {
                   <div>
                     <p className="text-sm font-medium">Người gửi</p>
                     <p className="text-sm text-muted-foreground">
-                      {_document.senderName}
+                      {document.senderName}
                     </p>
                   </div>
                 </div>
@@ -444,7 +435,7 @@ export default function InternalDocumentDetailPage() {
                   <div>
                     <p className="text-sm font-medium">Đơn vị gửi</p>
                     <p className="text-sm text-muted-foreground">
-                      {_document.senderDepartment}
+                      {document.senderDepartment}
                     </p>
                   </div>
                 </div>
@@ -452,32 +443,32 @@ export default function InternalDocumentDetailPage() {
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4 text-muted-foreground" />
                   <div>
-                    <p className="text-sm font-medium">Thời gian tạo</p>
+                    <p className="text-sm font-medium">Thời gian nhận</p>
                     <p className="text-sm text-muted-foreground">
-                      {formatDate(_document.createdAt)}
+                      {formatDate(document.createdAt)}
                     </p>
                   </div>
                 </div>
 
-                {_document.updatedAt !== _document.createdAt && (
+                {document.readAt && (
                   <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-muted-foreground" />
+                    <Eye className="h-4 w-4 text-muted-foreground" />
                     <div>
-                      <p className="text-sm font-medium">Cập nhật cuối</p>
+                      <p className="text-sm font-medium">Thời gian đọc</p>
                       <p className="text-sm text-muted-foreground">
-                        {formatDate(_document.updatedAt)}
+                        {formatDate(document.readAt)}
                       </p>
                     </div>
                   </div>
                 )}
 
-                {_document.replyCount > 0 && (
+                {document.replyCount > 0 && (
                   <div className="flex items-center gap-2">
                     <MessageSquare className="h-4 w-4 text-muted-foreground" />
                     <div>
                       <p className="text-sm font-medium">Số phản hồi</p>
                       <p className="text-sm text-muted-foreground">
-                        {_document.replyCount} phản hồi
+                        {document.replyCount} phản hồi
                       </p>
                     </div>
                   </div>
@@ -492,14 +483,29 @@ export default function InternalDocumentDetailPage() {
               <CardTitle className="text-lg">Thao tác</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <Button className="w-full" variant="outline">
-                <Eye className="h-4 w-4 mr-2" />
-                Đánh dấu đã đọc
-              </Button>
+              {!document.isRead && (
+                <Button
+                  className="w-full"
+                  onClick={handleMarkAsRead}
+                  disabled={markingAsRead}
+                >
+                  {markingAsRead ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Đang xử lý...
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="h-4 w-4 mr-2" />
+                      Đánh dấu đã đọc
+                    </>
+                  )}
+                </Button>
+              )}
 
-              {_document.replyToId && (
+              {document.replyToId && (
                 <Button className="w-full" variant="outline" asChild>
-                  <Link href={`/van-ban-di/noi-bo/${_document.replyToId}`}>
+                  <Link href={`/van-ban-den/noi-bo/${document.replyToId}`}>
                     <MessageSquare className="h-4 w-4 mr-2" />
                     Xem văn bản gốc
                   </Link>
@@ -507,7 +513,7 @@ export default function InternalDocumentDetailPage() {
               )}
 
               <Button className="w-full" variant="outline" asChild>
-                <Link href={`/van-ban-di/noi-bo/${_document.id}/reply`}>
+                <Link href={`/van-ban-den/noi-bo/${document.id}/reply`}>
                   <MessageSquare className="h-4 w-4 mr-2" />
                   Trả lời văn bản
                 </Link>

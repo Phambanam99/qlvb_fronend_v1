@@ -49,7 +49,7 @@ import {
 import { DepartmentTree } from "@/components/department-tree";
 import { useDepartmentSelection } from "@/hooks/use-department-selection";
 import { useDepartmentUsers } from "@/hooks/use-department-users";
-
+import { createInternalDocument } from "@/lib/api/internalDocumentApi";
 // Leadership role configuration
 const leadershipRoleOrder: Record<string, number> = {
   ROLE_CUC_TRUONG: 1,
@@ -287,9 +287,9 @@ export default function CreateInternalOutgoingDocumentPage() {
       };
       console.log("documentData ", documentData);
       // Call API to create internal outgoing document
-      await workflowAPI.createInternalOutgoingDocument(
+      await createInternalDocument(
         documentData,
-        file || null
+        file ? [file] : undefined
       );
 
       // Show success notification
