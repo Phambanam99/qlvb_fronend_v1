@@ -137,7 +137,17 @@ export default function InternalDocumentReceivedDetailPage() {
       try {
         setLoading(true);
         const response = await getDocumentById(Number(documentId));
-        setDocumentDetail(response);
+        console.log("Debug document:", response);
+        console.log("Debug attachments:", response?.attachments);
+
+        // Đảm bảo attachments luôn là mảng
+        if (response) {
+          const documentWithAttachments = {
+            ...response,
+            attachments: response.attachments || [],
+          };
+          setDocumentDetail(documentWithAttachments);
+        }
       } catch (error) {
         console.error("Error fetching document:", error);
         toast({
@@ -635,15 +645,16 @@ export default function InternalDocumentReceivedDetailPage() {
           )}
 
           {/* Attachments */}
-          {documentDetail.attachments.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Paperclip className="h-5 w-5" />
-                  File đính kèm ({documentDetail.attachments.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Paperclip className="h-5 w-5" />
+                File đính kèm ({documentDetail.attachments?.length || 0})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {documentDetail.attachments &&
+              documentDetail.attachments.length > 0 ? (
                 <div className="space-y-3">
                   {documentDetail.attachments.map((attachment) => (
                     <div
@@ -683,9 +694,16 @@ export default function InternalDocumentReceivedDetailPage() {
                     </div>
                   ))}
                 </div>
-              </CardContent>
-            </Card>
-          )}
+              ) : (
+                <div className="text-center py-8">
+                  <Paperclip className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-500">
+                    Văn bản này không có file đính kèm
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
 
         {/* Sidebar */}

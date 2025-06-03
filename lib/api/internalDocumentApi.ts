@@ -51,6 +51,36 @@ export const getReceivedDocuments = async (page = 0, size = 10) => {
   return response.data;
 };
 
+export const getReceivedDocumentsExcludingSent = async (
+  page = 0,
+  size = 10
+) => {
+  const response = await api.get("/internal-documents/received", {
+    params: { page, size },
+  });
+
+  // Lọc ra những văn bản không phải do chính user tạo
+  if (response.data && response.data.content) {
+    // Lấy thông tin user hiện tại từ localStorage hoặc context
+    const userStr = localStorage.getItem("user");
+    const currentUser = userStr ? JSON.parse(userStr) : null;
+
+    if (currentUser) {
+      const filteredContent = response.data.content.filter(
+        (doc: any) => doc.senderId !== currentUser.id
+      );
+
+      return {
+        ...response.data,
+        content: filteredContent,
+        totalElements: filteredContent.length,
+      };
+    }
+  }
+
+  return response.data;
+};
+
 export const getUnreadDocuments = async (page = 0, size = 10) => {
   const response = await api.get("/internal-documents/unread", {
     params: { page, size },

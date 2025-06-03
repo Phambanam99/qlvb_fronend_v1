@@ -50,7 +50,13 @@ import { useAuth } from "@/lib/auth-context";
 import { IncomingDocumentDTO } from "@/lib/api";
 import { useRouter } from "next/navigation";
 import { useHierarchicalDepartments } from "@/hooks/use-hierarchical-departments";
-import { getReceivedDocuments } from "@/lib/api/internalDocumentApi";
+import {
+  getReceivedDocumentsExcludingSent,
+  markDocumentAsRead,
+  getInternalDocumentHistory,
+  getDocumentStats,
+  getDocumentReplies,
+} from "@/lib/api/internalDocumentApi";
 
 // Role có quyền xem toàn bộ văn bản
 const FULL_ACCESS_ROLES = [
@@ -274,7 +280,7 @@ export default function IncomingDocumentsPage() {
         size,
       });
 
-      const response = await getReceivedDocuments(page, size);
+      const response = await getReceivedDocumentsExcludingSent(page, size);
 
       if (response && response.content) {
         console.log("Internal received documents response:", response);
