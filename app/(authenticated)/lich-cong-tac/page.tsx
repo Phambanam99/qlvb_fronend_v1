@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useMemo } from "react";
+import { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -10,6 +10,7 @@ import {
   CalendarDays,
   Plus,
   Search,
+  RefreshCw,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -31,6 +32,7 @@ import {
 } from "@/components/ui/select";
 import { useAuth } from "@/lib/auth-context";
 import { useHierarchicalDepartments } from "@/hooks/use-hierarchical-departments";
+import { usePageVisibility } from "@/hooks/use-page-visibility";
 
 export default function SchedulesPage() {
   const { toast } = useToast();
@@ -40,6 +42,7 @@ export default function SchedulesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [refreshing, setRefreshing] = useState(false);
   const { hasRole } = useAuth();
 
   const {
@@ -49,6 +52,9 @@ export default function SchedulesPage() {
     hasFullAccess,
   } = useHierarchicalDepartments();
 
+  // Use page visibility for auto-refresh
+  const isPageVisible = usePageVisibility();
+
   const hasFetchedSchedulesRef = useRef(false);
   const departmentIdsRef = useRef(userDepartmentIds);
 
@@ -56,11 +62,44 @@ export default function SchedulesPage() {
     departmentIdsRef.current = userDepartmentIds;
   }, [userDepartmentIds]);
 
+  // Force refresh function
+  const forceRefreshSchedules = useCallback(async () => {
+    try {
+      setLoading(true);
+      setRefreshing(true);
+      console.log("Force refreshing schedules...");
+
+      const data = await schedulesAPI.getAllSchedules();
+      console.log("Fetched schedules:", data);
+
+      setAllSchedules(data.content || []);
+      filterSchedules(data.content || []);
+
+      toast({
+        title: "Thành công",
+        description: "Đã cập nhật danh sách lịch công tác",
+      });
+    } catch (error) {
+      console.error("Error fetching schedules:", error);
+      toast({
+        title: "Lỗi",
+        description: "Không thể tải lịch công tác. Vui lòng thử lại sau.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [toast, setSchedules, setLoading]);
+
+  // Initial fetch
   useEffect(() => {
-    if (
-      loadingDepartments ||
-      (hasFetchedSchedulesRef.current && allSchedules.length > 0)
-    ) {
+    if (loadingDepartments) {
+      return;
+    }
+
+    // Skip initial fetch if we already have data
+    if (hasFetchedSchedulesRef.current && allSchedules.length > 0) {
       return;
     }
 
@@ -88,6 +127,34 @@ export default function SchedulesPage() {
 
     fetchSchedules();
   }, [toast, setSchedules, setLoading, loadingDepartments]);
+
+  // Auto-refresh when page becomes visible (user returns from create page)
+  useEffect(() => {
+    if (isPageVisible && hasFetchedSchedulesRef.current) {
+      console.log("Page became visible, refreshing schedules...");
+      // Small delay to ensure any pending operations are complete
+      setTimeout(() => {
+        forceRefreshSchedules();
+      }, 100);
+    }
+  }, [isPageVisible, forceRefreshSchedules]);
+
+  // Listen for storage events to refresh when schedules are created/updated
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "scheduleDataUpdate") {
+        console.log("Schedule data update detected, refreshing...");
+        setTimeout(() => {
+          forceRefreshSchedules();
+        }, 100);
+      }
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+    };
+  }, [forceRefreshSchedules]);
 
   const filterSchedules = (schedulesList = allSchedules) => {
     let filteredSchedules = [...schedulesList];
@@ -172,12 +239,26 @@ export default function SchedulesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight">Lịch công tác</h1>
-        <Button asChild>
-          <Link href="/lich-cong-tac/tao-moi">
-            <Plus className="mr-2 h-4 w-4" />
-            Tạo lịch mới
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={forceRefreshSchedules}
+            disabled={refreshing}
+            className="border-primary/20 hover:bg-primary/10 hover:text-primary"
+          >
+            <RefreshCw
+              className={`mr-2 h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
+            />
+            {refreshing ? "Đang tải..." : "Làm mới"}
+          </Button>
+          <Button asChild>
+            <Link href="/lich-cong-tac/tao-moi">
+              <Plus className="mr-2 h-4 w-4" />
+              Tạo lịch mới
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-4">

@@ -682,6 +682,73 @@ export default function IncomingDocumentsPage() {
     };
   }, [user, loadingDepartments, currentPage, pageSize]);
 
+  // Handle click on internal document to mark as read and navigate
+  const handleInternalDocumentClick = async (doc: InternalDocument) => {
+    try {
+      // Check if document is already read to avoid unnecessary API calls
+      const globalReadStatus = getReadStatus(doc.id);
+      let currentReadStatus = false;
+
+      if (globalReadStatus.isRead !== undefined) {
+        currentReadStatus = globalReadStatus.isRead;
+      } else if (user?.id && doc.recipients && doc.recipients.length > 0) {
+        const userRecipient = doc.recipients.find(
+          (recipient) =>
+            recipient.userId === user.id ||
+            (recipient.departmentId === user.departmentId && !recipient.userId)
+        );
+        currentReadStatus = userRecipient?.isRead || false;
+      } else {
+        currentReadStatus = doc.isRead;
+      }
+
+      // Mark as read if not already read
+      if (!currentReadStatus) {
+        try {
+          await markDocumentAsRead(doc.id);
+
+          // Update global state
+          updateMultipleReadStatus([
+            { id: doc.id, isRead: true, readAt: new Date().toISOString() },
+          ]);
+
+          // Trigger storage event to notify other components
+          if (typeof window !== "undefined") {
+            localStorage.setItem(
+              "documentReadStatusUpdate",
+              Date.now().toString()
+            );
+            setTimeout(() => {
+              localStorage.removeItem("documentReadStatusUpdate");
+            }, 100);
+          }
+
+          // Show success message
+          toast({
+            title: "Thành công",
+            description: "Đã đánh dấu văn bản là đã đọc",
+          });
+
+          console.log("Document marked as read successfully:", doc.id);
+        } catch (markError) {
+          console.error("Error marking document as read:", markError);
+          toast({
+            title: "Cảnh báo",
+            description: "Không thể cập nhật trạng thái đọc văn bản",
+            variant: "destructive",
+          });
+        }
+      }
+
+      // Navigate to document detail page
+      router.push(`/van-ban-den/noi-bo/${doc.id}`);
+    } catch (error) {
+      console.error("Error handling document click:", error);
+      // Still navigate even if marking as read fails
+      router.push(`/van-ban-den/noi-bo/${doc.id}`);
+    }
+  };
+
   if (isLoading || loadingDepartments) {
     return (
       <div className="flex h-[80vh] items-center justify-center">
@@ -911,11 +978,9 @@ export default function IncomingDocumentsPage() {
                               variant="ghost"
                               size="sm"
                               className="hover:bg-primary/10 hover:text-primary"
-                              asChild
+                              onClick={() => handleInternalDocumentClick(doc)}
                             >
-                              <Link href={`/van-ban-den/noi-bo/${doc.id}`}>
-                                Chi tiết
-                              </Link>
+                              Chi tiết
                             </Button>
                           </TableCell>
                         </TableRow>

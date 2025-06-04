@@ -192,6 +192,15 @@ export default function CreateSchedulePage() {
         type: "success",
       });
 
+      // Trigger storage event to refresh schedule list
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('scheduleDataUpdate', Date.now().toString());
+        // Remove the item immediately to allow future triggers
+        setTimeout(() => {
+          localStorage.removeItem('scheduleDataUpdate');
+        }, 100);
+      }
+
       router.push("/lich-cong-tac");
     } catch (error) {
       console.error("Error creating schedule:", error);
