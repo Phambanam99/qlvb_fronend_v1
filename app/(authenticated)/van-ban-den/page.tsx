@@ -290,7 +290,7 @@ export default function IncomingDocumentsPage() {
       });
 
       const response = await getReceivedDocumentsExcludingSent(page, size);
-
+      
       if (response && response.content) {
         console.log("Internal received documents response:", response);
 
