@@ -120,51 +120,130 @@ export default function DashboardPage() {
 
     setIsLoading(true);
     try {
-      const promises: Promise<any>[] = [];
+      // Use the comprehensive dashboard stats API instead of multiple calls
+      const dashboardStatsResponse = await dashboardAPI.getDashboardStats();
 
-      // Fetch user's dashboard stats
-      promises.push(
-        dashboardAPI.getCurrentUserDashboardStatistics().catch(() => null)
-      );
+      console.log("Dashboard stats response:", dashboardStatsResponse);
 
-      // Fetch quick metrics
-      promises.push(dashboardAPI.getQuickMetrics().catch(() => null));
-
-      // Admin and leadership get more comprehensive data
-      if (isAdmin || isLeadership) {
-        promises.push(
-          dashboardAPI.getSystemDashboardStatistics().catch(() => null),
-          dashboardAPI.getStatusBreakdown().catch(() => null),
-          dashboardAPI.getIncomingDocumentStats().catch(() => null),
-          dashboardAPI.getOutgoingDocumentStats().catch(() => null),
-          dashboardAPI.getInternalDocumentStats().catch(() => null)
-        );
-      }
-
-      // Everyone gets today's schedule and recent documents
-      promises.push(
-        dashboardAPI.getTodayScheduleEvents().catch(() => []),
-        dashboardAPI.getRecentDocuments().catch(() => [])
-      );
-
-      const results = await Promise.all(promises);
-
+      // Map the comprehensive API response to our dashboard stats structure
       const stats: DashboardStats = {
-        userStats: results[0],
-        quickMetrics: results[1],
+        userStats: {
+          // Map from the comprehensive API response
+          incomingDocumentCount:
+            dashboardStatsResponse.incomingDocuments?.total || 0,
+          outgoingDocumentCount:
+            dashboardStatsResponse.outgoingDocuments?.total || 0,
+          pendingDocumentCount:
+            dashboardStatsResponse.incomingDocuments?.inProcess || 0,
+          unreadNotifications:
+            dashboardStatsResponse.overallStats?.totalUnread || 0,
+          pendingDocuments: [], // Will need to get from recentDocuments if needed
+          activeWorkPlans: [], // May need separate API call if not in stats
+          upcomingDeadlines: [], // May need separate API call if not in stats
+        },
+        quickMetrics: {
+          incomingCount: dashboardStatsResponse.incomingDocuments?.total || 0,
+          outgoingCount: dashboardStatsResponse.outgoingDocuments?.total || 0,
+          pendingCount:
+            dashboardStatsResponse.incomingDocuments?.inProcess || 0,
+          notificationCount:
+            dashboardStatsResponse.overallStats?.totalUnread || 0,
+        },
+        // System stats for admin/leadership
+        systemStats:
+          isAdmin || isLeadership
+            ? {
+                totalDocuments:
+                  dashboardStatsResponse.overallStats?.totalDocuments || 0,
+                incomingDocumentCount:
+                  dashboardStatsResponse.incomingDocuments?.total || 0,
+                outgoingDocumentCount:
+                  dashboardStatsResponse.outgoingDocuments?.total || 0,
+                overdueDocumentCount:
+                  dashboardStatsResponse.overallStats?.totalUrgent || 0,
+                performanceMetrics: {
+                  "Hoàn thành đúng hạn":
+                    ((dashboardStatsResponse.incomingDocuments?.processed ||
+                      0) /
+                      Math.max(
+                        dashboardStatsResponse.incomingDocuments?.total || 1,
+                        1
+                      )) *
+                    100,
+                  "Văn bản đang xử lý":
+                    ((dashboardStatsResponse.incomingDocuments?.inProcess ||
+                      0) /
+                      Math.max(
+                        dashboardStatsResponse.incomingDocuments?.total || 1,
+                        1
+                      )) *
+                    100,
+                  "Tăng trưởng tuần":
+                    dashboardStatsResponse.periodStats?.weekGrowthPercent || 0,
+                  "Tăng trưởng tháng":
+                    dashboardStatsResponse.periodStats?.monthGrowthPercent || 0,
+                },
+                documentsByMonth: {
+                  "Tuần này":
+                    dashboardStatsResponse.periodStats?.thisWeekCount || 0,
+                  "Tuần trước":
+                    dashboardStatsResponse.periodStats?.lastWeekCount || 0,
+                  "Tháng này":
+                    dashboardStatsResponse.periodStats?.thisMonthCount || 0,
+                  "Tháng trước":
+                    dashboardStatsResponse.periodStats?.lastMonthCount || 0,
+                },
+              }
+            : undefined,
+        statusBreakdown:
+          isAdmin || isLeadership
+            ? {
+                "Đã xử lý":
+                  dashboardStatsResponse.incomingDocuments?.processed || 0,
+                "Đang xử lý":
+                  dashboardStatsResponse.incomingDocuments?.inProcess || 0,
+                "Chưa xử lý":
+                  dashboardStatsResponse.incomingDocuments?.notProcessed || 0,
+                "Khẩn cấp":
+                  dashboardStatsResponse.overallStats?.totalUrgent || 0,
+              }
+            : undefined,
+        incomingStats: {
+          total: dashboardStatsResponse.incomingDocuments?.total || 0,
+          unread: dashboardStatsResponse.overallStats?.totalUnread || 0,
+          processed: dashboardStatsResponse.incomingDocuments?.processed || 0,
+          external: dashboardStatsResponse.incomingDocuments?.external || 0,
+          internal: dashboardStatsResponse.incomingDocuments?.internal || 0,
+        },
+        outgoingStats: {
+          total: dashboardStatsResponse.outgoingDocuments?.total || 0,
+          sent: dashboardStatsResponse.outgoingDocuments?.published || 0,
+          draft: dashboardStatsResponse.outgoingDocuments?.draft || 0,
+          pending: dashboardStatsResponse.outgoingDocuments?.pending || 0,
+          external: dashboardStatsResponse.outgoingDocuments?.external || 0,
+          internal: dashboardStatsResponse.outgoingDocuments?.internal || 0,
+        },
+        internalStats: {
+          total: dashboardStatsResponse.internalDocuments?.total || 0,
+          read:
+            dashboardStatsResponse.internalDocuments?.total -
+            (dashboardStatsResponse.internalDocuments?.unread || 0),
+          unread: dashboardStatsResponse.internalDocuments?.unread || 0,
+          received: dashboardStatsResponse.internalDocuments?.received || 0,
+          sent: dashboardStatsResponse.internalDocuments?.sent || 0,
+          urgent: dashboardStatsResponse.internalDocuments?.urgent || 0,
+        },
+        recentDocuments: dashboardStatsResponse.recentDocuments || [],
+        todaySchedule: [], // May need separate API call if schedule is not included
       };
 
-      if (isAdmin || isLeadership) {
-        stats.systemStats = results[2];
-        stats.statusBreakdown = results[3];
-        stats.incomingStats = results[4];
-        stats.outgoingStats = results[5];
-        stats.internalStats = results[6];
-        stats.todaySchedule = results[7];
-        stats.recentDocuments = results[8];
-      } else {
-        stats.todaySchedule = results[2];
-        stats.recentDocuments = results[3];
+      // If we still need schedule data, make a separate call
+      try {
+        const scheduleResponse = await dashboardAPI.getTodayScheduleEvents();
+        stats.todaySchedule = scheduleResponse;
+      } catch (scheduleError) {
+        console.warn("Could not fetch schedule data:", scheduleError);
+        stats.todaySchedule = [];
       }
 
       setDashboardStats(stats);
@@ -449,8 +528,24 @@ export default function DashboardPage() {
             0
           }
           icon={FileText}
-          trend="up"
-          trendValue="+12% tuần này"
+          trend={
+            dashboardStats.systemStats?.performanceMetrics?.[
+              "Tăng trưởng tuần"
+            ] &&
+            dashboardStats.systemStats.performanceMetrics["Tăng trưởng tuần"] >=
+              0
+              ? "up"
+              : "down"
+          }
+          trendValue={
+            dashboardStats.systemStats?.performanceMetrics?.["Tăng trưởng tuần"]
+              ? `${Math.abs(
+                  dashboardStats.systemStats.performanceMetrics[
+                    "Tăng trưởng tuần"
+                  ]
+                ).toFixed(1)}% tuần này`
+              : undefined
+          }
           color="blue"
         />
         <QuickStatsCard
@@ -461,8 +556,27 @@ export default function DashboardPage() {
             0
           }
           icon={FileText}
-          trend="up"
-          trendValue="+8% tuần này"
+          trend={
+            dashboardStats.systemStats?.performanceMetrics?.[
+              "Tăng trưởng tháng"
+            ] &&
+            dashboardStats.systemStats.performanceMetrics[
+              "Tăng trưởng tháng"
+            ] >= 0
+              ? "up"
+              : "down"
+          }
+          trendValue={
+            dashboardStats.systemStats?.performanceMetrics?.[
+              "Tăng trưởng tháng"
+            ]
+              ? `${Math.abs(
+                  dashboardStats.systemStats.performanceMetrics[
+                    "Tăng trưởng tháng"
+                  ]
+                ).toFixed(1)}% tháng này`
+              : undefined
+          }
           color="green"
         />
         <QuickStatsCard
@@ -473,8 +587,25 @@ export default function DashboardPage() {
             0
           }
           icon={Clock}
-          trend="down"
-          trendValue="-5% tuần này"
+          trend={
+            dashboardStats.systemStats?.performanceMetrics?.[
+              "Văn bản đang xử lý"
+            ] &&
+            dashboardStats.systemStats.performanceMetrics[
+              "Văn bản đang xử lý"
+            ] <= 50
+              ? "up"
+              : "down"
+          }
+          trendValue={
+            dashboardStats.systemStats?.performanceMetrics?.[
+              "Văn bản đang xử lý"
+            ]
+              ? `${dashboardStats.systemStats.performanceMetrics[
+                  "Văn bản đang xử lý"
+                ].toFixed(1)}% đang xử lý`
+              : undefined
+          }
           color="amber"
         />
         <QuickStatsCard
