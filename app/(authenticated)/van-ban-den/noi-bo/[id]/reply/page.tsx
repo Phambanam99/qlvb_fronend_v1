@@ -244,7 +244,10 @@ export default function ReplyInternalDocumentPage() {
           },
         ],
       };
-      console.log(file);
+      console.log("File to be sent:", file);
+      console.log("Files array:", file ? [file] : undefined);
+      console.log("Reply data:", replyData);
+
       // Call API to create reply
       await replyToDocumentWithAttachments(
         Number(originalDocumentId),
@@ -431,11 +434,10 @@ export default function ReplyInternalDocumentPage() {
                 <label className="text-sm font-medium text-muted-foreground">
                   Nội dung
                 </label>
-                <p className="whitespace-pre-wrap text-sm"
+                <p
+                  className="whitespace-pre-wrap text-sm"
                   dangerouslySetInnerHTML={{ __html: originalDocument.summary }}
-                >
-                  
-                </p>
+                ></p>
               </div>
             )}
           </CardContent>

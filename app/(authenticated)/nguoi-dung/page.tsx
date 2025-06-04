@@ -94,6 +94,11 @@ export default function UsersPage() {
         "ROLE_PHO_PHONG",
         "ROLE_TRUONG_BAN",
         "ROLE_PHO_BAN",
+        "ROLE_CUM_TRUONG",
+        "ROLE_PHO_CUM_TRUONG",
+        "ROLE_CHINH_TRI_VIEN_CUM",
+        "ROLE_PHO_TRAM_TRUONG",
+        "ROLE_TRAM_TRUONG",
       ]);
 
       // Prepare filter parameters
@@ -106,11 +111,6 @@ export default function UsersPage() {
       // Apply role filter if selected
       if (roleFilter !== "all") {
         params.roleId = roleFilter;
-      }
-
-      // Apply department filter if selected
-      if (departmentFilter !== "all") {
-        params.departmentId = departmentFilter;
       }
 
       // Apply status filter if selected
@@ -127,11 +127,74 @@ export default function UsersPage() {
 
       if (isAdmin || isLeadership) {
         // Admin and leadership see all users with pagination
+        // Apply department filter if selected
+        if (departmentFilter !== "all") {
+          params.departmentId = departmentFilter;
+        }
         usersData = await usersAPI.getPaginatedUsers(params);
       } else if (isDepartmentHead && userDepartmentId) {
-        // Department heads only see users in their department
-        params.departmentId = userDepartmentId;
-        usersData = await usersAPI.getPaginatedUsers(params);
+        // Department heads see users in their department and child departments
+        let departmentIds = [Number(userDepartmentId)];
+
+        try {
+          // Get child departments
+          const childDepartments = await departmentsAPI.getChildDepartments(
+            userDepartmentId
+          );
+          if (Array.isArray(childDepartments) && childDepartments.length > 0) {
+            const childDeptIds = childDepartments.map((dept) => dept.id);
+            departmentIds.push(...childDeptIds);
+          }
+        } catch (error) {
+          console.warn("Could not fetch child departments:", error);
+          // Continue with just the current department
+        }
+
+        // If department filter is selected and it's within allowed departments, use it
+        if (
+          departmentFilter !== "all" &&
+          departmentIds.includes(Number(departmentFilter))
+        ) {
+          params.departmentId = departmentFilter;
+          usersData = await usersAPI.getPaginatedUsers(params);
+        } else {
+          // Otherwise, filter by all allowed departments
+          // For API calls, we'll need to call multiple times or use a department list filter
+          // For now, let's get all users and filter client-side
+          const allUsersInDepartments = [];
+
+          for (const deptId of departmentIds) {
+            try {
+              const deptParams = { ...params, departmentId: deptId };
+              const deptUsers = await usersAPI.getPaginatedUsers(deptParams);
+              allUsersInDepartments.push(...deptUsers.content);
+            } catch (error) {
+              console.warn(
+                `Error fetching users for department ${deptId}:`,
+                error
+              );
+            }
+          }
+
+          // Remove duplicates based on user ID
+          const uniqueUsers = allUsersInDepartments.filter(
+            (user, index, array) =>
+              array.findIndex((u) => u.id === user.id) === index
+          );
+
+          // Apply pagination manually
+          const startIndex = page * size;
+          const endIndex = startIndex + size;
+          const paginatedUsers = uniqueUsers.slice(startIndex, endIndex);
+
+          usersData = {
+            content: paginatedUsers,
+            totalElements: uniqueUsers.length,
+            totalPages: Math.ceil(uniqueUsers.length / size),
+            size,
+            number: page,
+          };
+        }
       } else {
         // Regular users can only see themselves - no need for pagination here
         usersData = {
@@ -168,9 +231,8 @@ export default function UsersPage() {
         ]);
 
         setRoles(rolesData);
-        setDepartments(departmentsData);
 
-        // Pre-filter to show only their department for department heads
+        // Filter departments based on user permissions
         const userRoles = user?.roles || [];
         const userDepartmentId = user?.departmentId;
 
@@ -186,10 +248,59 @@ export default function UsersPage() {
           "ROLE_PHO_PHONG",
           "ROLE_TRUONG_BAN",
           "ROLE_PHO_BAN",
+          "ROLE_CUM_TRUONG",
+          "ROLE_PHO_CUM_TRUONG",
+          "ROLE_CHINH_TRI_VIEN_CUM",
+          "ROLE_PHO_TRAM_TRUONG",
+          "ROLE_TRAM_TRUONG",
         ]);
 
-        if (isDepartmentHead && !isAdmin && !isLeadership && userDepartmentId) {
-          setDepartmentFilter(String(userDepartmentId));
+        if (isAdmin || isLeadership) {
+          // Admins and leadership see all departments
+          setDepartments(departmentsData);
+        } else if (isDepartmentHead && userDepartmentId) {
+          // Department heads see their department and child departments
+          let allowedDepartments = [];
+
+          // Add current department
+          const currentDept = departmentsData.content.find(
+            (d) => d.id === Number(userDepartmentId)
+          );
+          if (currentDept) {
+            allowedDepartments.push(currentDept);
+          }
+
+          try {
+            // Add child departments
+            const childDepartments = await departmentsAPI.getChildDepartments(
+              userDepartmentId
+            );
+            if (
+              Array.isArray(childDepartments) &&
+              childDepartments.length > 0
+            ) {
+              allowedDepartments.push(...childDepartments);
+            }
+          } catch (error) {
+            console.warn("Could not fetch child departments:", error);
+          }
+
+          // Update departments state with filtered list
+          setDepartments({
+            ...departmentsData,
+            content: allowedDepartments,
+            totalElements: allowedDepartments.length,
+          });
+
+          // Don't pre-select department filter for department heads anymore
+          // Let them choose from their allowed departments
+        } else {
+          // Regular users see no department filter options (they can only see themselves)
+          setDepartments({
+            ...departmentsData,
+            content: [],
+            totalElements: 0,
+          });
         }
 
         // Initial fetch of users

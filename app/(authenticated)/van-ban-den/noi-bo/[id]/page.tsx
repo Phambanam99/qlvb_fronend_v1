@@ -153,7 +153,25 @@ export default function InternalDocumentReceivedDetailPage() {
           };
           setDocumentDetail(documentWithAttachments);
 
-          if (response.isRead) {
+          // Automatically mark as read if not already read
+          if (!response.isRead) {
+            try {
+              await markDocumentAsRead(Number(documentId));
+              // Update local state
+              documentWithAttachments.isRead = true;
+              documentWithAttachments.readAt = new Date().toISOString();
+              setDocumentDetail(documentWithAttachments);
+
+              // Update global state
+              globalMarkAsRead(Number(documentId));
+
+              console.log("Document automatically marked as read");
+            } catch (markError) {
+              console.error("Error auto-marking document as read:", markError);
+              // Continue without marking as read
+            }
+          } else {
+            // Already read, just update global state
             globalMarkAsRead(Number(documentId));
           }
         }
@@ -503,7 +521,12 @@ export default function InternalDocumentReceivedDetailPage() {
                   <label className="text-sm font-medium text-muted-foreground">
                     Ghi chú
                   </label>
-                  <p className="whitespace-pre-wrap">{documentDetail.notes}</p>
+                  <p
+                    className="whitespace-pre-wrap"
+                    dangerouslySetInnerHTML={{
+                      __html: documentDetail.notes,
+                    }}
+                  ></p>
                 </div>
               )}
             </CardContent>
@@ -606,10 +629,7 @@ export default function InternalDocumentReceivedDetailPage() {
                           </time>
                         </div>
                         <p className="text-sm text-gray-500">
-                          Bởi:{" "}
-                          {entry.performedBy?.fullName ||
-                            entry.performedBy?.name ||
-                            "Hệ thống"}
+                          Bởi: {entry.performedBy?.fullName || "Hệ thống"}
                         </p>
                         {entry.details && (
                           <p className="text-sm text-gray-600 mt-1">

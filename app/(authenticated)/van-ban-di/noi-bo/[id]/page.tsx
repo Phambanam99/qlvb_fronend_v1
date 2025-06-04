@@ -339,7 +339,10 @@ export default function InternalDocumentDetailPage() {
                   <label className="text-sm font-medium text-muted-foreground">
                     Ghi chú
                   </label>
-                  <p className="whitespace-pre-wrap">{_document.notes}</p>
+                  <p
+                    className="whitespace-pre-wrap"
+                    dangerouslySetInnerHTML={{ __html: _document.notes }}
+                  ></p>
                 </div>
               )}
             </CardContent>

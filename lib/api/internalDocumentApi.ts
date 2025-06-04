@@ -213,19 +213,36 @@ export const replyToDocumentWithAttachments = async (
   files?: File[],
   descriptions?: string[]
 ) => {
+  console.log("=== DEBUG replyToDocumentWithAttachments ===");
+  console.log("Document ID:", id);
+  console.log("Document data:", document);
+  console.log("Files:", files);
+  console.log("Descriptions:", descriptions);
+
   const formData = new FormData();
   formData.append("document", JSON.stringify(document));
 
-  if (files) {
-    files.forEach((file) => {
+  if (files && files.length > 0) {
+    console.log(`Adding ${files.length} files to FormData`);
+    files.forEach((file, index) => {
+      console.log(`File ${index}:`, file.name, file.size, file.type);
       formData.append("files", file);
     });
+  } else {
+    console.log("No files to upload");
   }
 
   if (descriptions) {
+    console.log("Adding descriptions:", descriptions);
     descriptions.forEach((desc) => {
       formData.append("descriptions", desc);
     });
+  }
+
+  // Log FormData contents
+  console.log("FormData entries:");
+  for (let [key, value] of formData.entries()) {
+    console.log(key, value);
   }
 
   const response = await api.post(
