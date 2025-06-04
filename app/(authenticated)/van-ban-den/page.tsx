@@ -191,16 +191,6 @@ export default function IncomingDocumentsPage() {
   // Sử dụng hook page visibility để refresh khi trang được focus lại
   const isPageVisible = usePageVisibility();
 
-  // Add a force refresh function
-  const forceRefreshDocuments = useCallback(async () => {
-    console.log("Force refreshing documents...");
-    await fetchDocuments(currentPage, pageSize);
-    toast({
-      title: "Đã cập nhật",
-      description: "Danh sách văn bản đã được làm mới",
-    });
-  }, [currentPage, pageSize, fetchDocuments, toast]);
-
   // Pagination states
   const [currentPage, setCurrentPage] = useState<number>(0);
   const [pageSize, setPageSize] = useState<number>(10);
@@ -602,6 +592,16 @@ export default function IncomingDocumentsPage() {
       </Badge>
     );
   };
+
+  // Add a force refresh function
+  const forceRefreshDocuments = useCallback(async () => {
+    console.log("Force refreshing documents...");
+    await fetchDocuments(currentPage, pageSize);
+    toast({
+      title: "Đã cập nhật",
+      description: "Danh sách văn bản đã được làm mới",
+    });
+  }, [currentPage, pageSize, fetchDocuments, toast]);
 
   // Subscribe to read status changes and force refresh when changes occur
   useEffect(() => {

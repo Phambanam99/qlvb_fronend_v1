@@ -105,7 +105,8 @@ export default function DashboardPage() {
     "ROLE_TRAM_TRUONG",
     "ROLE_PHO_TRAM_TRUONG",
     "ROLE_CUM_TRUONG",
-    "ROLE_CUM_PHO"
+    "ROLE_PHO_CUM_TRUONG",
+    "ROLE_CHINH_TRI_VIEN_TRAM",
   ]);
 
   const isStaff = hasRole(["ROLE_NHAN_VIEN", "ROLE_TRO_LY"]);
@@ -415,16 +416,16 @@ export default function DashboardPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-2 md:space-y-0">
         <div>
-          <h1 className="text-3xl font-bold text-primary">
+          <h1 className="text-2xl md:text-3xl font-bold text-primary">
             {getGreeting()}, {user?.fullName}! 👋
           </h1>
-          <p className="text-muted-foreground flex items-center gap-2">
+          <div className="text-muted-foreground flex items-center gap-2">
             <User className="h-4 w-4" />
             {getUserRoleDisplay()} • {user?.departmentName}
             <Badge variant="outline" className="ml-2">
               {user?.roles?.[0]?.replace("ROLE_", "")}
             </Badge>
-          </p>
+          </div>
         </div>
         <Button
           onClick={handleRefresh}
