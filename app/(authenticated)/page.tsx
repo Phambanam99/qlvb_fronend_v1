@@ -125,6 +125,48 @@ export default function DashboardPage() {
 
       console.log("Dashboard stats response:", dashboardStatsResponse);
 
+      // Fetch internal document stats separately to get detailed breakdown
+      let internalStats = {};
+      try {
+        const internalStatsResponse =
+          await dashboardAPI.getInternalDocumentStats();
+        console.log("Internal stats response:", internalStatsResponse);
+
+        // Process internal stats to separate incoming and outgoing
+        internalStats = {
+          // Incoming internal documents (received)
+          incomingTotal: internalStatsResponse.receivedTotal || 0,
+          incomingRead: internalStatsResponse.receivedRead || 0,
+          incomingUnread: internalStatsResponse.receivedUnread || 0,
+
+          // Outgoing internal documents (sent)
+          outgoingTotal: internalStatsResponse.sentTotal || 0,
+          outgoingSent: internalStatsResponse.sentSent || 0,
+          outgoingDraft: internalStatsResponse.sentDraft || 0,
+
+          // Legacy fields for backward compatibility
+          total:
+            (internalStatsResponse.receivedTotal || 0) +
+            (internalStatsResponse.sentTotal || 0),
+          read: internalStatsResponse.receivedRead || 0,
+          unread: internalStatsResponse.receivedUnread || 0,
+        };
+      } catch (internalError) {
+        console.warn("Could not fetch internal document stats:", internalError);
+        // Fallback to default values
+        internalStats = {
+          incomingTotal: 0,
+          incomingRead: 0,
+          incomingUnread: 0,
+          outgoingTotal: 0,
+          outgoingSent: 0,
+          outgoingDraft: 0,
+          total: 0,
+          read: 0,
+          unread: 0,
+        };
+      }
+
       // Map the comprehensive API response to our dashboard stats structure
       const stats: DashboardStats = {
         userStats: {
@@ -149,6 +191,8 @@ export default function DashboardPage() {
           notificationCount:
             dashboardStatsResponse.overallStats?.totalUnread || 0,
         },
+        // Updated internal stats with detailed breakdown
+        internalStats: internalStats,
         // System stats for admin/leadership
         systemStats:
           isAdmin || isLeadership
@@ -222,16 +266,6 @@ export default function DashboardPage() {
           pending: dashboardStatsResponse.outgoingDocuments?.pending || 0,
           external: dashboardStatsResponse.outgoingDocuments?.external || 0,
           internal: dashboardStatsResponse.outgoingDocuments?.internal || 0,
-        },
-        internalStats: {
-          total: dashboardStatsResponse.internalDocuments?.total || 0,
-          read:
-            dashboardStatsResponse.internalDocuments?.total -
-            (dashboardStatsResponse.internalDocuments?.unread || 0),
-          unread: dashboardStatsResponse.internalDocuments?.unread || 0,
-          received: dashboardStatsResponse.internalDocuments?.received || 0,
-          sent: dashboardStatsResponse.internalDocuments?.sent || 0,
-          urgent: dashboardStatsResponse.internalDocuments?.urgent || 0,
         },
         recentDocuments: dashboardStatsResponse.recentDocuments || [],
         todaySchedule: [], // May need separate API call if schedule is not included
@@ -702,7 +736,7 @@ export default function DashboardPage() {
         </TabsContent>
 
         <TabsContent value="documents" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Văn bản đến</CardTitle>
@@ -775,7 +809,7 @@ export default function DashboardPage() {
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Văn bản nội bộ</CardTitle>
+                <CardTitle className="text-lg">Văn bản nội bộ đến</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
@@ -784,7 +818,9 @@ export default function DashboardPage() {
                       Tổng số:
                     </span>
                     <span className="font-medium">
-                      {formatNumber(dashboardStats.internalStats?.total || 0)}
+                      {formatNumber(
+                        dashboardStats.internalStats?.incomingTotal || 0
+                      )}
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -792,7 +828,9 @@ export default function DashboardPage() {
                       Đã đọc:
                     </span>
                     <span className="font-medium text-green-600">
-                      {formatNumber(dashboardStats.internalStats?.read || 0)}
+                      {formatNumber(
+                        dashboardStats.internalStats?.incomingRead || 0
+                      )}
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -800,7 +838,49 @@ export default function DashboardPage() {
                       Chưa đọc:
                     </span>
                     <span className="font-medium text-amber-600">
-                      {formatNumber(dashboardStats.internalStats?.unread || 0)}
+                      {formatNumber(
+                        dashboardStats.internalStats?.incomingUnread || 0
+                      )}
+                    </span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Văn bản nội bộ đi</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">
+                      Tổng số:
+                    </span>
+                    <span className="font-medium">
+                      {formatNumber(
+                        dashboardStats.internalStats?.outgoingTotal || 0
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">
+                      Đã gửi:
+                    </span>
+                    <span className="font-medium text-blue-600">
+                      {formatNumber(
+                        dashboardStats.internalStats?.outgoingSent || 0
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">
+                      Bản nháp:
+                    </span>
+                    <span className="font-medium text-gray-600">
+                      {formatNumber(
+                        dashboardStats.internalStats?.outgoingDraft || 0
+                      )}
                     </span>
                   </div>
                 </div>
