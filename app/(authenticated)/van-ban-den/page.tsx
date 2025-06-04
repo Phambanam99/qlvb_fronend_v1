@@ -298,28 +298,46 @@ export default function IncomingDocumentsPage() {
         const documentsWithUpdatedReadStatus = response.content.map(
           (doc: InternalDocument) => {
             const globalReadStatus = getReadStatus(doc.id);
-            // Nếu có trạng thái đọc trong global state, sử dụng nó
-            if (
-              globalReadStatus.isRead !== undefined &&
-              globalReadStatus.isRead !== doc.isRead
+
+            // For internal documents, check current user's read status in recipients
+            let currentReadStatus = false;
+
+            if (globalReadStatus.isRead !== undefined) {
+              // Prioritize global state if available
+              currentReadStatus = globalReadStatus.isRead;
+            } else if (
+              user?.id &&
+              doc.recipients &&
+              doc.recipients.length > 0
             ) {
-              return {
-                ...doc,
-                isRead: globalReadStatus.isRead,
-                readAt: globalReadStatus.readAt || doc.readAt,
-              };
+              // Check if current user has read this document
+              const userRecipient = doc.recipients.find(
+                (recipient) =>
+                  recipient.userId === user.id ||
+                  (recipient.departmentId === user.departmentId &&
+                    !recipient.userId)
+              );
+              currentReadStatus = userRecipient?.isRead || false;
+            } else {
+              // Fallback to document's overall read status
+              currentReadStatus = doc.isRead;
             }
-            return doc;
+
+            return {
+              ...doc,
+              isRead: currentReadStatus,
+              readAt: globalReadStatus.readAt || doc.readAt,
+            };
           }
         );
 
         setInternalDocuments(documentsWithUpdatedReadStatus);
 
-        // Cập nhật global read status với data từ server
-        const readStatusUpdates = response.content.map(
+        // Cập nhật global read status với data từ server sử dụng trạng thái đọc của user hiện tại
+        const readStatusUpdates = documentsWithUpdatedReadStatus.map(
           (doc: InternalDocument) => ({
             id: doc.id,
-            isRead: doc.isRead,
+            isRead: doc.isRead, // This is now the computed currentReadStatus
             readAt: doc.readAt,
           })
         );
@@ -834,10 +852,30 @@ export default function IncomingDocumentsPage() {
                     filteredInternalDocuments.map((doc) => {
                       // Lấy trạng thái đọc từ global state
                       const globalReadStatus = getReadStatus(doc.id);
-                      const currentReadStatus =
-                        globalReadStatus.isRead !== undefined
-                          ? globalReadStatus.isRead
-                          : doc.isRead;
+
+                      // For internal documents, check current user's read status in recipients
+                      let currentReadStatus = false;
+
+                      if (globalReadStatus.isRead !== undefined) {
+                        // Prioritize global state if available
+                        currentReadStatus = globalReadStatus.isRead;
+                      } else if (
+                        user?.id &&
+                        doc.recipients &&
+                        doc.recipients.length > 0
+                      ) {
+                        // Check if current user has read this document
+                        const userRecipient = doc.recipients.find(
+                          (recipient) =>
+                            recipient.userId === user.id ||
+                            (recipient.departmentId === user.departmentId &&
+                              !recipient.userId)
+                        );
+                        currentReadStatus = userRecipient?.isRead || false;
+                      } else {
+                        // Fallback to document's overall read status
+                        currentReadStatus = doc.isRead;
+                      }
 
                       return (
                         <TableRow key={doc.id} className="hover:bg-accent/30">
