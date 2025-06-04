@@ -165,6 +165,18 @@ export default function InternalDocumentReceivedDetailPage() {
               // Update global state
               globalMarkAsRead(Number(documentId));
 
+              // Trigger storage event to notify list page to refresh
+              if (typeof window !== "undefined") {
+                localStorage.setItem(
+                  "documentReadStatusUpdate",
+                  Date.now().toString()
+                );
+                // Remove the item immediately to allow future triggers
+                setTimeout(() => {
+                  localStorage.removeItem("documentReadStatusUpdate");
+                }, 100);
+              }
+
               console.log("Document automatically marked as read");
             } catch (markError) {
               console.error("Error auto-marking document as read:", markError);
@@ -343,6 +355,15 @@ export default function InternalDocumentReceivedDetailPage() {
       });
 
       globalMarkAsRead(documentDetail.id);
+
+      // Trigger storage event to notify list page to refresh
+      if (typeof window !== "undefined") {
+        localStorage.setItem("documentReadStatusUpdate", Date.now().toString());
+        // Remove the item immediately to allow future triggers
+        setTimeout(() => {
+          localStorage.removeItem("documentReadStatusUpdate");
+        }, 100);
+      }
 
       toast({
         title: "Thành công",

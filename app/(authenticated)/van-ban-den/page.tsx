@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -190,6 +190,16 @@ export default function IncomingDocumentsPage() {
 
   // Sử dụng hook page visibility để refresh khi trang được focus lại
   const isPageVisible = usePageVisibility();
+
+  // Add a force refresh function
+  const forceRefreshDocuments = useCallback(async () => {
+    console.log("Force refreshing documents...");
+    await fetchDocuments(currentPage, pageSize);
+    toast({
+      title: "Đã cập nhật",
+      description: "Danh sách văn bản đã được làm mới",
+    });
+  }, [currentPage, pageSize, fetchDocuments, toast]);
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState<number>(0);
@@ -593,10 +603,25 @@ export default function IncomingDocumentsPage() {
     );
   };
 
-  // Subscribe to read status changes
+  // Subscribe to read status changes and force refresh when changes occur
   useEffect(() => {
-    return subscribe();
-  }, [subscribe]);
+    const unsubscribe = subscribe();
+
+    // Additional refresh after subscription changes
+    const refreshTimer = setTimeout(() => {
+      if (user && !loadingDepartments) {
+        console.log(
+          "Read status subscription changed, refreshing documents..."
+        );
+        fetchDocuments(currentPage, pageSize);
+      }
+    }, 200);
+
+    return () => {
+      unsubscribe();
+      clearTimeout(refreshTimer);
+    };
+  }, [subscribe, user, loadingDepartments, currentPage, pageSize]);
 
   // Refresh data when page becomes visible again (user comes back from detail page)
   useEffect(() => {
@@ -607,7 +632,37 @@ export default function IncomingDocumentsPage() {
         fetchDocuments(currentPage, pageSize);
       }, 100);
     }
-  }, [isPageVisible]);
+  }, [isPageVisible, user, loadingDepartments, currentPage, pageSize]);
+
+  // Add router focus event handling for better detection of return from detail pages
+  useEffect(() => {
+    const handleRouterFocus = () => {
+      if (user && !loadingDepartments) {
+        console.log("Router focus detected, refreshing documents...");
+        setTimeout(() => {
+          fetchDocuments(currentPage, pageSize);
+        }, 100);
+      }
+    };
+
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "documentReadStatusUpdate" && user && !loadingDepartments) {
+        console.log("Storage change detected, refreshing documents...");
+        setTimeout(() => {
+          fetchDocuments(currentPage, pageSize);
+        }, 100);
+      }
+    };
+
+    // Listen for focus events
+    window.addEventListener("focus", handleRouterFocus);
+    window.addEventListener("storage", handleStorageChange);
+
+    return () => {
+      window.removeEventListener("focus", handleRouterFocus);
+      window.removeEventListener("storage", handleStorageChange);
+    };
+  }, [user, loadingDepartments, currentPage, pageSize]);
 
   if (isLoading || loadingDepartments) {
     return (
@@ -709,6 +764,8 @@ export default function IncomingDocumentsPage() {
             variant="outline"
             size="icon"
             className="rounded-full border-primary/20 hover:bg-primary/10 hover:text-primary"
+            onClick={forceRefreshDocuments}
+            title="Làm mới danh sách"
           >
             <Filter className="h-4 w-4" />
           </Button>

@@ -103,7 +103,9 @@ export default function DashboardPage() {
     "ROLE_PHO_BAN",
     "ROLE_TRUONG_BAN",
     "ROLE_TRAM_TRUONG",
-    "ROLE_PHO_TRAM_TRUONG"
+    "ROLE_PHO_TRAM_TRUONG",
+    "ROLE_CUM_TRUONG",
+    "ROLE_CUM_PHO"
   ]);
 
   const isStaff = hasRole(["ROLE_NHAN_VIEN", "ROLE_TRO_LY"]);
