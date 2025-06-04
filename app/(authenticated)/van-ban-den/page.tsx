@@ -294,50 +294,18 @@ export default function IncomingDocumentsPage() {
       if (response && response.content) {
         console.log("Internal received documents response:", response);
 
-        // Cập nhật trạng thái đọc từ global state
-        const documentsWithUpdatedReadStatus = response.content.map(
-          (doc: InternalDocument) => {
-            const globalReadStatus = getReadStatus(doc.id);
+        // Debug: Log raw data từ backend để kiểm tra
+        console.log("Sample document from backend:", response.content[0]);
 
-            // For internal documents, check current user's read status in recipients
-            let currentReadStatus = false;
+        // Sử dụng trực tiếp data từ backend thay vì tính toán lại
+        // Backend đã trả về isRead: true/false dựa trên user hiện tại
+        setInternalDocuments(response.content);
 
-            if (globalReadStatus.isRead !== undefined) {
-              // Prioritize global state if available
-              currentReadStatus = globalReadStatus.isRead;
-            } else if (
-              user?.id &&
-              doc.recipients &&
-              doc.recipients.length > 0
-            ) {
-              // Check if current user has read this document
-              const userRecipient = doc.recipients.find(
-                (recipient) =>
-                  recipient.userId === user.id ||
-                  (recipient.departmentId === user.departmentId &&
-                    !recipient.userId)
-              );
-              currentReadStatus = userRecipient?.isRead || false;
-            } else {
-              // Fallback to document's overall read status
-              currentReadStatus = doc.isRead;
-            }
-
-            return {
-              ...doc,
-              isRead: currentReadStatus,
-              readAt: globalReadStatus.readAt || doc.readAt,
-            };
-          }
-        );
-
-        setInternalDocuments(documentsWithUpdatedReadStatus);
-
-        // Cập nhật global read status với data từ server sử dụng trạng thái đọc của user hiện tại
-        const readStatusUpdates = documentsWithUpdatedReadStatus.map(
+        // Cập nhật global read status với data từ server
+        const readStatusUpdates = response.content.map(
           (doc: InternalDocument) => ({
             id: doc.id,
-            isRead: doc.isRead, // This is now the computed currentReadStatus
+            isRead: doc.isRead, // Sử dụng trực tiếp từ backend
             readAt: doc.readAt,
           })
         );
@@ -899,6 +867,17 @@ export default function IncomingDocumentsPage() {
                       // Sử dụng trực tiếp trạng thái đọc từ backend
                       // Backend đã trả về isRead: true/false cho từng document dựa trên người dùng hiện tại
                       const currentReadStatus = doc.isRead;
+
+                      // Debug logging để kiểm tra dữ liệu từ backend
+                      console.log(
+                        `Document ${doc.id} (${doc.documentNumber}):`,
+                        {
+                          isRead: doc.isRead,
+                          readAt: doc.readAt,
+                          currentReadStatus,
+                          docObject: doc,
+                        }
+                      );
 
                       return (
                         <TableRow key={doc.id} className="hover:bg-accent/30">
