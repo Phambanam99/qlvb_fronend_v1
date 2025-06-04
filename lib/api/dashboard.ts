@@ -5,22 +5,23 @@ import type { ActivityLogDTO } from "./types";
 export interface DashboardDTO {
   // Các trường từ API
   totalDocuments?: number;
-  incomingDocuments?: number;
-  outgoingDocuments?: number;
-  pendingDocuments?: any[];
-  documentsByStatus?: Record<string, number>;
-  documentsByMonth?: Record<string, number>;
-  upcomingDeadlines?: any[];
-  overdueDocuments?: any[];
-  activeWorkPlans?: any[];
-  unreadNotifications?: number;
-
-  // Các trường cũ (giữ lại để tương thích ngược)
   incomingDocumentCount?: number;
   outgoingDocumentCount?: number;
-  workCaseCount?: number;
+  pendingDocuments?: DocumentSummaryDTO[];
+  documentsByStatus?: Record<string, number>;
+  documentsByMonth?: Record<string, number>;
   pendingDocumentCount?: number;
+  upcomingDeadlines?: DocumentSummaryDTO[];
+  overdueDocuments?: DocumentSummaryDTO[];
   overdueDocumentCount?: number;
+  activeWorkPlans?: WorkPlanSummaryDTO[];
+  unreadNotifications?: number;
+  performanceMetrics?: Record<string, any>;
+
+  // Các trường cũ (giữ lại để tương thích ngược)
+  incomingDocuments?: number;
+  outgoingDocuments?: number;
+  workCaseCount?: number;
   scheduleCount?: number;
   todayScheduleCount?: number;
   documentCountsByType?: Record<string, number>;
@@ -29,6 +30,28 @@ export interface DashboardDTO {
   departmentPerformance?: Record<string, any>;
   topActiveUsers?: UserActivityDTO[];
   recentDocuments?: any[];
+}
+
+export interface DocumentSummaryDTO {
+  id: number;
+  title: string;
+  documentNumber: string;
+  documentType: string;
+  status: string;
+  deadline?: string;
+  assignedTo?: string;
+  department?: string;
+}
+
+export interface WorkPlanSummaryDTO {
+  id: number;
+  title: string;
+  department: string;
+  period: string;
+  status: string;
+  completedTasks: number;
+  totalTasks: number;
+  progress: string;
 }
 
 export interface UserActivityDTO {
@@ -41,11 +64,20 @@ export interface UserActivityDTO {
 
 export const dashboardAPI = {
   /**
-   * Get dashboard statistics
+   * Get system dashboard statistics
    * @returns Dashboard statistics
    */
-  getDashboardStatistics: async (): Promise<DashboardDTO> => {
+  getSystemDashboardStatistics: async (): Promise<DashboardDTO> => {
     const response = await api.get("/dashboard");
+    return response.data;
+  },
+
+  /**
+   * Get current user's dashboard statistics
+   * @returns Dashboard statistics for the current authenticated user
+   */
+  getCurrentUserDashboardStatistics: async (): Promise<DashboardDTO> => {
+    const response = await api.get("/dashboard/me");
     return response.data;
   },
 
@@ -74,15 +106,105 @@ export const dashboardAPI = {
   },
 
   /**
-   * Get today's schedule events
-   * @returns List of schedule events for today
+   * Get dashboard stats
+   * @returns Dashboard stats object
    */
-  getTodayScheduleEvents: async (): Promise<any[]> => {
-    const today = new Date().toISOString().split("T")[0];
-    const response = await api.get("/dashboard/schedules/today", {
-      params: { date: today },
-    });
+  getDashboardStats: async (): Promise<Record<string, any>> => {
+    const response = await api.get("/dashboard/stats");
     return response.data;
+  },
+
+  /**
+   * Get status breakdown
+   * @returns Status breakdown object
+   */
+  getStatusBreakdown: async (): Promise<Record<string, any>> => {
+    const response = await api.get("/dashboard/status-breakdown");
+    return response.data;
+  },
+
+  /**
+   * Get quick metrics
+   * @returns Quick metrics object
+   */
+  getQuickMetrics: async (): Promise<Record<string, any>> => {
+    const response = await api.get("/dashboard/quick-metrics");
+    return response.data;
+  },
+
+  /**
+   * Get period stats
+   * @returns Period stats object
+   */
+  getPeriodStats: async (): Promise<Record<string, any>> => {
+    const response = await api.get("/dashboard/period-stats");
+    return response.data;
+  },
+
+  /**
+   * Get overall stats
+   * @returns Overall stats object
+   */
+  getOverallStats: async (): Promise<Record<string, any>> => {
+    const response = await api.get("/dashboard/overall-stats");
+    return response.data;
+  },
+
+  /**
+   * Get incoming document stats
+   * @returns Incoming document stats object
+   */
+  getIncomingDocumentStats: async (): Promise<Record<string, any>> => {
+    const response = await api.get("/dashboard/incoming-stats");
+    return response.data;
+  },
+
+  /**
+   * Get outgoing document stats
+   * @returns Outgoing document stats object
+   */
+  getOutgoingDocumentStats: async (): Promise<Record<string, any>> => {
+    const response = await api.get("/dashboard/outgoing-stats");
+    return response.data;
+  },
+
+  /**
+   * Get internal document stats
+   * @returns Internal document stats object
+   */
+  getInternalDocumentStats: async (): Promise<Record<string, any>> => {
+    const response = await api.get("/dashboard/internal-stats");
+    return response.data;
+  },
+
+  /**
+   * Get recent documents
+   * @returns Recent documents object
+   */
+  getRecentDocuments: async (): Promise<any> => {
+    const response = await api.get("/dashboard/recent-documents");
+    return response.data;
+  },
+
+  /**
+   * Get today's schedule events
+   * @param date Optional date parameter (yyyy-MM-dd)
+   * @returns List of schedule events for today or specified date
+   */
+  getTodayScheduleEvents: async (date?: string): Promise<any[]> => {
+    const params = date
+      ? { date }
+      : { date: new Date().toISOString().split("T")[0] };
+    const response = await api.get("/dashboard/schedules/today", { params });
+    return response.data;
+  },
+
+  // Legacy methods (kept for backward compatibility)
+  /**
+   * @deprecated Use getSystemDashboardStatistics instead
+   */
+  getDashboardStatistics: async (): Promise<DashboardDTO> => {
+    return dashboardAPI.getSystemDashboardStatistics();
   },
 
   /**

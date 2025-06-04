@@ -59,6 +59,10 @@
       "description": "APIs for managing outgoing documents"
     },
     {
+      "name": "Internal Documents",
+      "description": "APIs for managing internal documents"
+    },
+    {
       "name": "Schedule",
       "description": "API quản lý lịch công việc"
     },
@@ -487,6 +491,148 @@
         }
       }
     },
+    "/api/workflow/{documentId}/resubmit-after-correction": {
+      "put": {
+        "tags": [
+          "Document Workflow"
+        ],
+        "summary": "Tái trình văn bản sau khi chỉnh sửa thể thức",
+        "description": "Trợ lý/nhân viên gửi lại văn bản đã chỉnh sửa thể thức để văn thư xem xét cấp số và ban hành",
+        "operationId": "resubmitAfterFormatCorrection",
+        "parameters": [
+          {
+            "name": "documentId",
+            "in": "path",
+            "description": "ID của văn bản",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocumentWorkflowDTO"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "404": {
+            "description": "Văn bản không tồn tại",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Văn bản đã được tái trình thành công",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền tái trình văn bản",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/workflow/{documentId}/reject-with-attachment": {
+      "put": {
+        "tags": [
+          "Document Workflow"
+        ],
+        "summary": "Reject document with attachment",
+        "description": "Reject document with attachment file",
+        "operationId": "rejectDocumentWithAttachment",
+        "parameters": [
+          {
+            "name": "documentId",
+            "in": "path",
+            "description": "ID of the document",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "required": [
+                  "comments",
+                  "file"
+                ],
+                "type": "object",
+                "properties": {
+                  "comments": {
+                    "type": "string",
+                    "description": "Rejection comments"
+                  },
+                  "file": {
+                    "type": "string",
+                    "description": "Rejection attachment",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "404": {
+            "description": "Document not found",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not authorized to reject document",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Document rejected with attachment successfully",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/workflow/{documentId}/register": {
       "put": {
         "tags": [
@@ -679,6 +825,585 @@
         }
       }
     },
+    "/api/workflow/{documentId}/provide-feedback-with-attachment": {
+      "put": {
+        "tags": [
+          "Document Workflow"
+        ],
+        "summary": "Provide feedback with attachment",
+        "description": "Leader provides feedback on document with attachment",
+        "operationId": "provideDocumentFeedbackWithAttachment",
+        "parameters": [
+          {
+            "name": "documentId",
+            "in": "path",
+            "description": "ID of the document",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "required": [
+                  "comments"
+                ],
+                "type": "object",
+                "properties": {
+                  "comments": {
+                    "type": "string",
+                    "description": "Feedback comments"
+                  },
+                  "file": {
+                    "type": "string",
+                    "description": "Feedback attachment",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Feedback with attachment provided successfully",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Document not found",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not authorized to provide feedback",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/workflow/{documentId}/leader-feedback-with-attachment": {
+      "put": {
+        "tags": [
+          "Document Workflow"
+        ],
+        "summary": "Leader feedback with attachment",
+        "description": "Leader provides feedback/rejection with attachment",
+        "operationId": "leaderFeedbackWithAttachment",
+        "parameters": [
+          {
+            "name": "documentId",
+            "in": "path",
+            "description": "ID of the document",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "required": [
+                  "comments"
+                ],
+                "type": "object",
+                "properties": {
+                  "comments": {
+                    "type": "string",
+                    "description": "Feedback comments"
+                  },
+                  "file": {
+                    "type": "string",
+                    "description": "Feedback attachment (optional)",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Feedback with attachment provided successfully",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Document not found",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not authorized to provide feedback",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/workflow/{documentId}/header-feedback-with-attachment": {
+      "put": {
+        "tags": [
+          "Document Workflow"
+        ],
+        "summary": "Department header feedback with attachment",
+        "description": "Department header provides feedback/rejection with attachment",
+        "operationId": "headerFeedbackWithAttachment",
+        "parameters": [
+          {
+            "name": "documentId",
+            "in": "path",
+            "description": "ID of the document",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "required": [
+                  "comments"
+                ],
+                "type": "object",
+                "properties": {
+                  "comments": {
+                    "type": "string",
+                    "description": "Feedback comments"
+                  },
+                  "file": {
+                    "type": "string",
+                    "description": "Feedback attachment (optional)",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "404": {
+            "description": "Document not found",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not authorized to provide feedback",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Department header feedback with attachment provided successfully",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/workflow/{documentId}/header-department-review": {
+      "put": {
+        "tags": [
+          "Document Workflow"
+        ],
+        "summary": "Start header department reviewing",
+        "description": "Department header starts reviewing document",
+        "operationId": "startHeaderDepartmentReviewing",
+        "parameters": [
+          {
+            "name": "documentId",
+            "in": "path",
+            "description": "ID of the document",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocumentWorkflowDTO"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "403": {
+            "description": "Not authorized to review document",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Document not found",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Document review started by department header",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/workflow/{documentId}/header-department-reject-with-attachment": {
+      "put": {
+        "tags": [
+          "Document Workflow"
+        ],
+        "summary": "Department header rejects document with attachment",
+        "description": "Department header rejects document with attachment file",
+        "operationId": "headerDepartmentRejectDocumentWithAttachment",
+        "parameters": [
+          {
+            "name": "documentId",
+            "in": "path",
+            "description": "ID of the document",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "required": [
+                  "comments",
+                  "file"
+                ],
+                "type": "object",
+                "properties": {
+                  "comments": {
+                    "type": "string",
+                    "description": "Rejection comments"
+                  },
+                  "file": {
+                    "type": "string",
+                    "description": "Rejection attachment",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Document rejected with attachment by department header successfully",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Document not found",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not authorized to reject document",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/workflow/{documentId}/header-department-comment": {
+      "put": {
+        "tags": [
+          "Document Workflow"
+        ],
+        "summary": "Department header provides feedback",
+        "description": "Department header provides feedback on document",
+        "operationId": "commentHeaderDepartment",
+        "parameters": [
+          {
+            "name": "documentId",
+            "in": "path",
+            "description": "ID of the document",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocumentWorkflowDTO"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Department header feedback provided successfully",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Document not found",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not authorized to provide feedback",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/workflow/{documentId}/header-department-comment-with-attachment": {
+      "put": {
+        "tags": [
+          "Document Workflow"
+        ],
+        "summary": "Department header provides feedback with attachment",
+        "description": "Department header provides feedback with attachment",
+        "operationId": "commentHeaderDepartmentWithAttachment",
+        "parameters": [
+          {
+            "name": "documentId",
+            "in": "path",
+            "description": "ID of the document",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "required": [
+                  "comments",
+                  "file"
+                ],
+                "type": "object",
+                "properties": {
+                  "comments": {
+                    "type": "string",
+                    "description": "Feedback comments"
+                  },
+                  "file": {
+                    "type": "string",
+                    "description": "Feedback attachment",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "404": {
+            "description": "Document not found",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not authorized to provide feedback",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Department header feedback with attachment provided successfully",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/workflow/{documentId}/header-department-approve": {
+      "put": {
+        "tags": [
+          "Document Workflow"
+        ],
+        "summary": "Department header approves document",
+        "description": "Department header approves document",
+        "operationId": "approveHeaderDepartment",
+        "parameters": [
+          {
+            "name": "documentId",
+            "in": "path",
+            "description": "ID of the document",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocumentWorkflowDTO"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Document approved by department header successfully",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not authorized to approve document",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Document not found",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/workflow/{documentId}/forward-to-leadership": {
       "put": {
         "tags": [
@@ -732,6 +1457,148 @@
           },
           "403": {
             "description": "Not authorized to forward document",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/workflow/{documentId}/format-correction": {
+      "put": {
+        "tags": [
+          "Document Workflow"
+        ],
+        "summary": "Văn thư từ chối văn bản cần chỉnh sửa thể thức",
+        "description": "Văn thư từ chối văn bản để yêu cầu chỉnh sửa thể thức trước khi cấp số ban hành",
+        "operationId": "rejectForFormatCorrection",
+        "parameters": [
+          {
+            "name": "documentId",
+            "in": "path",
+            "description": "ID của văn bản",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocumentWorkflowDTO"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Văn bản đã được chuyển về trạng thái chỉnh sửa thể thức",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền từ chối văn bản",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy văn bản",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/workflow/{documentId}/format-correction-with-attachment": {
+      "put": {
+        "tags": [
+          "Document Workflow"
+        ],
+        "summary": "Văn thư từ chối văn bản kèm file hướng dẫn",
+        "description": "Văn thư từ chối văn bản đi kèm file mẫu/hướng dẫn để yêu cầu chỉnh sửa thể thức",
+        "operationId": "rejectForFormatCorrectionWithAttachment",
+        "parameters": [
+          {
+            "name": "documentId",
+            "in": "path",
+            "description": "ID của văn bản",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "required": [
+                  "comments",
+                  "file"
+                ],
+                "type": "object",
+                "properties": {
+                  "comments": {
+                    "type": "string",
+                    "description": "Lý do từ chối"
+                  },
+                  "file": {
+                    "type": "string",
+                    "description": "File mẫu/hướng dẫn",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "403": {
+            "description": "Không có quyền từ chối văn bản",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Không tìm thấy văn bản",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Văn bản đã được từ chối thành công",
             "content": {
               "application/hal+json": {
                 "schema": {
@@ -1271,6 +2138,80 @@
         }
       }
     },
+    "/api/users/{id}/update": {
+      "put": {
+        "tags": [
+          "User Management"
+        ],
+        "summary": "Update user with new DTO",
+        "description": "Updates a user's information using the new DTO. Requires ADMIN role or to be the user being updated.",
+        "operationId": "updateUserWithNewDTO",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID of the user to update",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserDTO"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "400": {
+            "description": "Invalid user data provided",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "User successfully updated",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User not found",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not authorized to update this user",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/users/{id}/password": {
       "put": {
         "tags": [
@@ -1640,6 +2581,194 @@
         }
       }
     },
+    "/api/roles/{id}": {
+      "get": {
+        "tags": [
+          "Roles"
+        ],
+        "summary": "Get role by ID",
+        "description": "Returns a single role by ID",
+        "operationId": "getRoleById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID of the role to retrieve",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "403": {
+            "description": "Not authorized to view roles",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleDTO"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Role not found",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleDTO"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Successfully retrieved role",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleDTO"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Roles"
+        ],
+        "summary": "Update a role",
+        "description": "Updates an existing role",
+        "operationId": "updateRole",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID of the role to update",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRoleDTO"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Role successfully updated",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Role not found",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not authorized to update roles",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid role data or name conflict",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Roles"
+        ],
+        "summary": "Delete a role",
+        "description": "Deletes a role",
+        "operationId": "deleteRole",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID of the role to delete",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Role cannot be deleted because it is assigned to users",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not authorized to delete roles",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Role successfully deleted",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Role not found",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/permissions/{id}": {
       "get": {
         "tags": [
@@ -1796,6 +2925,54 @@
           },
           "404": {
             "description": "Permission not found"
+          }
+        }
+      }
+    },
+    "/api/documents/{documentId}/type/{documentTypeId}": {
+      "put": {
+        "tags": [
+          "document-type-workflow-controller"
+        ],
+        "operationId": "setDocumentType",
+        "parameters": [
+          {
+            "name": "documentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "documentTypeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "comments",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
         }
       }
@@ -2090,6 +3267,138 @@
           },
           "204": {
             "description": "Document successfully deleted"
+          }
+        }
+      }
+    },
+    "/api/document-types/{id}": {
+      "get": {
+        "tags": [
+          "document-type-controller"
+        ],
+        "operationId": "getDocumentTypeById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "document-type-controller"
+        ],
+        "operationId": "updateDocumentType",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocumentType"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/document-types/{id}/deactivate": {
+      "put": {
+        "tags": [
+          "document-type-controller"
+        ],
+        "operationId": "deactivateDocumentType",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/document-types/{id}/activate": {
+      "put": {
+        "tags": [
+          "document-type-controller"
+        ],
+        "operationId": "activateDocumentType",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
           }
         }
       }
@@ -2568,6 +3877,70 @@
         }
       }
     },
+    "/api/workflow/standalone-outgoing": {
+      "post": {
+        "tags": [
+          "Document Workflow"
+        ],
+        "summary": "Tạo văn bản đi độc lập",
+        "description": "Tạo văn bản đi mới không liên kết với văn bản đến nào",
+        "operationId": "createStandaloneOutgoingDocument",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "required": [
+                  "data"
+                ],
+                "type": "object",
+                "properties": {
+                  "data": {
+                    "$ref": "#/components/schemas/OutgoingDocumentDTO"
+                  },
+                  "attachment": {
+                    "type": "string",
+                    "description": "File to upload",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Văn bản đi độc lập được tạo thành công",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dữ liệu không hợp lệ",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Không có quyền tạo văn bản",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/workflow/incoming/{incomingDocId}/reply": {
       "post": {
         "tags": [
@@ -2829,6 +4202,105 @@
               "application/hal+json": {
                 "schema": {
                   "$ref": "#/components/schemas/WorkPlanDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users": {
+      "get": {
+        "tags": [
+          "User Management"
+        ],
+        "summary": "Get all users",
+        "description": "Returns a list of all users. Requires ADMIN role.",
+        "operationId": "getAllUsers",
+        "parameters": [
+          {
+            "name": "paginated",
+            "in": "query",
+            "description": "Optional parameter to request paginated results. If 'paginated' is provided, use the /paginated endpoint instead.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved all users",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UserDTO"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not authorized to view users",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UserDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "User Management"
+        ],
+        "summary": "Create new user",
+        "description": "Creates a new user with the provided details. Requires ADMIN role.",
+        "operationId": "createUser",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateUserDTO"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "User successfully created",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid user data provided",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not authorized to create users",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
                 }
               }
             }
@@ -3360,6 +4832,94 @@
         }
       }
     },
+    "/api/roles": {
+      "get": {
+        "tags": [
+          "Roles"
+        ],
+        "summary": "Get all roles",
+        "description": "Returns a list of all roles",
+        "operationId": "getAllRoles",
+        "responses": {
+          "403": {
+            "description": "Not authorized to view roles",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RoleDTO"
+                  }
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Successfully retrieved roles",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RoleDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Roles"
+        ],
+        "summary": "Create a new role",
+        "description": "Creates a new role",
+        "operationId": "createRole",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRoleDTO"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Role successfully created",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid role data or role already exists",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not authorized to create roles",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/permissions": {
       "get": {
         "tags": [
@@ -3438,6 +4998,576 @@
         }
       }
     },
+    "/api/internal-documents": {
+      "post": {
+        "tags": [
+          "Internal Documents"
+        ],
+        "summary": "Create new internal document",
+        "description": "Creates a new internal document with recipients and optional file attachments",
+        "operationId": "createDocument",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "required": [
+                  "document"
+                ],
+                "type": "object",
+                "properties": {
+                  "document": {
+                    "type": "string",
+                    "description": "Document details as JSON string"
+                  },
+                  "files": {
+                    "type": "array",
+                    "description": "Files to attach (optional)",
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    }
+                  },
+                  "descriptions": {
+                    "type": "array",
+                    "description": "File descriptions (optional)",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            },
+            "application/json": {
+              "schema": {
+                "required": [
+                  "document"
+                ],
+                "type": "object",
+                "properties": {
+                  "document": {
+                    "type": "string",
+                    "description": "Document details as JSON string"
+                  },
+                  "files": {
+                    "type": "array",
+                    "description": "Files to attach (optional)",
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    }
+                  },
+                  "descriptions": {
+                    "type": "array",
+                    "description": "File descriptions (optional)",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "403": {
+            "description": "Not authorized to create documents",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalDocumentDTO"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Document successfully created",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalDocumentDTO"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input data",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalDocumentDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/internal-documents/{id}/reply": {
+      "post": {
+        "tags": [
+          "Internal Documents"
+        ],
+        "summary": "Reply to a document",
+        "description": "Creates a reply to an existing internal document",
+        "operationId": "replyToDocument",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID of the document to reply to",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateInternalDocumentDTO"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Reply successfully created",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalDocumentDTO"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not authorized to reply to this document",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalDocumentDTO"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Original document not found",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalDocumentDTO"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input data",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalDocumentDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/internal-documents/{id}/reply-with-attachments": {
+      "post": {
+        "tags": [
+          "Internal Documents"
+        ],
+        "summary": "Reply to a document with attachments",
+        "description": "Creates a reply to an existing internal document with file attachments",
+        "operationId": "replyToDocumentWithAttachments",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID of the document to reply to",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "required": [
+                  "document"
+                ],
+                "type": "object",
+                "properties": {
+                  "document": {
+                    "type": "string",
+                    "description": "Reply document details as JSON string"
+                  },
+                  "files": {
+                    "type": "array",
+                    "description": "Files to attach (optional)",
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    }
+                  },
+                  "descriptions": {
+                    "type": "array",
+                    "description": "File descriptions (optional)",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "403": {
+            "description": "Not authorized to reply to this document",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalDocumentDTO"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Reply with attachments successfully created",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalDocumentDTO"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Original document not found",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalDocumentDTO"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input data",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalDocumentDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/internal-documents/{id}/mark-read": {
+      "post": {
+        "tags": [
+          "Internal Documents"
+        ],
+        "summary": "Mark document as read",
+        "description": "Marks a document as read for the current user",
+        "operationId": "markAsRead",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID of the document to mark as read",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Document marked as read",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Document not found",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not authorized to access this document",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/internal-documents/{id}/attachments": {
+      "post": {
+        "tags": [
+          "Internal Documents"
+        ],
+        "summary": "Upload document attachment",
+        "description": "Uploads a file attachment for an internal document",
+        "operationId": "uploadAttachment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID of the document",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "required": [
+                  "file"
+                ],
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "description": "File to upload",
+                    "format": "binary"
+                  },
+                  "description": {
+                    "type": "string",
+                    "description": "File description"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "File successfully uploaded",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalDocumentDTO"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not authorized to upload attachments",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalDocumentDTO"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error during upload",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalDocumentDTO"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Document not found",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalDocumentDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/internal-documents/{id}/attachments/multiple": {
+      "post": {
+        "tags": [
+          "Internal Documents"
+        ],
+        "summary": "Upload multiple document attachments",
+        "description": "Uploads multiple file attachments for an internal document",
+        "operationId": "uploadMultipleAttachments",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID of the document",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "required": [
+                  "files"
+                ],
+                "type": "object",
+                "properties": {
+                  "files": {
+                    "type": "array",
+                    "description": "Files to upload",
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    }
+                  },
+                  "descriptions": {
+                    "type": "array",
+                    "description": "File descriptions",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "403": {
+            "description": "Not authorized to upload attachments",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalDocumentDTO"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error during upload",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalDocumentDTO"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Document not found",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalDocumentDTO"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Files successfully uploaded",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalDocumentDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/internal-documents/json": {
+      "post": {
+        "tags": [
+          "Internal Documents"
+        ],
+        "summary": "Create new internal document (JSON only)",
+        "description": "Creates a new internal document with recipients (without file attachments)",
+        "operationId": "createDocumentJson",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateInternalDocumentDTO"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "403": {
+            "description": "Not authorized to create documents",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalDocumentDTO"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Document successfully created",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalDocumentDTO"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input data",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalDocumentDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/documents/unified/{id}/multiple-attachments": {
       "post": {
         "tags": [
@@ -3445,7 +5575,7 @@
         ],
         "summary": "Upload multiple document attachments",
         "description": "Uploads multiple file attachments for any document type",
-        "operationId": "uploadMultipleAttachments",
+        "operationId": "uploadMultipleAttachments_1",
         "parameters": [
           {
             "name": "id",
@@ -4167,7 +6297,7 @@
         ],
         "summary": "Upload multiple document attachments",
         "description": "Uploads multiple file attachments for an outgoing document",
-        "operationId": "uploadMultipleAttachments_1",
+        "operationId": "uploadMultipleAttachments_2",
         "parameters": [
           {
             "name": "id",
@@ -4484,7 +6614,7 @@
         ],
         "summary": "Upload multiple document attachments",
         "description": "Uploads multiple file attachments for an incoming document",
-        "operationId": "uploadMultipleAttachments_2",
+        "operationId": "uploadMultipleAttachments_3",
         "parameters": [
           {
             "name": "id",
@@ -4705,6 +6835,57 @@
               "application/hal+json": {
                 "schema": {
                   "$ref": "#/components/schemas/IncomingDocumentDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/document-types": {
+      "get": {
+        "tags": [
+          "document-type-controller"
+        ],
+        "operationId": "getAllDocumentTypes",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DocumentType"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "document-type-controller"
+        ],
+        "operationId": "createDocumentType",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocumentType"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
                 }
               }
             }
@@ -5532,17 +7713,132 @@
         }
       }
     },
-    "/api/users": {
+    "/api/workflow/history/{historyId}/attachment": {
       "get": {
         "tags": [
-          "User Management"
+          "Document Workflow"
         ],
-        "summary": "Get all users",
-        "description": "Returns a list of all users. Requires ADMIN role.",
-        "operationId": "getAllUsers",
+        "summary": "Download attachment",
+        "description": "Download attachment file from document history",
+        "operationId": "downloadAttachment",
+        "parameters": [
+          {
+            "name": "historyId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Successfully retrieved all users",
+            "description": "File downloaded successfully",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not authorized to download file",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "File not found",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/workflow/departments/{departmentId}/children": {
+      "get": {
+        "tags": [
+          "Document Workflow"
+        ],
+        "summary": "Get child departments",
+        "description": "Returns all child departments for a specific department",
+        "operationId": "getChildDepartments",
+        "parameters": [
+          {
+            "name": "departmentId",
+            "in": "path",
+            "description": "ID of the parent department",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved child departments",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DepartmentDTO"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Parent department not found",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DepartmentDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/workflow/departments/{departmentId}/children/users": {
+      "get": {
+        "tags": [
+          "Document Workflow"
+        ],
+        "summary": "Get all users from child departments",
+        "description": "Returns all users from child departments of a specific parent department",
+        "operationId": "getChildDepartmentsUsers",
+        "parameters": [
+          {
+            "name": "departmentId",
+            "in": "path",
+            "description": "ID of the parent department",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved users",
             "content": {
               "application/hal+json": {
                 "schema": {
@@ -5554,8 +7850,121 @@
               }
             }
           },
+          "404": {
+            "description": "Parent department not found",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UserDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/workflow/departments/{departmentId}/children/commanders": {
+      "get": {
+        "tags": [
+          "Document Workflow"
+        ],
+        "summary": "Get commanders of child departments",
+        "description": "Returns all commanders/chiefs of child departments under a specific parent department",
+        "operationId": "getChildDepartmentsCommanders",
+        "parameters": [
+          {
+            "name": "departmentId",
+            "in": "path",
+            "description": "ID of the parent department",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved commanders",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UserDTO"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Parent department not found",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UserDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users/{id}/for-approval": {
+      "get": {
+        "tags": [
+          "User Management"
+        ],
+        "summary": "Get users for approval",
+        "description": "Lấy danh sách người dùng có thể phê duyệt dựa trên vai trò người dùng hiện tại",
+        "operationId": "getUsersForApproval",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID của người dùng",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
           "403": {
             "description": "Not authorized to view users",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UserDTO"
+                  }
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Successfully retrieved users for approval",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UserDTO"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User not found",
             "content": {
               "application/hal+json": {
                 "schema": {
@@ -5704,6 +8113,48 @@
                   "items": {
                     "$ref": "#/components/schemas/UserDTO"
                   }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users/paginated": {
+      "get": {
+        "tags": [
+          "User Management"
+        ],
+        "summary": "Get paginated users",
+        "description": "Returns a paginated list of all users. Requires ADMIN role.",
+        "operationId": "getPaginatedUsers",
+        "parameters": [
+          {
+            "name": "pageable",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Pageable"
+            }
+          }
+        ],
+        "responses": {
+          "403": {
+            "description": "Not authorized to view users",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageUserDTO"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Successfully retrieved paginated users",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageUserDTO"
                 }
               }
             }
@@ -6294,24 +8745,31 @@
         }
       }
     },
-    "/api/roles": {
+    "/api/roles/paginated": {
       "get": {
         "tags": [
           "Roles"
         ],
-        "summary": "Get all roles",
-        "description": "Returns a list of all roles",
-        "operationId": "getAllRoles",
+        "summary": "Get paginated roles",
+        "description": "Returns a paginated list of roles",
+        "operationId": "getPaginatedRoles",
+        "parameters": [
+          {
+            "name": "pageable",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Pageable"
+            }
+          }
+        ],
         "responses": {
           "403": {
             "description": "Not authorized to view roles",
             "content": {
               "application/hal+json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/RoleDTO"
-                  }
+                  "$ref": "#/components/schemas/PageRoleDTO"
                 }
               }
             }
@@ -6321,64 +8779,7 @@
             "content": {
               "application/hal+json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/RoleDTO"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/roles/{id}": {
-      "get": {
-        "tags": [
-          "Roles"
-        ],
-        "summary": "Get role by ID",
-        "description": "Returns a single role by ID",
-        "operationId": "getRoleById",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "ID of the role to retrieve",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "responses": {
-          "403": {
-            "description": "Not authorized to view roles",
-            "content": {
-              "application/hal+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RoleDTO"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Role not found",
-            "content": {
-              "application/hal+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RoleDTO"
-                }
-              }
-            }
-          },
-          "200": {
-            "description": "Successfully retrieved role",
-            "content": {
-              "application/hal+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RoleDTO"
+                  "$ref": "#/components/schemas/PageRoleDTO"
                 }
               }
             }
@@ -6649,6 +9050,748 @@
         }
       }
     },
+    "/api/internal-documents/{id}": {
+      "get": {
+        "tags": [
+          "Internal Documents"
+        ],
+        "summary": "Get internal document by ID",
+        "description": "Returns a single internal document by ID. Marks as read if user is recipient.",
+        "operationId": "getDocumentById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID of the document to retrieve",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved document",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalDocumentDTO"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Document not found",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalDocumentDTO"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not authorized to view this document",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalDocumentDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/internal-documents/{id}/thread": {
+      "get": {
+        "tags": [
+          "Internal Documents"
+        ],
+        "operationId": "getDocumentThread",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/InternalDocumentDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/internal-documents/{id}/stats": {
+      "get": {
+        "tags": [
+          "Internal Documents"
+        ],
+        "operationId": "getDocumentStats",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/internal-documents/{id}/replies": {
+      "get": {
+        "tags": [
+          "Internal Documents"
+        ],
+        "operationId": "getDocumentReplies",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/InternalDocumentDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/internal-documents/{id}/history": {
+      "get": {
+        "tags": [
+          "Internal Documents"
+        ],
+        "operationId": "getDocumentHistory_1",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/InternalDocumentHistoryDTO"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/internal-documents/{id}/attachments/{attachmentId}": {
+      "get": {
+        "tags": [
+          "Internal Documents"
+        ],
+        "summary": "Download document attachment",
+        "description": "Downloads a file attachment from an internal document",
+        "operationId": "downloadAttachment_1",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID of the document",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "attachmentId",
+            "in": "path",
+            "description": "ID of the attachment",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "500": {
+            "description": "Internal server error during download",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "File ready for download",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not authorized to download attachments",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Document or attachment not found",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/internal-documents/unread": {
+      "get": {
+        "tags": [
+          "Internal Documents"
+        ],
+        "summary": "Get unread documents for current user",
+        "description": "Returns a paginated list of unread documents for the current user",
+        "operationId": "getUnreadDocuments",
+        "parameters": [
+          {
+            "name": "pageable",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Pageable"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved unread documents",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageInternalDocumentDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/internal-documents/unread/count": {
+      "get": {
+        "tags": [
+          "Internal Documents"
+        ],
+        "summary": "Count unread documents",
+        "description": "Returns the count of unread documents for the current user",
+        "operationId": "countUnreadDocuments",
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved unread count",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "integer",
+                    "format": "int64"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/internal-documents/type/{documentType}": {
+      "get": {
+        "tags": [
+          "Internal Documents"
+        ],
+        "summary": "Get documents by type",
+        "description": "Returns documents filtered by document type",
+        "operationId": "getDocumentsByType",
+        "parameters": [
+          {
+            "name": "documentType",
+            "in": "path",
+            "description": "Document type",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pageable",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Pageable"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved documents by type",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageInternalDocumentDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/internal-documents/statistics": {
+      "get": {
+        "tags": [
+          "Internal Documents"
+        ],
+        "summary": "Get document statistics",
+        "description": "Returns statistics about internal documents for the current user",
+        "operationId": "getDocumentStatistics",
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved statistics",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/internal-documents/sent": {
+      "get": {
+        "tags": [
+          "Internal Documents"
+        ],
+        "summary": "Get documents sent by current user",
+        "description": "Returns a paginated list of documents sent by the current user",
+        "operationId": "getSentDocuments",
+        "parameters": [
+          {
+            "name": "pageable",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Pageable"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved sent documents",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageInternalDocumentDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/internal-documents/search": {
+      "get": {
+        "tags": [
+          "Internal Documents"
+        ],
+        "summary": "Search internal documents",
+        "description": "Search internal documents by keyword in title, summary, or notes",
+        "operationId": "searchDocuments",
+        "parameters": [
+          {
+            "name": "keyword",
+            "in": "query",
+            "description": "Keyword to search for",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pageable",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Pageable"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Search completed successfully",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageInternalDocumentDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/internal-documents/search/advanced": {
+      "get": {
+        "tags": [
+          "Internal Documents"
+        ],
+        "summary": "Advanced search with filters",
+        "description": "Search documents with multiple filter criteria",
+        "operationId": "searchWithFilters",
+        "parameters": [
+          {
+            "name": "senderId",
+            "in": "query",
+            "description": "Sender user ID",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "recipientUserId",
+            "in": "query",
+            "description": "Recipient user ID",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "recipientDepartmentId",
+            "in": "query",
+            "description": "Recipient department ID",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "priority",
+            "in": "query",
+            "description": "Document priority",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "LOW",
+                "NORMAL",
+                "HIGH",
+                "URGENT"
+              ]
+            }
+          },
+          {
+            "name": "documentType",
+            "in": "query",
+            "description": "Document type",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "startDate",
+            "in": "query",
+            "description": "Start date (ISO format)",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "endDate",
+            "in": "query",
+            "description": "End date (ISO format)",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "keyword",
+            "in": "query",
+            "description": "Keyword to search for",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pageable",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Pageable"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Search completed successfully",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageInternalDocumentDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/internal-documents/received": {
+      "get": {
+        "tags": [
+          "Internal Documents"
+        ],
+        "summary": "Get documents received by current user",
+        "description": "Returns a paginated list of documents received by the current user",
+        "operationId": "getReceivedDocuments",
+        "parameters": [
+          {
+            "name": "pageable",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Pageable"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved received documents",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageInternalDocumentDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/internal-documents/priority/{priority}": {
+      "get": {
+        "tags": [
+          "Internal Documents"
+        ],
+        "summary": "Get document by priority",
+        "description": "Returns documents filtered by priority level",
+        "operationId": "getDocumentsByPriority",
+        "parameters": [
+          {
+            "name": "priority",
+            "in": "path",
+            "description": "Priority level",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "LOW",
+                "NORMAL",
+                "HIGH",
+                "URGENT"
+              ]
+            }
+          },
+          {
+            "name": "pageable",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Pageable"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved documents by priority",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageInternalDocumentDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/internal-documents/date-range": {
+      "get": {
+        "tags": [
+          "Internal Documents"
+        ],
+        "summary": "Get documents by date range",
+        "description": "Returns documents within a specific date range",
+        "operationId": "getDocumentsByDateRange",
+        "parameters": [
+          {
+            "name": "startDate",
+            "in": "query",
+            "description": "Start date (ISO format)",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "endDate",
+            "in": "query",
+            "description": "End date (ISO format)",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "pageable",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Pageable"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully retrieved documents by date range",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageInternalDocumentDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/documents/{documentId}/type": {
+      "get": {
+        "tags": [
+          "document-type-workflow-controller"
+        ],
+        "operationId": "getDocumentType",
+        "parameters": [
+          {
+            "name": "documentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/documents/unified": {
       "get": {
         "tags": [
@@ -6698,7 +9841,7 @@
         ],
         "summary": "Get document by ID",
         "description": "Returns a single document in unified format",
-        "operationId": "getDocumentById",
+        "operationId": "getDocumentById_1",
         "parameters": [
           {
             "name": "id",
@@ -6805,7 +9948,7 @@
         ],
         "summary": "Get document statistics",
         "description": "Get document counts by type and status",
-        "operationId": "getDocumentStats",
+        "operationId": "getDocumentStats_1",
         "responses": {
           "200": {
             "description": "Successfully retrieved statistics",
@@ -6843,7 +9986,7 @@
         ],
         "summary": "Search documents",
         "description": "Search all documents by keyword",
-        "operationId": "searchDocuments",
+        "operationId": "searchDocuments_1",
         "parameters": [
           {
             "name": "keyword",
@@ -7492,12 +10635,35 @@
         }
       }
     },
+    "/api/document-types/active": {
+      "get": {
+        "tags": [
+          "document-type-controller"
+        ],
+        "operationId": "getActiveDocumentTypes",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DocumentType"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/departments/{id}/children": {
       "get": {
         "tags": [
           "department-hierarchy-controller"
         ],
-        "operationId": "getChildDepartments",
+        "operationId": "getChildDepartments_1",
         "parameters": [
           {
             "name": "id",
@@ -7540,9 +10706,12 @@
             "content": {
               "application/hal+json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": {
-                    "type": "object"
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "object"
+                    }
                   }
                 }
               }
@@ -7553,9 +10722,12 @@
             "content": {
               "application/hal+json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": {
-                    "type": "object"
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "object"
+                    }
                   }
                 }
               }
@@ -7855,6 +11027,52 @@
         }
       }
     },
+    "/api/dashboard/status-breakdown": {
+      "get": {
+        "tags": [
+          "Dashboard"
+        ],
+        "operationId": "getStatusBreakdown",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/dashboard/stats": {
+      "get": {
+        "tags": [
+          "Dashboard"
+        ],
+        "operationId": "getDashboardStats",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/dashboard/schedules/today": {
       "get": {
         "tags": [
@@ -7892,6 +11110,118 @@
         }
       }
     },
+    "/api/dashboard/recent-documents": {
+      "get": {
+        "tags": [
+          "Dashboard"
+        ],
+        "operationId": "getRecentDocuments",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/dashboard/quick-metrics": {
+      "get": {
+        "tags": [
+          "Dashboard"
+        ],
+        "operationId": "getQuickMetrics",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/dashboard/period-stats": {
+      "get": {
+        "tags": [
+          "Dashboard"
+        ],
+        "operationId": "getPeriodStats",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/dashboard/overall-stats": {
+      "get": {
+        "tags": [
+          "Dashboard"
+        ],
+        "operationId": "getOverallStats",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/dashboard/outgoing-stats": {
+      "get": {
+        "tags": [
+          "Dashboard"
+        ],
+        "operationId": "getOutgoingDocumentStats",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/dashboard/me": {
       "get": {
         "tags": [
@@ -7917,6 +11247,52 @@
               "application/hal+json": {
                 "schema": {
                   "$ref": "#/components/schemas/DashboardDTO"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/dashboard/internal-stats": {
+      "get": {
+        "tags": [
+          "Dashboard"
+        ],
+        "operationId": "getInternalDocumentStats",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/dashboard/incoming-stats": {
+      "get": {
+        "tags": [
+          "Dashboard"
+        ],
+        "operationId": "getIncomingDocumentStats",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/hal+json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "object"
+                  }
                 }
               }
             }
@@ -8420,6 +11796,8 @@
             "enum": [
               "DRAFT",
               "REGISTERED",
+              "FORMAT_CORRECTION",
+              "FORMAT_CORRECTED",
               "DISTRIBUTED",
               "DEPT_ASSIGNED",
               "PENDING_APPROVAL",
@@ -8428,6 +11806,9 @@
               "LEADER_REVIEWING",
               "LEADER_APPROVED",
               "LEADER_COMMENTED",
+              "NOT_PROCESSED",
+              "IN_PROCESS",
+              "PROCESSED",
               "PUBLISHED",
               "COMPLETED",
               "REJECTED",
@@ -8461,6 +11842,9 @@
           "processDeadline": {
             "type": "string",
             "format": "date-time"
+          },
+          "documentType": {
+            "$ref": "#/components/schemas/DocumentType"
           },
           "assignedDepartments": {
             "uniqueItems": true,
@@ -8535,6 +11919,9 @@
           "comments": {
             "type": "string"
           },
+          "attachmentPath": {
+            "type": "string"
+          },
           "primaryDepartment": {
             "$ref": "#/components/schemas/Department"
           },
@@ -8557,6 +11944,29 @@
           }
         }
       },
+      "DocumentType": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "isActive": {
+            "type": "boolean"
+          }
+        }
+      },
       "User": {
         "type": "object",
         "properties": {
@@ -8574,6 +11984,9 @@
             "type": "string"
           },
           "mail": {
+            "type": "string"
+          },
+          "phone": {
             "type": "string"
           },
           "status": {
@@ -8594,6 +12007,9 @@
           },
           "department": {
             "$ref": "#/components/schemas/Department"
+          },
+          "isCommanderOfUnit": {
+            "type": "boolean"
           },
           "userStatus": {
             "type": "string",
@@ -8756,6 +12172,12 @@
           "statusDisplayName": {
             "type": "string"
           },
+          "trackingStatus": {
+            "type": "string"
+          },
+          "trackingStatusDisplayName": {
+            "type": "string"
+          },
           "id": {
             "type": "integer",
             "format": "int64"
@@ -8825,6 +12247,9 @@
           },
           "attachmentFilename": {
             "type": "string"
+          },
+          "isInternal": {
+            "type": "boolean"
           }
         },
         "description": "Document details"
@@ -8965,9 +12390,19 @@
           "fullName": {
             "type": "string"
           },
+          "email": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
           "status": {
             "type": "integer",
             "format": "int32"
+          },
+          "roleId": {
+            "type": "integer",
+            "format": "int64"
           },
           "userStatus": {
             "type": "string",
@@ -9032,6 +12467,9 @@
               ]
             }
           },
+          "isCommanderOfUnit": {
+            "type": "boolean"
+          },
           "statusDisplayName": {
             "type": "string"
           },
@@ -9044,6 +12482,75 @@
           }
         },
         "description": "User registration details"
+      },
+      "UpdateUserDTO": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "departmentId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "userStatus": {
+            "type": "string",
+            "enum": [
+              "INACTIVE",
+              "ACTIVE",
+              "BLOCKED",
+              "PENDING_APPROVAL"
+            ]
+          },
+          "roles": {
+            "uniqueItems": true,
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "userRoles": {
+            "uniqueItems": true,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "ADMIN",
+                "USER",
+                "EDITOR",
+                "TRUONG_PHONG",
+                "PHO_PHONG",
+                "CUC_TRUONG",
+                "CUC_PHO",
+                "NHAN_VIEN",
+                "TRO_LY",
+                "VAN_THU",
+                "CHINH_UY",
+                "PHO_CHINH_UY",
+                "TRAM_TRUONG",
+                "PHO_TRAM_TRUONG",
+                "CHINH_TRI_VIEN_TRAM",
+                "CUM_TRUONG",
+                "PHO_CUM_TRUONG",
+                "CHINH_TRI_VIEN_CUM",
+                "TRUONG_BAN"
+              ]
+            }
+          },
+          "isCommanderOfUnit": {
+            "type": "boolean"
+          }
+        },
+        "description": "Updated user information"
       },
       "SenderDTO": {
         "type": "object",
@@ -9190,6 +12697,21 @@
           }
         }
       },
+      "UpdateRoleDTO": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "description": "Updated role details"
+      },
       "PermissionDTO": {
         "type": "object",
         "properties": {
@@ -9327,6 +12849,12 @@
           "displayStatus": {
             "type": "string"
           },
+          "trackingStatus": {
+            "type": "string"
+          },
+          "trackingStatusDisplayName": {
+            "type": "string"
+          },
           "closureRequest": {
             "type": "boolean"
           },
@@ -9457,6 +12985,347 @@
         },
         "description": "Document details"
       },
+      "CreateUserDTO": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "departmentId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "userStatus": {
+            "type": "string",
+            "enum": [
+              "INACTIVE",
+              "ACTIVE",
+              "BLOCKED",
+              "PENDING_APPROVAL"
+            ]
+          },
+          "roles": {
+            "uniqueItems": true,
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "userRoles": {
+            "uniqueItems": true,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "ADMIN",
+                "USER",
+                "EDITOR",
+                "TRUONG_PHONG",
+                "PHO_PHONG",
+                "CUC_TRUONG",
+                "CUC_PHO",
+                "NHAN_VIEN",
+                "TRO_LY",
+                "VAN_THU",
+                "CHINH_UY",
+                "PHO_CHINH_UY",
+                "TRAM_TRUONG",
+                "PHO_TRAM_TRUONG",
+                "CHINH_TRI_VIEN_TRAM",
+                "CUM_TRUONG",
+                "PHO_CUM_TRUONG",
+                "CHINH_TRI_VIEN_CUM",
+                "TRUONG_BAN"
+              ]
+            }
+          },
+          "isCommanderOfUnit": {
+            "type": "boolean"
+          }
+        },
+        "description": "User details"
+      },
+      "CreateRoleDTO": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "description": "Role details"
+      },
+      "AttachmentDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "filename": {
+            "type": "string"
+          },
+          "contentType": {
+            "type": "string"
+          },
+          "fileSize": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "uploadedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "uploadedByName": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      },
+      "InternalDocumentDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "documentNumber": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "documentType": {
+            "type": "string"
+          },
+          "signingDate": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "LOW",
+              "NORMAL",
+              "HIGH",
+              "URGENT"
+            ]
+          },
+          "notes": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "REGISTERED",
+              "FORMAT_CORRECTION",
+              "FORMAT_CORRECTED",
+              "DISTRIBUTED",
+              "DEPT_ASSIGNED",
+              "PENDING_APPROVAL",
+              "SPECIALIST_PROCESSING",
+              "SPECIALIST_SUBMITTED",
+              "LEADER_REVIEWING",
+              "LEADER_APPROVED",
+              "LEADER_COMMENTED",
+              "NOT_PROCESSED",
+              "IN_PROCESS",
+              "PROCESSED",
+              "PUBLISHED",
+              "COMPLETED",
+              "REJECTED",
+              "ARCHIVED",
+              "HEADER_DEPARTMENT_REVIEWING",
+              "HEADER_DEPARTMENT_APPROVED",
+              "HEADER_DEPARTMENT_COMMENTED"
+            ]
+          },
+          "isInternal": {
+            "type": "boolean"
+          },
+          "senderId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "senderName": {
+            "type": "string"
+          },
+          "senderDepartment": {
+            "type": "string"
+          },
+          "recipients": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RecipientDTO"
+            }
+          },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AttachmentDTO"
+            }
+          },
+          "replyToId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "replyToTitle": {
+            "type": "string"
+          },
+          "replyCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "isRead": {
+            "type": "boolean"
+          },
+          "readAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "RecipientDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "departmentId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "departmentName": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "userName": {
+            "type": "string"
+          },
+          "isRead": {
+            "type": "boolean"
+          },
+          "readAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "receivedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateInternalDocumentDTO": {
+        "required": [
+          "documentNumber",
+          "priority",
+          "recipients",
+          "title"
+        ],
+        "type": "object",
+        "properties": {
+          "documentNumber": {
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 2000,
+            "minLength": 0,
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "documentType": {
+            "type": "string"
+          },
+          "signingDate": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "LOW",
+              "NORMAL",
+              "HIGH",
+              "URGENT"
+            ]
+          },
+          "notes": {
+            "type": "string"
+          },
+          "recipients": {
+            "maxItems": 2147483647,
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RecipientRequest"
+            }
+          },
+          "replyToId": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "description": "Document details"
+      },
+      "RecipientRequest": {
+        "required": [
+          "departmentId"
+        ],
+        "type": "object",
+        "properties": {
+          "departmentId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "userId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
+      },
       "AuthRequest": {
         "required": [
           "password",
@@ -9491,6 +13360,9 @@
             "type": "string"
           },
           "comments": {
+            "type": "string"
+          },
+          "attachmentPath": {
             "type": "string"
           },
           "timestamp": {
@@ -9599,6 +13471,92 @@
           }
         }
       },
+      "PageUserDTO": {
+        "type": "object",
+        "properties": {
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageable": {
+            "$ref": "#/components/schemas/PageableObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UserDTO"
+            }
+          },
+          "number": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sort": {
+            "$ref": "#/components/schemas/SortObject"
+          },
+          "numberOfElements": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "empty": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PageableObject": {
+        "type": "object",
+        "properties": {
+          "pageNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "offset": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "sort": {
+            "$ref": "#/components/schemas/SortObject"
+          },
+          "paged": {
+            "type": "boolean"
+          },
+          "unpaged": {
+            "type": "boolean"
+          }
+        }
+      },
+      "SortObject": {
+        "type": "object",
+        "properties": {
+          "sorted": {
+            "type": "boolean"
+          },
+          "empty": {
+            "type": "boolean"
+          },
+          "unsorted": {
+            "type": "boolean"
+          }
+        }
+      },
       "PageScheduleDTO": {
         "type": "object",
         "properties": {
@@ -9645,46 +13603,6 @@
           }
         }
       },
-      "PageableObject": {
-        "type": "object",
-        "properties": {
-          "pageNumber": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "pageSize": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "offset": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "sort": {
-            "$ref": "#/components/schemas/SortObject"
-          },
-          "unpaged": {
-            "type": "boolean"
-          },
-          "paged": {
-            "type": "boolean"
-          }
-        }
-      },
-      "SortObject": {
-        "type": "object",
-        "properties": {
-          "sorted": {
-            "type": "boolean"
-          },
-          "empty": {
-            "type": "boolean"
-          },
-          "unsorted": {
-            "type": "boolean"
-          }
-        }
-      },
       "RoleDTO": {
         "type": "object",
         "properties": {
@@ -9701,6 +13619,52 @@
           "userCount": {
             "type": "integer",
             "format": "int32"
+          }
+        }
+      },
+      "PageRoleDTO": {
+        "type": "object",
+        "properties": {
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageable": {
+            "$ref": "#/components/schemas/PageableObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RoleDTO"
+            }
+          },
+          "number": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sort": {
+            "$ref": "#/components/schemas/SortObject"
+          },
+          "numberOfElements": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "empty": {
+            "type": "boolean"
           }
         }
       },
@@ -9732,6 +13696,81 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/Notification"
+            }
+          },
+          "number": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sort": {
+            "$ref": "#/components/schemas/SortObject"
+          },
+          "numberOfElements": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "empty": {
+            "type": "boolean"
+          }
+        }
+      },
+      "InternalDocumentHistoryDTO": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "action": {
+            "type": "string"
+          },
+          "details": {
+            "type": "string"
+          },
+          "performedById": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "performedByName": {
+            "type": "string"
+          },
+          "performedByDepartment": {
+            "type": "string"
+          },
+          "performedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "PageInternalDocumentDTO": {
+        "type": "object",
+        "properties": {
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageable": {
+            "$ref": "#/components/schemas/PageableObject"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InternalDocumentDTO"
             }
           },
           "number": {
@@ -9915,6 +13954,16 @@
               "type": "string"
             }
           },
+          "documentTypeId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "documentTypeCode": {
+            "type": "string"
+          },
+          "documentTypeName": {
+            "type": "string"
+          },
           "deadline": {
             "type": "string"
           },
@@ -9927,22 +13976,19 @@
               "$ref": "#/components/schemas/DocumentCommentDTO"
             }
           },
-          "documentType": {
-            "type": "string"
-          },
           "content": {
             "type": "string"
           },
           "includesEnclosure": {
             "type": "boolean"
           },
-          "primaryHandler": {
-            "type": "boolean"
-          },
           "legalDocument": {
             "type": "boolean"
           },
           "confidentialReturn": {
+            "type": "boolean"
+          },
+          "primaryHandler": {
             "type": "boolean"
           }
         }

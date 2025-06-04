@@ -1,173 +1,194 @@
-import api from "./config"
-import type { PageResponse, DocumentAttachmentDTO, DocumentCommentDTO } from "./types"
+import api from "./config";
+import type {
+  PageResponse,
+  DocumentAttachmentDTO,
+  DocumentCommentDTO,
+} from "./types";
 
 export interface UnifiedDocumentDTO {
-  id: number
-  number: string
-  referenceNumber?: string
-  referenceDate?: string
-  issuingAgency?: string
-  subject: string
-  processingDepartmentId?: string
-  processingDepartment?: string
-  receivedDate?: string
-  receivedTime?: string
-  securityLevel?: string
-  urgencyLevel?: string
-  status: string
-  hasAttachment: boolean
-  attachments?: DocumentAttachmentDTO[]
-  assignedUsers?: string[]
-  deadline?: string
-  requiresResponse?: boolean
-  comments?: DocumentCommentDTO[]
-  documentType: string
-  content?: string
-  includesEnclosure?: boolean
-  primaryHandler?: boolean
-  legalDocument?: boolean
-  confidentialReturn?: boolean
+  id: number;
+  title: string;
+  documentNumber: string;
+  documentType: string;
+  status: string;
+  createdDate: string;
+  lastModifiedDate: string;
+  createdBy: string;
+  assignedTo?: string;
+  department?: string;
+  priority?: string;
+  deadline?: string;
+  attachments?: any[];
 }
 
 export const unifiedDocumentsAPI = {
   /**
-   * Get all documents
-   * @param page Page number
-   * @param size Page size
-   * @returns Paginated list of all documents
-   */
-  getAllDocuments: async (page = 0, size = 10): Promise<PageResponse<UnifiedDocumentDTO>> => {
-    const response = await api.get("/documents/unified", {
-      params: { page, size },
-    })
-    return response.data
-  },
-
-  /**
-   * Get document by ID
-   * @param id Document ID
+   * Get unified document by ID
+   * @param documentId Document ID
    * @returns Document data
    */
-  getDocumentById: async (id: string | number): Promise<UnifiedDocumentDTO> => {
-    const response = await api.get(`/documents/unified/${id}`)
-    return response.data
+  getUnifiedDocumentById: async (documentId: string | number) => {
+    const response = await api.get(`/documents/unified/${documentId}`);
+    return response.data;
   },
 
   /**
-   * Get document statistics
-   * @returns Document counts by type and status
-   */
-  getDocumentStats: async () => {
-    const response = await api.get("/documents/unified/stats")
-    return response.data
-  },
-
-  /**
-   * Search documents
-   * @param keyword Keyword to search for
+   * Get unified documents with pagination
    * @param page Page number
    * @param size Page size
-   * @returns Paginated list of matching documents
+   * @param filters Optional filters
+   * @returns Paginated list of documents
    */
-  searchDocuments: async (keyword: string, page = 0, size = 10) => {
+  getUnifiedDocuments: async (page = 0, size = 10, filters: any = {}) => {
+    const response = await api.get("/documents/unified", {
+      params: { page, size, ...filters },
+    });
+    return response.data;
+  },
+
+  /**
+   * Search unified documents
+   * @param query Search query
+   * @param page Page number
+   * @param size Page size
+   * @returns Search results
+   */
+  searchUnifiedDocuments: async (query: string, page = 0, size = 10) => {
     const response = await api.get("/documents/unified/search", {
-      params: { keyword, page, size },
-    })
-    return response.data
+      params: { q: query, page, size },
+    });
+    return response.data;
   },
 
   /**
-   * Find documents by date range
-   * @param startDate Start date (ISO format)
-   * @param endDate End date (ISO format)
+   * Get documents by status
+   * @param status Document status
    * @param page Page number
    * @param size Page size
-   * @returns Paginated list of documents within the date range
+   * @returns Documents with specified status
    */
-  findByDateRange: async (startDate: string, endDate: string, page = 0, size = 10) => {
-    const response = await api.get("/documents/unified/by-date", {
-      params: {
-        start: startDate,
-        end: endDate,
-        page,
-        size,
-      },
-    })
-    return response.data
+  getDocumentsByStatus: async (status: string, page = 0, size = 10) => {
+    const response = await api.get(`/documents/unified/status/${status}`, {
+      params: { page, size },
+    });
+    return response.data;
+  },
+
+  /**
+   * Get documents by type
+   * @param type Document type
+   * @param page Page number
+   * @param size Page size
+   * @returns Documents with specified type
+   */
+  getDocumentsByType: async (type: string, page = 0, size = 10) => {
+    const response = await api.get(`/documents/unified/type/${type}`, {
+      params: { page, size },
+    });
+    return response.data;
+  },
+
+  /**
+   * Get documents by department
+   * @param departmentId Department ID
+   * @param page Page number
+   * @param size Page size
+   * @returns Documents from specified department
+   */
+  getDocumentsByDepartment: async (
+    departmentId: string | number,
+    page = 0,
+    size = 10
+  ) => {
+    const response = await api.get(
+      `/documents/unified/department/${departmentId}`,
+      {
+        params: { page, size },
+      }
+    );
+    return response.data;
+  },
+
+  /**
+   * Get documents assigned to user
+   * @param userId User ID
+   * @param page Page number
+   * @param size Page size
+   * @returns Documents assigned to specified user
+   */
+  getDocumentsAssignedToUser: async (
+    userId: string | number,
+    page = 0,
+    size = 10
+  ) => {
+    const response = await api.get(`/documents/unified/assigned/${userId}`, {
+      params: { page, size },
+    });
+    return response.data;
+  },
+
+  /**
+   * Download document attachment
+   * @param documentId Document ID
+   * @returns File blob
+   */
+  downloadDocumentAttachment: async (documentId: string | number) => {
+    const response = await api.get(
+      `/documents/unified/${documentId}/attachments`,
+      {
+        responseType: "blob",
+      }
+    );
+    return response;
   },
 
   /**
    * Upload document attachment
-   * @param id Document ID
+   * @param documentId Document ID
    * @param file File to upload
-   * @returns Success message
+   * @returns Upload result
    */
-  uploadAttachment: async (id: string | number, file: File) => {
-    const formData = new FormData()
-    formData.append("file", file)
+  uploadDocumentAttachment: async (documentId: string | number, file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
 
-    const response = await api.post(`/documents/unified/${id}/attachments`, formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    })
-
-    return response.data
+    const response = await api.post(
+      `/documents/unified/${documentId}/attachments`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    );
+    return response.data;
   },
 
   /**
    * Upload multiple document attachments
-   * @param id Document ID
+   * @param documentId Document ID
    * @param files Files to upload
-   * @returns Success message
+   * @returns Upload result
    */
-  uploadMultipleAttachments: async (id: string | number, files: File[]) => {
-    const formData = new FormData()
+  uploadMultipleAttachments: async (
+    documentId: string | number,
+    files: File[]
+  ) => {
+    const formData = new FormData();
     files.forEach((file) => {
-      formData.append("files", file)
-    })
+      formData.append("files", file);
+    });
 
-    const response = await api.post(`/documents/unified/${id}/multiple-attachments`, formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    })
-
-    return response.data
-  },
-
-  /**
-   * Get document comments
-   * @param documentId Document ID
-   * @param type Comment type filter (optional)
-   * @returns List of comments
-   */
-  getDocumentComments: async (documentId: string | number, type?: string) => {
-    const response = await api.get(`/documents/unified/${documentId}/comments`, {
-      params: { type },
-    })
-    return response.data
-  },
-
-  /**
-   * Add comment to document
-   * @param documentId Document ID
-   * @param commentData Comment data
-   * @returns Created comment data
-   */
-  addDocumentComment: async (documentId: string | number, commentData: any) => {
-    const response = await api.post(`/documents/unified/${documentId}/comments`, commentData)
-    return response.data
-  },
-
-  /**
-   * Delete document comment
-   * @param commentId Comment ID
-   * @returns Success message
-   */
-  deleteDocumentComment: async (commentId: string | number) => {
-    const response = await api.delete(`/documents/unified/comments/${commentId}`)
-    return response.data
+    const response = await api.post(
+      `/documents/unified/${documentId}/multiple-attachments`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    );
+    return response.data;
   },
 
   /**
@@ -176,8 +197,10 @@ export const unifiedDocumentsAPI = {
    * @returns Document workflow status
    */
   getDocumentWorkflowStatus: async (documentId: string | number) => {
-    const response = await api.get(`/documents/unified/${documentId}/workflow/status`)
-    return response.data
+    const response = await api.get(
+      `/documents/unified/${documentId}/workflow/status`
+    );
+    return response.data;
   },
 
   /**
@@ -186,9 +209,15 @@ export const unifiedDocumentsAPI = {
    * @param statusData Status change details
    * @returns Updated status data
    */
-  changeDocumentWorkflowStatus: async (documentId: string | number, statusData: any) => {
-    const response = await api.post(`/documents/unified/${documentId}/workflow/status`, statusData)
-    return response.data
+  changeDocumentWorkflowStatus: async (
+    documentId: string | number,
+    statusData: any
+  ) => {
+    const response = await api.post(
+      `/documents/unified/${documentId}/workflow/status`,
+      statusData
+    );
+    return response.data;
   },
 
   /**
@@ -197,9 +226,15 @@ export const unifiedDocumentsAPI = {
    * @param assignmentData Assignment details
    * @returns Updated assignment data
    */
-  assignDocumentToUser: async (documentId: string | number, assignmentData: any) => {
-    const response = await api.post(`/documents/unified/${documentId}/workflow/assign`, assignmentData)
-    return response.data
+  assignDocumentToUser: async (
+    documentId: string | number,
+    assignmentData: any
+  ) => {
+    const response = await api.post(
+      `/documents/unified/${documentId}/workflow/assign`,
+      assignmentData
+    );
+    return response.data;
   },
 
   /**
@@ -208,7 +243,9 @@ export const unifiedDocumentsAPI = {
    * @returns Document workflow history
    */
   getDocumentWorkflowHistory: async (documentId: string | number) => {
-    const response = await api.get(`/documents/unified/${documentId}/workflow/history`)
-    return response.data
+    const response = await api.get(
+      `/documents/unified/${documentId}/workflow/history`
+    );
+    return response.data;
   },
-}
+};

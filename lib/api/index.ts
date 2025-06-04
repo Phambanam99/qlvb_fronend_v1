@@ -17,6 +17,7 @@ export * from "./cases";
 export * from "./roles";
 export * from "./departments";
 export * from "./unified-documents";
+export * from "./permissions";
 export * from "./types";
 export * from "./senders";
 export * from "./document-types";
