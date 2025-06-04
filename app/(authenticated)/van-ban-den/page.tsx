@@ -294,9 +294,6 @@ export default function IncomingDocumentsPage() {
       if (response && response.content) {
         console.log("Internal received documents response:", response);
 
-        // Debug: Log raw data từ backend để kiểm tra
-        console.log("Sample document from backend:", response.content[0]);
-
         // Sử dụng trực tiếp data từ backend thay vì tính toán lại
         // Backend đã trả về isRead: true/false dựa trên user hiện tại
         setInternalDocuments(response.content);
@@ -867,17 +864,6 @@ export default function IncomingDocumentsPage() {
                       // Sử dụng trực tiếp trạng thái đọc từ backend
                       // Backend đã trả về isRead: true/false cho từng document dựa trên người dùng hiện tại
                       const currentReadStatus = doc.isRead;
-
-                      // Debug logging để kiểm tra dữ liệu từ backend
-                      console.log(
-                        `Document ${doc.id} (${doc.documentNumber}):`,
-                        {
-                          isRead: doc.isRead,
-                          readAt: doc.readAt,
-                          currentReadStatus,
-                          docObject: doc,
-                        }
-                      );
 
                       return (
                         <TableRow key={doc.id} className="hover:bg-accent/30">
