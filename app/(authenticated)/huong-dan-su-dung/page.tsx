@@ -26,14 +26,19 @@ import {
   User,
   MapPin,
   Loader2,
+  Eye,
 } from "lucide-react";
 import { guideFilesAPI, type GuideFileDTO } from "@/lib/api/guide-files";
 import { useToast } from "@/components/ui/use-toast";
+import PDFViewerModal from "@/components/ui/pdf-viewer-modal";
+import { isPDFFile } from "@/lib/utils/pdf-viewer";
 
 export default function UserGuidePage() {
   const [activeSection, setActiveSection] = useState("overview");
   const [guideFiles, setGuideFiles] = useState<GuideFileDTO[]>([]);
   const [loadingFiles, setLoadingFiles] = useState(true);
+  const [pdfViewerOpen, setPdfViewerOpen] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<GuideFileDTO | null>(null);
   const { toast } = useToast();
 
   // Format file size utility function
@@ -184,7 +189,7 @@ export default function UserGuidePage() {
     };
 
     fetchGuideFiles();
-  }, [toast]);
+  }, []);
 
   // Handle file download
   const handleDownloadFile = async (file: GuideFileDTO) => {
@@ -204,6 +209,27 @@ export default function UserGuidePage() {
         description: "Không thể tải file",
         variant: "destructive",
       });
+    }
+  };
+
+  // Handle PDF preview
+  const handlePreviewFile = (file: GuideFileDTO) => {
+    setSelectedFile(file);
+    setPdfViewerOpen(true);
+  };
+
+  // Download file for PDF viewer
+  const handlePDFDownload = async () => {
+    if (!selectedFile) return null;
+    try {
+      return await guideFilesAPI.downloadGuideFile(selectedFile.id);
+    } catch (error) {
+      toast({
+        title: "Lỗi",
+        description: "Không thể tải file PDF",
+        variant: "destructive",
+      });
+      return null;
     }
   };
   const active = sections.find((s) => s.id === activeSection);
@@ -302,6 +328,16 @@ export default function UserGuidePage() {
                       <span className="text-sm text-muted-foreground">
                         {formatFileSize(file.fileSize)}
                       </span>
+                      {isPDFFile(file.fileType, file.fileName) && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handlePreviewFile(file)}
+                        >
+                          <Eye className="h-3 w-3 mr-1" />
+                          Xem
+                        </Button>
+                      )}
                       <Button
                         size="sm"
                         variant="outline"
@@ -336,7 +372,10 @@ export default function UserGuidePage() {
                       Hệ thống Quản lý Văn bản Điện tử
                     </h3>
                     <p className="text-gray-600">
-                      Phiên bản V0.1 - Phát triển năm 2025
+                      Phiên bản V0.1 - Phát triển năm 2025 
+                    </p>
+                    <p className="text-gray-400">
+                      Phiên bản V0.1 - Phát triển năm 2025 
                     </p>
                   </div>
 
@@ -385,6 +424,22 @@ export default function UserGuidePage() {
           </Card>
         </div>
       </div>
+
+      {/* PDF Viewer Modal */}
+      <PDFViewerModal
+        isOpen={pdfViewerOpen}
+        onClose={() => {
+          setPdfViewerOpen(false);
+          setSelectedFile(null);
+        }}
+        fileName={selectedFile?.fileName}
+        title={selectedFile?.name}
+        onDownload={handlePDFDownload}
+        options={{
+          allowDownload: true,
+          allowPrint: true,
+        }}
+      />
     </div>
   );
 }

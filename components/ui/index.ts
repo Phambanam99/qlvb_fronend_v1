@@ -54,3 +54,4 @@ export { Toaster } from "./toaster";
 export { Toast, ToastProvider, ToastViewport } from "./toast";
 export { DatePicker } from "./date-picker";
 export { Popover, PopoverTrigger, PopoverContent } from "./popover";
+export { default as PDFViewerModal } from "./pdf-viewer-modal";

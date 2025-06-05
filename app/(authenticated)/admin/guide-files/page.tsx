@@ -60,6 +60,8 @@ import {
   Eye,
   EyeOff,
 } from "lucide-react";
+import PDFViewerModal from "@/components/ui/pdf-viewer-modal";
+import { isPDFFile } from "@/lib/utils/pdf-viewer";
 // Format file size utility function
 const formatFileSize = (bytes: number): string => {
   if (bytes === 0) return "0 Bytes";
@@ -86,6 +88,9 @@ export default function AdminGuideFilesPage() {
   const [uploading, setUploading] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingFile, setEditingFile] = useState<GuideFileDTO | null>(null);
+  const [pdfViewerOpen, setPdfViewerOpen] = useState(false);
+  const [selectedFileForPreview, setSelectedFileForPreview] =
+    useState<GuideFileDTO | null>(null);
 
   const [formData, setFormData] = useState<CreateGuideFileDTO>({
     name: "",
@@ -105,7 +110,7 @@ export default function AdminGuideFilesPage() {
       });
       return;
     }
-  }, [hasPermission, toast]);
+  }, [hasPermission]);
 
   // Fetch guide files
   useEffect(() => {
@@ -257,6 +262,27 @@ export default function AdminGuideFilesPage() {
     setEditingFile(null);
   };
 
+  // Handle PDF preview
+  const handlePreviewFile = (file: GuideFileDTO) => {
+    setSelectedFileForPreview(file);
+    setPdfViewerOpen(true);
+  };
+
+  // Download file for PDF viewer
+  const handlePDFDownload = async () => {
+    if (!selectedFileForPreview) return null;
+    try {
+      return await guideFilesAPI.downloadGuideFile(selectedFileForPreview.id);
+    } catch (error) {
+      toast({
+        title: "Lỗi",
+        description: "Không thể tải file PDF",
+        variant: "destructive",
+      });
+      return null;
+    }
+  };
+
   if (!hasPermission("ROLE_ADMIN")) {
     return (
       <div className="container mx-auto py-6">
@@ -270,6 +296,22 @@ export default function AdminGuideFilesPage() {
             </p>
           </CardContent>
         </Card>
+
+        {/* PDF Viewer Modal */}
+        <PDFViewerModal
+          isOpen={pdfViewerOpen}
+          onClose={() => {
+            setPdfViewerOpen(false);
+            setSelectedFileForPreview(null);
+          }}
+          fileName={selectedFileForPreview?.fileName}
+          title={selectedFileForPreview?.name}
+          onDownload={handlePDFDownload}
+          options={{
+            allowDownload: true,
+            allowPrint: true,
+          }}
+        />
       </div>
     );
   }
@@ -494,10 +536,21 @@ export default function AdminGuideFilesPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
+                        {isPDFFile(file.fileType, file.fileName) && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handlePreviewFile(file)}
+                            title="Xem trước PDF"
+                          >
+                            <Eye className="h-3 w-3" />
+                          </Button>
+                        )}
                         <Button
                           size="sm"
                           variant="outline"
                           onClick={() => handleDownload(file)}
+                          title="Tải xuống"
                         >
                           <Download className="h-3 w-3" />
                         </Button>
@@ -505,6 +558,7 @@ export default function AdminGuideFilesPage() {
                           size="sm"
                           variant="outline"
                           onClick={() => handleEdit(file)}
+                          title="Chỉnh sửa"
                         >
                           <Edit className="h-3 w-3" />
                         </Button>
@@ -513,6 +567,7 @@ export default function AdminGuideFilesPage() {
                           variant="outline"
                           onClick={() => handleDelete(file.id)}
                           className="text-destructive hover:text-destructive"
+                          title="Xóa"
                         >
                           <Trash2 className="h-3 w-3" />
                         </Button>
