@@ -6,6 +6,13 @@ import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Form,
   FormControl,
   FormField,
@@ -15,6 +22,25 @@ import {
 } from "@/components/ui/form";
 import { Loader2, Save } from "lucide-react";
 import { userAgent } from "next/server";
+
+// Available positions for selection
+const POSITION_OPTIONS = [
+  { value: "ROLE_CUC_TRUONG", label: "Cục trưởng" },
+  { value: "ROLE_CUC_PHO", label: "Cục phó" },
+  { value: "ROLE_CHINH_UY", label: "Chính ủy" },
+  { value: "ROLE_PHO_CHINH_UY", label: "Phó Chính ủy" },
+  { value: "ROLE_TRUONG_PHONG", label: "Trưởng phòng" },
+  { value: "ROLE_PHO_PHONG", label: "Phó phòng" },
+  { value: "ROLE_TRAM_TRUONG", label: "Trạm trưởng" },
+  { value: "ROLE_PHO_TRAM_TRUONG", label: "Phó Trạm trưởng" },
+  { value: "ROLE_CHINH_TRI_VIEN_TRAM", label: "Chính trị viên trạm" },
+  { value: "ROLE_CUM_TRUONG", label: "Cụm trưởng" },
+  { value: "ROLE_PHO_CUM_TRUONG", label: "Phó cụm trưởng" },
+  { value: "ROLE_CHINH_TRI_VIEN_CUM", label: "Chính trị viên cụm" },
+  { value: "ROLE_TRUONG_BAN", label: "Trưởng Ban" },
+  { value: "ROLE_NHAN_VIEN", label: "Nhân viên" },
+  { value: "ROLE_CAN_BO", label: "Cán bộ" },
+];
 
 const profileFormSchema = z.object({
   fullName: z.string().min(2, {
@@ -50,7 +76,7 @@ export default function UserProfileForm({
       username: user.username || "",
       email: user.email || "",
       phone: user.phone || "",
-      position: user.roleDisplayNames[0] || "",
+      position: user.roles?.[0] || "",
     },
   });
 
@@ -110,14 +136,28 @@ export default function UserProfileForm({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Chức vụ</FormLabel>
-                <FormControl>
-                  <Input placeholder="Nhập chức vụ" {...field} />
-                </FormControl>
+                <Select
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Chọn chức vụ" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {POSITION_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <FormMessage />
               </FormItem>
             )}
           />
-           <FormField
+          <FormField
             control={form.control}
             name="username"
             render={({ field }) => (
