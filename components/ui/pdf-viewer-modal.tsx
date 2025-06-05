@@ -157,14 +157,14 @@ export default function PDFViewerModal({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
+    <Dialog  open={isOpen}  onOpenChange={handleClose}>
       <DialogContent
-        className="max-w-none p-0"
-        style={{ width, height }}
+        className="max-w-none p-0 flex flex-col h-[80vh] w-[80vw] "
+        // style={{ width, height }}
         aria-describedby="pdf-viewer-description"
       >
         <DialogHeader className="p-4 pb-2">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between pr-12">
             <DialogTitle className="text-lg font-semibold">
               {title || fileName || "Xem trước PDF"}
             </DialogTitle>
@@ -189,9 +189,7 @@ export default function PDFViewerModal({
                 <ExternalLink className="h-4 w-4" />
                 Mở tab mới
               </Button>
-              <Button variant="ghost" size="sm" onClick={handleClose}>
-                <X className="h-4 w-4" />
-              </Button>
+              
             </div>
           </div>
         </DialogHeader>

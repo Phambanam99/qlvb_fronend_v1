@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -49,7 +49,7 @@ import { useDocumentForm } from "@/hooks/use-document-form";
 import { useDepartmentUsers } from "@/hooks/use-department-users";
 import { useDocumentTypeManagement } from "@/hooks/use-document-type-management";
 import { useSenderManagement } from "@/hooks/use-sender-management";
-
+import { RichTextEditor } from "@/components/ui";
 // Import new components
 import { DocumentPurposeSelector } from "./components/document-purpose-selector";
 import { ProcessingSection } from "./components/processing-section";
@@ -109,7 +109,6 @@ const getRoleDisplayName = (role: string): string => {
 
 export default function AddIncomingDocumentPage() {
   const { toast } = useToast();
-  const formRef = useRef<HTMLFormElement>(null);
 
   // Use custom hooks
   const {
@@ -336,25 +335,8 @@ export default function AddIncomingDocumentPage() {
       return;
     }
 
-    // Merge form data
-    const formData = new FormData(formRef.current!);
-
-    // Update state from form
-    setDocumentNumber(formData.get("documentNumber") as string);
-    setDocumentCode(formData.get("referenceNumber") as string);
-    setDocumentTitle(formData.get("title") as string);
-    setDocumentSummary(formData.get("summary") as string);
-    setDocumentNotes(formData.get("notes") as string);
-    setSendingDepartmentName(formData.get("issuingAuthority") as string);
-    setEmailSource((formData.get("emailSource") as string) || "");
-
-    const signingDate = formData.get("signingDate") as string;
-    const receivedDateStr = formData.get("receivedDate") as string;
-    const deadlineStr = formData.get("deadline") as string;
-
-    if (signingDate) setDocumentDate(new Date(signingDate));
-    if (receivedDateStr) setReceivedDate(new Date(receivedDateStr));
-    if (deadlineStr) setClosureDeadline(deadlineStr);
+    // No need to read from FormData since all data is managed by useState
+    // All form fields are already managed by useState through custom hooks
 
     // Prepare processing data based on document purpose
     const processingData = {
@@ -430,7 +412,7 @@ export default function AddIncomingDocumentPage() {
         </div>
       </div>
 
-      <form ref={formRef} onSubmit={handleSubmit} encType="multipart/form-data">
+      <form onSubmit={handleSubmit}>
         <div className="grid gap-6 lg:grid-cols-2">
           {/* Document Information Card */}
           <Card className="bg-card">
@@ -624,6 +606,13 @@ export default function AddIncomingDocumentPage() {
                     ? "Ghi chú"
                     : "Nội dung thông báo"}
                 </Label>
+                <RichTextEditor
+                  content={documentSummary}
+                  onChange={(content) => setDocumentSummary(content)}
+                  placeholder="Nhập nội dung trả lời"
+                  className={validationErrors.summary ? "border-red-500" : ""}
+                  minHeight="150px"
+                />
                 <Textarea
                   id="notes"
                   name="notes"

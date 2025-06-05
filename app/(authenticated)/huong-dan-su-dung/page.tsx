@@ -229,6 +229,7 @@ export default function UserGuidePage() {
         description: "Không thể tải file PDF",
         variant: "destructive",
       });
+      console.log(error);
       return null;
     }
   };
@@ -372,10 +373,12 @@ export default function UserGuidePage() {
                       Hệ thống Quản lý Văn bản Điện tử
                     </h3>
                     <p className="text-gray-600">
-                      Phiên bản V0.1 - Phát triển năm 2025 
+                      Phiên bản V0.1 - Phát triển năm 2025
                     </p>
                     <p className="text-gray-400">
-                      Phiên bản V0.1 - Phát triển năm 2025 
+                      Phần mềm đang trong giai đoạn phát triển và hoàn thiện,
+                      <br />
+                      vui lòng liên hệ với chúng tôi nếu có vấn đề hoặc góp ý
                     </p>
                   </div>
 
