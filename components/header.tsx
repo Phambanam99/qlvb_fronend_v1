@@ -97,6 +97,12 @@ export const Header = () => {
       icon: Settings,
       permission: "ROLE_ADMIN",
     },
+    {
+      title: "Quản lý hướng dẫn",
+      href: "/admin/guide-files",
+      icon: HelpCircle,
+      permission: "ROLE_ADMIN",
+    },
   ];
 
   // Lọc các mục menu dựa trên quyền hạn

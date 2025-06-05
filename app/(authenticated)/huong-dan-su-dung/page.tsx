@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -25,10 +25,25 @@ import {
   Phone,
   User,
   MapPin,
+  Loader2,
 } from "lucide-react";
+import { guideFilesAPI, type GuideFileDTO } from "@/lib/api/guide-files";
+import { useToast } from "@/components/ui/use-toast";
 
 export default function UserGuidePage() {
   const [activeSection, setActiveSection] = useState("overview");
+  const [guideFiles, setGuideFiles] = useState<GuideFileDTO[]>([]);
+  const [loadingFiles, setLoadingFiles] = useState(true);
+  const { toast } = useToast();
+
+  // Format file size utility function
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return "0 Bytes";
+    const k = 1024;
+    const sizes = ["Bytes", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+  };
 
   const sections = [
     {
@@ -38,8 +53,8 @@ export default function UserGuidePage() {
       content: (
         <div className="space-y-4">
           <p className="text-muted-foreground">
-            Hệ thống Quản lý văn bản điện tử giúp tự động hóa quy trình xử lý văn bản, 
-            quản lý lịch công tác và kế hoạch trong tổ chức.
+            Hệ thống Quản lý văn bản điện tử giúp tự động hóa quy trình xử lý
+            văn bản, quản lý lịch công tác và kế hoạch trong tổ chức.
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="p-4 bg-blue-50 rounded-lg">
@@ -150,33 +165,49 @@ export default function UserGuidePage() {
     },
   ];
 
-  const guideFiles = [
-    {
-      name: "Hướng dẫn tổng quan hệ thống",
-      description: "Giới thiệu chung về hệ thống và các chức năng cơ bản",
-      type: "PDF",
-      size: "2.5 MB",
-    },
-    {
-      name: "Hướng dẫn quản lý văn bản",
-      description: "Chi tiết cách tạo, xử lý và quản lý văn bản đến/đi",
-      type: "PDF",
-      size: "3.8 MB",
-    },
-    {
-      name: "Hướng dẫn lập lịch công tác",
-      description: "Cách tạo và quản lý lịch công tác hiệu quả",
-      type: "PDF",
-      size: "1.9 MB",
-    },
-    {
-      name: "Video hướng dẫn sử dụng",
-      description: "Video demo các chức năng chính của hệ thống",
-      type: "Video",
-      size: "45 MB",
-    },
-  ];
+  // Fetch guide files on component mount
+  useEffect(() => {
+    const fetchGuideFiles = async () => {
+      try {
+        setLoadingFiles(true);
+        const files = await guideFilesAPI.getActiveGuideFiles();
+        setGuideFiles(files);
+      } catch (error) {
+        toast({
+          title: "Lỗi",
+          description: "Không thể tải danh sách file hướng dẫn",
+          variant: "destructive",
+        });
+      } finally {
+        setLoadingFiles(false);
+      }
+    };
 
+    fetchGuideFiles();
+  }, [toast]);
+
+  // Handle file download
+  const handleDownloadFile = async (file: GuideFileDTO) => {
+    try {
+      const blob = await guideFilesAPI.downloadGuideFile(file.id);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = file.fileName;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      toast({
+        title: "Lỗi",
+        description: "Không thể tải file",
+        variant: "destructive",
+      });
+    }
+  };
+  const active = sections.find((s) => s.id === activeSection);
+  const ActiveIcon = active?.icon;
   return (
     <div className="container mx-auto py-6 space-y-6">
       <div className="flex flex-col space-y-2">
@@ -213,10 +244,8 @@ export default function UserGuidePage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                {sections.find((s) => s.id === activeSection)?.icon && (
-                  <sections.find((s) => s.id === activeSection)!.icon className="h-5 w-5" />
-                )}
-                {sections.find((s) => s.id === activeSection)?.title}
+                {ActiveIcon && <ActiveIcon className="h-5 w-5" />}
+                {active?.title}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -236,34 +265,55 @@ export default function UserGuidePage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {guideFiles.map((file, index) => (
-                <div
-                  key={index}
-                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-primary/10 rounded-md">
-                      <FileText className="h-4 w-4 text-primary" />
-                    </div>
-                    <div>
-                      <h4 className="font-medium">{file.name}</h4>
-                      <p className="text-sm text-muted-foreground">
-                        {file.description}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="secondary">{file.type}</Badge>
-                    <span className="text-sm text-muted-foreground">
-                      {file.size}
-                    </span>
-                    <Button size="sm" variant="outline">
-                      <Download className="h-3 w-3 mr-1" />
-                      Tải
-                    </Button>
-                  </div>
+              {loadingFiles ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                  <span>Đang tải danh sách file...</span>
                 </div>
-              ))}
+              ) : guideFiles.length === 0 ? (
+                <div className="text-center py-8">
+                  <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">
+                    Chưa có file hướng dẫn
+                  </h3>
+                  <p className="text-muted-foreground">
+                    Hiện tại chưa có file hướng dẫn nào được upload
+                  </p>
+                </div>
+              ) : (
+                guideFiles.map((file) => (
+                  <div
+                    key={file.id}
+                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-primary/10 rounded-md">
+                        <FileText className="h-4 w-4 text-primary" />
+                      </div>
+                      <div>
+                        <h4 className="font-medium">{file.name}</h4>
+                        <p className="text-sm text-muted-foreground">
+                          {file.description}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary">{file.fileType}</Badge>
+                      <span className="text-sm text-muted-foreground">
+                        {formatFileSize(file.fileSize)}
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleDownloadFile(file)}
+                      >
+                        <Download className="h-3 w-3 mr-1" />
+                        Tải
+                      </Button>
+                    </div>
+                  </div>
+                ))
+              )}
             </CardContent>
           </Card>
 
@@ -286,22 +336,24 @@ export default function UserGuidePage() {
                       Hệ thống Quản lý Văn bản Điện tử
                     </h3>
                     <p className="text-gray-600">
-                      Phiên bản 1.0 - Phát triển năm 2024
+                      Phiên bản V0.1 - Phát triển năm 2025
                     </p>
                   </div>
-                  
+
                   <Separator />
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                  <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
                     <div className="space-y-3">
                       <h4 className="font-semibold text-gray-800 flex items-center gap-2">
                         <User className="h-4 w-4" />
                         Nhà phát triển
                       </h4>
-                      <div className="space-y-2 text-sm">
+                      <div className="flex items-center gap-20  space-y-2 text-sm justify-center">
                         <p className="flex items-center gap-2">
                           <span className="font-medium">Họ tên:</span>
-                          <span className="text-blue-600 font-semibold">Phạm Bá Nam</span>
+                          <span className="text-blue-600 font-semibold">
+                            Phạm Bá Nam
+                          </span>
                         </p>
                         <p className="flex items-center gap-2">
                           <MapPin className="h-3 w-3" />
@@ -311,8 +363,8 @@ export default function UserGuidePage() {
                         <p className="flex items-center gap-2">
                           <Phone className="h-3 w-3" />
                           <span className="font-medium">Liên hệ:</span>
-                          <a 
-                            href="tel:0342561409" 
+                          <a
+                            href="tel:0342561409"
                             className="text-blue-600 hover:underline font-medium"
                           >
                             0342561409
@@ -320,21 +372,8 @@ export default function UserGuidePage() {
                         </p>
                       </div>
                     </div>
-                    
-                    <div className="space-y-3">
-                      <h4 className="font-semibold text-gray-800 flex items-center gap-2">
-                        <Settings className="h-4 w-4" />
-                        Hỗ trợ kỹ thuật
-                      </h4>
-                      <div className="space-y-2 text-sm">
-                        <p>• Hỗ trợ sử dụng hệ thống</p>
-                        <p>• Khắc phục sự cố kỹ thuật</p>
-                        <p>• Đào tạo sử dụng</p>
-                        <p>• Cập nhật và bảo trì</p>
-                      </div>
-                    </div>
                   </div>
-                  
+
                   <div className="text-center pt-4 border-t">
                     <p className="text-sm text-gray-600">
                       Cảm ơn bạn đã sử dụng hệ thống!
@@ -348,4 +387,4 @@ export default function UserGuidePage() {
       </div>
     </div>
   );
-} 
+}
