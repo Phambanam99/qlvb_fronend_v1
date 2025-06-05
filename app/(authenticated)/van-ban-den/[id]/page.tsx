@@ -698,18 +698,7 @@ export default function DocumentDetailPage({
                   </p>
                   <p>{_document.referenceNumber || "Không có"}</p>
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Ngày ký
-                  </p>
-                  <p>
-                    {_document.signingDate
-                      ? new Date(_document.signingDate).toLocaleDateString(
-                          "vi-VN"
-                        )
-                      : "Chưa ký"}
-                  </p>
-                </div>
+                
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">
                     Ngày nhận
@@ -764,13 +753,15 @@ export default function DocumentDetailPage({
                         : "outline"
                     }
                   >
-                    {_document.securityLevel === "SECRET"
-                      ? "Bí mật"
+                   {_document.securityLevel === "NORMAL"
+                      ? "Thường"
                       : _document.securityLevel === "CONFIDENTIAL"
                       ? "Mật"
-                      : _document.securityLevel === "PUBLIC"
-                      ? "Công khai"
-                      : _document.securityLevel || "Không xác định"}
+                      : _document.securityLevel === "SECRET"
+                      ? "Tối mật"
+                      : _document.securityLevel === "TOP_SECRET"
+                      ? "Tuyệt mật"
+                      : _document.securityLevel}
                   </Badge>
                 </div>
                 <div>
@@ -799,16 +790,7 @@ export default function DocumentDetailPage({
                     )}
                   </div>
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Yêu cầu đóng hồ sơ
-                  </p>
-                  <Badge
-                    variant={_document.closureRequest ? "default" : "secondary"}
-                  >
-                    {_document.closureRequest ? "Có" : "Không"}
-                  </Badge>
-                </div>
+               
               </div>
               <Separator className="bg-primary/10" />
               <div>
@@ -831,35 +813,7 @@ export default function DocumentDetailPage({
                   }}
                 ></div>
               </div>
-              {(_document.storageLocation ||
-                _document.primaryProcessDepartmentId) && (
-                <>
-                  <Separator className="bg-primary/10" />
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground mb-2">
-                      Thông tin lưu trữ
-                    </p>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      {_document.storageLocation && (
-                        <div>
-                          <span className="font-medium text-muted-foreground">
-                            Vị trí lưu trữ:
-                          </span>
-                          <p>{_document.storageLocation}</p>
-                        </div>
-                      )}
-                      {_document.primaryProcessDepartmentId && (
-                        <div>
-                          <span className="font-medium text-muted-foreground">
-                            ID phòng xử lý chính:
-                          </span>
-                          <p>{_document.primaryProcessDepartmentId}</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </>
-              )}
+              
               <Separator className="bg-primary/10" />
 
               <div>
@@ -1072,35 +1026,7 @@ export default function DocumentDetailPage({
                   </div>
                 </>
               )}
-              {_document.collaboratingDepartmentNames &&
-                _document.collaboratingDepartmentNames.length > 0 && (
-                  <>
-                    <Separator className="bg-primary/10" />
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">
-                        Đơn vị phối hợp
-                      </p>
-                      <div className="mt-1 space-y-1">
-                        {_document.collaboratingDepartmentNames.map(
-                          (deptName: string, index: number) => (
-                            <div
-                              key={index}
-                              className="flex items-center space-x-2"
-                            >
-                              <div className="h-6 w-6 rounded-full bg-blue-100 flex items-center justify-center text-xs font-medium text-blue-600">
-                                {deptName
-                                  .split(" ")
-                                  .map((n: string) => n[0])
-                                  .join("")}
-                              </div>
-                              <span className="text-sm">{deptName}</span>
-                            </div>
-                          )
-                        )}
-                      </div>
-                    </div>
-                  </>
-                )}
+              
               {(_document.created || _document.changed) && (
                 <>
                   <Separator className="bg-primary/10" />

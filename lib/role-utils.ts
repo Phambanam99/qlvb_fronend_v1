@@ -52,7 +52,11 @@ export const DEPARTMENT_MANAGEMENT_ROLES = [
   ...SYSTEM_ROLES,
   ...LEADERSHIP_ROLES,
   "ROLE_TRUONG_PHONG", // Chỉ trưởng phòng (không bao gồm phó phòng)
-  "ROLE_TRUONG_BAN", // Chỉ trưởng ban (không bao gồm phó ban)
+  "ROLE_TRUONG_BAN",
+  "ROLE_CUM_TRUONG",
+  "ROLE_TRUONG_TRAM",
+  
+  // Chỉ trưởng ban (không bao gồm phó ban)
 ];
 
 // Vai trò có quyền xem thông tin của phòng/đơn vị mình

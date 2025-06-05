@@ -104,6 +104,147 @@ const SIMPLIFIED_STATUS_GROUPS = {
   },
 };
 
+// Define processing status based on user roles
+const getProcessingStatusByRole = (user: any) => {
+  const roles = user?.roles || [];
+
+  // For top leaders (Cục trưởng, Cục phó, Chính ủy, Phó Chính ủy)
+  if (
+    roles.some((role: string) =>
+      [
+        "ROLE_CUC_TRUONG",
+        "ROLE_CUC_PHO",
+        "ROLE_CHINH_UY",
+        "ROLE_PHO_CHINH_UY",
+      ].includes(role)
+    )
+  ) {
+    return {
+      not_processed: {
+        code: "not_processed",
+        displayName: "Chưa phân phối",
+        statuses: ["registered", "pending", "draft"],
+        description: "Văn bản chưa được phân phối cho các phòng ban",
+      },
+      processing: {
+        code: "processing",
+        displayName: "Đang xử lý",
+        statuses: [
+          "distributed",
+          "dept_assigned",
+          "specialist_processing",
+          "specialist_submitted",
+          "leader_reviewing",
+        ],
+        description: "Văn bản đang được xử lý bởi các phòng ban",
+      },
+      completed: {
+        code: "completed",
+        displayName: "Đã xử lý",
+        statuses: [
+          "leader_approved",
+          "department_approved",
+          "completed",
+          "archived",
+        ],
+        description: "Văn bản đã hoàn thành xử lý",
+      },
+    };
+  }
+
+  // For department leaders (Trưởng phòng, Phó phòng)
+  else if (
+    roles.some((role: string) =>
+      ["ROLE_TRUONG_PHONG", "ROLE_PHO_PHONG"].includes(role)
+    )
+  ) {
+    return {
+      not_processed: {
+        code: "not_processed",
+        displayName: "Chưa phân công",
+        statuses: ["distributed", "dept_assigned"],
+        description: "Văn bản chưa được phân công cho cán bộ xử lý",
+      },
+      processing: {
+        code: "processing",
+        displayName: "Đang xử lý",
+        statuses: ["specialist_processing", "specialist_submitted"],
+        description: "Văn bản đang được xử lý bởi cán bộ",
+      },
+      completed: {
+        code: "completed",
+        displayName: "Đã xử lý",
+        statuses: [
+          "leader_reviewing",
+          "leader_approved",
+          "department_approved",
+        ],
+        description: "Văn bản đã hoàn thành xử lý hoặc đang chờ phê duyệt",
+      },
+    };
+  }
+
+  // For specialists (Trợ lý, Nhân viên)
+  else if (
+    roles.some((role: string) =>
+      ["ROLE_TRO_LY", "ROLE_NHAN_VIEN"].includes(role)
+    )
+  ) {
+    return {
+      not_processed: {
+        code: "not_processed",
+        displayName: "Chưa xử lý",
+        statuses: ["specialist_assigned"],
+        description: "Văn bản được giao nhưng chưa bắt đầu xử lý",
+      },
+      processing: {
+        code: "processing",
+        displayName: "Đang xử lý",
+        statuses: ["specialist_processing"],
+        description: "Văn bản đang được xử lý",
+      },
+      completed: {
+        code: "completed",
+        displayName: "Đã xử lý",
+        statuses: ["specialist_submitted", "leader_approved", "completed"],
+        description: "Văn bản đã hoàn thành xử lý",
+      },
+    };
+  }
+
+  // Default for other roles
+  return {
+    not_processed: {
+      code: "not_processed",
+      displayName: "Chưa xử lý",
+      statuses: ["draft", "registered", "pending_approval"],
+      description: "Văn bản chưa được xử lý",
+    },
+    processing: {
+      code: "processing",
+      displayName: "Đang xử lý",
+      statuses: [
+        "distributed",
+        "dept_assigned",
+        "specialist_processing",
+        "specialist_submitted",
+      ],
+      description: "Văn bản đang được xử lý",
+    },
+    completed: {
+      code: "completed",
+      displayName: "Đã xử lý",
+      statuses: [
+        "leader_approved",
+        "department_approved",
+        "completed",
+        "archived",
+      ],
+      description: "Văn bản đã hoàn thành xử lý",
+    },
+  };
+};
+
 // Helper function to get simplified status group based on detailed status
 const getSimplifiedStatusGroup = (detailedStatus: string) => {
   for (const [key, group] of Object.entries(SIMPLIFIED_STATUS_GROUPS)) {
@@ -163,6 +304,8 @@ export default function IncomingDocumentsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [activeTab, setActiveTab] = useState("internal");
+  const [processingStatusTab, setProcessingStatusTab] =
+    useState("not_processed"); // Tab con cho trạng thái xử lý
   const [internalDocuments, setInternalDocuments] = useState<
     InternalDocument[]
   >([]);
@@ -196,6 +339,9 @@ export default function IncomingDocumentsPage() {
   const [pageSize, setPageSize] = useState<number>(10);
   const [totalPages, setTotalPages] = useState<number>(0);
   const [totalItems, setTotalItems] = useState<number>(0);
+
+  // Get processing status definitions based on current user role
+  const userProcessingStatus = getProcessingStatusByRole(user);
 
   // Kiểm tra người dùng có quyền xem tất cả không
   const hasFullAccess = FULL_ACCESS_ROLES.some((role) => hasRole(role));
@@ -481,7 +627,17 @@ export default function IncomingDocumentsPage() {
       docTitle.includes(searchLower) ||
       docAuthority.includes(searchLower);
 
-    // Lọc theo trạng thái (simplified)
+    // Lọc theo processing status tab
+    const statusGroup =
+      userProcessingStatus[
+        processingStatusTab as keyof typeof userProcessingStatus
+      ];
+    const docStatus = doc.processingStatus || "";
+    const matchesProcessingStatus = statusGroup
+      ? statusGroup.statuses.includes(docStatus)
+      : true;
+
+    // Lọc theo trạng thái (nếu statusFilter được chọn - deprecated, kept for compatibility)
     const matchesStatus =
       statusFilter === "all" ||
       (statusFilter === "pending" &&
@@ -510,7 +666,7 @@ export default function IncomingDocumentsPage() {
         primaryDeptId != null && departmentIds.includes(primaryDeptId);
     }
 
-    return matchesSearch && matchesStatus && matchesDepartment;
+    return matchesSearch && matchesProcessingStatus && matchesDepartment;
   });
 
   const filteredInternalDocuments = internalDocuments.filter((doc) => {
@@ -533,6 +689,18 @@ export default function IncomingDocumentsPage() {
     activeTab === "internal"
       ? filteredInternalDocuments
       : filteredExternalDocuments;
+
+  // Count documents for each processing status tab
+  const getDocumentCountByStatus = (statusKey: string) => {
+    const statusGroup =
+      userProcessingStatus[statusKey as keyof typeof userProcessingStatus];
+    if (!statusGroup) return 0;
+
+    return incomingDocuments.filter((doc) => {
+      const docStatus = doc.processingStatus || "";
+      return statusGroup.statuses.includes(docStatus);
+    }).length;
+  };
 
   // Status badge helper functions
   const getStatusBadge = (status: string, displayStatus: string) => {
@@ -616,6 +784,21 @@ export default function IncomingDocumentsPage() {
       }, 100);
     }
   }, [isPageVisible, user, loadingDepartments, currentPage, pageSize]);
+
+  // Refresh data when processing status tab changes
+  useEffect(() => {
+    if (user && !loadingDepartments && activeTab === "external") {
+      console.log("Processing status tab changed, refreshing documents...");
+      fetchDocuments(currentPage, pageSize);
+    }
+  }, [
+    processingStatusTab,
+    user,
+    loadingDepartments,
+    activeTab,
+    currentPage,
+    pageSize,
+  ]);
 
   // Add router focus event handling for better detection of return from detail pages
   useEffect(() => {
@@ -938,6 +1121,47 @@ export default function IncomingDocumentsPage() {
                       (d) => d.id.toString() === departmentFilter
                     )?.name}
               </CardDescription>
+
+              {/* Processing Status Sub-Tabs */}
+              <div className="mt-4">
+                <Tabs
+                  value={processingStatusTab}
+                  onValueChange={setProcessingStatusTab}
+                  className="w-full"
+                >
+                  <TabsList className="grid w-full grid-cols-3 bg-white border">
+                    {Object.entries(userProcessingStatus).map(
+                      ([key, status]) => {
+                        const count = getDocumentCountByStatus(key);
+                        return (
+                          <TabsTrigger
+                            key={key}
+                            value={key}
+                            className="text-xs data-[state=active]:bg-primary data-[state=active]:text-white"
+                          >
+                            <div className="flex flex-col items-center gap-1">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">
+                                  {status.displayName}
+                                </span>
+                                <Badge
+                                  variant="secondary"
+                                  className="text-[10px] h-5 px-1.5 bg-gray-100 text-gray-600"
+                                >
+                                  {count}
+                                </Badge>
+                              </div>
+                              <span className="text-[10px] opacity-75 hidden sm:block">
+                                {status.description}
+                              </span>
+                            </div>
+                          </TabsTrigger>
+                        );
+                      }
+                    )}
+                  </TabsList>
+                </Tabs>
+              </div>
             </CardHeader>
             <CardContent className="p-0">
               <Table>

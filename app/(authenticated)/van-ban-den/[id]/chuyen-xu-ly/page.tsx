@@ -40,7 +40,7 @@ export default function AssignDocumentPage() {
   const { toast } = useToast();
   const { user } = useAuth();
 
-  const [document, setDocument] = useState<any>(null);
+  const [_document, setDocument] = useState<any>(null);
   const [departmentList, setDepartmentList] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -351,7 +351,7 @@ export default function AssignDocumentPage() {
                     Số văn bản
                   </p>
                   <p className="font-medium">
-                    {document.documentNumber || "Chưa có số"}
+                    {_document.documentNumber || "Chưa có số"}
                   </p>
                 </div>
                 <div className="space-y-1">
@@ -359,7 +359,7 @@ export default function AssignDocumentPage() {
                     Số tham chiếu
                   </p>
                   <p className="font-medium">
-                    {document.referenceNumber || "Không có"}
+                    {_document.referenceNumber || "Không có"}
                   </p>
                 </div>
               </div>
@@ -371,7 +371,7 @@ export default function AssignDocumentPage() {
                   </p>
                   <div className="flex items-center gap-1">
                     <Calendar className="h-4 w-4 text-muted-foreground" />
-                    <p>{formatDate(document.signingDate)}</p>
+                    <p>{formatDate(_document.signingDate)}</p>
                   </div>
                 </div>
                 <div className="space-y-1">
@@ -380,7 +380,7 @@ export default function AssignDocumentPage() {
                   </p>
                   <div className="flex items-center gap-1">
                     <Calendar className="h-4 w-4 text-muted-foreground" />
-                    <p>{formatDate(document.receivedDate)}</p>
+                    <p>{formatDate(_document.receivedDate)}</p>
                   </div>
                 </div>
               </div>
@@ -389,7 +389,7 @@ export default function AssignDocumentPage() {
                 <p className="text-sm font-medium text-muted-foreground">
                   Trích yếu
                 </p>
-                <p className="font-medium">{document.title}</p>
+                <p className="font-medium">{_document.title}</p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -397,7 +397,7 @@ export default function AssignDocumentPage() {
                   <p className="text-sm font-medium text-muted-foreground">
                     Đơn vị gửi
                   </p>
-                  <p>{document.issuingAuthority}</p>
+                  <p>{_document.issuingAuthority}</p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-sm font-medium text-muted-foreground">
@@ -405,7 +405,7 @@ export default function AssignDocumentPage() {
                   </p>
                   <div className="flex items-center gap-2">
                     <FileText className="h-4 w-4 text-muted-foreground" />
-                    <p>{getDocumentTypeName(document.documentType)}</p>
+                    <p>{getDocumentTypeName(_document.documentType)}</p>
                   </div>
                 </div>
               </div>
@@ -415,7 +415,7 @@ export default function AssignDocumentPage() {
                   <p className="text-sm font-medium text-muted-foreground">
                     Độ khẩn
                   </p>
-                  <div>{getUrgencyBadge(document.urgencyLevel)}</div>
+                  <div>{getUrgencyBadge(_document.urgencyLevel)}</div>
                 </div>
                 <div className="space-y-1">
                   <p className="text-sm font-medium text-muted-foreground">
@@ -424,36 +424,36 @@ export default function AssignDocumentPage() {
                   <Badge
                     variant="outline"
                     className={
-                      document.securityLevel !== "NORMAL"
+                      _document.securityLevel !== "NORMAL"
                         ? "bg-red-50 text-red-700"
                         : ""
                     }
                   >
-                    {document.securityLevel === "NORMAL"
+                    {_document.securityLevel === "NORMAL"
                       ? "Thường"
-                      : document.securityLevel === "CONFIDENTIAL"
+                      : _document.securityLevel === "CONFIDENTIAL"
                       ? "Mật"
-                      : document.securityLevel === "SECRET"
+                      : _document.securityLevel === "SECRET"
                       ? "Tối mật"
-                      : document.securityLevel === "TOP_SECRET"
+                      : _document.securityLevel === "TOP_SECRET"
                       ? "Tuyệt mật"
-                      : document.securityLevel}
+                      : _document.securityLevel}
                   </Badge>
                 </div>
               </div>
 
-              {document.summary && (
+              {_document.summary && (
                 <div className="space-y-1">
                   <p className="text-sm font-medium text-muted-foreground">
                     Tóm tắt nội dung
                   </p>
                   <p className="text-sm bg-accent/30 p-3 rounded-md">
-                    {document.summary}
+                    {_document.summary}
                   </p>
                 </div>
               )}
 
-              {document.attachmentFilename && (
+              {_document.attachmentFilename && (
                 <div className="space-y-1">
                   <p className="text-sm font-medium text-muted-foreground">
                     Tệp đính kèm
@@ -461,7 +461,7 @@ export default function AssignDocumentPage() {
                   <div className="flex items-center space-x-2 rounded-md border border-primary/10 p-2 bg-accent/30">
                     <FileText className="h-4 w-4 text-primary" />
                     <span className="text-sm">
-                      {document.attachmentFilename.split("/").pop()}
+                      {_document.attachmentFilename.split("/").pop()}
                     </span>
                   </div>
                 </div>
