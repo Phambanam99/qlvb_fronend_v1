@@ -1,110 +1,85 @@
 import { Card, CardContent } from "@/components/ui/card"
+import { workflowAPI } from "@/lib/api"
+import { useEffect, useState } from "react"
+import { Skeleton } from "@/components/ui/skeleton"
+import { AlertCircle } from "lucide-react"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+
+interface WorkflowHistoryItem {
+  id: number
+  action: string
+  actor: string
+  timestamp: string
+  description: string
+  status: "completed" | "current" | "pending"
+}
 
 interface DocumentProcessingHistoryProps {
   documentId: number
 }
 
 export default function DocumentProcessingHistory({ documentId }: DocumentProcessingHistoryProps) {
-  // Dữ liệu mẫu
-  const history = [
-    {
-      id: 1,
-      action: "Tiếp nhận văn bản",
-      actor: "Lê Thị D (Văn thư)",
-      timestamp: "15/04/2023 09:30",
-      description: "Văn bản đã được tiếp nhận và vào sổ văn bản đến.",
-      status: "completed",
-    },
-    {
-      id: 2,
-      action: "Trình Thủ trưởng",
-      actor: "Lê Thị D (Văn thư)",
-      timestamp: "15/04/2023 10:15",
-      description: "Văn bản đã được trình lên Thủ trưởng xin ý kiến chỉ đạo.",
-      status: "completed",
-    },
-    {
-      id: 3,
-      action: "Thủ trưởng có ý kiến",
-      actor: "Trần Văn E (Thủ trưởng)",
-      timestamp: "16/04/2023 08:45",
-      description: "Giao Phòng Kế hoạch - Tài chính chủ trì, phối hợp với các phòng liên quan tham mưu xử lý.",
-      status: "completed",
-    },
-    {
-      id: 4,
-      action: "Chuyển xử lý",
-      actor: "Lê Thị D (Văn thư)",
-      timestamp: "16/04/2023 09:30",
-      description: "Chuyển văn bản đến Phòng Kế hoạch - Tài chính để xử lý theo ý kiến chỉ đạo của Thủ trưởng.",
-      status: "completed",
-    },
-    {
-      id: 5,
-      action: "Chỉ huy phòng phân công",
-      actor: "Phạm Văn F (Trưởng phòng KH-TC)",
-      timestamp: "16/04/2023 14:00",
-      description:
-        "Phân công Nguyễn Văn B và Trần Hương C phối hợp xử lý văn bản. Yêu cầu báo cáo kết quả trước ngày 20/04/2023.",
-      status: "completed",
-    },
-    {
-      id: 6,
-      action: "Cán bộ xử lý",
-      actor: "Nguyễn Văn B (Chuyên viên KH-TC)",
-      timestamp: "19/04/2023 16:30",
-      description: "Đã hoàn thành xử lý văn bản và gửi lại Trưởng phòng xem xét.",
-      status: "completed",
-    },
-    {
-      id: 7,
-      action: "Chỉ huy phòng yêu cầu chỉnh sửa",
-      actor: "Phạm Văn F (Trưởng phòng KH-TC)",
-      timestamp: "20/04/2023 09:15",
-      description: "Yêu cầu bổ sung thêm thông tin về kinh phí thực hiện và đánh giá hiệu quả.",
-      status: "completed",
-    },
-    {
-      id: 8,
-      action: "Cán bộ chỉnh sửa",
-      actor: "Nguyễn Văn B (Chuyên viên KH-TC)",
-      timestamp: "20/04/2023 15:45",
-      description: "Đã chỉnh sửa, bổ sung thông tin theo yêu cầu và gửi lại Trưởng phòng.",
-      status: "completed",
-    },
-    {
-      id: 9,
-      action: "Chỉ huy phòng phê duyệt",
-      actor: "Phạm Văn F (Trưởng phòng KH-TC)",
-      timestamp: "21/04/2023 10:30",
-      description: "Đã phê duyệt và trình lên Thủ trưởng xem xét.",
-      status: "completed",
-    },
-    {
-      id: 10,
-      action: "Thủ trưởng xem xét",
-      actor: "Trần Văn E (Thủ trưởng)",
-      timestamp: "22/04/2023 08:30",
-      description: "Thủ trưởng đã xem xét và phê duyệt văn bản trả lời.",
-      status: "completed",
-    },
-    {
-      id: 11,
-      action: "Chuyển văn thư",
-      actor: "Lê Thị D (Văn thư)",
-      timestamp: "22/04/2023 10:00",
-      description: "Văn bản đã được chuyển cho văn thư để ban hành và lưu trữ.",
-      status: "current",
-    },
-    {
-      id: 12,
-      action: "Ban hành văn bản",
-      actor: "Lê Thị D (Văn thư)",
-      timestamp: "22/04/2023 14:30",
-      description: "Văn bản trả lời đã được ban hành và gửi đi.",
-      status: "pending",
-    },
-  ]
+  const [history, setHistory] = useState<WorkflowHistoryItem[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const fetchHistory = async () => {
+      try {
+        setIsLoading(true)
+        setError(null)
+        
+        // Gọi API để lấy lịch sử xử lý văn bản
+        const response = await workflowAPI.getDocumentHistory(documentId)
+        
+        // Chuyển đổi dữ liệu API thành định dạng hiển thị
+        const formattedHistory = response.map((item: any) => ({
+          id: item.id,
+          action: item.newStatusDisplayName,
+          actor: `${item.actorName || 'Hệ thống'}`,
+          timestamp: formatDate(item.timestamp),
+          description: item.comments || 'Không có mô tả',
+          status: determineStatus(item.status),
+        }))
+        
+        setHistory(formattedHistory)
+      } catch (error) {
+        console.error("Lỗi khi lấy lịch sử xử lý:", error)
+        setError("Không thể tải lịch sử xử lý văn bản. Vui lòng thử lại sau.")
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    if (documentId) {
+      fetchHistory()
+    }
+  }, [documentId])
+
+  // Hàm chuyển đổi trạng thái từ API sang trạng thái hiển thị
+  const determineStatus = (apiStatus: string): "completed" | "current" | "pending" => {
+    // Tùy chỉnh logic này theo trạng thái thực tế từ API của bạn
+    if (apiStatus === "COMPLETED" || apiStatus === "APPROVED") return "completed"
+    if (apiStatus === "IN_PROGRESS" || apiStatus === "PROCESSING") return "current"
+    return "pending"
+  }
+
+  // Hàm định dạng ngày giờ 
+  const formatDate = (dateString: string): string => {
+    if (!dateString) return "Không xác định"
+    try {
+      const date = new Date(dateString)
+      return new Intl.DateTimeFormat('vi-VN', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      }).format(date)
+    } catch (e) {
+      return dateString
+    }
+  }
 
   const getStatusIndicator = (status: string) => {
     switch (status) {
@@ -119,6 +94,56 @@ export default function DocumentProcessingHistory({ documentId }: DocumentProces
     }
   }
 
+  // Hiển thị skeleton khi đang tải dữ liệu
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="relative">
+            <div className="absolute left-3 top-0 bottom-0 w-px bg-border" />
+            <div className="space-y-6">
+              {[1, 2, 3].map((item) => (
+                <div key={item} className="relative pl-8">
+                  <div className="absolute left-0 top-2 h-6 w-6 rounded-full border bg-background flex items-center justify-center">
+                    <div className="h-2 w-2 rounded-full bg-muted-foreground/40" />
+                  </div>
+                  <div className="space-y-1">
+                    <Skeleton className="h-4 w-[200px]" />
+                    <Skeleton className="h-3 w-[150px]" />
+                    <Skeleton className="h-3 w-full" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  // Hiển thị thông báo lỗi
+  if (error) {
+    return (
+      <Alert variant="destructive">
+        <AlertCircle className="h-4 w-4" />
+        <AlertTitle>Lỗi</AlertTitle>
+        <AlertDescription>{error}</AlertDescription>
+      </Alert>
+    )
+  }
+
+  // Hiển thị thông báo khi không có lịch sử
+  if (history.length === 0) {
+    return (
+      <Card>
+        <CardContent className="p-6 flex justify-center items-center h-40">
+          <p className="text-muted-foreground">Chưa có lịch sử xử lý cho văn bản này</p>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  // Hiển thị lịch sử từ API
   return (
     <Card>
       <CardContent className="p-6">

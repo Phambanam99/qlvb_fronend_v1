@@ -1,128 +1,302 @@
-"use client"
+"use client";
 
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
-import { authAPI } from "./api"
-import Cookies from "js-cookie"
-
-interface User {
-  id: string
-  username: string
-  fullName: string
-  email: string
-  role: string
-  department: string
-  permissions?: string[]
-}
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+} from "react";
+import { useRouter } from "next/navigation";
+import { authAPI } from "@/lib/api/auth";
+import Cookies from "js-cookie";
+import { isTokenExpired } from "@/lib/utils";
+import { UserDTO as User } from "./api";
+import { hasRoleInGroup } from "./role-utils";
 
 interface AuthContextType {
-  user: User | null
-  isLoading: boolean
-  isAuthenticated: boolean
-  login: (username: string, password: string, rememberMe?: boolean) => Promise<void>
-  logout: () => void
-  hasPermission: (permission: string) => boolean
-  hasRole: (role: string | string[]) => boolean
+  user: User | null;
+  loading: boolean;
+  dataLoading: boolean;
+  error: string | null;
+  isAuthenticated: boolean;
+
+  login: (
+    username: string,
+    password: string,
+    rememberMe: boolean
+  ) => Promise<boolean | undefined>;
+  logout: () => Promise<void>;
+  checkAuth: () => Promise<void>;
+  hasRole: (role: string | string[]) => boolean;
+  hasPermission: (permission: string) => boolean;
+  setDataLoaded: () => void;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined)
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [dataLoading, setDataLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+
+  const validateToken = () => {
+    const token = localStorage.getItem("token");
+
+    if (isTokenExpired(token)) {
+      console.log(
+        "AuthContext: Token hết hạn hoặc không hợp lệ, tự động đăng xuất"
+      );
+      localStorage.removeItem("token");
+      Cookies.remove("auth-token");
+      setUser(null);
+      setIsAuthenticated(false);
+
+      if (window.location.pathname !== "/dang-nhap") {
+        router.push("/dang-nhap?session_expired=true");
+      }
+      return false;
+    }
+    return true;
+  };
 
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const token = localStorage.getItem("token")
-        if (token) {
-          const userData = await authAPI.getCurrentUser()
-          setUser(userData.user)
-          setIsAuthenticated(true)
+        console.log("AuthContext: Checking authentication status...");
+        const token = localStorage.getItem("token");
+
+        if (token && !isTokenExpired(token)) {
+          console.log(
+            "AuthContext: Token found and valid, fetching current user..."
+          );
+          const userData = await authAPI.getCurrentUser();
+          if (userData) {
+            console.log(
+              "AuthContext: User data retrieved successfully:",
+              userData
+            );
+            setUser({
+              ...userData,
+              fullName: userData.fullName || userData.name,
+            });
+            setIsAuthenticated(true);
+          } else {
+            console.warn("AuthContext: User data is empty or invalid");
+            setIsAuthenticated(false);
+          }
+        } else {
+          if (token) {
+            console.log("AuthContext: Token found but expired");
+          } else {
+            console.log("AuthContext: No token found");
+          }
+          localStorage.removeItem("token");
+          Cookies.remove("auth-token");
+          setIsAuthenticated(false);
         }
-      } catch (error) {
-        console.error("Authentication check failed:", error)
-        // Xóa token nếu không hợp lệ
-        localStorage.removeItem("token")
-        Cookies.remove("auth-token")
+      } catch (err) {
+        console.error("AuthContext: Auth check failed:", err);
+        localStorage.removeItem("token");
+        Cookies.remove("auth-token");
+        setIsAuthenticated(false);
       } finally {
-        setIsLoading(false)
+        setLoading(false);
+        if (!isAuthenticated) {
+          setDataLoading(false);
+        }
       }
-    }
+    };
 
-    checkAuth()
-  }, [])
+    checkAuth();
 
-  const login = async (username: string, password: string, rememberMe = false) => {
-    setIsLoading(true)
+    const tokenCheckInterval = setInterval(() => {
+      if (isAuthenticated) {
+        validateToken();
+      }
+    }, 60000);
+
+    return () => {
+      clearInterval(tokenCheckInterval);
+    };
+  }, []);
+
+  const login = async (
+    username: string,
+    password: string,
+    rememberMe: boolean
+  ) => {
     try {
-      const response = await authAPI.login(username, password)
-      const { token, user } = response
+      setLoading(true);
+      setDataLoading(true);
+      setError(null);
+      console.log("Đang thực hiện đăng nhập cho tài khoản:", username);
+      const userData = await authAPI.login(username, password);
+      const { token, user } = userData;
 
-      // Lưu token vào localStorage và cookie
-      localStorage.setItem("token", token)
-
-      // Đặt cookie với thời hạn phù hợp
+      localStorage.setItem("token", token);
       if (rememberMe) {
-        // 30 ngày nếu "Ghi nhớ đăng nhập"
-        Cookies.set("auth-token", token, { expires: 30, sameSite: "strict" })
+        Cookies.set("auth-token", token, { expires: 30, sameSite: "strict" });
       } else {
-        // Session cookie nếu không "Ghi nhớ đăng nhập"
-        Cookies.set("auth-token", token, { sameSite: "strict" })
+        Cookies.set("auth-token", token, { sameSite: "strict" });
       }
 
-      setUser(user)
-      setIsAuthenticated(true)
-    } catch (error) {
-      console.error("Login failed:", error)
-      throw error
+      const userInfo = {
+        id: String(userData.user.id),
+        name: userData.user.name,
+        username: userData.user.username,
+        email: userData.user.email,
+        roles: userData.user.roles,
+        departmentId: userData.user.departmentId,
+        fullName: userData.user.name || userData.user.fullName,
+      };
+
+      console.log("Login successful", userInfo);
+      setUser(userInfo);
+      setIsAuthenticated(true);
+
+      try {
+      } catch (preloadError) {
+        console.error("Không thể tải trước dữ liệu quan trọng:", preloadError);
+      }
+
+      return true;
+    } catch (err: any) {
+      console.error("Login failed:", err);
+      setError(err.message || "Đăng nhập thất bại. Vui lòng thử lại.");
+      return false;
     } finally {
-      setIsLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
-  const logout = () => {
-    localStorage.removeItem("token")
-    Cookies.remove("auth-token")
-    setUser(null)
-    setIsAuthenticated(false)
-    window.location.href = "/dang-nhap"
-  }
+  const logout = async () => {
+    try {
+      localStorage.removeItem("token");
+      Cookies.remove("auth-token");
+      setUser(null);
+      router.push("/dang-nhap");
+      setIsAuthenticated(false);
+    } catch (err) {
+      console.error("Logout failed:", err);
+    }
+  };
 
-  const hasPermission = (permission: string) => {
-    if (!user || !user.permissions) return false
-    return user.permissions.includes(permission)
-  }
+  const checkAuth = async () => {
+    try {
+      setLoading(true);
+      if (!validateToken()) {
+        setUser(null);
+        return;
+      }
+
+      const userData = await authAPI.getCurrentUser();
+      if (userData) {
+        setUser({
+          ...userData,
+          fullName: userData.fullName || userData.name,
+        });
+      }
+    } catch (error) {
+      setUser(null);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const hasRole = (role: string | string[]) => {
-    if (!user) return false
+    if (!user) return false;
     if (Array.isArray(role)) {
-      return role.includes(user.role)
+      return role.some((r) => user.roles.includes(r));
     }
-    return user.role === role
-  }
+    return user.roles.includes(role);
+  };
+
+  const hasPermission = (permission: string) => {
+    if (!user) return false;
+
+    // Check if permission is actually a role (with ROLE_ prefix)
+    if (permission.startsWith("ROLE_")) {
+      return user.roles.includes(permission);
+    }
+
+    // For broader group permissions checks
+    if (permission === "manage_departments") {
+      return hasRoleInGroup(user.roles, [
+        "ROLE_ADMIN",
+        "ROLE_TRUONG_PHONG",
+        "ROLE_TRUONG_BAN",
+        "ROLE_CUC_TRUONG",
+        "ROLE_CUC_PHO",
+        "ROLE_CHINH_UY",
+        "ROLE_PHO_CHINH_UY",
+      ]);
+    }
+
+    if (permission === "manage_users") {
+      return hasRoleInGroup(user.roles, [
+        "ROLE_ADMIN",
+        "ROLE_TRUONG_PHONG",
+        "ROLE_PHO_PHONG",
+        "ROLE_TRUONG_BAN",
+        "ROLE_PHO_BAN",
+        "ROLE_CUC_TRUONG",
+        "ROLE_CUC_PHO",
+        "ROLE_CHINH_UY",
+        "ROLE_PHO_CHINH_UY",
+        "ROLE_CUM_TRUONG",
+        "ROLE_PHO_CUM_TRUONG",
+        "ROLE_TRAM_TRUONG",
+      ]);
+    }
+
+    if (permission === "view_all_documents") {
+      return hasRoleInGroup(user.roles, [
+        "ROLE_ADMIN",
+        "ROLE_VAN_THU",
+        "ROLE_CUC_TRUONG",
+        "ROLE_CUC_PHO",
+        "ROLE_CHINH_UY",
+        "ROLE_PHO_CHINH_UY",
+      ]);
+    }
+
+    // Default to just checking if role matches permission
+    return user.roles.includes(permission);
+  };
+
+  const setDataLoaded = () => {
+    setDataLoading(false);
+  };
 
   return (
     <AuthContext.Provider
       value={{
         user,
-        isLoading,
         isAuthenticated,
         login,
         logout,
-        hasPermission,
+        loading,
+        dataLoading,
+        error,
         hasRole,
+        hasPermission,
+        checkAuth,
+        setDataLoaded,
       }}
     >
       {children}
     </AuthContext.Provider>
-  )
+  );
 }
 
-export const useAuth = () => {
-  const context = useContext(AuthContext)
+export function useAuth() {
+  const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider")
+    throw new Error("useAuth must be used within an AuthProvider");
   }
-  return context
+  return context;
 }
