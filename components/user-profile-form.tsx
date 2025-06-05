@@ -2,6 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
+import { useState, useEffect } from "react";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,26 +22,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Loader2, Save } from "lucide-react";
-import { userAgent } from "next/server";
-
-// Available positions for selection
-const POSITION_OPTIONS = [
-  { value: "ROLE_CUC_TRUONG", label: "Cục trưởng" },
-  { value: "ROLE_CUC_PHO", label: "Cục phó" },
-  { value: "ROLE_CHINH_UY", label: "Chính ủy" },
-  { value: "ROLE_PHO_CHINH_UY", label: "Phó Chính ủy" },
-  { value: "ROLE_TRUONG_PHONG", label: "Trưởng phòng" },
-  { value: "ROLE_PHO_PHONG", label: "Phó phòng" },
-  { value: "ROLE_TRAM_TRUONG", label: "Trạm trưởng" },
-  { value: "ROLE_PHO_TRAM_TRUONG", label: "Phó Trạm trưởng" },
-  { value: "ROLE_CHINH_TRI_VIEN_TRAM", label: "Chính trị viên trạm" },
-  { value: "ROLE_CUM_TRUONG", label: "Cụm trưởng" },
-  { value: "ROLE_PHO_CUM_TRUONG", label: "Phó cụm trưởng" },
-  { value: "ROLE_CHINH_TRI_VIEN_CUM", label: "Chính trị viên cụm" },
-  { value: "ROLE_TRUONG_BAN", label: "Trưởng Ban" },
-  { value: "ROLE_NHAN_VIEN", label: "Nhân viên" },
-  { value: "ROLE_CAN_BO", label: "Cán bộ" },
-];
+import { rolesAPI, type RoleDTO } from "@/lib/api/roles";
 
 const profileFormSchema = z.object({
   fullName: z.string().min(2, {
@@ -69,6 +51,9 @@ export default function UserProfileForm({
   onSubmit,
   saving,
 }: UserProfileFormProps) {
+  const [roles, setRoles] = useState<RoleDTO[]>([]);
+  const [loadingRoles, setLoadingRoles] = useState(true);
+
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
     defaultValues: {
@@ -76,9 +61,26 @@ export default function UserProfileForm({
       username: user.username || "",
       email: user.email || "",
       phone: user.phone || "",
-      position: user.roles?.[0] || "",
+      position: user.roleDisplayNames?.[0] || "",
     },
   });
+
+  // Fetch roles on component mount
+  useEffect(() => {
+    const fetchRoles = async () => {
+      try {
+        setLoadingRoles(true);
+        const rolesData = await rolesAPI.getAllRoles();
+        setRoles(rolesData);
+      } catch (error) {
+        console.error("Error fetching roles:", error);
+      } finally {
+        setLoadingRoles(false);
+      }
+    };
+
+    fetchRoles();
+  }, []);
 
   return (
     <Form {...form}>
@@ -142,15 +144,35 @@ export default function UserProfileForm({
                 >
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder="Chọn chức vụ" />
+                      <SelectValue
+                        placeholder={
+                          loadingRoles ? "Đang tải..." : "Chọn chức vụ"
+                        }
+                      />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {POSITION_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
+                    {loadingRoles ? (
+                      <SelectItem value="loading" disabled>
+                        <div className="flex items-center">
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Đang tải danh sách chức vụ...
+                        </div>
                       </SelectItem>
-                    ))}
+                    ) : roles.length === 0 ? (
+                      <SelectItem value="empty" disabled>
+                        Không có chức vụ nào
+                      </SelectItem>
+                    ) : (
+                      roles.map((role) => (
+                        <SelectItem
+                          key={role.id}
+                          value={role.displayName || role.name || ""}
+                        >
+                          {role.displayName || role.name}
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
                 <FormMessage />
