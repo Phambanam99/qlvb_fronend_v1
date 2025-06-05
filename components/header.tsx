@@ -32,6 +32,7 @@ import {
   UserCheck,
   Menu,
   ChevronDown,
+  HelpCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
@@ -217,6 +218,12 @@ export const Header = () => {
                 <Link href="/profile" className="flex items-center">
                   <User className="mr-2 h-4 w-4" />
                   <span>Hồ sơ</span>
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/huong-dan-su-dung" className="flex items-center">
+                  <HelpCircle className="mr-2 h-4 w-4" />
+                  <span>Hướng dẫn sử dụng</span>
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem
