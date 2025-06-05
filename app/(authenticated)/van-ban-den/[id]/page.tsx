@@ -688,6 +688,30 @@ export default function DocumentDetailPage({
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">
+                    Loại văn bản
+                  </p>
+                  <p>{_document.documentType || "Chưa phân loại"}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Số tham chiếu
+                  </p>
+                  <p>{_document.referenceNumber || "Không có"}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Ngày ký
+                  </p>
+                  <p>
+                    {_document.signingDate
+                      ? new Date(_document.signingDate).toLocaleDateString(
+                          "vi-VN"
+                        )
+                      : "Chưa ký"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">
                     Ngày nhận
                   </p>
                   <p>
@@ -698,15 +722,61 @@ export default function DocumentDetailPage({
                 </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">
-                    Đơn vị gửi
+                    Cơ quan ban hành
                   </p>
                   <p>{_document.issuingAuthority}</p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">
+                    Đơn vị gửi
+                  </p>
+                  <p>
+                    {_document.sendingDepartmentName ||
+                      _document.issuingAuthority}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Mức độ khẩn cấp
+                  </p>
+                  <Badge
+                    variant={
+                      _document.urgencyLevel === "URGENT"
+                        ? "destructive"
+                        : "secondary"
+                    }
+                  >
+                    {_document.urgencyLevel === "URGENT"
+                      ? "Khẩn cấp"
+                      : _document.urgencyLevel === "NORMAL"
+                      ? "Bình thường"
+                      : _document.urgencyLevel || "Không xác định"}
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Mức độ bảo mật
+                  </p>
+                  <Badge
+                    variant={
+                      _document.securityLevel === "SECRET"
+                        ? "destructive"
+                        : "outline"
+                    }
+                  >
+                    {_document.securityLevel === "SECRET"
+                      ? "Bí mật"
+                      : _document.securityLevel === "CONFIDENTIAL"
+                      ? "Mật"
+                      : _document.securityLevel === "PUBLIC"
+                      ? "Công khai"
+                      : _document.securityLevel || "Không xác định"}
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">
                     Đơn vị xử lý
                   </p>
-
                   <div className="flex space-x-2 gap-1">
                     {departments.length > 0 &&
                       departments.map((department) => (
@@ -729,23 +799,67 @@ export default function DocumentDetailPage({
                     )}
                   </div>
                 </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Yêu cầu đóng hồ sơ
+                  </p>
+                  <Badge
+                    variant={_document.closureRequest ? "default" : "secondary"}
+                  >
+                    {_document.closureRequest ? "Có" : "Không"}
+                  </Badge>
+                </div>
               </div>
               <Separator className="bg-primary/10" />
               <div>
                 <p className="text-sm font-medium text-muted-foreground mb-2">
                   Trích yếu nội dung
                 </p>
-                <p className="text-sm">{_document.summary}</p>
+                <div className="text-sm bg-gray-50 p-3 rounded-md border">
+                  {_document.summary}
+                </div>
               </div>
               <Separator className="bg-primary/10" />
               <div>
                 <p className="text-sm font-medium text-muted-foreground mb-2">
                   Ý kiến chỉ đạo của Thủ trưởng
                 </p>
-                <p className="text-sm">
-                  {_document.notes || "Chưa có ý kiến chỉ đạo"}
-                </p>
+                <div
+                  className="text-sm bg-blue-50 p-3 rounded-md border prose prose-sm max-w-none"
+                  dangerouslySetInnerHTML={{
+                    __html: _document.notes || "Chưa có ý kiến chỉ đạo",
+                  }}
+                ></div>
               </div>
+              {(_document.storageLocation ||
+                _document.primaryProcessDepartmentId) && (
+                <>
+                  <Separator className="bg-primary/10" />
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground mb-2">
+                      Thông tin lưu trữ
+                    </p>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      {_document.storageLocation && (
+                        <div>
+                          <span className="font-medium text-muted-foreground">
+                            Vị trí lưu trữ:
+                          </span>
+                          <p>{_document.storageLocation}</p>
+                        </div>
+                      )}
+                      {_document.primaryProcessDepartmentId && (
+                        <div>
+                          <span className="font-medium text-muted-foreground">
+                            ID phòng xử lý chính:
+                          </span>
+                          <p>{_document.primaryProcessDepartmentId}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
               <Separator className="bg-primary/10" />
 
               <div>
@@ -929,6 +1043,86 @@ export default function DocumentDetailPage({
                     : "Chưa thiết lập thời hạn"}
                 </p>
               </div>
+              <Separator className="bg-primary/10" />
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Trạng thái theo dõi
+                </p>
+                <div className="mt-1">
+                  {_document.trackingStatus ? (
+                    <Badge variant="outline">
+                      {_document.trackingStatusDisplayName ||
+                        _document.trackingStatus}
+                    </Badge>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Chưa có trạng thái theo dõi
+                    </p>
+                  )}
+                </div>
+              </div>
+              {_document.emailSource && (
+                <>
+                  <Separator className="bg-primary/10" />
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">
+                      Nguồn email
+                    </p>
+                    <p className="mt-1 text-sm">{_document.emailSource}</p>
+                  </div>
+                </>
+              )}
+              {_document.collaboratingDepartmentNames &&
+                _document.collaboratingDepartmentNames.length > 0 && (
+                  <>
+                    <Separator className="bg-primary/10" />
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">
+                        Đơn vị phối hợp
+                      </p>
+                      <div className="mt-1 space-y-1">
+                        {_document.collaboratingDepartmentNames.map(
+                          (deptName: string, index: number) => (
+                            <div
+                              key={index}
+                              className="flex items-center space-x-2"
+                            >
+                              <div className="h-6 w-6 rounded-full bg-blue-100 flex items-center justify-center text-xs font-medium text-blue-600">
+                                {deptName
+                                  .split(" ")
+                                  .map((n: string) => n[0])
+                                  .join("")}
+                              </div>
+                              <span className="text-sm">{deptName}</span>
+                            </div>
+                          )
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
+              {(_document.created || _document.changed) && (
+                <>
+                  <Separator className="bg-primary/10" />
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-muted-foreground">
+                      Thông tin hệ thống
+                    </p>
+                    {_document.created && (
+                      <div className="text-xs text-muted-foreground">
+                        <span className="font-medium">Ngày tạo:</span>{" "}
+                        {new Date(_document.created).toLocaleString("vi-VN")}
+                      </div>
+                    )}
+                    {_document.changed && (
+                      <div className="text-xs text-muted-foreground">
+                        <span className="font-medium">Cập nhật cuối:</span>{" "}
+                        {new Date(_document.changed).toLocaleString("vi-VN")}
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
             </CardContent>
             <CardFooter className="bg-accent/30 border-t border-primary/10">
               {hasRole(["ROLE_TRUONG_PHONG", "ROLE_PHO_PHONG"]) &&

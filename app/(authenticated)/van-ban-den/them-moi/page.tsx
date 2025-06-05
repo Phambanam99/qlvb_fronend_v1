@@ -607,24 +607,18 @@ export default function AddIncomingDocumentPage() {
                     : "Nội dung thông báo"}
                 </Label>
                 <RichTextEditor
-                  content={documentSummary}
-                  onChange={(content) => setDocumentSummary(content)}
-                  placeholder="Nhập nội dung trả lời"
-                  className={validationErrors.summary ? "border-red-500" : ""}
-                  minHeight="150px"
-                />
-                <Textarea
-                  id="notes"
-                  name="notes"
-                  value={documentNotes}
-                  onChange={(e) => setDocumentNotes(e.target.value)}
+                  content={documentNotes}
+                  onChange={(content) => setDocumentNotes(content)}
                   placeholder={
                     documentPurpose === "PROCESS"
                       ? "Nhập ghi chú cho phòng ban xử lý (nếu có)"
                       : "Nhập nội dung thông báo (nếu có)"
                   }
-                  rows={3}
+                 
+                  className={validationErrors.summary ? "border-red-500" : ""}
+                  minHeight="150px"
                 />
+                
               </div>
 
               {documentPurpose === "PROCESS" && (
