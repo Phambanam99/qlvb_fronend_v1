@@ -1123,44 +1123,54 @@ export default function IncomingDocumentsPage() {
               </CardDescription>
 
               {/* Processing Status Sub-Tabs */}
-              <div className="mt-4">
-                <Tabs
-                  value={processingStatusTab}
-                  onValueChange={setProcessingStatusTab}
-                  className="w-full"
-                >
-                  <TabsList className="grid w-full grid-cols-3 bg-white border">
-                    {Object.entries(userProcessingStatus).map(
-                      ([key, status]) => {
-                        const count = getDocumentCountByStatus(key);
-                        return (
-                          <TabsTrigger
-                            key={key}
-                            value={key}
-                            className="text-xs data-[state=active]:bg-primary data-[state=active]:text-white"
+              <div className="mt-4 -mx-6 px-6 py-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-y border-blue-100">
+                <div className="mb-3">
+                  <h3 className="text-base font-semibold text-gray-800">
+                    Trạng thái xử lý
+                  </h3>
+                  <p className="text-sm text-gray-600">
+                    Chọn trạng thái để lọc văn bản
+                  </p>
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  {Object.entries(userProcessingStatus).map(([key, status]) => {
+                    const count = getDocumentCountByStatus(key);
+                    const isActive = processingStatusTab === key;
+                    return (
+                      <button
+                        key={key}
+                        onClick={() => setProcessingStatusTab(key)}
+                        className={`relative p-4 rounded-lg border-2 transition-all duration-200 text-left ${
+                          isActive
+                            ? "border-primary bg-white shadow-md transform scale-105"
+                            : "border-gray-200 bg-white/80 hover:border-gray-300 hover:bg-white hover:shadow-sm"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <span
+                            className={`font-semibold text-sm ${
+                              isActive ? "text-primary" : "text-gray-800"
+                            }`}
                           >
-                            <div className="flex flex-col items-center gap-1">
-                              <div className="flex items-center gap-2">
-                                <span className="font-medium">
-                                  {status.displayName}
-                                </span>
-                                <Badge
-                                  variant="secondary"
-                                  className="text-[10px] h-5 px-1.5 bg-gray-100 text-gray-600"
-                                >
-                                  {count}
-                                </Badge>
-                              </div>
-                              <span className="text-[10px] opacity-75 hidden sm:block">
-                                {status.description}
-                              </span>
-                            </div>
-                          </TabsTrigger>
-                        );
-                      }
-                    )}
-                  </TabsList>
-                </Tabs>
+                            {status.displayName}
+                          </span>
+                          <Badge
+                            variant={isActive ? "default" : "secondary"}
+                            className="text-xs font-bold"
+                          >
+                            {count}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-gray-600 leading-relaxed">
+                          {status.description}
+                        </p>
+                        {isActive && (
+                          <div className="absolute inset-0 rounded-lg ring-2 ring-primary/20 pointer-events-none" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </CardHeader>
             <CardContent className="p-0">
