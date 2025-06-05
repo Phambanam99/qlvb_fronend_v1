@@ -53,16 +53,12 @@ export default function UserRoleForm({
   const form = useForm<RoleFormValues>({
     resolver: zodResolver(roleFormSchema),
     defaultValues: {
-      roles: user.displayNames?.length ? [user.displayNames[0]] : ["default-role"],
+      roles: user.roles?.length
+        ? [user.roles[0]]
+        : ["default-role"],
       departmentId: user.departmentId?.toString() || "0",
     },
   });
-
-  // Giúp debug giá trị
-  useEffect(() => {
-    console.log("User data:", user);
-    console.log("Form values:", form.getValues());
-  }, [user]);
 
   // Prevent selecting empty values
   const handleRoleChange = (value: string) => {
