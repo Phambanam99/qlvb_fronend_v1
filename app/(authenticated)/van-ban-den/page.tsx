@@ -161,11 +161,6 @@ const SIMPLIFIED_STATUS_GROUPS = {
 
 // Simplified status tabs - compatible with SIMPLIFIED_STATUS_GROUPS
 const SIMPLE_STATUS_TABS = {
-  all: {
-    code: "all",
-    displayName: "Tất cả",
-    description: "Hiển thị tất cả văn bản",
-  },
   not_processed: {
     code: "not_processed",
     displayName: "Chưa xử lý",
@@ -574,28 +569,6 @@ export default function IncomingDocumentsPage() {
     return <Badge variant={info.variant}>{info.text}</Badge>;
   };
 
-  // Simple API-based status mapping - directly use classification API results
-  const API_STATUS_TO_TAB_MAPPING = {
-    PENDING: "not_processed", // Chưa xử lý
-    PROCESSING: "pending", // Đang xử lý
-    PROCESSED: "completed", // Đã xử lý
-  };
-
-  // Helper function to get tab code from API classification status
-  const getTabFromApiStatus = (apiStatus: string | null | undefined) => {
-    if (!apiStatus) return "not_processed";
-    return (
-      API_STATUS_TO_TAB_MAPPING[
-        apiStatus as keyof typeof API_STATUS_TO_TAB_MAPPING
-      ] || "pending"
-    );
-  };
-
-  // Create a cache for classifications to avoid excessive API calls
-  const [classificationsCache, setClassificationsCache] = useState<
-    Record<number, any>
-  >({});
-
   // Filter functions with simplified API-based logic
   const filteredExternalDocuments = incomingDocuments.filter((doc) => {
     const docNumber = (doc.documentNumber || "").toLowerCase();
@@ -614,33 +587,21 @@ export default function IncomingDocumentsPage() {
     let matchesProcessingStatus = true;
     if (processingStatusTab !== "all") {
       // Temporary simple mapping based on common status patterns
-      const status = doc.processingStatus?.toUpperCase() || "";
+      const status = doc.trackingStatus?.toUpperCase() || "";
       let docTabCode = "pending"; // default
-
-      if (
-        status.includes("COMPLETED") ||
-        status.includes("APPROVED") ||
-        status.includes("PROCESSED") ||
-        status.includes("FINISHED")
-      ) {
-        docTabCode = "completed";
-      } else if (
-        status.includes("PENDING") ||
-        status.includes("NEW") ||
-        status.includes("REGISTERED") ||
-        status.includes("DRAFT")
-      ) {
+      console.log("hihi" + status);
+      if (status === "NOT_PROCESSED") {
         docTabCode = "not_processed";
+      } else if (status === "PROCESSED") {
+        docTabCode = "completed";
       } else {
         docTabCode = "pending"; // processing, reviewing, etc.
       }
+      console.log("docTabCode" + docTabCode);
 
       matchesProcessingStatus = docTabCode === processingStatusTab;
 
-      // Debug log
-      console.log(
-        `Document ${doc.documentNumber}: status="${doc.processingStatus}" → tab="${docTabCode}" | currentTab="${processingStatusTab}" | match=${matchesProcessingStatus}`
-      );
+      console.log("matches ", matchesProcessingStatus);
     }
 
     // Lọc theo phòng ban - chỉ sử dụng primaryProcessDepartmentId
@@ -688,22 +649,12 @@ export default function IncomingDocumentsPage() {
 
     return incomingDocuments.filter((doc) => {
       // Use same logic as filtering
-      const status = doc.processingStatus?.toUpperCase() || "";
+      const status = doc.trackingStatus?.toUpperCase() || "";
       let docTabCode = "pending"; // default
 
-      if (
-        status.includes("COMPLETED") ||
-        status.includes("APPROVED") ||
-        status.includes("PROCESSED") ||
-        status.includes("FINISHED")
-      ) {
+      if (status === "PROCESSED") {
         docTabCode = "completed";
-      } else if (
-        status.includes("PENDING") ||
-        status.includes("NEW") ||
-        status.includes("REGISTERED") ||
-        status.includes("DRAFT")
-      ) {
+      } else if (status === "NOT_PROCESSED") {
         docTabCode = "not_processed";
       } else {
         docTabCode = "pending"; // processing, reviewing, etc.
@@ -712,50 +663,6 @@ export default function IncomingDocumentsPage() {
       return docTabCode === statusKey;
     }).length;
   };
-
-  // Debug function to check all actual status values
-  const debugActualStatuses = () => {
-    const uniqueStatuses = [
-      ...new Set(incomingDocuments.map((doc) => doc.processingStatus)),
-    ];
-    console.log("=== ACTUAL STATUS VALUES FROM API ===");
-    uniqueStatuses.forEach((status) => {
-      const count = incomingDocuments.filter(
-        (doc) => doc.processingStatus === status
-      ).length;
-
-      // Apply same mapping logic
-      const upperStatus = status?.toUpperCase() || "";
-      let tabCode = "pending";
-      if (
-        upperStatus.includes("COMPLETED") ||
-        upperStatus.includes("APPROVED") ||
-        upperStatus.includes("PROCESSED") ||
-        upperStatus.includes("FINISHED")
-      ) {
-        tabCode = "completed";
-      } else if (
-        upperStatus.includes("PENDING") ||
-        upperStatus.includes("NEW") ||
-        upperStatus.includes("REGISTERED") ||
-        upperStatus.includes("DRAFT")
-      ) {
-        tabCode = "not_processed";
-      }
-
-      console.log(`Status: "${status}" (${count} docs) => Tab: "${tabCode}"`);
-    });
-    console.log("=======================================");
-  };
-
-  // Call debug when documents change
-  useEffect(() => {
-    if (incomingDocuments.length > 0) {
-      debugActualStatuses();
-    }
-  }, [incomingDocuments]);
-
-  // REMOVED: getStatusBadge function - replaced by DocumentStatusBadge component
 
   const getAssignmentBadge = (primaryId: string) => {
     if (user?.departmentId && Number(primaryId) === user.departmentId) {
@@ -925,13 +832,6 @@ export default function IncomingDocumentsPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col space-y-2">
-        <h1 className="text-3xl font-bold text-primary">Văn bản đến</h1>
-        <p className="text-muted-foreground">
-          Quản lý và xử lý các văn bản đến
-        </p>
-      </div>
-
       <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
         <div className="flex w-full sm:w-auto items-center space-x-2">
           <div className="relative w-full sm:w-[300px]">
@@ -1051,12 +951,6 @@ export default function IncomingDocumentsPage() {
 
         <TabsContent value="internal" className="mt-6">
           <Card className="border-primary/10 shadow-sm">
-            <CardHeader className="bg-primary/5 border-b">
-              <CardTitle>Danh sách văn bản đến nội bộ</CardTitle>
-              <CardDescription>
-                Các văn bản nội bộ nhận được trong tổ chức
-              </CardDescription>
-            </CardHeader>
             <CardContent className="p-0">
               <Table>
                 <TableHeader className="bg-accent/50">
@@ -1141,72 +1035,28 @@ export default function IncomingDocumentsPage() {
 
         <TabsContent value="external" className="mt-6">
           <Card className="border-primary/10 shadow-sm">
-            <CardHeader className="bg-primary/5 border-b">
-              <CardTitle>Danh sách văn bản đến bên ngoài</CardTitle>
-              <CardDescription>
-                {hasFullAccess && documentSource === "all"
-                  ? "Danh sách tất cả các văn bản đến đã được tiếp nhận"
-                  : hasFullAccess && documentSource === "department"
-                  ? "Danh sách các văn bản đến được giao cho đơn vị của bạn"
-                  : "Danh sách các văn bản đến được giao cho bạn"}
-                {departmentFilter !== "all" &&
-                  " - Lọc theo phòng ban: " +
-                    visibleDepartments.find(
-                      (d) => d.id.toString() === departmentFilter
-                    )?.name}
-              </CardDescription>
-
-              {/* Processing Status Sub-Tabs */}
-              <div className="mt-4 -mx-6 px-6 py-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-y border-blue-100">
-                <div className="mb-3">
-                  <h3 className="text-base font-semibold text-gray-800">
-                    Trạng thái xử lý
-                  </h3>
-                  <p className="text-sm text-gray-600">
-                    Chọn trạng thái để lọc văn bản
-                  </p>
-                </div>
-                <div className="grid grid-cols-3 gap-3">
-                  {Object.entries(userProcessingStatus).map(([key, status]) => {
-                    const count = getDocumentCountByStatus(key);
-                    const isActive = processingStatusTab === key;
-                    return (
-                      <button
-                        key={key}
-                        onClick={() => setProcessingStatusTab(key)}
-                        className={`relative p-4 rounded-lg border-2 transition-all duration-200 text-left ${
-                          isActive
-                            ? "border-primary bg-white shadow-md transform scale-105"
-                            : "border-gray-200 bg-white/80 hover:border-gray-300 hover:bg-white hover:shadow-sm"
-                        }`}
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <span
-                            className={`font-semibold text-sm ${
-                              isActive ? "text-primary" : "text-gray-800"
-                            }`}
-                          >
-                            {status.displayName}
-                          </span>
-                          <Badge
-                            variant={isActive ? "default" : "secondary"}
-                            className="text-xs font-bold"
-                          >
-                            {count}
-                          </Badge>
-                        </div>
-                        <p className="text-xs text-gray-600 leading-relaxed">
-                          {status.description}
-                        </p>
-                        {isActive && (
-                          <div className="absolute inset-0 rounded-lg ring-2 ring-primary/20 pointer-events-none" />
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
+            {/* Compact Processing Status Tabs */}
+            <div className="px-4 py-2 border-b bg-gray-50/50">
+              <div className="flex gap-2">
+                {Object.entries(userProcessingStatus).map(([key, status]) => {
+                  const count = getDocumentCountByStatus(key);
+                  const isActive = processingStatusTab === key;
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => setProcessingStatusTab(key)}
+                      className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                        isActive
+                          ? "bg-primary text-white"
+                          : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
+                      }`}
+                    >
+                      {status.displayName} ({count})
+                    </button>
+                  );
+                })}
               </div>
-            </CardHeader>
+            </div>
             <CardContent className="p-0">
               <Table>
                 <TableHeader className="bg-accent/50">

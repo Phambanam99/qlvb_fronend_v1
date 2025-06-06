@@ -124,6 +124,8 @@ export interface IncomingDocumentDTO {
   primaryProcessorId?: number;
   created?: string;
   changed?: string;
+  trackingStatus?: string;
+  trackingStatusDisplayName?: string;
   attachmentFilename?: string;
   storageLocation?: string;
   primaryProcessDepartmentId?: number;

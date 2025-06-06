@@ -26,7 +26,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { workflowAPI, incomingDocumentsAPI, usersAPI } from "@/lib/api";
+import {
+  workflowAPI,
+  incomingDocumentsAPI,
+  usersAPI,
+  DocumentWorkflowDTO,
+  OutgoingDocumentDTO,
+} from "@/lib/api";
 import { ReplyDocumentInfo } from "../../components/reply-document-info";
 
 export default function ReplyExternalDocumentPage() {
@@ -200,17 +206,22 @@ export default function ReplyExternalDocumentPage() {
       setIsSubmitting(true);
 
       // Prepare document data
-      const documentData: any = {
+      const workflowData: DocumentWorkflowDTO = {
+        status: "REGISTERED",
+        statusDisplayName: "Đã đăng ký",
+        comments: formData.note,
+      };
+      const _document: OutgoingDocumentDTO = {
         documentNumber: formData.documentNumber,
+        signingDate: formData.sentDate,
+        receivingDepartmentText: formData.recipient,
+        documentType: formData.documentType,
         title: formData.title,
         summary: formData.content,
-        documentType: formData.documentType,
-        receivingDepartmentText: formData.recipient,
-        signingDate: formData.sentDate,
-        approverId: formData.approver,
-        priority: formData.priority,
-        notes: formData.note,
-        status: "PENDING_APPROVAL", // Set status for submission (not draft)
+      };
+      const documentData = {
+        document: _document,
+        workflow: workflowData,
       };
 
       // Call API to create response document
@@ -227,9 +238,10 @@ export default function ReplyExternalDocumentPage() {
       });
 
       addNotification({
-        title: "Văn bản trả lời mới",
-        message: `Văn bản trả lời "${formData.title}" đã được tạo và gửi phê duyệt`,
+        title: "Văn bản trả lời đã được tạo",
+        message: "Văn bản trả lời đã được lưu và chờ phê duyệt.",
         type: "success",
+        link: "/van-ban-di",
       });
 
       // Redirect to outgoing documents list

@@ -1429,21 +1429,11 @@ export default function OutgoingDocumentDetailPage({
                 </p>
                 <div className="mt-1">
                   <p>
-                    {_document.creator?.name ||
-                      _document.creatorName ||
+                    {_document.creator?.fullName ||
+                     
                       "Không xác định"}
                   </p>
-                  <p className="text-sm text-muted-foreground">
-                    {_document.creator?.position ||
-                      _document.creatorPosition ||
-                      "Không xác định"}{" "}
-                    -{" "}
-                    {typeof _document.creator?.department === "object"
-                      ? (_document.creator.department as any)?.name
-                      : typeof _document.creator?.departmentName === "string"
-                      ? _document.creator.departmentName
-                      : _document.creator?.department || "Không xác định"}
-                  </p>
+                 
                 </div>
               </div>
               <Separator className="bg-primary/10" />

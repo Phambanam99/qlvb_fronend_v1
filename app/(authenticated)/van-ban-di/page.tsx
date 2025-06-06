@@ -603,17 +603,7 @@ export default function OutgoingDocumentsPage() {
 
         <TabsContent value="external" className="mt-6">
           <Card className="border-primary/10 shadow-sm">
-            <CardHeader className="bg-primary/5 border-b">
-              <CardTitle>Danh sách văn bản đi bên ngoài</CardTitle>
-              <CardDescription>
-                Các văn bản gửi ra bên ngoài tổ chức
-                {departmentFilter !== "all" &&
-                  " - Lọc theo phòng ban: " +
-                    visibleDepartments.find(
-                      (d) => d.id.toString() === departmentFilter
-                    )?.name}
-              </CardDescription>
-            </CardHeader>
+           
             <CardContent className="p-0">
               <Table>
                 <TableHeader className="bg-accent/50">
