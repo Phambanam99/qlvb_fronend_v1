@@ -971,9 +971,8 @@ export default function IncomingDocumentsPage() {
         </TabsList>
 
         <TabsContent value="internal" className="mt-6">
-          {/* Chỉ hiển thị table khi có dữ liệu để tránh trùng lặp với empty state */}
-          {(activeTab === "internal" ? internalDocuments : incomingDocuments)
-            .length > 0 && (
+          {/* Chỉ hiển thị table khi có dữ liệu hiện tại (sau filter) để tránh trùng lặp với empty state */}
+          {currentDocuments.length > 0 && (
             <Card className="border-primary/10 shadow-sm">
               <CardContent className="p-0">
                 <Table>
@@ -996,61 +995,53 @@ export default function IncomingDocumentsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredInternalDocuments.length > 0 ? (
-                      filteredInternalDocuments.map((doc) => {
-                        // Sử dụng trực tiếp trạng thái đọc từ backend
-                        // Backend đã trả về isRead: true/false cho từng document dựa trên người dùng hiện tại
-                        const currentReadStatus = doc.isRead;
+                    {filteredInternalDocuments.map((doc) => {
+                      // Sử dụng trực tiếp trạng thái đọc từ backend
+                      // Backend đã trả về isRead: true/false cho từng document dựa trên người dùng hiện tại
+                      const currentReadStatus = doc.isRead;
 
-                        return (
-                          <TableRow key={doc.id} className="hover:bg-accent/30">
-                            <TableCell className="font-medium">
-                              {doc.documentNumber}
-                            </TableCell>
-                            <TableCell className="hidden md:table-cell">
-                              {formatDate(doc.signingDate)}
-                            </TableCell>
-                            <TableCell className="max-w-[300px] truncate">
-                              {doc.title}
-                            </TableCell>
-                            <TableCell className="hidden lg:table-cell">
-                              {doc.documentType}
-                            </TableCell>
-                            <TableCell className="hidden md:table-cell">
-                              {doc.senderName}
-                            </TableCell>
-                            <TableCell>
-                              {getPriorityBadge(doc.priority)}
-                            </TableCell>
-                            <TableCell>
-                              <Badge
-                                variant={
-                                  currentReadStatus ? "default" : "outline"
-                                }
-                              >
-                                {currentReadStatus ? "Đã đọc" : "Chưa đọc"}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="hover:bg-primary/10 hover:text-primary"
-                                onClick={() => handleInternalDocumentClick(doc)}
-                              >
-                                Chi tiết
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={8} className="h-24 text-center">
-                          {getEmptyStateMessage(true, true)}
-                        </TableCell>
-                      </TableRow>
-                    )}
+                      return (
+                        <TableRow key={doc.id} className="hover:bg-accent/30">
+                          <TableCell className="font-medium">
+                            {doc.documentNumber}
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell">
+                            {formatDate(doc.signingDate)}
+                          </TableCell>
+                          <TableCell className="max-w-[300px] truncate">
+                            {doc.title}
+                          </TableCell>
+                          <TableCell className="hidden lg:table-cell">
+                            {doc.documentType}
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell">
+                            {doc.senderName}
+                          </TableCell>
+                          <TableCell>
+                            {getPriorityBadge(doc.priority)}
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={
+                                currentReadStatus ? "default" : "outline"
+                              }
+                            >
+                              {currentReadStatus ? "Đã đọc" : "Chưa đọc"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="hover:bg-primary/10 hover:text-primary"
+                              onClick={() => handleInternalDocumentClick(doc)}
+                            >
+                              Chi tiết
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </CardContent>
@@ -1059,9 +1050,8 @@ export default function IncomingDocumentsPage() {
         </TabsContent>
 
         <TabsContent value="external" className="mt-6">
-          {/* Chỉ hiển thị table khi có dữ liệu để tránh trùng lặp với empty state */}
-          {(activeTab === "external" ? incomingDocuments : internalDocuments)
-            .length > 0 && (
+          {/* Chỉ hiển thị table khi có dữ liệu hiện tại (sau filter) để tránh trùng lặp với empty state */}
+          {currentDocuments.length > 0 && (
             <Card className="border-primary/10 shadow-sm">
               {/* Compact Processing Status Tabs */}
               <div className="px-4 py-2 border-b bg-gray-50/50">
@@ -1106,70 +1096,56 @@ export default function IncomingDocumentsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredExternalDocuments.length > 0 ? (
-                      filteredExternalDocuments.map((doc) => (
-                        <TableRow key={doc.id} className="hover:bg-accent/30">
-                          <TableCell className="font-medium">
-                            {doc.documentNumber}
-                          </TableCell>
-                          <TableCell className="hidden md:table-cell">
-                            {doc.receivedDate
-                              ? typeof doc.receivedDate === "object" &&
-                                doc.receivedDate instanceof Date
-                                ? doc.receivedDate.toLocaleDateString("vi-VN")
-                                : String(doc.receivedDate)
-                              : "-"}
-                          </TableCell>
-                          <TableCell className="max-w-[300px] truncate">
-                            {doc.title}
-                          </TableCell>
-                          <TableCell className="hidden md:table-cell">
-                            {doc.issuingAuthority}
-                          </TableCell>
+                    {filteredExternalDocuments.map((doc) => (
+                      <TableRow key={doc.id} className="hover:bg-accent/30">
+                        <TableCell className="font-medium">
+                          {doc.documentNumber}
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          {doc.receivedDate
+                            ? typeof doc.receivedDate === "object" &&
+                              doc.receivedDate instanceof Date
+                              ? doc.receivedDate.toLocaleDateString("vi-VN")
+                              : String(doc.receivedDate)
+                            : "-"}
+                        </TableCell>
+                        <TableCell className="max-w-[300px] truncate">
+                          {doc.title}
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          {doc.issuingAuthority}
+                        </TableCell>
+                        <TableCell>
+                          <DocumentStatusBadge
+                            documentId={doc.id!}
+                            fallbackStatus={doc.processingStatus}
+                            fallbackDisplayStatus={
+                              getStatusByCode(doc.processingStatus)?.displayName
+                            }
+                          />
+                        </TableCell>
+                        {/* Hiển thị vai trò (xử lý chính/phối hợp) khi cần */}
+                        {(documentSource !== "all" || !hasFullAccess) && (
                           <TableCell>
-                            <DocumentStatusBadge
-                              documentId={doc.id!}
-                              fallbackStatus={doc.processingStatus}
-                              fallbackDisplayStatus={
-                                getStatusByCode(doc.processingStatus)
-                                  ?.displayName
-                              }
-                            />
+                            {getAssignmentBadge(
+                              String(doc.primaryProcessDepartmentId)
+                            )}
                           </TableCell>
-                          {/* Hiển thị vai trò (xử lý chính/phối hợp) khi cần */}
-                          {(documentSource !== "all" || !hasFullAccess) && (
-                            <TableCell>
-                              {getAssignmentBadge(
-                                String(doc.primaryProcessDepartmentId)
-                              )}
-                            </TableCell>
-                          )}
-                          <TableCell className="text-right">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="hover:bg-primary/10 hover:text-primary"
-                              asChild
-                            >
-                              <Link href={`/van-ban-den/${doc.id}`}>
-                                Chi tiết
-                              </Link>
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    ) : (
-                      <TableRow>
-                        <TableCell
-                          colSpan={
-                            documentSource !== "all" || !hasFullAccess ? 7 : 6
-                          }
-                          className="h-24 text-center"
-                        >
-                          {getEmptyStateMessage(false, true)}
+                        )}
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="hover:bg-primary/10 hover:text-primary"
+                            asChild
+                          >
+                            <Link href={`/van-ban-den/${doc.id}`}>
+                              Chi tiết
+                            </Link>
+                          </Button>
                         </TableCell>
                       </TableRow>
-                    )}
+                    ))}
                   </TableBody>
                 </Table>
               </CardContent>
