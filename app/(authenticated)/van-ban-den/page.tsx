@@ -71,24 +71,41 @@ const FULL_ACCESS_ROLES = [
   "ROLE_PHO_CHINH_UY",
 ];
 
-// Define the simplified status groups
+// Define the simplified status groups with comprehensive status mapping
 const SIMPLIFIED_STATUS_GROUPS = {
   pending: {
     code: "pending",
     displayName: "Đang xử lý",
     statuses: [
+      // Original status codes
       "distributed",
       "dept_assigned",
       "specialist_processing",
       "specialist_submitted",
       "leader_reviewing",
       "department_reviewing",
+      // Additional common status codes
+      "pending",
+      "processing",
+      "in_progress",
+      "under_review",
+      "reviewing",
+      "assigned",
+      // Uppercase variants
+      "PENDING",
+      "PROCESSING",
+      "IN_PROGRESS",
+      "UNDER_REVIEW",
+      "DISTRIBUTED",
+      "DEPT_ASSIGNED",
+      "SPECIALIST_PROCESSING",
     ],
   },
   completed: {
     code: "completed",
     displayName: "Đã xử lý",
     statuses: [
+      // Original status codes
       "leader_approved",
       "leader_commented",
       "department_approved",
@@ -96,12 +113,49 @@ const SIMPLIFIED_STATUS_GROUPS = {
       "published",
       "completed",
       "archived",
+      // Additional common status codes
+      "approved",
+      "finished",
+      "done",
+      "resolved",
+      "closed",
+      // Uppercase variants
+      "COMPLETED",
+      "APPROVED",
+      "FINISHED",
+      "DONE",
+      "RESOLVED",
+      "CLOSED",
+      "LEADER_APPROVED",
+      "DEPARTMENT_APPROVED",
+      "PUBLISHED",
+      "ARCHIVED",
     ],
   },
   not_processed: {
     code: "not_processed",
     displayName: "Chưa xử lý",
-    statuses: ["draft", "registered", "pending_approval"],
+    statuses: [
+      // Original status codes
+      "draft",
+      "registered",
+      "pending_approval",
+      // Additional common status codes
+      "new",
+      "created",
+      "received",
+      "unprocessed",
+      "waiting",
+      // Uppercase variants
+      "DRAFT",
+      "REGISTERED",
+      "PENDING_APPROVAL",
+      "NEW",
+      "CREATED",
+      "RECEIVED",
+      "UNPROCESSED",
+      "WAITING",
+    ],
   },
 };
 
@@ -132,13 +186,33 @@ const SIMPLE_STATUS_TABS = {
 // REMOVED: Complex role-based status logic has been replaced by API classification endpoint
 
 // Helper function to get simplified status group based on detailed status
-const getSimplifiedStatusGroup = (detailedStatus: string) => {
+const getSimplifiedStatusGroup = (
+  detailedStatus: string | null | undefined
+) => {
+  // Handle null/undefined status
+  if (!detailedStatus) {
+    console.warn("⚠️ Status is null/undefined, defaulting to 'not_processed'");
+    return { code: "not_processed", displayName: "Chưa xử lý" };
+  }
+
+  // Normalize status to handle case-insensitive matching
+  const normalizedStatus = detailedStatus.trim().toLowerCase();
+
   for (const [key, group] of Object.entries(SIMPLIFIED_STATUS_GROUPS)) {
-    if (group.statuses.includes(detailedStatus)) {
+    // Check both original status and lowercased version
+    if (
+      group.statuses.includes(detailedStatus) ||
+      group.statuses.includes(normalizedStatus) ||
+      group.statuses.some((s) => s.toLowerCase() === normalizedStatus)
+    ) {
       return { code: group.code, displayName: group.displayName };
     }
   }
-  // Default to pending if not found
+
+  // Log unknown status for debugging
+  console.warn(
+    `⚠️ Unknown status: "${detailedStatus}", defaulting to 'pending'`
+  );
   return { code: "pending", displayName: "Đang xử lý" };
 };
 
@@ -513,10 +587,24 @@ export default function IncomingDocumentsPage() {
       docTitle.includes(searchLower) ||
       docAuthority.includes(searchLower);
 
-    // Lọc theo processing status tab - simplified logic
+    // Lọc theo processing status tab - simplified logic with debug
     let matchesProcessingStatus = true;
     if (processingStatusTab !== "all") {
       const simplifiedStatus = getSimplifiedStatusGroup(doc.processingStatus);
+
+      // Debug logging để theo dõi status classification
+      if (doc.processingStatus) {
+        console.log(
+          `DEBUG: Document ${doc.documentNumber} - Status: "${
+            doc.processingStatus
+          }" => Group: "${
+            simplifiedStatus.code
+          }" | Current Tab: "${processingStatusTab}" | Match: ${
+            simplifiedStatus.code === processingStatusTab
+          }`
+        );
+      }
+
       matchesProcessingStatus = simplifiedStatus.code === processingStatusTab;
     }
 
@@ -584,6 +672,31 @@ export default function IncomingDocumentsPage() {
       return simplifiedStatus.code === statusKey;
     }).length;
   };
+
+  // Debug function to check all actual status values
+  const debugActualStatuses = () => {
+    const uniqueStatuses = [
+      ...new Set(incomingDocuments.map((doc) => doc.processingStatus)),
+    ];
+    console.log("=== ACTUAL STATUS VALUES FROM API ===");
+    uniqueStatuses.forEach((status) => {
+      const count = incomingDocuments.filter(
+        (doc) => doc.processingStatus === status
+      ).length;
+      const group = getSimplifiedStatusGroup(status);
+      console.log(
+        `Status: "${status}" (${count} docs) => Group: "${group.code}"`
+      );
+    });
+    console.log("=======================================");
+  };
+
+  // Call debug when documents change
+  useEffect(() => {
+    if (incomingDocuments.length > 0) {
+      debugActualStatuses();
+    }
+  }, [incomingDocuments]);
 
   // REMOVED: getStatusBadge function - replaced by DocumentStatusBadge component
 

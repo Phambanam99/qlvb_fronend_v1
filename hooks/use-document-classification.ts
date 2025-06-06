@@ -35,6 +35,7 @@ export function useDocumentClassification(
         documentId
       );
       setClassification(result);
+      console.log("Classification fetched:", result);
     } catch (err) {
       console.error("Error fetching document classification:", err);
       setError(
@@ -109,8 +110,10 @@ export function useMultipleDocumentClassifications(documentIds: number[]): {
           newClassifications[id] = classification;
         }
       });
+      console.log("Classifications fetched:", newClassifications);
 
       setClassifications(newClassifications);
+      
     } catch (err) {
       console.error("Error fetching document classifications:", err);
       setError(
