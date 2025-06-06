@@ -574,7 +574,29 @@ export default function IncomingDocumentsPage() {
     return <Badge variant={info.variant}>{info.text}</Badge>;
   };
 
-  // Filter functions
+  // Simple API-based status mapping - directly use classification API results
+  const API_STATUS_TO_TAB_MAPPING = {
+    PENDING: "not_processed", // Chưa xử lý
+    PROCESSING: "pending", // Đang xử lý
+    PROCESSED: "completed", // Đã xử lý
+  };
+
+  // Helper function to get tab code from API classification status
+  const getTabFromApiStatus = (apiStatus: string | null | undefined) => {
+    if (!apiStatus) return "not_processed";
+    return (
+      API_STATUS_TO_TAB_MAPPING[
+        apiStatus as keyof typeof API_STATUS_TO_TAB_MAPPING
+      ] || "pending"
+    );
+  };
+
+  // Create a cache for classifications to avoid excessive API calls
+  const [classificationsCache, setClassificationsCache] = useState<
+    Record<number, any>
+  >({});
+
+  // Filter functions with simplified API-based logic
   const filteredExternalDocuments = incomingDocuments.filter((doc) => {
     const docNumber = (doc.documentNumber || "").toLowerCase();
     const docTitle = (doc.title || "").toLowerCase();
@@ -587,42 +609,39 @@ export default function IncomingDocumentsPage() {
       docTitle.includes(searchLower) ||
       docAuthority.includes(searchLower);
 
-    // Lọc theo processing status tab - simplified logic with debug
+    // For now, keep simple filtering until we implement batch API classification
+    // TODO: Replace with API classification when ready
     let matchesProcessingStatus = true;
     if (processingStatusTab !== "all") {
-      const simplifiedStatus = getSimplifiedStatusGroup(doc.processingStatus);
+      // Temporary simple mapping based on common status patterns
+      const status = doc.processingStatus?.toUpperCase() || "";
+      let docTabCode = "pending"; // default
 
-      // Debug logging để theo dõi status classification
-      if (doc.processingStatus) {
-        console.log(
-          `DEBUG: Document ${doc.documentNumber} - Status: "${
-            doc.processingStatus
-          }" => Group: "${
-            simplifiedStatus.code
-          }" | Current Tab: "${processingStatusTab}" | Match: ${
-            simplifiedStatus.code === processingStatusTab
-          }`
-        );
+      if (
+        status.includes("COMPLETED") ||
+        status.includes("APPROVED") ||
+        status.includes("PROCESSED") ||
+        status.includes("FINISHED")
+      ) {
+        docTabCode = "completed";
+      } else if (
+        status.includes("PENDING") ||
+        status.includes("NEW") ||
+        status.includes("REGISTERED") ||
+        status.includes("DRAFT")
+      ) {
+        docTabCode = "not_processed";
+      } else {
+        docTabCode = "pending"; // processing, reviewing, etc.
       }
 
-      matchesProcessingStatus = simplifiedStatus.code === processingStatusTab;
-    }
+      matchesProcessingStatus = docTabCode === processingStatusTab;
 
-    // Lọc theo trạng thái (nếu statusFilter được chọn - deprecated, kept for compatibility)
-    const matchesStatus =
-      statusFilter === "all" ||
-      (statusFilter === "pending" &&
-        SIMPLIFIED_STATUS_GROUPS.pending.statuses.includes(
-          doc.processingStatus
-        )) ||
-      (statusFilter === "completed" &&
-        SIMPLIFIED_STATUS_GROUPS.completed.statuses.includes(
-          doc.processingStatus
-        )) ||
-      (statusFilter === "not_processed" &&
-        SIMPLIFIED_STATUS_GROUPS.not_processed.statuses.includes(
-          doc.processingStatus
-        ));
+      // Debug log
+      console.log(
+        `Document ${doc.documentNumber}: status="${doc.processingStatus}" → tab="${docTabCode}" | currentTab="${processingStatusTab}" | match=${matchesProcessingStatus}`
+      );
+    }
 
     // Lọc theo phòng ban - chỉ sử dụng primaryProcessDepartmentId
     let matchesDepartment = true;
@@ -668,8 +687,29 @@ export default function IncomingDocumentsPage() {
     }
 
     return incomingDocuments.filter((doc) => {
-      const simplifiedStatus = getSimplifiedStatusGroup(doc.processingStatus);
-      return simplifiedStatus.code === statusKey;
+      // Use same logic as filtering
+      const status = doc.processingStatus?.toUpperCase() || "";
+      let docTabCode = "pending"; // default
+
+      if (
+        status.includes("COMPLETED") ||
+        status.includes("APPROVED") ||
+        status.includes("PROCESSED") ||
+        status.includes("FINISHED")
+      ) {
+        docTabCode = "completed";
+      } else if (
+        status.includes("PENDING") ||
+        status.includes("NEW") ||
+        status.includes("REGISTERED") ||
+        status.includes("DRAFT")
+      ) {
+        docTabCode = "not_processed";
+      } else {
+        docTabCode = "pending"; // processing, reviewing, etc.
+      }
+
+      return docTabCode === statusKey;
     }).length;
   };
 
@@ -683,10 +723,27 @@ export default function IncomingDocumentsPage() {
       const count = incomingDocuments.filter(
         (doc) => doc.processingStatus === status
       ).length;
-      const group = getSimplifiedStatusGroup(status);
-      console.log(
-        `Status: "${status}" (${count} docs) => Group: "${group.code}"`
-      );
+
+      // Apply same mapping logic
+      const upperStatus = status?.toUpperCase() || "";
+      let tabCode = "pending";
+      if (
+        upperStatus.includes("COMPLETED") ||
+        upperStatus.includes("APPROVED") ||
+        upperStatus.includes("PROCESSED") ||
+        upperStatus.includes("FINISHED")
+      ) {
+        tabCode = "completed";
+      } else if (
+        upperStatus.includes("PENDING") ||
+        upperStatus.includes("NEW") ||
+        upperStatus.includes("REGISTERED") ||
+        upperStatus.includes("DRAFT")
+      ) {
+        tabCode = "not_processed";
+      }
+
+      console.log(`Status: "${status}" (${count} docs) => Tab: "${tabCode}"`);
     });
     console.log("=======================================");
   };
