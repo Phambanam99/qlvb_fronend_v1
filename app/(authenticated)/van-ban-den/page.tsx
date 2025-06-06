@@ -685,6 +685,27 @@ export default function IncomingDocumentsPage() {
     );
   };
 
+  // Helper function để tạo thông báo empty state thống nhất
+  const getEmptyStateMessage = (
+    isInternal: boolean,
+    isFiltered: boolean = false
+  ) => {
+    if (isFiltered) {
+      return "Không có văn bản nào phù hợp với điều kiện tìm kiếm";
+    }
+
+    if (isInternal) {
+      return "Chưa có văn bản nội bộ nào";
+    }
+
+    // External documents - tùy theo quyền truy cập
+    if (hasFullAccess) {
+      return "Chưa có văn bản đến nào trong hệ thống";
+    }
+
+    return "Không có văn bản nào được giao cho bạn";
+  };
+
   // Add a force refresh function
   const forceRefreshDocuments = useCallback(async () => {
     console.log("Force refreshing documents...");
@@ -1021,9 +1042,10 @@ export default function IncomingDocumentsPage() {
                   ) : (
                     <TableRow>
                       <TableCell colSpan={8} className="h-24 text-center">
-                        {currentDocuments.length === 0 && !isLoading
-                          ? "Chưa có văn bản nội bộ nào"
-                          : "Không có văn bản nào phù hợp với điều kiện tìm kiếm"}
+                        {getEmptyStateMessage(
+                          true,
+                          !(currentDocuments.length === 0 && !isLoading)
+                        )}
                       </TableCell>
                     </TableRow>
                   )}
@@ -1137,9 +1159,10 @@ export default function IncomingDocumentsPage() {
                         }
                         className="h-24 text-center"
                       >
-                        {currentDocuments.length === 0 && !isLoading
-                          ? "Chưa có văn bản bên ngoài nào"
-                          : "Không có văn bản nào phù hợp với điều kiện tìm kiếm"}
+                        {getEmptyStateMessage(
+                          false,
+                          !(currentDocuments.length === 0 && !isLoading)
+                        )}
                       </TableCell>
                     </TableRow>
                   )}
@@ -1219,11 +1242,7 @@ export default function IncomingDocumentsPage() {
             </div>
             <h2 className="mt-4 text-xl font-semibold">Không có văn bản nào</h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              {activeTab === "internal"
-                ? "Chưa có văn bản nội bộ nào được nhận"
-                : hasFullAccess
-                ? "Chưa có văn bản đến nào trong hệ thống"
-                : "Không có văn bản nào được giao cho bạn"}
+              {getEmptyStateMessage(activeTab === "internal")}
             </p>
             {hasRole("ROLE_VAN_THU") && activeTab === "external" && (
               <Button
