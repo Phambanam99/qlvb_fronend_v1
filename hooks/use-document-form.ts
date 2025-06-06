@@ -70,14 +70,14 @@ export function useDocumentForm() {
     documentPurpose: "PROCESS" | "NOTIFICATION" = "PROCESS",
     notificationScope?: "ALL_UNITS" | "SPECIFIC_UNITS"
   ) => {
-    if (documentPurpose === "PROCESS" && !primaryDepartment) {
-      toast({
-        title: "Lỗi",
-        description: "Vui lòng chọn phòng ban xử lý chính",
-        variant: "destructive",
-      });
-      return;
-    }
+    // if (documentPurpose === "PROCESS" && !primaryDepartment) {
+    //   toast({
+    //     title: "Lỗi",
+    //     description: "Vui lòng chọn phòng ban xử lý chính",
+    //     variant: "destructive",
+    //   });
+    //   return;
+    // }
 
     if (
       documentPurpose === "NOTIFICATION" &&

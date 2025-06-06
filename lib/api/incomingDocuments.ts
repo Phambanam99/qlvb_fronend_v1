@@ -38,28 +38,25 @@ export const DocumentProcessingStatus = {
     code: "leader_commented",
     displayName: "Thủ trưởng đã cho ý kiến",
   },
- 
 
   // Final statuses
   PUBLISHED: { code: "published", displayName: "Đã ban hành" },
   COMPLETED: { code: "completed", displayName: "Hoàn thành" },
   REJECTED: { code: "rejected", displayName: "Từ chối" },
   ARCHIVED: { code: "archived", displayName: "Lưu trữ" },
-  HEADER_DEPARTMENT_REVIEWING:
-  {
-    code: "department_reviewing", 
-    displayName: "Chỉ  huy đang xem xét"
+  HEADER_DEPARTMENT_REVIEWING: {
+    code: "department_reviewing",
+    displayName: "Chỉ  huy đang xem xét",
   },
-    HEADER_DEPARTMENT_APPROVED:   {
-      code: "department_approved", 
-      displayName: "Chỉ huy đã phê duyệt"
-    },
-   
-    HEADER_DEPARTMENT_COMMENTED:
-    {
-      code: "department_commented", 
-      displayName:"Chỉ huy đã cho ý kiến"
-    },
+  HEADER_DEPARTMENT_APPROVED: {
+    code: "department_approved",
+    displayName: "Chỉ huy đã phê duyệt",
+  },
+
+  HEADER_DEPARTMENT_COMMENTED: {
+    code: "department_commented",
+    displayName: "Chỉ huy đã cho ý kiến",
+  },
 } as const;
 
 // ------------------
@@ -95,6 +92,15 @@ export const getStatusByDisplayName = (
 
 export const getAllStatuses = (): Status[] =>
   Object.values(DocumentProcessingStatus);
+
+// Document Classification API Response
+export interface DocumentClassificationResponse {
+  statusDescription: string;
+  documentId: number;
+  userName: string;
+  userId: number;
+  status: string;
+}
 
 export interface IncomingDocumentDTO {
   id?: number;
@@ -336,6 +342,33 @@ export const incomingDocumentsAPI = {
     } catch (error) {
       console.error(
         `Error downloading attachment for incoming document ${id}:`,
+        error
+      );
+      throw error;
+    }
+  },
+
+  /**
+   * Get document classification status for current user
+   * @param documentId Document ID
+   * @returns Document classification status
+   */
+  getDocumentClassification: async (
+    documentId: number
+  ): Promise<DocumentClassificationResponse> => {
+    try {
+      const response = await api.get(
+        `/documents/classification/${documentId}`,
+        {
+          headers: {
+            Accept: "application/hal+json",
+          },
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error(
+        `Error getting document classification for document ${documentId}:`,
         error
       );
       throw error;

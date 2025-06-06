@@ -219,10 +219,10 @@ export default function AddIncomingDocumentPage() {
       errors.sendingDepartmentName = "Đơn vị gửi là bắt buộc";
     }
 
-    // Chỉ validate phòng ban xử lý chính khi văn bản cần xử lý
-    if (documentPurpose === "PROCESS" && !primaryDepartment) {
-      errors.primaryDepartment = "Phòng ban xử lý chính là bắt buộc";
-    }
+    // // Chỉ validate phòng ban xử lý chính khi văn bản cần xử lý
+    // if (documentPurpose === "PROCESS" && !primaryDepartment) {
+    //   errors.primaryDepartment = "Phòng ban xử lý chính là bắt buộc";
+    // }
 
     // Validate notification scope
     if (
@@ -614,11 +614,9 @@ export default function AddIncomingDocumentPage() {
                       ? "Nhập ghi chú cho phòng ban xử lý (nếu có)"
                       : "Nhập nội dung thông báo (nếu có)"
                   }
-                 
                   className={validationErrors.summary ? "border-red-500" : ""}
                   minHeight="150px"
                 />
-                
               </div>
 
               {documentPurpose === "PROCESS" && (
@@ -682,7 +680,6 @@ export default function AddIncomingDocumentPage() {
               type="submit"
               disabled={
                 isSubmitting ||
-                (documentPurpose === "PROCESS" && !primaryDepartment) ||
                 (documentPurpose === "NOTIFICATION" &&
                   notificationScope === "SPECIFIC_UNITS" &&
                   secondaryDepartments.length === 0)
