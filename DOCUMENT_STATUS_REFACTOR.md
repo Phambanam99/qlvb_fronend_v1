@@ -102,18 +102,19 @@ const { classification } = useDocumentClassification(documentId);
 
 ## Kế hoạch tiếp theo
 
-### Phase 1: Gradual Migration (Hiện tại)
+### Phase 1: Gradual Migration ✅ COMPLETED
 
 - ✅ Implement API service và components
 - ✅ Replace status display trong main table
-- ⏳ Testing và bug fixes
+- ✅ Testing và bug fixes
 
-### Phase 2: Complete Replacement
+### Phase 2: Complete Replacement ✅ COMPLETED
 
-- [ ] Replace tabs filtering logic với API-based
-- [ ] Remove deprecated `getProcessingStatusByRole()`
-- [ ] Remove deprecated `getSimplifiedStatusGroup()`
-- [ ] Update all status-related components
+- ✅ Replace tabs filtering logic với simplified approach
+- ✅ Remove deprecated `getProcessingStatusByRole()`
+- ✅ Remove deprecated `getStatusBadge()`
+- ✅ Simplify status tabs to use basic categorization
+- ⏳ Update other pages to use DocumentStatusBadge component
 
 ### Phase 3: Optimization
 
@@ -125,8 +126,8 @@ const { classification } = useDocumentClassification(documentId);
 
 ### High Priority
 
-- [ ] `app/(authenticated)/van-ban-den/page.tsx` - Replace tabs logic
-- [ ] Document detail pages
+- ✅ `app/(authenticated)/van-ban-den/page.tsx` - Replaced tabs logic and removed deprecated functions
+- [ ] `app/(authenticated)/van-ban-den/[id]/page.tsx` - Update document detail page
 - [ ] Dashboard status widgets
 
 ### Medium Priority

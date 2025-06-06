@@ -105,148 +105,31 @@ const SIMPLIFIED_STATUS_GROUPS = {
   },
 };
 
-// DEPRECATED: This complex role-based status logic has been replaced by the API classification endpoint
-// TODO: Remove this function once all dependencies are updated to use DocumentStatusBadge component
-// Define processing status based on user roles
-const getProcessingStatusByRole = (user: any) => {
-  const roles = user?.roles || [];
-
-  // For top leaders (Cục trưởng, Cục phó, Chính ủy, Phó Chính ủy)
-  if (
-    roles.some((role: string) =>
-      [
-        "ROLE_CUC_TRUONG",
-        "ROLE_CUC_PHO",
-        "ROLE_CHINH_UY",
-        "ROLE_PHO_CHINH_UY",
-      ].includes(role)
-    )
-  ) {
-    return {
-      not_processed: {
-        code: "not_processed",
-        displayName: "Chưa phân phối",
-        statuses: ["registered", "pending", "draft"],
-        description: "Văn bản chưa được phân phối cho các phòng ban",
-      },
-      processing: {
-        code: "processing",
-        displayName: "Đang xử lý",
-        statuses: [
-          "distributed",
-          "dept_assigned",
-          "specialist_processing",
-          "specialist_submitted",
-          "leader_reviewing",
-        ],
-        description: "Văn bản đang được xử lý bởi các phòng ban",
-      },
-      completed: {
-        code: "completed",
-        displayName: "Đã xử lý",
-        statuses: [
-          "leader_approved",
-          "department_approved",
-          "completed",
-          "archived",
-        ],
-        description: "Văn bản đã hoàn thành xử lý",
-      },
-    };
-  }
-
-  // For department leaders (Trưởng phòng, Phó phòng)
-  else if (
-    roles.some((role: string) =>
-      ["ROLE_TRUONG_PHONG", "ROLE_PHO_PHONG"].includes(role)
-    )
-  ) {
-    return {
-      not_processed: {
-        code: "not_processed",
-        displayName: "Chưa phân công",
-        statuses: ["distributed", "dept_assigned"],
-        description: "Văn bản chưa được phân công cho cán bộ xử lý",
-      },
-      processing: {
-        code: "processing",
-        displayName: "Đang xử lý",
-        statuses: ["specialist_processing", "specialist_submitted"],
-        description: "Văn bản đang được xử lý bởi cán bộ",
-      },
-      completed: {
-        code: "completed",
-        displayName: "Đã xử lý",
-        statuses: [
-          "leader_reviewing",
-          "leader_approved",
-          "department_approved",
-        ],
-        description: "Văn bản đã hoàn thành xử lý hoặc đang chờ phê duyệt",
-      },
-    };
-  }
-
-  // For specialists (Trợ lý, Nhân viên)
-  else if (
-    roles.some((role: string) =>
-      ["ROLE_TRO_LY", "ROLE_NHAN_VIEN"].includes(role)
-    )
-  ) {
-    return {
-      not_processed: {
-        code: "not_processed",
-        displayName: "Chưa xử lý",
-        statuses: ["specialist_assigned"],
-        description: "Văn bản được giao nhưng chưa bắt đầu xử lý",
-      },
-      processing: {
-        code: "processing",
-        displayName: "Đang xử lý",
-        statuses: ["specialist_processing"],
-        description: "Văn bản đang được xử lý",
-      },
-      completed: {
-        code: "completed",
-        displayName: "Đã xử lý",
-        statuses: ["specialist_submitted", "leader_approved", "completed"],
-        description: "Văn bản đã hoàn thành xử lý",
-      },
-    };
-  }
-
-  // Default for other roles
-  return {
-    not_processed: {
-      code: "not_processed",
-      displayName: "Chưa xử lý",
-      statuses: ["draft", "registered", "pending_approval"],
-      description: "Văn bản chưa được xử lý",
-    },
-    processing: {
-      code: "processing",
-      displayName: "Đang xử lý",
-      statuses: [
-        "distributed",
-        "dept_assigned",
-        "specialist_processing",
-        "specialist_submitted",
-      ],
-      description: "Văn bản đang được xử lý",
-    },
-    completed: {
-      code: "completed",
-      displayName: "Đã xử lý",
-      statuses: [
-        "leader_approved",
-        "department_approved",
-        "completed",
-        "archived",
-      ],
-      description: "Văn bản đã hoàn thành xử lý",
-    },
-  };
+// Simplified status tabs - compatible with SIMPLIFIED_STATUS_GROUPS
+const SIMPLE_STATUS_TABS = {
+  all: {
+    code: "all",
+    displayName: "Tất cả",
+    description: "Hiển thị tất cả văn bản",
+  },
+  not_processed: {
+    code: "not_processed",
+    displayName: "Chưa xử lý",
+    description: "Văn bản chưa được xử lý",
+  },
+  pending: {
+    code: "pending",
+    displayName: "Đang xử lý",
+    description: "Văn bản đang được xử lý",
+  },
+  completed: {
+    code: "completed",
+    displayName: "Đã hoàn thành",
+    description: "Văn bản đã hoàn thành xử lý",
+  },
 };
+
+// REMOVED: Complex role-based status logic has been replaced by API classification endpoint
 
 // Helper function to get simplified status group based on detailed status
 const getSimplifiedStatusGroup = (detailedStatus: string) => {
@@ -343,9 +226,8 @@ export default function IncomingDocumentsPage() {
   const [totalPages, setTotalPages] = useState<number>(0);
   const [totalItems, setTotalItems] = useState<number>(0);
 
-  // Get processing status definitions based on current user role
-  // DEPRECATED: This will be replaced by API-based status classification
-  const userProcessingStatus = getProcessingStatusByRole(user);
+  // Use simplified status tabs instead of complex role-based logic
+  const userProcessingStatus = SIMPLE_STATUS_TABS;
 
   // Kiểm tra người dùng có quyền xem tất cả không
   const hasFullAccess = FULL_ACCESS_ROLES.some((role) => hasRole(role));
@@ -631,15 +513,12 @@ export default function IncomingDocumentsPage() {
       docTitle.includes(searchLower) ||
       docAuthority.includes(searchLower);
 
-    // Lọc theo processing status tab
-    const statusGroup =
-      userProcessingStatus[
-        processingStatusTab as keyof typeof userProcessingStatus
-      ];
-    const docStatus = doc.processingStatus || "";
-    const matchesProcessingStatus = statusGroup
-      ? statusGroup.statuses.includes(docStatus)
-      : true;
+    // Lọc theo processing status tab - simplified logic
+    let matchesProcessingStatus = true;
+    if (processingStatusTab !== "all") {
+      const simplifiedStatus = getSimplifiedStatusGroup(doc.processingStatus);
+      matchesProcessingStatus = simplifiedStatus.code === processingStatusTab;
+    }
 
     // Lọc theo trạng thái (nếu statusFilter được chọn - deprecated, kept for compatibility)
     const matchesStatus =
@@ -694,38 +573,19 @@ export default function IncomingDocumentsPage() {
       ? filteredInternalDocuments
       : filteredExternalDocuments;
 
-  // Count documents for each processing status tab
+  // Count documents for each processing status tab - simplified logic
   const getDocumentCountByStatus = (statusKey: string) => {
-    const statusGroup =
-      userProcessingStatus[statusKey as keyof typeof userProcessingStatus];
-    if (!statusGroup) return 0;
+    if (statusKey === "all") {
+      return incomingDocuments.length;
+    }
 
     return incomingDocuments.filter((doc) => {
-      const docStatus = doc.processingStatus || "";
-      return statusGroup.statuses.includes(docStatus);
+      const simplifiedStatus = getSimplifiedStatusGroup(doc.processingStatus);
+      return simplifiedStatus.code === statusKey;
     }).length;
   };
 
-  // Status badge helper functions
-  const getStatusBadge = (status: string, displayStatus: string) => {
-    // Get the simplified status group first
-    const simplifiedStatus = getSimplifiedStatusGroup(status);
-
-    // Determine badge variant based on simplified status
-    let variant: "default" | "outline" | "secondary" | "destructive" =
-      "default";
-
-    if (simplifiedStatus.code === "pending") {
-      variant = "secondary"; // In progress - use secondary (usually gray/neutral)
-    } else if (simplifiedStatus.code === "completed") {
-      variant = "default"; // Completed - use default (usually primary color)
-    } else if (simplifiedStatus.code === "not_processed") {
-      variant = "outline"; // Not processed yet - use outline
-    }
-
-    // Return badge with the original status text but styled based on simplified group
-    return <Badge variant={variant}>{displayStatus}</Badge>;
-  };
+  // REMOVED: getStatusBadge function - replaced by DocumentStatusBadge component
 
   const getAssignmentBadge = (primaryId: string) => {
     if (user?.departmentId && Number(primaryId) === user.departmentId) {
