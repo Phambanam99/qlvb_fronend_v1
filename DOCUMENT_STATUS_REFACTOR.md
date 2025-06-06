@@ -127,7 +127,7 @@ const { classification } = useDocumentClassification(documentId);
 ### High Priority
 
 - ✅ `app/(authenticated)/van-ban-den/page.tsx` - Replaced tabs logic and removed deprecated functions
-- [ ] `app/(authenticated)/van-ban-den/[id]/page.tsx` - Update document detail page
+- ✅ `app/(authenticated)/van-ban-den/[id]/page.tsx` - Updated document detail page to use DocumentStatusBadge
 - [ ] Dashboard status widgets
 
 ### Medium Priority

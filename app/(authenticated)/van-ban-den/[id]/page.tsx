@@ -31,6 +31,7 @@ import { DepartmentDTO } from "@/lib/api";
 import { de } from "date-fns/locale";
 import { useRouter } from "next/navigation";
 import { downloadPdfWithWatermark, isPdfFile } from "@/lib/utils/pdf-watermark";
+import { DocumentStatusBadge } from "@/components/document-status-badge";
 
 export default function DocumentDetailPage({
   params,
@@ -170,10 +171,7 @@ export default function DocumentDetailPage({
     fetchDocument();
   }, [documentId, toast, user]);
 
-  const getStatusBadge = (status: string, displayName?: string) => {
-    const badgeInfo = getStatusBadgeInfo(status, displayName);
-    return <Badge variant={badgeInfo.variant}>{badgeInfo.text}</Badge>;
-  };
+  // REMOVED: getStatusBadge function - replaced by DocumentStatusBadge component
 
   const handleDownloadAttachment = async () => {
     if (!_document.attachmentFilename) {
@@ -677,10 +675,13 @@ export default function DocumentDetailPage({
             <CardHeader className="bg-primary/5 border-b">
               <div className="flex items-center justify-between">
                 <CardTitle>{_document.documentNumber}</CardTitle>
-                {getStatusBadge(
-                  _document.status,
-                  getStatusByCode(_document.status)?.displayName!
-                )}
+                <DocumentStatusBadge
+                  documentId={documentId!}
+                  fallbackStatus={_document.status}
+                  fallbackDisplayStatus={
+                    getStatusByCode(_document.status)?.displayName
+                  }
+                />
               </div>
               <CardDescription>{_document.title}</CardDescription>
             </CardHeader>
@@ -698,7 +699,7 @@ export default function DocumentDetailPage({
                   </p>
                   <p>{_document.referenceNumber || "Không có"}</p>
                 </div>
-                
+
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">
                     Ngày nhận
@@ -753,7 +754,7 @@ export default function DocumentDetailPage({
                         : "outline"
                     }
                   >
-                   {_document.securityLevel === "NORMAL"
+                    {_document.securityLevel === "NORMAL"
                       ? "Thường"
                       : _document.securityLevel === "CONFIDENTIAL"
                       ? "Mật"
@@ -790,7 +791,6 @@ export default function DocumentDetailPage({
                     )}
                   </div>
                 </div>
-               
               </div>
               <Separator className="bg-primary/10" />
               <div>
@@ -813,7 +813,7 @@ export default function DocumentDetailPage({
                   }}
                 ></div>
               </div>
-              
+
               <Separator className="bg-primary/10" />
 
               <div>
@@ -913,10 +913,13 @@ export default function DocumentDetailPage({
                   Trạng thái
                 </p>
                 <div className="mt-1">
-                  {getStatusBadge(
-                    _document.status,
-                    getStatusByCode(_document.status)?.displayName!
-                  )}
+                  <DocumentStatusBadge
+                    documentId={documentId!}
+                    fallbackStatus={_document.status}
+                    fallbackDisplayStatus={
+                      getStatusByCode(_document.status)?.displayName
+                    }
+                  />
                 </div>
               </div>
               <Separator className="bg-primary/10" />
@@ -1026,7 +1029,7 @@ export default function DocumentDetailPage({
                   </div>
                 </>
               )}
-              
+
               {(_document.created || _document.changed) && (
                 <>
                   <Separator className="bg-primary/10" />
