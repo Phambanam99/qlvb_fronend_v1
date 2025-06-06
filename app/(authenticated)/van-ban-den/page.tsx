@@ -59,6 +59,7 @@ import {
 } from "@/lib/api/internalDocumentApi";
 import { useDocumentReadStatus } from "@/hooks/use-document-read-status";
 import { usePageVisibility } from "@/hooks/use-page-visibility";
+import { DocumentStatusBadge } from "@/components/document-status-badge";
 
 // Role có quyền xem toàn bộ văn bản
 const FULL_ACCESS_ROLES = [
@@ -104,6 +105,8 @@ const SIMPLIFIED_STATUS_GROUPS = {
   },
 };
 
+// DEPRECATED: This complex role-based status logic has been replaced by the API classification endpoint
+// TODO: Remove this function once all dependencies are updated to use DocumentStatusBadge component
 // Define processing status based on user roles
 const getProcessingStatusByRole = (user: any) => {
   const roles = user?.roles || [];
@@ -341,6 +344,7 @@ export default function IncomingDocumentsPage() {
   const [totalItems, setTotalItems] = useState<number>(0);
 
   // Get processing status definitions based on current user role
+  // DEPRECATED: This will be replaced by API-based status classification
   const userProcessingStatus = getProcessingStatusByRole(user);
 
   // Kiểm tra người dùng có quyền xem tất cả không
@@ -1215,10 +1219,13 @@ export default function IncomingDocumentsPage() {
                           {doc.issuingAuthority}
                         </TableCell>
                         <TableCell>
-                          {getStatusBadge(
-                            doc.processingStatus,
-                            getStatusByCode(doc.processingStatus)?.displayName!
-                          )}
+                          <DocumentStatusBadge
+                            documentId={doc.id!}
+                            fallbackStatus={doc.processingStatus}
+                            fallbackDisplayStatus={
+                              getStatusByCode(doc.processingStatus)?.displayName
+                            }
+                          />
                         </TableCell>
                         {/* Hiển thị vai trò (xử lý chính/phối hợp) khi cần */}
                         {(documentSource !== "all" || !hasFullAccess) && (
