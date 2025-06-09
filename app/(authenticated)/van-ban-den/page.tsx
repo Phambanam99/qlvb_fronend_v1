@@ -971,21 +971,7 @@ export default function IncomingDocumentsPage() {
             />
           </div>
 
-          {/* Source filter cho role có quyền cao - chỉ hiển thị cho external tab */}
-          {hasFullAccess && activeTab === "external" && (
-            <Select value={documentSource} onValueChange={setDocumentSource}>
-              <SelectTrigger className="w-full sm:w-[180px] border-primary/20">
-                <SelectValue placeholder="Nguồn văn bản" />
-              </SelectTrigger>
-              <SelectContent>
-                {documentSources.map((source) => (
-                  <SelectItem key={source.value} value={source.value}>
-                    {source.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
+         
 
           {/* Bộ lọc phòng ban phân cấp - chỉ hiển thị cho external tab */}
           {hasFullAccess && activeTab === "external" && (
