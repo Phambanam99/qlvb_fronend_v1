@@ -273,6 +273,17 @@ export default function IncomingDocumentsPage() {
   const [documentSource, setDocumentSource] = useState<string>("all"); // all, department, assigned
   const [departmentFilter, setDepartmentFilter] = useState("all"); // Thêm state cho bộ lọc phòng ban
   const [isAddLoading, setIsAddLoading] = useState(false);
+
+  // Date range filters
+  const [startDate, setStartDate] = useState<string>("");
+  const [endDate, setEndDate] = useState<string>("");
+
+  // Issuing authority filter
+  const [issuingAuthorityFilter, setIssuingAuthorityFilter] = useState("all");
+  const [availableAuthorities, setAvailableAuthorities] = useState<string[]>(
+    []
+  );
+
   const router = useRouter();
 
   // Sử dụng hook phòng ban phân cấp
@@ -369,6 +380,35 @@ export default function IncomingDocumentsPage() {
   const handleDepartmentFilterChange = (value: string) => {
     setDepartmentFilter(value);
     setCurrentPage(0); // Reset về trang đầu khi thay đổi bộ lọc phòng ban
+  };
+
+  // Xử lý khi thay đổi ngày bắt đầu
+  const handleStartDateChange = (value: string) => {
+    setStartDate(value);
+    setCurrentPage(0);
+  };
+
+  // Xử lý khi thay đổi ngày kết thúc
+  const handleEndDateChange = (value: string) => {
+    setEndDate(value);
+    setCurrentPage(0);
+  };
+
+  // Xử lý khi thay đổi đơn vị gửi
+  const handleIssuingAuthorityChange = (value: string) => {
+    setIssuingAuthorityFilter(value);
+    setCurrentPage(0);
+  };
+
+  // Reset tất cả filters
+  const handleResetFilters = () => {
+    setSearchQuery("");
+    setStatusFilter("all");
+    setDepartmentFilter("all");
+    setStartDate("");
+    setEndDate("");
+    setIssuingAuthorityFilter("all");
+    setCurrentPage(0);
   };
 
   // Kiểm tra xem người dùng có quyền xem văn bản đến không
@@ -617,7 +657,41 @@ export default function IncomingDocumentsPage() {
         primaryDeptId != null && departmentIds.includes(primaryDeptId);
     }
 
-    return matchesSearch && matchesProcessingStatus && matchesDepartment;
+    // Lọc theo ngày nhận
+    let matchesDateRange = true;
+    if (startDate || endDate) {
+      const docDate = doc.receivedDate;
+      if (docDate) {
+        const docDateStr =
+          typeof docDate === "string"
+            ? docDate
+            : docDate.toISOString().split("T")[0];
+
+        if (startDate && docDateStr < startDate) {
+          matchesDateRange = false;
+        }
+        if (endDate && docDateStr > endDate) {
+          matchesDateRange = false;
+        }
+      } else {
+        // Nếu không có ngày nhận và có filter ngày thì loại bỏ
+        matchesDateRange = false;
+      }
+    }
+
+    // Lọc theo đơn vị gửi
+    let matchesIssuingAuthority = true;
+    if (issuingAuthorityFilter !== "all") {
+      matchesIssuingAuthority = doc.issuingAuthority === issuingAuthorityFilter;
+    }
+
+    return (
+      matchesSearch &&
+      matchesProcessingStatus &&
+      matchesDepartment &&
+      matchesDateRange &&
+      matchesIssuingAuthority
+    );
   });
 
   const filteredInternalDocuments = internalDocuments.filter((doc) => {
@@ -632,7 +706,27 @@ export default function IncomingDocumentsPage() {
 
     const matchesStatus = statusFilter === "all" || doc.status === statusFilter;
 
-    return matchesSearch && matchesStatus;
+    // Lọc theo ngày ký cho văn bản nội bộ
+    let matchesDateRange = true;
+    if (startDate || endDate) {
+      const docDate = doc.signingDate;
+      if (docDate) {
+        const docDateStr =
+          typeof docDate === "string" ? docDate.split("T")[0] : docDate;
+
+        if (startDate && docDateStr < startDate) {
+          matchesDateRange = false;
+        }
+        if (endDate && docDateStr > endDate) {
+          matchesDateRange = false;
+        }
+      } else {
+        // Nếu không có ngày ký và có filter ngày thì loại bỏ
+        matchesDateRange = false;
+      }
+    }
+
+    return matchesSearch && matchesStatus && matchesDateRange;
   });
 
   const isLoading = activeTab === "internal" ? loadingInternal : loading;
@@ -735,6 +829,18 @@ export default function IncomingDocumentsPage() {
       clearTimeout(refreshTimer);
     };
   }, [subscribe, user, loadingDepartments, currentPage, pageSize]);
+
+  // Extract unique issuing authorities when documents change
+  useEffect(() => {
+    const authorities = Array.from(
+      new Set(
+        incomingDocuments
+          .map((doc) => doc.issuingAuthority)
+          .filter((authority) => authority && authority.trim() !== "")
+      )
+    ).sort();
+    setAvailableAuthorities(authorities);
+  }, [incomingDocuments]);
 
   // Refresh data when page becomes visible again (user comes back from detail page)
   useEffect(() => {
@@ -927,6 +1033,45 @@ export default function IncomingDocumentsPage() {
               )}
             </SelectContent>
           </Select>
+
+          {/* Date range filters */}
+          <Input
+            type="date"
+            placeholder="Từ ngày"
+            value={startDate}
+            onChange={(e) => handleStartDateChange(e.target.value)}
+            className="w-full sm:w-[150px] border-primary/20"
+            title={activeTab === "external" ? "Từ ngày nhận" : "Từ ngày ký"}
+          />
+          <Input
+            type="date"
+            placeholder="Đến ngày"
+            value={endDate}
+            onChange={(e) => handleEndDateChange(e.target.value)}
+            className="w-full sm:w-[150px] border-primary/20"
+            title={activeTab === "external" ? "Đến ngày nhận" : "Đến ngày ký"}
+          />
+
+          {/* Issuing authority filter - only for external tab */}
+          {activeTab === "external" && availableAuthorities.length > 0 && (
+            <Select
+              value={issuingAuthorityFilter}
+              onValueChange={handleIssuingAuthorityChange}
+            >
+              <SelectTrigger className="w-full sm:w-[200px] border-primary/20">
+                <SelectValue placeholder="Đơn vị gửi" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả đơn vị</SelectItem>
+                {availableAuthorities.map((authority) => (
+                  <SelectItem key={authority} value={authority}>
+                    {authority}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
           <Button
             variant="outline"
             size="icon"
@@ -936,6 +1081,24 @@ export default function IncomingDocumentsPage() {
           >
             <Filter className="h-4 w-4" />
           </Button>
+
+          {/* Reset filters button */}
+          {(searchQuery ||
+            statusFilter !== "all" ||
+            departmentFilter !== "all" ||
+            startDate ||
+            endDate ||
+            issuingAuthorityFilter !== "all") && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleResetFilters}
+              className="border-primary/20 hover:bg-primary/10 hover:text-primary"
+              title="Xóa tất cả bộ lọc"
+            >
+              Xóa lọc
+            </Button>
+          )}
 
           {/* Chỉ văn thư mới có quyền thêm mới - chỉ cho external documents */}
           {hasRole("ROLE_VAN_THU") && activeTab === "external" && (
@@ -971,8 +1134,9 @@ export default function IncomingDocumentsPage() {
         </TabsList>
 
         <TabsContent value="internal" className="mt-6">
-          {/* Chỉ hiển thị table khi có dữ liệu hiện tại (sau filter) để tránh trùng lặp với empty state */}
-          {currentDocuments.length > 0 && (
+          {/* Chỉ hiển thị table khi có dữ liệu để tránh trùng lặp với empty state */}
+          {(activeTab === "internal" ? internalDocuments : incomingDocuments)
+            .length > 0 && (
             <Card className="border-primary/10 shadow-sm">
               <CardContent className="p-0">
                 <Table>
@@ -995,53 +1159,61 @@ export default function IncomingDocumentsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredInternalDocuments.map((doc) => {
-                      // Sử dụng trực tiếp trạng thái đọc từ backend
-                      // Backend đã trả về isRead: true/false cho từng document dựa trên người dùng hiện tại
-                      const currentReadStatus = doc.isRead;
+                    {filteredInternalDocuments.length > 0 ? (
+                      filteredInternalDocuments.map((doc) => {
+                        // Sử dụng trực tiếp trạng thái đọc từ backend
+                        // Backend đã trả về isRead: true/false cho từng document dựa trên người dùng hiện tại
+                        const currentReadStatus = doc.isRead;
 
-                      return (
-                        <TableRow key={doc.id} className="hover:bg-accent/30">
-                          <TableCell className="font-medium">
-                            {doc.documentNumber}
-                          </TableCell>
-                          <TableCell className="hidden md:table-cell">
-                            {formatDate(doc.signingDate)}
-                          </TableCell>
-                          <TableCell className="max-w-[300px] truncate">
-                            {doc.title}
-                          </TableCell>
-                          <TableCell className="hidden lg:table-cell">
-                            {doc.documentType}
-                          </TableCell>
-                          <TableCell className="hidden md:table-cell">
-                            {doc.senderName}
-                          </TableCell>
-                          <TableCell>
-                            {getPriorityBadge(doc.priority)}
-                          </TableCell>
-                          <TableCell>
-                            <Badge
-                              variant={
-                                currentReadStatus ? "default" : "outline"
-                              }
-                            >
-                              {currentReadStatus ? "Đã đọc" : "Chưa đọc"}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="hover:bg-primary/10 hover:text-primary"
-                              onClick={() => handleInternalDocumentClick(doc)}
-                            >
-                              Chi tiết
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
+                        return (
+                          <TableRow key={doc.id} className="hover:bg-accent/30">
+                            <TableCell className="font-medium">
+                              {doc.documentNumber}
+                            </TableCell>
+                            <TableCell className="hidden md:table-cell">
+                              {formatDate(doc.signingDate)}
+                            </TableCell>
+                            <TableCell className="max-w-[300px] truncate">
+                              {doc.title}
+                            </TableCell>
+                            <TableCell className="hidden lg:table-cell">
+                              {doc.documentType}
+                            </TableCell>
+                            <TableCell className="hidden md:table-cell">
+                              {doc.senderName}
+                            </TableCell>
+                            <TableCell>
+                              {getPriorityBadge(doc.priority)}
+                            </TableCell>
+                            <TableCell>
+                              <Badge
+                                variant={
+                                  currentReadStatus ? "default" : "outline"
+                                }
+                              >
+                                {currentReadStatus ? "Đã đọc" : "Chưa đọc"}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="hover:bg-primary/10 hover:text-primary"
+                                onClick={() => handleInternalDocumentClick(doc)}
+                              >
+                                Chi tiết
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={8} className="h-24 text-center">
+                          {getEmptyStateMessage(true, true)}
+                        </TableCell>
+                      </TableRow>
+                    )}
                   </TableBody>
                 </Table>
               </CardContent>
@@ -1050,8 +1222,9 @@ export default function IncomingDocumentsPage() {
         </TabsContent>
 
         <TabsContent value="external" className="mt-6">
-          {/* Chỉ hiển thị table khi có dữ liệu hiện tại (sau filter) để tránh trùng lặp với empty state */}
-          {currentDocuments.length > 0 && (
+          {/* Chỉ hiển thị table khi có dữ liệu để tránh trùng lặp với empty state */}
+          {(activeTab === "external" ? incomingDocuments : internalDocuments)
+            .length > 0 && (
             <Card className="border-primary/10 shadow-sm">
               {/* Compact Processing Status Tabs */}
               <div className="px-4 py-2 border-b bg-gray-50/50">
@@ -1096,56 +1269,70 @@ export default function IncomingDocumentsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredExternalDocuments.map((doc) => (
-                      <TableRow key={doc.id} className="hover:bg-accent/30">
-                        <TableCell className="font-medium">
-                          {doc.documentNumber}
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell">
-                          {doc.receivedDate
-                            ? typeof doc.receivedDate === "object" &&
-                              doc.receivedDate instanceof Date
-                              ? doc.receivedDate.toLocaleDateString("vi-VN")
-                              : String(doc.receivedDate)
-                            : "-"}
-                        </TableCell>
-                        <TableCell className="max-w-[300px] truncate">
-                          {doc.title}
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell">
-                          {doc.issuingAuthority}
-                        </TableCell>
-                        <TableCell>
-                          <DocumentStatusBadge
-                            documentId={doc.id!}
-                            fallbackStatus={doc.processingStatus}
-                            fallbackDisplayStatus={
-                              getStatusByCode(doc.processingStatus)?.displayName
-                            }
-                          />
-                        </TableCell>
-                        {/* Hiển thị vai trò (xử lý chính/phối hợp) khi cần */}
-                        {(documentSource !== "all" || !hasFullAccess) && (
-                          <TableCell>
-                            {getAssignmentBadge(
-                              String(doc.primaryProcessDepartmentId)
-                            )}
+                    {filteredExternalDocuments.length > 0 ? (
+                      filteredExternalDocuments.map((doc) => (
+                        <TableRow key={doc.id} className="hover:bg-accent/30">
+                          <TableCell className="font-medium">
+                            {doc.documentNumber}
                           </TableCell>
-                        )}
-                        <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="hover:bg-primary/10 hover:text-primary"
-                            asChild
-                          >
-                            <Link href={`/van-ban-den/${doc.id}`}>
-                              Chi tiết
-                            </Link>
-                          </Button>
+                          <TableCell className="hidden md:table-cell">
+                            {doc.receivedDate
+                              ? typeof doc.receivedDate === "object" &&
+                                doc.receivedDate instanceof Date
+                                ? doc.receivedDate.toLocaleDateString("vi-VN")
+                                : String(doc.receivedDate)
+                              : "-"}
+                          </TableCell>
+                          <TableCell className="max-w-[300px] truncate">
+                            {doc.title}
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell">
+                            {doc.issuingAuthority}
+                          </TableCell>
+                          <TableCell>
+                            <DocumentStatusBadge
+                              documentId={doc.id!}
+                              fallbackStatus={doc.processingStatus}
+                              fallbackDisplayStatus={
+                                getStatusByCode(doc.processingStatus)
+                                  ?.displayName
+                              }
+                            />
+                          </TableCell>
+                          {/* Hiển thị vai trò (xử lý chính/phối hợp) khi cần */}
+                          {(documentSource !== "all" || !hasFullAccess) && (
+                            <TableCell>
+                              {getAssignmentBadge(
+                                String(doc.primaryProcessDepartmentId)
+                              )}
+                            </TableCell>
+                          )}
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="hover:bg-primary/10 hover:text-primary"
+                              asChild
+                            >
+                              <Link href={`/van-ban-den/${doc.id}`}>
+                                Chi tiết
+                              </Link>
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell
+                          colSpan={
+                            documentSource !== "all" || !hasFullAccess ? 7 : 6
+                          }
+                          className="h-24 text-center"
+                        >
+                          {getEmptyStateMessage(false, true)}
                         </TableCell>
                       </TableRow>
-                    ))}
+                    )}
                   </TableBody>
                 </Table>
               </CardContent>
@@ -1218,13 +1405,6 @@ export default function IncomingDocumentsPage() {
       {currentDocuments.length === 0 && !isLoading && (
         <div className="flex h-[40vh] items-center justify-center">
           <div className="text-center">
-            <div className="rounded-full bg-amber-100 p-3 mx-auto w-16 h-16 flex items-center justify-center">
-              <AlertCircle className="h-8 w-8 text-amber-500" />
-            </div>
-            <h2 className="mt-4 text-xl font-semibold">Không có văn bản nào</h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              {getEmptyStateMessage(activeTab === "internal")}
-            </p>
             {hasRole("ROLE_VAN_THU") && activeTab === "external" && (
               <Button
                 onClick={handleAddDocument}
