@@ -47,6 +47,7 @@ import {
   migrateFromOldUrgency,
 } from "@/lib/types/urgency";
 import { UrgencyBadge } from "@/components/urgency-badge";
+import type { DocumentAttachmentDTO } from "@/lib/api/types";
 
 export default function DocumentDetailPage({
   params,
@@ -68,130 +69,148 @@ export default function DocumentDetailPage({
   const router = useRouter();
 
   const [_document, setDocument] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [departments, setDepartments] = useState<any[]>([]);
+  const [pdfViewerOpen, setPdfViewerOpen] = useState(false);
+  const [selectedFileForPreview, setSelectedFileForPreview] =
+    useState<string>("");
+  const [attachments, setAttachments] = useState<DocumentAttachmentDTO[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   // State để theo dõi trạng thái loading khi chuyển trang
   const [isNavigating, setIsNavigating] = useState(false);
   // fetch all departments with document id using useEffect
-
-  const [departments, setDepartments] = useState<DepartmentDTO[]>([]);
-  useEffect(() => {
-    const fetchDepartments = async () => {
-      if (!documentId) return;
-
-      try {
-        const response = await incomingDocumentsAPI.getAllDepartments(
-          documentId
-        );
-        setDepartments(response);
-      } catch (error) {
-        console.error("Error fetching departments:", error);
-        toast({
-          title: "Lỗi",
-          description: "Không thể tải danh sách đơn vị",
-          variant: "destructive",
-        });
-      }
-    };
-
-    fetchDepartments();
-  }, [documentId, toast]);
 
   // State để theo dõi trạng thái loading của nhiều loại dữ liệu
   const [isDocumentLoading, setIsDocumentLoading] = useState(true);
   const [isWorkflowLoading, setIsWorkflowLoading] = useState(true);
   const [isHistoryLoading, setIsHistoryLoading] = useState(true);
 
-  // PDF Viewer states
-  const [pdfViewerOpen, setPdfViewerOpen] = useState(false);
-  const [selectedFileForPreview, setSelectedFileForPreview] = useState<{
-    fileName: string;
-    title: string;
-  } | null>(null);
+  // Fetch departments for document
+  const fetchDepartments = async () => {
+    if (!documentId) return;
+
+    try {
+      const response = await incomingDocumentsAPI.getAllDepartments(documentId);
+      setDepartments(response);
+    } catch (error) {
+      console.error("Error fetching departments:", error);
+      toast({
+        title: "Lỗi",
+        description: "Không thể tải danh sách đơn vị",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Fetch attachments for document
+  const fetchAttachments = async () => {
+    if (!documentId) return;
+
+    try {
+      const response = await incomingDocumentsAPI.getDocumentAttachments(
+        Number(documentId)
+      );
+      setAttachments(response);
+    } catch (error) {
+      console.error("Error fetching attachments:", error);
+      // Don't show toast error for attachments as it might not be supported yet
+    }
+  };
 
   // Tracking overall loading status
   useEffect(() => {
     // Chỉ đặt isLoading = false khi tất cả dữ liệu đã tải xong
-    setIsLoading(
+    setLoading(
       isDocumentLoading || isWorkflowLoading || isHistoryLoading || !user
     );
   }, [isDocumentLoading, isWorkflowLoading, isHistoryLoading, user]);
 
+  // Fetch document data
   useEffect(() => {
-    const fetchDocument = async () => {
-      if (!documentId || !user) {
-        return; // Tránh gọi API khi không có ID hoặc user
-      }
+    if (!documentId) return;
 
-      try {
-        console.log("Bắt đầu tải dữ liệu văn bản:", {
-          documentId,
-          timestamp: new Date().toISOString(),
-          user: user?.fullName,
-        });
+    fetchDepartments();
+    fetchAttachments();
+  }, [documentId, toast]);
 
-        // Bắt đầu tải document
-        setIsDocumentLoading(true);
-        setIsWorkflowLoading(true);
-        setIsHistoryLoading(true);
-
-        // Fetch document details
-        const response = await incomingDocumentsAPI.getIncomingDocumentById(
-          documentId
-        );
-        console.log("1. Tải văn bản thành công:", response);
-        setIsDocumentLoading(false);
-
-        // Fetch document workflow status
-        const workflowStatus = await workflowAPI.getDocumentStatus(documentId);
-        console.log("2. Tải workflow status thành công:", workflowStatus);
-        setIsWorkflowLoading(false);
-
-        // Fetch document history
-        const history = await workflowAPI.getDocumentHistory(documentId);
-        console.log("3. Tải history thành công:", history);
-        setIsHistoryLoading(false);
-
-        // Combine data
-        const documentData = {
-          ...response.data,
-          status: workflowStatus.status,
-          assignedToId: workflowStatus.assignedToId,
-          assignedToName: workflowStatus.assignedToName,
-          history: history,
-          assignedToIds: workflowStatus.assignedToIds,
-          assignedToNames: workflowStatus.assignedToNames,
-
-          // Add empty arrays for frontend compatibility
-          attachments: [],
-          relatedDocuments: [],
-          responses: [],
-        };
-        console.log(
-          "✅ Tất cả dữ liệu đã tải xong, bắt đầu render",
-          documentData
-        );
-        setDocument(documentData);
-        setError(null);
-      } catch (err: any) {
-        console.error("❌ Lỗi khi tải dữ liệu văn bản:", err);
-        setError(err.message || "Không thể tải thông tin văn bản");
-        toast({
-          title: "Lỗi",
-          description: "Không thể tải thông tin văn bản",
-          variant: "destructive",
-        });
-      } finally {
-        // Đảm bảo tất cả loại dữ liệu đều được đánh dấu là đã hoàn thành,
-        // tránh kẹt ở trạng thái loading vĩnh viễn
-        setIsDocumentLoading(false);
-        setIsWorkflowLoading(false);
-        setIsHistoryLoading(false);
-      }
-    };
+  // Fetch main document data
+  useEffect(() => {
+    if (!documentId || !user) return;
 
     fetchDocument();
-  }, [documentId, toast, user]);
+  }, [documentId, user]);
+
+  const fetchDocument = async () => {
+    if (!documentId || !user) {
+      return; // Tránh gọi API khi không có ID hoặc user
+    }
+
+    try {
+      console.log("Bắt đầu tải dữ liệu văn bản:", {
+        documentId,
+        timestamp: new Date().toISOString(),
+        user: user?.fullName,
+      });
+
+      // Bắt đầu tải document
+      setIsDocumentLoading(true);
+      setIsWorkflowLoading(true);
+      setIsHistoryLoading(true);
+
+      // Fetch document details
+      const response = await incomingDocumentsAPI.getIncomingDocumentById(
+        documentId
+      );
+      console.log("1. Tải văn bản thành công:", response);
+      setIsDocumentLoading(false);
+
+      // Fetch document workflow status
+      const workflowStatus = await workflowAPI.getDocumentStatus(documentId);
+      console.log("2. Tải workflow status thành công:", workflowStatus);
+      setIsWorkflowLoading(false);
+
+      // Fetch document history
+      const history = await workflowAPI.getDocumentHistory(documentId);
+      console.log("3. Tải history thành công:", history);
+      setIsHistoryLoading(false);
+
+      // Combine data
+      const documentData = {
+        ...response.data,
+        status: workflowStatus.status,
+        assignedToId: workflowStatus.assignedToId,
+        assignedToName: workflowStatus.assignedToName,
+        history: history,
+        assignedToIds: workflowStatus.assignedToIds,
+        assignedToNames: workflowStatus.assignedToNames,
+
+        // Add empty arrays for frontend compatibility
+        attachments: [],
+        relatedDocuments: [],
+        responses: [],
+      };
+      console.log(
+        "✅ Tất cả dữ liệu đã tải xong, bắt đầu render",
+        documentData
+      );
+      setDocument(documentData);
+      setError(null);
+    } catch (err: any) {
+      console.error("❌ Lỗi khi tải dữ liệu văn bản:", err);
+      setError(err.message || "Không thể tải thông tin văn bản");
+      toast({
+        title: "Lỗi",
+        description: "Không thể tải thông tin văn bản",
+        variant: "destructive",
+      });
+    } finally {
+      // Đảm bảo tất cả loại dữ liệu đều được đánh dấu là đã hoàn thành,
+      // tránh kẹt ở trạng thái loading vĩnh viễn
+      setIsDocumentLoading(false);
+      setIsWorkflowLoading(false);
+      setIsHistoryLoading(false);
+    }
+  };
 
   // REMOVED: getStatusBadge function - replaced by DocumentStatusBadge component
 
@@ -281,10 +300,7 @@ export default function DocumentDetailPage({
     const fileName =
       _document.attachmentFilename.split("/").pop() || "document.pdf";
 
-    setSelectedFileForPreview({
-      fileName,
-      title: _document.title || "Tài liệu đính kèm",
-    });
+    setSelectedFileForPreview(fileName);
     setPdfViewerOpen(true);
   };
 
@@ -340,7 +356,7 @@ export default function DocumentDetailPage({
         return;
       }
 
-      setIsLoading(true);
+      setLoading(true);
       await workflowAPI.startProcessingDocument(documentId, {
         documentId: documentId,
         status: "SPECIALIST_PROCESSING",
@@ -363,7 +379,7 @@ export default function DocumentDetailPage({
         variant: "destructive",
       });
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
   const hasDepartmentAccess =
@@ -686,7 +702,7 @@ export default function DocumentDetailPage({
     );
   };
 
-  if (isLoading) {
+  if (loading) {
     return <DocumentDetailSkeleton />;
   }
 
@@ -867,7 +883,53 @@ export default function DocumentDetailPage({
                   Tệp đính kèm
                 </p>
                 <div className="space-y-2">
-                  {_document.attachmentFilename ? (
+                  {/* First check if we have multiple attachments from API */}
+                  {attachments.length > 0 ? (
+                    attachments.map(
+                      (file: DocumentAttachmentDTO, index: number) => (
+                        <div
+                          key={file.id || index}
+                          className="flex items-center justify-between rounded-md border border-primary/10 p-2 bg-accent/30"
+                        >
+                          <div className="flex items-center space-x-2">
+                            <FileText className="h-4 w-4 text-primary" />
+                            <span className="text-sm">{file.name}</span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <span className="text-xs text-muted-foreground">
+                              {file.size
+                                ? `${(file.size / 1024).toFixed(1)} KB`
+                                : ""}
+                            </span>
+                            {isPDFFile("", file.name) && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
+                                onClick={() => {
+                                  setSelectedFileForPreview(file.name);
+                                  setPdfViewerOpen(true);
+                                }}
+                                title="Xem trước PDF"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
+                              onClick={() => handleDownloadAttachment()}
+                              title="Tải xuống"
+                            >
+                              <Download className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      )
+                    )
+                  ) : _document.attachmentFilename ? (
+                    /* Fallback to single file if multiple attachments not available */
                     <div className="flex items-center justify-between rounded-md border border-primary/10 p-2 bg-accent/30">
                       <div className="flex items-center space-x-2">
                         <FileText className="h-4 w-4 text-primary" />
@@ -893,37 +955,12 @@ export default function DocumentDetailPage({
                           size="icon"
                           className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
                           onClick={handleDownloadAttachment}
+                          title="Tải xuống"
                         >
                           <Download className="h-4 w-4" />
                         </Button>
                       </div>
                     </div>
-                  ) : _document.attachments &&
-                    _document.attachments.length > 0 ? (
-                    _document.attachments.map((file: any, index: number) => (
-                      <div
-                        key={index}
-                        className="flex items-center justify-between rounded-md border border-primary/10 p-2 bg-accent/30"
-                      >
-                        <div className="flex items-center space-x-2">
-                          <FileText className="h-4 w-4 text-primary" />
-                          <span className="text-sm">{file.name}</span>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <span className="text-xs text-muted-foreground">
-                            {file.size}
-                          </span>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
-                            onClick={() => handleDownloadAttachment()}
-                          >
-                            <Download className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))
                   ) : (
                     <p className="text-sm text-muted-foreground">
                       Không có tệp đính kèm
@@ -1238,10 +1275,10 @@ export default function DocumentDetailPage({
         isOpen={pdfViewerOpen}
         onClose={() => {
           setPdfViewerOpen(false);
-          setSelectedFileForPreview(null);
+          setSelectedFileForPreview("");
         }}
-        fileName={selectedFileForPreview?.fileName}
-        title={selectedFileForPreview?.title}
+        fileName={selectedFileForPreview}
+        title={_document.title || "Tài liệu đính kèm"}
         onDownload={handlePDFDownload}
         options={{
           allowDownload: true,

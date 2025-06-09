@@ -126,9 +126,10 @@ export interface IncomingDocumentDTO {
   changed?: string;
   trackingStatus?: string;
   trackingStatusDisplayName?: string;
-  attachmentFilename?: string;
+  attachmentFilename?: string; // Legacy single file
   storageLocation?: string;
   primaryProcessDepartmentId?: number;
+  attachments?: DocumentAttachmentDTO[]; // New multiple files
 }
 
 export const incomingDocumentsAPI = {
@@ -141,12 +142,12 @@ export const incomingDocumentsAPI = {
   getAllDocuments: async (
     page = 0,
     size = 10
-  ): Promise<{ content: IncomingDocumentDTO[], page: any }> => {
+  ): Promise<{ content: IncomingDocumentDTO[]; page: any }> => {
     try {
       const response = await api.get("/documents/incoming", {
         params: { page, size },
       });
-      console.log("backend ", response)
+      console.log("backend ", response);
 
       // Map backend response to frontend expected format
       const documents = response.data.content.map(
@@ -159,10 +160,13 @@ export const incomingDocumentsAPI = {
         })
       );
 
-      return { content: documents , page:{
-        totalPages: response.data.totalPages,
-        totalElements: response.data.totalElements
-      }};
+      return {
+        content: documents,
+        page: {
+          totalPages: response.data.totalPages,
+          totalElements: response.data.totalElements,
+        },
+      };
     } catch (error) {
       console.error("Error fetching incoming documents:", error);
       throw error;
@@ -336,21 +340,16 @@ export const incomingDocumentsAPI = {
    * @param id Document ID
    * @returns List of document attachments
    */
-  downloadIncomingAttachment: async (id: number): Promise<Blob> => {
+  getDocumentAttachments: async (
+    id: number
+  ): Promise<DocumentAttachmentDTO[]> => {
     try {
-      const response = await api.get(`/documents/incoming/${id}/attachment`, {
-        responseType: "blob",
-        headers: {
-          Accept: "application/hal+json",
-        },
-      });
-      return response.data;
+      const response = await api.get(`/documents/incoming/${id}/attachments`);
+      return response.data || [];
     } catch (error) {
-      console.error(
-        `Error downloading attachment for incoming document ${id}:`,
-        error
-      );
-      throw error;
+      console.error(`Error getting attachments for document ${id}:`, error);
+      // Return empty array if endpoint doesn't exist yet
+      return [];
     }
   },
 
@@ -375,6 +374,24 @@ export const incomingDocumentsAPI = {
     } catch (error) {
       console.error(
         `Error getting document classification for document ${documentId}:`,
+        error
+      );
+      throw error;
+    }
+  },
+
+  downloadIncomingAttachment: async (id: number): Promise<Blob> => {
+    try {
+      const response = await api.get(`/documents/incoming/${id}/attachment`, {
+        responseType: "blob",
+        headers: {
+          Accept: "application/hal+json",
+        },
+      });
+      return response.data;
+    } catch (error) {
+      console.error(
+        `Error downloading attachment for incoming document ${id}:`,
         error
       );
       throw error;
