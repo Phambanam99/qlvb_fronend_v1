@@ -285,21 +285,37 @@ export async function addWatermarkToPdf(
 }
 
 /**
- * Tạo watermark với tên người dùng
+ * Tạo watermark với tên người dùng và thời gian tải
  * @param userFullName - Tên đầy đủ của người dùng
  * @param pdfData - Blob, ArrayBuffer hoặc Uint8Array của file PDF gốc
+ * @param includeTimestamp - Có bao gồm thời gian tải không (mặc định: true)
  * @returns Bytes của file PDF đã có watermark
  */
 export async function addUserWatermarkToPdf(
   userFullName: string,
-  pdfData: Blob | ArrayBuffer | Uint8Array
+  pdfData: Blob | ArrayBuffer | Uint8Array,
+  includeTimestamp: boolean = true
 ): Promise<Uint8Array> {
-  const watermarkText = `${userFullName}`;
+  let watermarkText = userFullName;
+
+  if (includeTimestamp) {
+    const now = new Date();
+    const timestamp = now.toLocaleString("vi-VN", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      timeZone: "Asia/Ho_Chi_Minh",
+    });
+    watermarkText = `${userFullName} - ${timestamp}`;
+  }
 
   return addWatermarkToPdf(pdfData, {
     text: watermarkText,
     opacity: 0.25,
-    fontSize: 56,
+    fontSize: 48, // Giảm size một chút để fit text dài hơn
     color: [0.6, 0.6, 0.6],
     angle: -45,
   });
@@ -310,15 +326,21 @@ export async function addUserWatermarkToPdf(
  * @param pdfData - Blob, ArrayBuffer hoặc Uint8Array của file PDF gốc
  * @param fileName - Tên file để download
  * @param userFullName - Tên đầy đủ của người dùng
+ * @param includeTimestamp - Có bao gồm thời gian tải không (mặc định: true)
  */
 export async function downloadPdfWithWatermark(
   pdfData: Blob | ArrayBuffer | Uint8Array,
   fileName: string,
-  userFullName: string
+  userFullName: string,
+  includeTimestamp: boolean = true
 ): Promise<void> {
   try {
-    // Add watermark
-    const watermarkedPdf = await addUserWatermarkToPdf(userFullName, pdfData);
+    // Add watermark with timestamp
+    const watermarkedPdf = await addUserWatermarkToPdf(
+      userFullName,
+      pdfData,
+      includeTimestamp
+    );
 
     // Create blob and download
     const blob = new Blob([watermarkedPdf], { type: "application/pdf" });

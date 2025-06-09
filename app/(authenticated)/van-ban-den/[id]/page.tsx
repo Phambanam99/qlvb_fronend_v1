@@ -247,7 +247,7 @@ export default function DocumentDetailPage({
           await downloadPdfWithWatermark(blob, filename, user.fullName);
           toast({
             title: "Thành công",
-            description: `Đã tải xuống file PDF với watermark: ${filename}`,
+            description: `Đã tải xuống file PDF với watermark và timestamp: ${filename}`,
           });
           return;
         } catch (watermarkError) {
@@ -336,7 +336,7 @@ export default function DocumentDetailPage({
           await downloadPdfWithWatermark(blob, filename, user.fullName);
           toast({
             title: "Thành công",
-            description: `Đã tải xuống file PDF với watermark: ${filename}`,
+            description: `Đã tải xuống file PDF với watermark và timestamp: ${filename}`,
           });
           return;
         } catch (watermarkError) {
