@@ -727,7 +727,7 @@ export default function DocumentDetailPage({
                 </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">
-                    Mức độ khẩn cấp
+                    Độ khẩn
                   </p>
                   <Badge
                     variant={
