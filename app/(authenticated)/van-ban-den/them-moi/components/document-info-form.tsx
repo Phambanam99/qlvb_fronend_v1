@@ -474,6 +474,7 @@ export function DocumentInfoForm({
           <Input
             id="attachments"
             type="file"
+            multiple
             onChange={handleFileChange}
             className="hidden"
           />
