@@ -24,10 +24,12 @@ import {
   XCircle,
   Reply,
   Loader2,
+  Eye,
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { useNotifications } from "@/lib/notifications-context";
+import PDFViewerModal from "@/components/ui/pdf-viewer-modal";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -52,6 +54,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRouter } from "next/navigation";
 import { getStatusBadgeInfo } from "@/lib/utils";
+import { isPDFFile } from "@/lib/utils/pdf-viewer";
 
 export default function OutgoingDocumentDetailPage({
   params,
@@ -76,6 +79,13 @@ export default function OutgoingDocumentDetailPage({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState("details");
   const [historyLoaded, setHistoryLoaded] = useState(false);
+
+  // PDF Viewer states
+  const [pdfViewerOpen, setPdfViewerOpen] = useState(false);
+  const [selectedFileForPreview, setSelectedFileForPreview] = useState<{
+    fileName: string;
+    title: string;
+  } | null>(null);
 
   useEffect(() => {
     // Biến để kiểm tra component còn mounted hay không
@@ -234,6 +244,41 @@ export default function OutgoingDocumentDetailPage({
         description: "Không thể tải tệp đính kèm. Vui lòng thử lại sau.",
         variant: "destructive",
       });
+    }
+  };
+
+  // Handle PDF preview
+  const handlePreviewPDF = () => {
+    if (!_document?.attachmentFilename) {
+      toast({
+        title: "Lỗi",
+        description: "Không có tệp đính kèm để xem trước",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const fileName =
+      _document.attachmentFilename.split("/").pop() || "document.pdf";
+
+    setSelectedFileForPreview({
+      fileName,
+      title: _document.title || "Tài liệu đính kèm",
+    });
+    setPdfViewerOpen(true);
+  };
+
+  // Download file for PDF viewer
+  const handlePDFDownload = async () => {
+    try {
+      return await outgoingDocumentsAPI.downloadAttachmentDocument(documentId);
+    } catch (error) {
+      toast({
+        title: "Lỗi",
+        description: "Không thể tải file PDF",
+        variant: "destructive",
+      });
+      return null;
     }
   };
 
@@ -1289,14 +1334,28 @@ export default function OutgoingDocumentDetailPage({
                             "Tệp đính kèm"}
                         </span>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
-                        onClick={handleDownloadAttachment}
-                      >
-                        <Download className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center space-x-2">
+                        {_document.attachmentFilename &&
+                          isPDFFile("", _document.attachmentFilename) && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
+                              onClick={handlePreviewPDF}
+                              title="Xem trước PDF"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
+                          onClick={handleDownloadAttachment}
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   ) : (
                     <p className="text-sm text-muted-foreground">
@@ -1428,12 +1487,7 @@ export default function OutgoingDocumentDetailPage({
                   Người soạn thảo
                 </p>
                 <div className="mt-1">
-                  <p>
-                    {_document.creator?.fullName ||
-                     
-                      "Không xác định"}
-                  </p>
-                 
+                  <p>{_document.creator?.fullName || "Không xác định"}</p>
                 </div>
               </div>
               <Separator className="bg-primary/10" />
@@ -1562,6 +1616,22 @@ export default function OutgoingDocumentDetailPage({
           </Card>
         </div>
       </div>
+
+      {/* PDF Viewer Modal */}
+      <PDFViewerModal
+        isOpen={pdfViewerOpen}
+        onClose={() => {
+          setPdfViewerOpen(false);
+          setSelectedFileForPreview(null);
+        }}
+        fileName={selectedFileForPreview?.fileName}
+        title={selectedFileForPreview?.title}
+        onDownload={handlePDFDownload}
+        options={{
+          allowDownload: true,
+          allowPrint: true,
+        }}
+      />
     </div>
   );
 }

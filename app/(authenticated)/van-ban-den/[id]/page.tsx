@@ -13,11 +13,19 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Download, FileText, Send, UserCheck } from "lucide-react";
+import {
+  ArrowLeft,
+  Download,
+  FileText,
+  Send,
+  UserCheck,
+  Eye,
+} from "lucide-react";
 import Link from "next/link";
 import DocumentResponseForm from "@/components/document-response-form";
 import DocumentResponseList from "@/components/document-response-list";
 import DocumentProcessingHistory from "@/components/document-processing-history";
+import PDFViewerModal from "@/components/ui/pdf-viewer-modal";
 import {
   getStatusByCode,
   incomingDocumentsAPI,
@@ -31,6 +39,7 @@ import { DepartmentDTO } from "@/lib/api";
 import { de } from "date-fns/locale";
 import { useRouter } from "next/navigation";
 import { downloadPdfWithWatermark, isPdfFile } from "@/lib/utils/pdf-watermark";
+import { isPDFFile } from "@/lib/utils/pdf-viewer";
 import { DocumentStatusBadge } from "@/components/document-status-badge";
 import {
   UrgencyLevel,
@@ -92,6 +101,13 @@ export default function DocumentDetailPage({
   const [isDocumentLoading, setIsDocumentLoading] = useState(true);
   const [isWorkflowLoading, setIsWorkflowLoading] = useState(true);
   const [isHistoryLoading, setIsHistoryLoading] = useState(true);
+
+  // PDF Viewer states
+  const [pdfViewerOpen, setPdfViewerOpen] = useState(false);
+  const [selectedFileForPreview, setSelectedFileForPreview] = useState<{
+    fileName: string;
+    title: string;
+  } | null>(null);
 
   // Tracking overall loading status
   useEffect(() => {
@@ -202,15 +218,13 @@ export default function DocumentDetailPage({
       const blob = await incomingDocumentsAPI.downloadIncomingAttachment(
         documentId
       );
-
       const filename =
         _document.attachmentFilename.split("/").pop() || "document.pdf";
 
-      // Kiểm tra nếu là file PDF và có thông tin người dùng thì thêm watermark
+      // Check if it's a PDF file and user has a name for watermark
       if (isPdfFile(filename) && user?.fullName) {
         try {
           await downloadPdfWithWatermark(blob, filename, user.fullName);
-
           toast({
             title: "Thành công",
             description: `Đã tải xuống file PDF với watermark: ${filename}`,
@@ -229,12 +243,11 @@ export default function DocumentDetailPage({
         }
       }
 
-      // Tải xuống bình thường cho non-PDF hoặc khi watermark thất bại
+      // Regular download for non-PDF files or when watermark fails
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
       a.download = filename;
-
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
@@ -242,15 +255,51 @@ export default function DocumentDetailPage({
 
       toast({
         title: "Thành công",
-        description: "Đang tải tệp xuống",
+        description: `Đã tải xuống file ${filename}`,
       });
     } catch (error) {
-      console.error("Lỗi khi tải tệp đính kèm:", error);
+      console.error("Error downloading attachment:", error);
       toast({
         title: "Lỗi",
-        description: "Không thể tải tệp đính kèm. Vui lòng thử lại sau.",
+        description: "Không thể tải xuống file. Vui lòng thử lại sau.",
         variant: "destructive",
       });
+    }
+  };
+
+  // Handle PDF preview
+  const handlePreviewPDF = () => {
+    if (!_document.attachmentFilename) {
+      toast({
+        title: "Lỗi",
+        description: "Không có tệp đính kèm để xem trước",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const fileName =
+      _document.attachmentFilename.split("/").pop() || "document.pdf";
+
+    setSelectedFileForPreview({
+      fileName,
+      title: _document.title || "Tài liệu đính kèm",
+    });
+    setPdfViewerOpen(true);
+  };
+
+  // Download file for PDF viewer
+  const handlePDFDownload = async () => {
+    if (!documentId) return null;
+    try {
+      return await incomingDocumentsAPI.downloadIncomingAttachment(documentId);
+    } catch (error) {
+      toast({
+        title: "Lỗi",
+        description: "Không thể tải file PDF",
+        variant: "destructive",
+      });
+      return null;
     }
   };
 
@@ -827,14 +876,27 @@ export default function DocumentDetailPage({
                             "Tài liệu đính kèm"}
                         </span>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
-                        onClick={handleDownloadAttachment}
-                      >
-                        <Download className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center space-x-2">
+                        {isPDFFile("", _document.attachmentFilename) && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
+                            onClick={handlePreviewPDF}
+                            title="Xem trước PDF"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
+                          onClick={handleDownloadAttachment}
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   ) : _document.attachments &&
                     _document.attachments.length > 0 ? (
@@ -1170,6 +1232,22 @@ export default function DocumentDetailPage({
           </Card>
         </div>
       </div>
+
+      {/* PDF Viewer Modal */}
+      <PDFViewerModal
+        isOpen={pdfViewerOpen}
+        onClose={() => {
+          setPdfViewerOpen(false);
+          setSelectedFileForPreview(null);
+        }}
+        fileName={selectedFileForPreview?.fileName}
+        title={selectedFileForPreview?.title}
+        onDownload={handlePDFDownload}
+        options={{
+          allowDownload: true,
+          allowPrint: true,
+        }}
+      />
     </div>
   );
 }
