@@ -15,6 +15,7 @@ import {
   X,
   Building,
   UserCheck,
+  Wrench,
 } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/lib/auth-context";
@@ -48,6 +49,12 @@ export default function Sidebar() {
       title: "Lịch công tác",
       href: "/lich-cong-tac",
       icon: Calendar,
+      permission: null, // Tất cả người dùng đều có thể xem
+    },
+    {
+      title: "Tiện ích",
+      href: "/tien-ich",
+      icon: Wrench,
       permission: null, // Tất cả người dùng đều có thể xem
     },
     {
