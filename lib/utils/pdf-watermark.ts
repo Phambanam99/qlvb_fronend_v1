@@ -1,4 +1,155 @@
-import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
+import { PDFDocument, rgb, StandardFonts, degrees } from "pdf-lib";
+
+/**
+ * Sanitize text to remove Vietnamese characters that WinAnsi encoding can't handle
+ * @param text - Original text with Vietnamese characters
+ * @returns Sanitized text compatible with WinAnsi encoding
+ */
+function sanitizeTextForWatermark(text: string): string {
+  // Map Vietnamese characters to ASCII equivalents
+  const vietnameseMap: { [key: string]: string } = {
+    à: "a",
+    á: "a",
+    ạ: "a",
+    ả: "a",
+    ã: "a",
+    â: "a",
+    ầ: "a",
+    ấ: "a",
+    ậ: "a",
+    ẩ: "a",
+    ẫ: "a",
+    ă: "a",
+    ằ: "a",
+    ắ: "a",
+    ặ: "a",
+    ẳ: "a",
+    ẵ: "a",
+    è: "e",
+    é: "e",
+    ẹ: "e",
+    ẻ: "e",
+    ẽ: "e",
+    ê: "e",
+    ề: "e",
+    ế: "e",
+    ệ: "e",
+    ể: "e",
+    ễ: "e",
+    ì: "i",
+    í: "i",
+    ị: "i",
+    ỉ: "i",
+    ĩ: "i",
+    ò: "o",
+    ó: "o",
+    ọ: "o",
+    ỏ: "o",
+    õ: "o",
+    ô: "o",
+    ồ: "o",
+    ố: "o",
+    ộ: "o",
+    ổ: "o",
+    ỗ: "o",
+    ơ: "o",
+    ờ: "o",
+    ớ: "o",
+    ợ: "o",
+    ở: "o",
+    ỡ: "o",
+    ù: "u",
+    ú: "u",
+    ụ: "u",
+    ủ: "u",
+    ũ: "u",
+    ư: "u",
+    ừ: "u",
+    ứ: "u",
+    ự: "u",
+    ử: "u",
+    ữ: "u",
+    ỳ: "y",
+    ý: "y",
+    ỵ: "y",
+    ỷ: "y",
+    ỹ: "y",
+    đ: "d",
+    // Uppercase versions
+    À: "A",
+    Á: "A",
+    Ạ: "A",
+    Ả: "A",
+    Ã: "A",
+    Â: "A",
+    Ầ: "A",
+    Ấ: "A",
+    Ậ: "A",
+    Ẩ: "A",
+    Ẫ: "A",
+    Ă: "A",
+    Ằ: "A",
+    Ắ: "A",
+    Ặ: "A",
+    Ẳ: "A",
+    Ẵ: "A",
+    È: "E",
+    É: "E",
+    Ẹ: "E",
+    Ẻ: "E",
+    Ẽ: "E",
+    Ê: "E",
+    Ề: "E",
+    Ế: "E",
+    Ệ: "E",
+    Ể: "E",
+    Ễ: "E",
+    Ì: "I",
+    Í: "I",
+    Ị: "I",
+    Ỉ: "I",
+    Ĩ: "I",
+    Ò: "O",
+    Ó: "O",
+    Ọ: "O",
+    Ỏ: "O",
+    Õ: "O",
+    Ô: "O",
+    Ồ: "O",
+    Ố: "O",
+    Ộ: "O",
+    Ổ: "O",
+    Ỗ: "O",
+    Ơ: "O",
+    Ờ: "O",
+    Ớ: "O",
+    Ợ: "O",
+    Ở: "O",
+    Ỡ: "O",
+    Ù: "U",
+    Ú: "U",
+    Ụ: "U",
+    Ủ: "U",
+    Ũ: "U",
+    Ư: "U",
+    Ừ: "U",
+    Ứ: "U",
+    Ự: "U",
+    Ử: "U",
+    Ữ: "U",
+    Ỳ: "Y",
+    Ý: "Y",
+    Ỵ: "Y",
+    Ỷ: "Y",
+    Ỹ: "Y",
+    Đ: "D",
+  };
+
+  // Replace Vietnamese characters with ASCII equivalents
+  return text.replace(/[^\x00-\x7F]/g, (char) => {
+    return vietnameseMap[char] || char;
+  });
+}
 
 interface WatermarkOptions {
   text: string;
@@ -28,7 +179,7 @@ export async function addWatermarkToPdf(
       pdfBytes = pdfData.buffer.slice(
         pdfData.byteOffset,
         pdfData.byteOffset + pdfData.byteLength
-      );
+      ) as ArrayBuffer;
     } else if (pdfData instanceof ArrayBuffer) {
       pdfBytes = pdfData;
     } else {
@@ -48,19 +199,32 @@ export async function addWatermarkToPdf(
 
     // Default options
     const {
-      text,
+      text: originalText,
       opacity = 0.3,
       fontSize = 50,
       color = [0.7, 0.7, 0.7], // Light gray
       angle = -45, // Diagonal angle
     } = options;
 
+    // Sanitize text to remove Vietnamese characters that WinAnsi can't encode
+    const text = sanitizeTextForWatermark(originalText);
+
     // Add watermark to each page
     for (const page of pages) {
       const { width, height } = page.getSize();
 
-      // Calculate text dimensions
-      const textWidth = font.widthOfTextAtSize(text, fontSize);
+      // Calculate text dimensions with error handling
+      let textWidth: number;
+      try {
+        textWidth = font.widthOfTextAtSize(text, fontSize);
+      } catch (encodingError) {
+        console.warn(
+          "Font encoding error, using fallback width calculation:",
+          encodingError
+        );
+        // Fallback: estimate width based on character count
+        textWidth = text.length * fontSize * 0.6;
+      }
       const textHeight = fontSize;
 
       // Position watermark in center
@@ -75,10 +239,7 @@ export async function addWatermarkToPdf(
         font,
         color: rgb(color[0], color[1], color[2]),
         opacity,
-        rotate: {
-          type: "degrees",
-          angle: angle,
-        },
+        rotate: degrees(angle),
       });
 
       // Add additional watermarks for better coverage (optional)
@@ -104,10 +265,7 @@ export async function addWatermarkToPdf(
               font,
               color: rgb(color[0], color[1], color[2]),
               opacity: opacity * 0.6,
-              rotate: {
-                type: "degrees",
-                angle: angle,
-              },
+              rotate: degrees(angle),
             });
           }
         }

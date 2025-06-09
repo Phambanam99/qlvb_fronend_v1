@@ -328,6 +328,11 @@ export default function DocumentDetailPage({
       // Check if it's a PDF file and user has a name for watermark
       if (isPdfFile(filename) && user?.fullName) {
         try {
+          console.log("Downloading PDF with watermark:", {
+            filename,
+            userFullName: user.fullName,
+            blob,
+          });
           await downloadPdfWithWatermark(blob, filename, user.fullName);
           toast({
             title: "Thành công",
