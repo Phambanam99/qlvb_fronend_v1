@@ -588,9 +588,7 @@ export default function OutgoingDocumentsPage() {
                         <TableCell className="hidden md:table-cell">
                           {getRecipientSummary(doc.recipients)}
                         </TableCell>
-                        <TableCell>
-                          {getUrgencyBadge(doc.priority)}
-                        </TableCell>
+                        <TableCell>{getUrgencyBadge(doc.priority)}</TableCell>
                         <TableCell>{getStatusBadge(doc.status)}</TableCell>
                         <TableCell className="text-right">
                           <Button
