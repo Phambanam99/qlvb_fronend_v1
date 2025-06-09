@@ -6,7 +6,7 @@
 // Định nghĩa các mức độ khẩn thống nhất
 export const URGENCY_LEVELS = {
   KHAN: "KHAN",
-  THUONG_KHAN: "THUONG_KHAN", 
+  THUONG_KHAN: "THUONG_KHAN",
   HOA_TOC: "HOA_TOC",
   HOA_TOC_HEN_GIO: "HOA_TOC_HEN_GIO",
 } as const;
@@ -24,7 +24,7 @@ export const URGENCY_CONFIG = {
     icon: "⚡",
   },
   [URGENCY_LEVELS.THUONG_KHAN]: {
-    label: "Thượng khẩn", 
+    label: "Thượng khẩn",
     description: "Văn bản thượng khẩn",
     badgeVariant: "destructive" as const,
     color: "#ef4444", // red-500
@@ -35,7 +35,7 @@ export const URGENCY_CONFIG = {
     label: "Hỏa tốc",
     description: "Văn bản hỏa tốc",
     badgeVariant: "destructive" as const,
-    color: "#dc2626", // red-600  
+    color: "#dc2626", // red-600
     priority: 4,
     icon: "⚡🔥",
   },
@@ -104,11 +104,11 @@ export const isCriticalUrgency = (level: UrgencyLevel): boolean => {
 // Migration helpers - để chuyển đổi từ hệ thống cũ
 export const migrateFromOldUrgency = (oldLevel: string): UrgencyLevel => {
   const normalized = oldLevel.toUpperCase();
-  
+
   switch (normalized) {
     case "URGENT":
       return URGENCY_LEVELS.KHAN;
-    case "HIGH": 
+    case "HIGH":
       return URGENCY_LEVELS.THUONG_KHAN;
     case "CRITICAL":
       return URGENCY_LEVELS.HOA_TOC;
@@ -121,7 +121,7 @@ export const migrateFromOldUrgency = (oldLevel: string): UrgencyLevel => {
 
 // Tạo options cho Select components
 export const getUrgencyOptions = () => {
-  return Object.values(URGENCY_LEVELS).map(level => ({
+  return Object.values(URGENCY_LEVELS).map((level) => ({
     value: level,
     label: getUrgencyLabel(level),
     description: getUrgencyDescription(level),
@@ -153,4 +153,4 @@ export default {
   migrateFromOldUrgency,
   getUrgencyOptions,
   isValidUrgencyLevel,
-}; 
+};

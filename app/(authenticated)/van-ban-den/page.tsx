@@ -38,6 +38,12 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import {
+  UrgencyLevel,
+  URGENCY_LEVELS,
+  migrateFromOldUrgency,
+} from "@/lib/types/urgency";
+import { UrgencyBadge } from "@/components/urgency-badge";
+import {
   getStatusByCode,
   incomingDocumentsAPI,
   Status,
@@ -219,7 +225,7 @@ interface InternalDocument {
   summary: string;
   documentType: string;
   signingDate: string;
-  priority: "NORMAL" | "HIGH" | "URGENT";
+  urgencyLevel: UrgencyLevel;
   notes?: string;
   status: "DRAFT" | "SENT" | "APPROVED";
   isInternal: boolean | null;
@@ -589,14 +595,19 @@ export default function IncomingDocumentsPage() {
     }
   };
 
-  const getPriorityBadge = (priority: string) => {
-    const variants = {
-      NORMAL: { variant: "outline" as const, text: "Bình thường" },
-      HIGH: { variant: "secondary" as const, text: "Cao" },
-      URGENT: { variant: "destructive" as const, text: "Khẩn" },
-    };
-    const info = variants[priority as keyof typeof variants] || variants.NORMAL;
-    return <Badge variant={info.variant}>{info.text}</Badge>;
+  const getUrgencyBadge = (urgencyLevel: UrgencyLevel | string) => {
+    // For migration compatibility, handle old priority values
+    let level: UrgencyLevel;
+    if (
+      typeof urgencyLevel === "string" &&
+      ["NORMAL", "HIGH", "URGENT"].includes(urgencyLevel)
+    ) {
+      level = migrateFromOldUrgency(urgencyLevel);
+    } else {
+      level = urgencyLevel as UrgencyLevel;
+    }
+
+    return <UrgencyBadge level={level} size="sm" />;
   };
 
   const getInternalStatusBadge = (status: string) => {
@@ -684,7 +695,7 @@ export default function IncomingDocumentsPage() {
     if (issuingAuthorityFilter !== "all") {
       matchesIssuingAuthority = doc.issuingAuthority === issuingAuthorityFilter;
     }
-//casdcascd
+    //casdcascd
     return (
       matchesSearch &&
       matchesProcessingStatus &&
@@ -971,8 +982,6 @@ export default function IncomingDocumentsPage() {
             />
           </div>
 
-         
-
           {/* Bộ lọc phòng ban phân cấp - chỉ hiển thị cho external tab */}
           {hasFullAccess && activeTab === "external" && (
             <Select
@@ -1169,7 +1178,7 @@ export default function IncomingDocumentsPage() {
                               {doc.senderName}
                             </TableCell>
                             <TableCell>
-                              {getPriorityBadge(doc.priority)}
+                              {getUrgencyBadge(doc.urgencyLevel)}
                             </TableCell>
                             <TableCell>
                               <Badge

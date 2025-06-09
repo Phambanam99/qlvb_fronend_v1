@@ -32,6 +32,12 @@ import { de } from "date-fns/locale";
 import { useRouter } from "next/navigation";
 import { downloadPdfWithWatermark, isPdfFile } from "@/lib/utils/pdf-watermark";
 import { DocumentStatusBadge } from "@/components/document-status-badge";
+import {
+  UrgencyLevel,
+  URGENCY_LEVELS,
+  migrateFromOldUrgency,
+} from "@/lib/types/urgency";
+import { UrgencyBadge } from "@/components/urgency-badge";
 
 export default function DocumentDetailPage({
   params,
@@ -729,19 +735,10 @@ export default function DocumentDetailPage({
                   <p className="text-sm font-medium text-muted-foreground">
                     Độ khẩn
                   </p>
-                  <Badge
-                    variant={
-                      _document.urgencyLevel === "URGENT"
-                        ? "destructive"
-                        : "secondary"
-                    }
-                  >
-                    {_document.urgencyLevel === "URGENT"
-                      ? "Khẩn cấp"
-                      : _document.urgencyLevel === "NORMAL"
-                      ? "Bình thường"
-                      : _document.urgencyLevel || "Không xác định"}
-                  </Badge>
+                  <UrgencyBadge
+                    level={_document.urgencyLevel as UrgencyLevel}
+                    size="sm"
+                  />
                 </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">

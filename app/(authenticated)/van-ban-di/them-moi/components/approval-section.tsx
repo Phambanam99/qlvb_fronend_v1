@@ -13,6 +13,7 @@ import {
 import { departmentsAPI, usersAPI } from "@/lib/api";
 import { useNotifications } from "@/lib/notifications-context";
 import { UserDTO } from "@/lib/api";
+import { URGENCY_LEVELS } from "@/lib/types/urgency";
 
 interface ApprovalSectionProps {
   user: UserDTO | null;
@@ -141,9 +142,14 @@ export function ApprovalSection({
             <SelectValue placeholder="Chọn độ ưu tiên" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="normal">Bình thường</SelectItem>
-            <SelectItem value="high">Cao</SelectItem>
-            <SelectItem value="urgent">Khẩn</SelectItem>
+            <SelectItem value={URGENCY_LEVELS.KHAN}>Khẩn</SelectItem>
+            <SelectItem value={URGENCY_LEVELS.THUONG_KHAN}>
+              Thượng khẩn
+            </SelectItem>
+            <SelectItem value={URGENCY_LEVELS.HOA_TOC}>Hỏa tốc</SelectItem>
+            <SelectItem value={URGENCY_LEVELS.HOA_TOC_HEN_GIO}>
+              Hỏa tốc hẹn giờ
+            </SelectItem>
           </SelectContent>
         </Select>
       </div>
