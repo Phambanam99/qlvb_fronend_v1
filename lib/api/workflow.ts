@@ -219,7 +219,7 @@ export const workflowAPI = {
     );
     return response.data;
   },
-  createFullDocument: async (data: any, file: File) => {
+  createFullDocument: async (data: any, file: File[]) => {
     const formData = new FormData();
     if (file) {
       formData.append("attachments", file);
@@ -229,7 +229,7 @@ export const workflowAPI = {
       new Blob([JSON.stringify(data)], { type: "application/json" })
     );
 
-    const response = await api.post("/workflow/full", formData, {
+    const response = await api.post("/workflow/-multi-attachments", formData, {
       headers: {
         "Content-Type": undefined, // Để Axios tự động xử lý với FormData
       },
