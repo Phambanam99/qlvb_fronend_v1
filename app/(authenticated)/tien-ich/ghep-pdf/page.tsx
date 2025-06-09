@@ -16,6 +16,8 @@ import {
   Eye,
 } from "lucide-react";
 import { PDFDocument } from "pdf-lib";
+import { isPDFFile, openPDFInNewWindow } from "@/lib/utils/pdf-viewer";
+import { PDFViewerModal } from "@/components/pdf-viewer-modal";
 
 interface PDFFile {
   id: string;
@@ -29,6 +31,10 @@ export default function MergePDFPage() {
   const [pdfFiles, setPdfFiles] = useState<PDFFile[]>([]);
   const [mergedFileName, setMergedFileName] = useState("merged-document.pdf");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [pdfViewerOpen, setPdfViewerOpen] = useState(false);
+  const [selectedFileForPreview, setSelectedFileForPreview] =
+    useState<string>("");
+  const [mergedPdfBlob, setMergedPdfBlob] = useState<Blob | null>(null);
   const { toast } = useToast();
 
   // Handle file upload
@@ -41,7 +47,7 @@ export default function MergePDFPage() {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
 
-        if (file.type !== "application/pdf") {
+        if (!isPDFFile(file.type, file.name)) {
           toast({
             title: "Lỗi",
             description: `File ${file.name} không phải là PDF`,
@@ -159,6 +165,9 @@ export default function MergePDFPage() {
       const pdfBytes = await mergedPdf.save();
       const blob = new Blob([pdfBytes], { type: "application/pdf" });
 
+      // Save merged PDF for preview
+      setMergedPdfBlob(blob);
+
       // Download merged PDF
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -171,7 +180,7 @@ export default function MergePDFPage() {
 
       toast({
         title: "Thành công",
-        description: `Đã ghép ${pdfFiles.length} file PDF thành công`,
+        description: `Đã ghép ${pdfFiles.length} file PDF thành công. Bạn có thể xem trước file đã ghép.`,
       });
     } catch (error) {
       console.error("Error merging PDFs:", error);
@@ -185,12 +194,32 @@ export default function MergePDFPage() {
     }
   };
 
-  // Preview PDF (simple implementation)
+  // Preview individual PDF file
   const previewPDF = (file: File) => {
-    const url = URL.createObjectURL(file);
-    window.open(url, "_blank");
-    // Clean up URL after a delay
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    setSelectedFileForPreview(file.name);
+    setPdfViewerOpen(true);
+  };
+
+  // Preview merged PDF
+  const previewMergedPDF = () => {
+    if (!mergedPdfBlob) return;
+    setSelectedFileForPreview(mergedFileName);
+    setPdfViewerOpen(true);
+  };
+
+  // Handle PDF download for viewer
+  const handlePDFDownload = async (): Promise<Blob | null> => {
+    if (selectedFileForPreview === mergedFileName && mergedPdfBlob) {
+      return mergedPdfBlob;
+    }
+
+    // Find the individual file
+    const file = pdfFiles.find((f) => f.name === selectedFileForPreview);
+    if (file) {
+      return file.file;
+    }
+
+    return null;
   };
 
   return (
@@ -342,23 +371,36 @@ export default function MergePDFPage() {
                   </p>
                 </div>
 
-                <Button
-                  onClick={mergePDFs}
-                  disabled={isProcessing || pdfFiles.length < 2}
-                  className="flex items-center gap-2"
-                >
-                  {isProcessing ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      Đang ghép...
-                    </>
-                  ) : (
-                    <>
-                      <Download className="h-4 w-4" />
-                      Ghép và tải xuống
-                    </>
+                <div className="flex gap-2">
+                  {mergedPdfBlob && (
+                    <Button
+                      variant="outline"
+                      onClick={previewMergedPDF}
+                      className="flex items-center gap-2"
+                    >
+                      <Eye className="h-4 w-4" />
+                      Xem file đã ghép
+                    </Button>
                   )}
-                </Button>
+
+                  <Button
+                    onClick={mergePDFs}
+                    disabled={isProcessing || pdfFiles.length < 2}
+                    className="flex items-center gap-2"
+                  >
+                    {isProcessing ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        Đang ghép...
+                      </>
+                    ) : (
+                      <>
+                        <Download className="h-4 w-4" />
+                        Ghép và tải xuống
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
             </div>
           </CardContent>
@@ -380,6 +422,14 @@ export default function MergePDFPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* PDF Viewer Modal */}
+      <PDFViewerModal
+        isOpen={pdfViewerOpen}
+        onClose={() => setPdfViewerOpen(false)}
+        title={selectedFileForPreview}
+        onDownload={handlePDFDownload}
+      />
     </div>
   );
 }
