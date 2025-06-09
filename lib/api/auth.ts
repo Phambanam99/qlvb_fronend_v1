@@ -8,8 +8,10 @@ export interface AuthRequest {
 
 export interface AuthResponse {
   fullName: any;
-  token: string;
+  accessToken: string;
+  refreshToken: string;
   user: User;
+  roles: string[];
 }
 
 export interface RegisterRequest {
