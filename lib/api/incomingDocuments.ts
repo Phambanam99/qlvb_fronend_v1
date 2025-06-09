@@ -141,11 +141,12 @@ export const incomingDocumentsAPI = {
   getAllDocuments: async (
     page = 0,
     size = 10
-  ): Promise<{ content: IncomingDocumentDTO[] }> => {
+  ): Promise<{ content: IncomingDocumentDTO[], page: any }> => {
     try {
       const response = await api.get("/documents/incoming", {
         params: { page, size },
       });
+      console.log("backend ", response)
 
       // Map backend response to frontend expected format
       const documents = response.data.content.map(
@@ -158,7 +159,10 @@ export const incomingDocumentsAPI = {
         })
       );
 
-      return { content: documents };
+      return { content: documents , page:{
+        totalPages: response.data.totalPages,
+        totalElements: response.data.totalElements
+      }};
     } catch (error) {
       console.error("Error fetching incoming documents:", error);
       throw error;

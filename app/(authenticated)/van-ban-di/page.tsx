@@ -506,7 +506,14 @@ export default function OutgoingDocumentsPage() {
             <Filter className="h-4 w-4" />
           </Button>
           <Button asChild className="bg-primary hover:bg-primary/90">
-            <Link href="/van-ban-di/them-moi" className="flex items-center">
+            <Link
+              href={
+                activeTab === "internal"
+                  ? "/van-ban-di/them-moi/noi-bo/tao-moi"
+                  : "/van-ban-di/them-moi/ben-ngoai/tao-moi"
+              }
+              className="flex items-center"
+            >
               <Plus className="mr-2 h-4 w-4" /> Thêm mới
             </Link>
           </Button>
@@ -603,7 +610,6 @@ export default function OutgoingDocumentsPage() {
 
         <TabsContent value="external" className="mt-6">
           <Card className="border-primary/10 shadow-sm">
-           
             <CardContent className="p-0">
               <Table>
                 <TableHeader className="bg-accent/50">
@@ -752,7 +758,13 @@ export default function OutgoingDocumentsPage() {
                 : "Chưa có văn bản bên ngoài nào trong hệ thống"}
             </p>
             <Button asChild className="mt-4">
-              <Link href="/van-ban-di/them-moi">
+              <Link
+                href={
+                  activeTab === "internal"
+                    ? "/van-ban-di/them-moi/noi-bo/tao-moi"
+                    : "/van-ban-di/them-moi/ben-ngoai/tao-moi"
+                }
+              >
                 <Plus className="mr-2 h-4 w-4" /> Thêm mới
               </Link>
             </Button>

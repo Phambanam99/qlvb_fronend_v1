@@ -501,8 +501,8 @@ export default function IncomingDocumentsPage() {
         setIncomingDocuments(response.content);
 
         // External documents don't have detailed pagination info in the current API
-        setTotalItems(response.content.length);
-        setTotalPages(1);
+        setTotalItems(response.page.totalElements);
+        setTotalPages(response.page.totalPages);
       } else {
         console.warn("Unexpected response structure:", response);
         setIncomingDocuments([]);
@@ -684,7 +684,7 @@ export default function IncomingDocumentsPage() {
     if (issuingAuthorityFilter !== "all") {
       matchesIssuingAuthority = doc.issuingAuthority === issuingAuthorityFilter;
     }
-
+//casdcascd
     return (
       matchesSearch &&
       matchesProcessingStatus &&
