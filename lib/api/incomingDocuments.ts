@@ -397,4 +397,34 @@ export const incomingDocumentsAPI = {
       throw error;
     }
   },
+
+  /**
+   * Download specific attachment by attachment ID
+   * @param documentId Document ID
+   * @param attachmentId Attachment ID
+   * @returns Blob data for download
+   */
+  downloadSpecificAttachment: async (
+    documentId: number,
+    attachmentId: number
+  ): Promise<Blob> => {
+    try {
+      const response = await api.get(
+        `/documents/incoming/${documentId}/attachments/${attachmentId}`,
+        {
+          responseType: "blob",
+          headers: {
+            Accept: "application/hal+json",
+          },
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error(
+        `Error downloading specific attachment ${attachmentId} for document ${documentId}:`,
+        error
+      );
+      throw error;
+    }
+  },
 };

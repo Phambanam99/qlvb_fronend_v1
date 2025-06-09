@@ -214,6 +214,7 @@ export default function DocumentDetailPage({
 
   // REMOVED: getStatusBadge function - replaced by DocumentStatusBadge component
 
+  // Download single attachment (legacy support)
   const handleDownloadAttachment = async () => {
     if (!_document.attachmentFilename) {
       toast({
@@ -286,7 +287,91 @@ export default function DocumentDetailPage({
     }
   };
 
-  // Handle PDF preview
+  // Download specific attachment from multiple files
+  const handleDownloadSpecificAttachment = async (
+    file: DocumentAttachmentDTO
+  ) => {
+    if (!documentId) {
+      toast({
+        title: "Lỗi",
+        description: "Không xác định được ID văn bản",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Try to download specific attachment first, fallback to generic if not available
+      let blob: Blob;
+      if (file.id) {
+        try {
+          blob = await incomingDocumentsAPI.downloadSpecificAttachment(
+            documentId,
+            file.id
+          );
+        } catch (specificError) {
+          console.log(
+            "Specific attachment download failed, falling back to generic:",
+            specificError
+          );
+          blob = await incomingDocumentsAPI.downloadIncomingAttachment(
+            documentId
+          );
+        }
+      } else {
+        blob = await incomingDocumentsAPI.downloadIncomingAttachment(
+          documentId
+        );
+      }
+      const filename = file.name;
+
+      // Check if it's a PDF file and user has a name for watermark
+      if (isPdfFile(filename) && user?.fullName) {
+        try {
+          await downloadPdfWithWatermark(blob, filename, user.fullName);
+          toast({
+            title: "Thành công",
+            description: `Đã tải xuống file PDF với watermark: ${filename}`,
+          });
+          return;
+        } catch (watermarkError) {
+          console.error(
+            "Error adding watermark, falling back to normal download:",
+            watermarkError
+          );
+          toast({
+            title: "Cảnh báo",
+            description: "Không thể thêm watermark, tải xuống file gốc",
+            variant: "destructive",
+          });
+        }
+      }
+
+      // Regular download for non-PDF files or when watermark fails
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast({
+        title: "Thành công",
+        description: `Đã tải xuống file ${filename}`,
+      });
+    } catch (error) {
+      console.error("Error downloading specific attachment:", error);
+      toast({
+        title: "Lỗi",
+        description: "Không thể tải xuống file. Vui lòng thử lại sau.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Handle PDF preview for single file (legacy)
   const handlePreviewPDF = () => {
     if (!_document.attachmentFilename) {
       toast({
@@ -304,10 +389,38 @@ export default function DocumentDetailPage({
     setPdfViewerOpen(true);
   };
 
+  // Handle PDF preview for specific file from multiple attachments
+  const handlePreviewSpecificPDF = (file: DocumentAttachmentDTO) => {
+    setSelectedFileForPreview(file.name);
+    setPdfViewerOpen(true);
+  };
+
   // Download file for PDF viewer
   const handlePDFDownload = async () => {
     if (!documentId) return null;
+
     try {
+      // Check if we're viewing a specific file from multiple attachments
+      const currentFile = attachments.find(
+        (file) => file.name === selectedFileForPreview
+      );
+
+      if (currentFile && currentFile.id) {
+        // Try to download specific attachment
+        try {
+          return await incomingDocumentsAPI.downloadSpecificAttachment(
+            documentId,
+            currentFile.id
+          );
+        } catch (specificError) {
+          console.log(
+            "Specific attachment download failed for PDF viewer, falling back to generic:",
+            specificError
+          );
+        }
+      }
+
+      // Fallback to generic download
       return await incomingDocumentsAPI.downloadIncomingAttachment(documentId);
     } catch (error) {
       toast({
@@ -906,10 +1019,7 @@ export default function DocumentDetailPage({
                                 variant="ghost"
                                 size="icon"
                                 className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
-                                onClick={() => {
-                                  setSelectedFileForPreview(file.name);
-                                  setPdfViewerOpen(true);
-                                }}
+                                onClick={() => handlePreviewSpecificPDF(file)}
                                 title="Xem trước PDF"
                               >
                                 <Eye className="h-4 w-4" />
@@ -919,7 +1029,9 @@ export default function DocumentDetailPage({
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
-                              onClick={() => handleDownloadAttachment()}
+                              onClick={() =>
+                                handleDownloadSpecificAttachment(file)
+                              }
                               title="Tải xuống"
                             >
                               <Download className="h-4 w-4" />
