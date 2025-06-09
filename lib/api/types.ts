@@ -20,11 +20,20 @@ export interface PageResponse<T> {
 
 export interface DocumentAttachmentDTO {
   id: number;
-  name: string;
-  size: number;
-  type: string;
-  uploadDate: string;
-  uploadedBy: string;
+  originalFilename: string;
+  storedFilename: string;
+  filePath: string;
+  contentType: string;
+  fileSize: number;
+  uploadedDate: string;
+  uploadedBy: {
+    id: number;
+    name: string;
+    fullName: string;
+    mail: string;
+  };
+  description?: string;
+  document?: any; // Optional, contains full document info
 }
 
 export interface DocumentCommentDTO {

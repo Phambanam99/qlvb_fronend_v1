@@ -323,7 +323,7 @@ export default function DocumentDetailPage({
           documentId
         );
       }
-      const filename = file.name;
+      const filename = file.originalFilename;
 
       // Check if it's a PDF file and user has a name for watermark
       if (isPdfFile(filename) && user?.fullName) {
@@ -391,7 +391,7 @@ export default function DocumentDetailPage({
 
   // Handle PDF preview for specific file from multiple attachments
   const handlePreviewSpecificPDF = (file: DocumentAttachmentDTO) => {
-    setSelectedFileForPreview(file.name);
+    setSelectedFileForPreview(file.originalFilename);
     setPdfViewerOpen(true);
   };
 
@@ -402,7 +402,7 @@ export default function DocumentDetailPage({
     try {
       // Check if we're viewing a specific file from multiple attachments
       const currentFile = attachments.find(
-        (file) => file.name === selectedFileForPreview
+        (file) => file.originalFilename === selectedFileForPreview
       );
 
       if (currentFile && currentFile.id) {
@@ -1006,15 +1006,17 @@ export default function DocumentDetailPage({
                         >
                           <div className="flex items-center space-x-2">
                             <FileText className="h-4 w-4 text-primary" />
-                            <span className="text-sm">{file.name}</span>
+                            <span className="text-sm">
+                              {file.originalFilename}
+                            </span>
                           </div>
                           <div className="flex items-center space-x-2">
                             <span className="text-xs text-muted-foreground">
-                              {file.size
-                                ? `${(file.size / 1024).toFixed(1)} KB`
+                              {file.fileSize
+                                ? `${(file.fileSize / 1024).toFixed(1)} KB`
                                 : ""}
                             </span>
-                            {isPDFFile("", file.name) && (
+                            {isPDFFile("", file.originalFilename) && (
                               <Button
                                 variant="ghost"
                                 size="icon"
