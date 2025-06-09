@@ -113,7 +113,9 @@ export function useDocumentForm() {
         processingStatus:
           documentPurpose === "PROCESS" ? "PENDING" : "NOTIFIED",
         closureRequest: closureRequest,
-        closureDeadline: closureDeadline,
+        closureDeadline: closureDeadline
+          ? new Date(closureDeadline)
+          : undefined,
         sendingDepartmentName: sendingDepartmentName,
         emailSource: emailSource,
       };
@@ -129,7 +131,9 @@ export function useDocumentForm() {
           documentPurpose === "PROCESS" ? "Đã đăng ký" : "Đã thông báo",
         comments: documentNotes,
         primaryDepartmentId:
-          documentPurpose === "PROCESS" ? primaryDepartment : null,
+          documentPurpose === "PROCESS"
+            ? primaryDepartment || undefined
+            : undefined,
         collaboratingDepartmentIds: secondaryDepartments,
         closureDeadline:
           documentPurpose === "PROCESS" ? deadlineDate : undefined,
@@ -141,10 +145,36 @@ export function useDocumentForm() {
       };
 
       if (files.length > 0) {
-        await workflowAPI.createFullDocument(data, files[0]);
+        try {
+          // Try to send all files using the multi-attachment endpoint
+          await workflowAPI.createFullDocument(data, files);
+        } catch (error: any) {
+          // If multi-attachment fails (403 or other errors), fallback to single file
+          if (
+            error.response?.status === 403 ||
+            error.message?.includes("403")
+          ) {
+            console.warn(
+              "Multi-attachment endpoint not available, falling back to single file"
+            );
+            await workflowAPI.createFullDocument(data, [files[0]]);
+
+            if (files.length > 1) {
+              toast({
+                title: "Cảnh báo",
+                description: `Chỉ có thể upload 1 file. ${
+                  files.length - 1
+                } file khác đã bị bỏ qua.`,
+                variant: "destructive",
+              });
+            }
+          } else {
+            throw error; // Re-throw other errors
+          }
+        }
       } else {
-        // If no files, create document without attachment
-        await workflowAPI.createDocumentWithoutAttachment(data);
+        // If no files, create document without attachment using existing createFullDocument
+        await workflowAPI.createFullDocument(data, []);
       }
 
       toast({
