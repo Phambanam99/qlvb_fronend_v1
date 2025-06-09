@@ -26,6 +26,7 @@ import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { useNotifications } from "@/lib/notifications-context";
 import { useToast } from "@/components/ui/use-toast";
+import { UrgencyLevel, URGENCY_LEVELS } from "@/lib/types/urgency";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -138,7 +139,7 @@ export default function ReplyInternalDocumentPage() {
     documentType: "",
     title: "",
     content: "",
-    priority: "normal",
+    urgencyLevel: URGENCY_LEVELS.KHAN,
     note: "",
   });
 
@@ -303,7 +304,7 @@ export default function ReplyInternalDocumentPage() {
         summary: formData.content,
         documentType: formData.documentType,
         signingDate: formData.sentDate,
-        priority: formData.priority,
+        urgencyLevel: formData.urgencyLevel,
         notes: formData.note,
         recipients: recipients,
         status: "PENDING_APPROVAL", // Set status for submission (not draft)
@@ -387,7 +388,7 @@ export default function ReplyInternalDocumentPage() {
         summary: formData.content,
         documentType: formData.documentType,
         signingDate: formData.sentDate,
-        priority: formData.priority,
+        urgencyLevel: formData.urgencyLevel,
         notes: formData.note,
         recipients: recipients,
         status: "DRAFT", // Set status as draft
@@ -542,18 +543,25 @@ export default function ReplyInternalDocumentPage() {
               <div className="space-y-2">
                 <Label htmlFor="priority">Độ ưu tiên</Label>
                 <Select
-                  value={formData.priority}
+                  value={formData.urgencyLevel}
                   onValueChange={(value) =>
-                    handleSelectChange("priority", value)
+                    handleSelectChange("urgencyLevel", value)
                   }
                 >
                   <SelectTrigger id="priority">
                     <SelectValue placeholder="Chọn độ ưu tiên" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="normal">Bình thường</SelectItem>
-                    <SelectItem value="high">Cao</SelectItem>
-                    <SelectItem value="urgent">Khẩn</SelectItem>
+                    <SelectItem value={URGENCY_LEVELS.KHAN}>Khẩn</SelectItem>
+                    <SelectItem value={URGENCY_LEVELS.THUONG_KHAN}>
+                      Thượng khẩn
+                    </SelectItem>
+                    <SelectItem value={URGENCY_LEVELS.HOA_TOC}>
+                      Hỏa tốc
+                    </SelectItem>
+                    <SelectItem value={URGENCY_LEVELS.HOA_TOC_HEN_GIO}>
+                      Hỏa tốc hẹn giờ
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>

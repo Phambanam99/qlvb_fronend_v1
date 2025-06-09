@@ -4,6 +4,12 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
+  UrgencyLevel,
+  URGENCY_LEVELS,
+  migrateFromOldUrgency,
+} from "@/lib/types/urgency";
+import { UrgencyBadge } from "@/components/urgency-badge";
+import {
   Card,
   CardContent,
   CardDescription,
@@ -81,7 +87,7 @@ export default function ReplyInternalDocumentPage() {
     documentType: "",
     title: "",
     summary: "",
-    priority: "normal" as "normal" | "high" | "urgent",
+    urgencyLevel: URGENCY_LEVELS.KHAN as UrgencyLevel,
     notes: "",
   });
 
@@ -110,10 +116,7 @@ export default function ReplyInternalDocumentPage() {
           ...prev,
           title: `Trả lời: ${originalDoc.title}`,
           documentType: originalDoc.documentType,
-          priority: originalDoc.priority.toLowerCase() as
-            | "normal"
-            | "high"
-            | "urgent",
+          priority: originalDoc.priority.toLowerCase() as UrgencyLevel,
         }));
 
         // Fetch document types
@@ -566,9 +569,16 @@ export default function ReplyInternalDocumentPage() {
                       <SelectValue placeholder="Chọn độ ưu tiên" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="normal">Bình thường</SelectItem>
-                      <SelectItem value="high">Cao</SelectItem>
-                      <SelectItem value="urgent">Khẩn</SelectItem>
+                      <SelectItem value={URGENCY_LEVELS.KHAN}>Khẩn</SelectItem>
+                      <SelectItem value={URGENCY_LEVELS.THUONG_KHAN}>
+                        Thượng khẩn
+                      </SelectItem>
+                      <SelectItem value={URGENCY_LEVELS.HOA_TOC}>
+                        Hỏa tốc
+                      </SelectItem>
+                      <SelectItem value={URGENCY_LEVELS.HOA_TOC_HEN_GIO}>
+                        Hỏa tốc hẹn giờ
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

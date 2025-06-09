@@ -4,6 +4,12 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
+  UrgencyLevel,
+  URGENCY_LEVELS,
+  migrateFromOldUrgency,
+} from "@/lib/types/urgency";
+import { UrgencyBadge } from "@/components/urgency-badge";
+import {
   Card,
   CardContent,
   CardDescription,
@@ -56,7 +62,7 @@ interface InternalDocumentDetail {
   summary: string;
   documentType: string;
   signingDate: string;
-  priority: "NORMAL" | "HIGH" | "URGENT";
+  urgencyLevel: UrgencyLevel;
   notes?: string;
   status: "DRAFT" | "SENT" | "APPROVED";
   isInternal: boolean | null;

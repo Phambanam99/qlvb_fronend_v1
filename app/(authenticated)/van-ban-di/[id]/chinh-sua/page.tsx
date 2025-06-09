@@ -44,6 +44,7 @@ import {
 } from "@/lib/api/";
 import { departmentsAPI } from "@/lib/api/departments";
 import { useToast } from "@/components/ui/use-toast";
+import { UrgencyLevel, URGENCY_LEVELS } from "@/lib/types/urgency";
 import { useAuth } from "@/lib/auth-context";
 import {
   AlertDialog,
@@ -84,7 +85,7 @@ function EditOutgoingDocumentPage() {
     signerPosition: "",
     sentDate: new Date(),
     documentType: "official",
-    priority: "normal",
+    urgencyLevel: URGENCY_LEVELS.KHAN,
     notes: "",
   });
   const handleDownloadAttachment = async () => {
@@ -237,7 +238,7 @@ function EditOutgoingDocumentPage() {
           signerPosition: doc.signerPosition || "",
           sentDate: doc.signingDate ? new Date(doc.signingDate) : new Date(),
           documentType: doc.documentType || "official",
-          priority: doc.priority || "normal",
+          urgencyLevel: doc.urgencyLevel || URGENCY_LEVELS.KHAN,
           notes: doc.notes || "",
         });
 
@@ -760,18 +761,25 @@ function EditOutgoingDocumentPage() {
                 <Label htmlFor="priority">Độ ưu tiên</Label>
                 <Select
                   name="priority"
-                  value={formData.priority}
+                  value={formData.urgencyLevel}
                   onValueChange={(value) =>
-                    handleSelectChange("priority", value)
+                    handleSelectChange("urgencyLevel", value)
                   }
                 >
                   <SelectTrigger id="priority">
                     <SelectValue placeholder="Chọn độ ưu tiên" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="normal">Bình thường</SelectItem>
-                    <SelectItem value="high">Cao</SelectItem>
-                    <SelectItem value="urgent">Khẩn</SelectItem>
+                    <SelectItem value={URGENCY_LEVELS.KHAN}>Khẩn</SelectItem>
+                    <SelectItem value={URGENCY_LEVELS.THUONG_KHAN}>
+                      Thượng khẩn
+                    </SelectItem>
+                    <SelectItem value={URGENCY_LEVELS.HOA_TOC}>
+                      Hỏa tốc
+                    </SelectItem>
+                    <SelectItem value={URGENCY_LEVELS.HOA_TOC_HEN_GIO}>
+                      Hỏa tốc hẹn giờ
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
