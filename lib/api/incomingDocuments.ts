@@ -1,5 +1,6 @@
 import api from "./config";
 import type { DocumentAttachmentDTO } from "./types";
+import { UserDTO } from "./users";
 
 // src/constants/document-status.ts
 
@@ -129,6 +130,7 @@ export interface IncomingDocumentDTO {
   attachmentFilename?: string; // Legacy single file
   storageLocation?: string;
   primaryProcessDepartmentId?: number;
+  userPrimaryProcessor?: UserDTO,
   attachments?: DocumentAttachmentDTO[]; // New multiple files
 }
 

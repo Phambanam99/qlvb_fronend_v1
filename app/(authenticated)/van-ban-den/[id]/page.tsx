@@ -1107,9 +1107,9 @@ export default function DocumentDetailPage({
             </TabsList>
             <TabsContent value="responses" className="space-y-4 pt-4">
               <DocumentResponseList documentId={_document.id} />
-              {hasRole(["ROLE_TRO_LY", "ROLE_NHAN_VIEN"]) && (
+              {/* {hasRole(["ROLE_TRO_LY", "ROLE_NHAN_VIEN"]) && (
                 <DocumentResponseForm documentId={_document.id} />
-              )}
+              )} */}
             </TabsContent>
             <TabsContent value="history" className="pt-4">
               <DocumentProcessingHistory documentId={_document.id} />
