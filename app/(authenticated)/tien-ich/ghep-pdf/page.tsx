@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { PDFDocument } from "pdf-lib";
 import { isPDFFile, openPDFInNewWindow } from "@/lib/utils/pdf-viewer";
-import { PDFViewerModal } from "@/components/pdf-viewer-modal";
+import PDFViewerModal from "@/components/ui/pdf-viewer-modal";
 
 interface PDFFile {
   id: string;
