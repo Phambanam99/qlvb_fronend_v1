@@ -367,15 +367,6 @@ export default function CreateInternalOutgoingDocumentPage() {
         <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
           {/* Basic Document Information */}
           <Card>
-            <CardHeader className="bg-primary/5 border-b">
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                Thông tin cơ bản
-              </CardTitle>
-              <CardDescription>
-                Nhập thông tin cơ bản của văn bản nội bộ
-              </CardDescription>
-            </CardHeader>
             <CardContent className="pt-6">
               <div className="grid gap-6 md:grid-cols-3">
                 <div className="space-y-2">

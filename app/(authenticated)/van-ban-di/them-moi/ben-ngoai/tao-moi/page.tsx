@@ -10,7 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Loader2, ArrowLeft, Save, Send } from "lucide-react";
+import { Loader2, ArrowLeft, Save, Send, FileText, User, Users } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { useNotifications } from "@/lib/notifications-context";
@@ -246,30 +246,24 @@ export default function CreateExternalOutgoingDocumentPage() {
   };
 
   return (
-    <div className="container py-6 max-w-5xl">
-      <div className="flex items-center space-x-2 mb-6">
-        <Button variant="outline" size="icon" asChild>
-          <Link href="/van-ban-di/them-moi">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-        </Button>
-        <h1 className="text-2xl font-bold tracking-tight text-primary">
-          Tạo văn bản đi mới - Gửi bên ngoài
-        </h1>
-      </div>
+    <div className="min-h-screen bg-gray-50/30">
+      <div className="container mx-auto py-6 max-w-5xl px-4">
+        <div className="flex items-center space-x-2 mb-6">
+          <Button variant="outline" size="icon" asChild>
+            <Link href="/van-ban-di/them-moi">
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          </Button>
+          <h1 className="text-2xl font-bold tracking-tight text-primary">
+            Tạo văn bản đi mới - Gửi bên ngoài
+          </h1>
+        </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="grid gap-6 md:grid-cols-2">
-          {/* Document Information Card */}
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Basic Document Information */}
           <Card>
-            <CardHeader className="bg-primary/5 border-b">
-              <CardTitle>Thông tin văn bản</CardTitle>
-              <CardDescription>
-                Nhập thông tin chi tiết của văn bản đi
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6 pt-6">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <CardContent className="pt-6">
+              <div className="grid gap-6 md:grid-cols-3">
                 <div className="space-y-2">
                   <Label htmlFor="documentNumber">
                     Số văn bản <span className="text-red-500">*</span>
@@ -283,6 +277,7 @@ export default function CreateExternalOutgoingDocumentPage() {
                     required
                   />
                 </div>
+                
                 <div className="space-y-2">
                   <Label htmlFor="sentDate">Ngày ban hành</Label>
                   <DatePicker
@@ -290,60 +285,50 @@ export default function CreateExternalOutgoingDocumentPage() {
                     setDate={handleDateChange}
                   />
                 </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="documentType">Loại văn bản</Label>
+                  <Input
+                    id="documentType"
+                    name="documentType"
+                    value={formData.documentType}
+                    onChange={handleInputChange}
+                    placeholder="Nhập loại văn bản"
+                  />
+                </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="title">
-                  Tiêu đề <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="title"
-                  name="title"
-                  value={formData.title}
-                  onChange={handleInputChange}
-                  placeholder="Nhập tiêu đề văn bản"
-                  required
-                />
+              <div className="grid gap-6 md:grid-cols-2 mt-6">
+                <div className="space-y-2">
+                  <Label htmlFor="title">
+                    Tiêu đề <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="title"
+                    name="title"
+                    value={formData.title}
+                    onChange={handleInputChange}
+                    placeholder="Nhập tiêu đề văn bản"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="recipient">
+                    Nơi nhận <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="recipient"
+                    name="recipient"
+                    value={formData.recipient}
+                    onChange={handleInputChange}
+                    placeholder="Nhập nơi nhận văn bản"
+                    required
+                  />
+                </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="content">Nội dung</Label>
-                <Textarea
-                  id="content"
-                  name="content"
-                  value={formData.content}
-                  onChange={handleInputChange}
-                  placeholder="Nhập nội dung văn bản"
-                  rows={5}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="documentType">Loại văn bản</Label>
-                <Input
-                  id="documentType"
-                  name="documentType"
-                  value={formData.documentType}
-                  onChange={handleInputChange}
-                  placeholder="Nhập loại văn bản"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="recipient">
-                  Nơi nhận <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="recipient"
-                  name="recipient"
-                  value={formData.recipient}
-                  onChange={handleInputChange}
-                  placeholder="Nhập nơi nhận văn bản"
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
+              <div className="space-y-2 mt-6">
                 <Label htmlFor="file">Tệp đính kèm</Label>
                 <Input
                   id="file"
@@ -355,73 +340,154 @@ export default function CreateExternalOutgoingDocumentPage() {
             </CardContent>
           </Card>
 
-          {/* Approval Information Card */}
+          {/* Content and Approval */}
+          <div className="grid gap-6 lg:grid-cols-3">
+            {/* Content Card - Takes 2 columns */}
+            <div className="lg:col-span-2">
+              <Card>
+                <CardHeader className="bg-primary/5 border-b">
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    Nội dung văn bản
+                  </CardTitle>
+                  <CardDescription>
+                    Soạn nội dung chi tiết của văn bản
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="pt-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="content">Nội dung văn bản</Label>
+                    <Textarea
+                      id="content"
+                      name="content"
+                      value={formData.content}
+                      onChange={handleInputChange}
+                      placeholder="Nhập nội dung văn bản"
+                      rows={15}
+                      className="min-h-[400px]"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Approval Card - Takes 1 column */}
+            <Card className="h-fit">
+              <CardHeader className="bg-primary/5 border-b">
+                <CardTitle className="flex items-center gap-2">
+                  <User className="h-5 w-5" />
+                  Thông tin phê duyệt
+                </CardTitle>
+                <CardDescription>
+                  Người soạn thảo và phê duyệt
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Người soạn thảo</Label>
+                    <div className="rounded-md border p-3 bg-accent/30">
+                      <p className="font-medium text-sm">
+                        {user?.fullName || "Người dùng hiện tại"}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {user?.position || "Chức vụ"} -{" "}
+                        {user?.departmentName || "Phòng ban"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="approver">
+                      Người phê duyệt <span className="text-red-500">*</span>
+                    </Label>
+                    <Select
+                      value={formData.approver}
+                      onValueChange={(value) =>
+                        handleSelectChange("approver", value)
+                      }
+                    >
+                      <SelectTrigger id="approver">
+                        <SelectValue placeholder="Chọn người phê duyệt" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {isLoadingApprovers ? (
+                          <SelectItem value="loading" disabled>
+                            Đang tải danh sách...
+                          </SelectItem>
+                        ) : approvers.length === 0 ? (
+                          <SelectItem value="empty" disabled>
+                            Không tìm thấy người phê duyệt
+                          </SelectItem>
+                        ) : (
+                          approvers.map((approver) => (
+                            <SelectItem
+                              key={approver.id}
+                              value={String(approver.id)}
+                            >
+                              {approver.fullName} - {approver.roleDisplayNames}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <UrgencySelect
+                    value={formData.urgencyLevel}
+                    onValueChange={(value) =>
+                      handleSelectChange("urgencyLevel", value)
+                    }
+                    label="Độ khẩn"
+                    required
+                  />
+
+                  <div className="space-y-2 pt-4">
+                    <Button
+                      type="submit"
+                      className="w-full"
+                      disabled={isSubmitting}
+                    >
+                      {isSubmitting ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Send className="mr-2 h-4 w-4" />
+                      )}
+                      Gửi phê duyệt
+                    </Button>
+
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full"
+                      onClick={handleSaveDraft}
+                      disabled={isSubmitting}
+                    >
+                      {isSubmitting ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Save className="mr-2 h-4 w-4" />
+                      )}
+                      Lưu nháp
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Notes Section */}
           <Card>
             <CardHeader className="bg-primary/5 border-b">
-              <CardTitle>Thông tin phê duyệt</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Ghi chú
+              </CardTitle>
               <CardDescription>
-                Thông tin về người soạn thảo và phê duyệt
+                Thêm ghi chú cho người phê duyệt (nếu có)
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6 pt-6">
-              <div className="space-y-2">
-                <Label>Người soạn thảo</Label>
-                <div className="rounded-md border p-3 bg-accent/30">
-                  <p className="font-medium">
-                    {user?.fullName || "Người dùng hiện tại"}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {user?.position || "Chức vụ"} -{" "}
-                    {user?.departmentName || "Phòng ban"}
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="approver">
-                  Người phê duyệt <span className="text-red-500">*</span>
-                </Label>
-                <Select
-                  value={formData.approver}
-                  onValueChange={(value) =>
-                    handleSelectChange("approver", value)
-                  }
-                >
-                  <SelectTrigger id="approver">
-                    <SelectValue placeholder="Chọn người phê duyệt" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {isLoadingApprovers ? (
-                      <SelectItem value="loading" disabled>
-                        Đang tải danh sách...
-                      </SelectItem>
-                    ) : approvers.length === 0 ? (
-                      <SelectItem value="empty" disabled>
-                        Không tìm thấy người phê duyệt
-                      </SelectItem>
-                    ) : (
-                      approvers.map((approver) => (
-                        <SelectItem
-                          key={approver.id}
-                          value={String(approver.id)}
-                        >
-                          {approver.fullName} - {approver.roleDisplayNames}
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <UrgencySelect
-                value={formData.urgencyLevel}
-                onValueChange={(value) =>
-                  handleSelectChange("urgencyLevel", value)
-                }
-                label="Độ khẩn"
-                required
-              />
-
+            <CardContent className="pt-6">
               <div className="space-y-2">
                 <Label htmlFor="note">Ghi chú</Label>
                 <Textarea
@@ -431,50 +497,22 @@ export default function CreateExternalOutgoingDocumentPage() {
                   onChange={handleInputChange}
                   placeholder="Nhập ghi chú cho người phê duyệt (nếu có)"
                   rows={4}
+                  className="min-h-[120px]"
                 />
-              </div>
-
-              <div className="rounded-md bg-amber-50 border border-amber-200 p-3">
-                <p className="text-sm text-amber-800">
-                  <span className="font-medium">Lưu ý:</span> Sau khi gửi, văn
-                  bản sẽ được chuyển đến người phê duyệt để xem xét trước khi
-                  ban hành chính thức.
-                </p>
-              </div>
-
-              <div className="flex flex-col space-y-2 pt-4">
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Send className="mr-2 h-4 w-4" />
-                  )}
-                  Gửi phê duyệt
-                </Button>
-
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full"
-                  onClick={handleSaveDraft}
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Save className="mr-2 h-4 w-4" />
-                  )}
-                  Lưu nháp
-                </Button>
               </div>
             </CardContent>
           </Card>
-        </div>
-      </form>
+
+          {/* Info Note */}
+          <div className="rounded-md bg-amber-50 border border-amber-200 p-4">
+            <p className="text-sm text-amber-800">
+              <span className="font-medium">Lưu ý:</span> Sau khi gửi, văn
+              bản sẽ được chuyển đến người phê duyệt để xem xét trước khi
+              ban hành chính thức.
+            </p>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
