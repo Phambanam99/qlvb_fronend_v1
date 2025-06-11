@@ -54,72 +54,13 @@ import {
 import { useDocumentReadStatus } from "@/hooks/use-document-read-status";
 import { useAuth } from "@/lib/auth-context";
 import { downloadPdfWithWatermark, isPdfFile } from "@/lib/utils/pdf-watermark";
+import { DocumentReadersDialog } from "@/components/document-readers-dialog";
+import { DocumentReadStats } from "@/components/document-read-stats";
+import { documentReadStatusAPI } from "@/lib/api/documentReadStatus";
+import { InternalDocument, InternalDocumentDetail, DocumentHistory,
+  DocumentStats,
+} from "@/lib/api/internalDocumentApi";
 
-interface InternalDocumentDetail {
-  id: number;
-  documentNumber: string;
-  title: string;
-  summary: string;
-  documentType: string;
-  signingDate: string;
-  urgencyLevel: UrgencyLevel;
-  notes?: string;
-  status: "DRAFT" | "SENT" | "APPROVED";
-  isInternal: boolean | null;
-  senderId: number;
-  senderName: string;
-  senderDepartment: string;
-  recipients: {
-    id: number;
-    departmentId: number;
-    departmentName: string;
-    userId?: number;
-    userName?: string;
-    isRead: boolean;
-    readAt?: string;
-    receivedAt: string;
-    notes?: string;
-  }[];
-  attachments: {
-    id: number;
-    filename: string;
-    contentType: string;
-    fileSize: number;
-    uploadedAt: string;
-    uploadedByName?: string;
-    description?: string;
-  }[];
-  replyToId?: number;
-  replyToTitle?: string;
-  replyCount: number;
-  createdAt: string;
-  updatedAt: string;
-  isRead: boolean;
-  readAt?: string;
-}
-
-interface DocumentHistory {
-  id: number;
-  action: string;
-  details: string;
-  performedBy: {
-    id: number;
-    name: string;
-    fullName: string;
-  };
-  performedAt: string;
-  ipAddress?: string;
-  userAgent?: string;
-}
-
-interface DocumentStats {
-  replyCount: number;
-  historyCount: number;
-  isRead: boolean;
-  readAt?: string;
-  createdAt: string;
-  lastActivity: string;
-}
 
 export default function InternalDocumentReceivedDetailPage() {
   const params = useParams();
@@ -249,9 +190,35 @@ export default function InternalDocumentReceivedDetailPage() {
 
   const formatDate = (dateString: string) => {
     try {
-      return new Date(dateString).toLocaleString("vi-VN");
+      if (!dateString) return "-";
+
+      const date = new Date(dateString);
+
+      // Check if date is valid and not the epoch (1970-01-01)
+      if (isNaN(date.getTime()) || date.getFullYear() === 1970) {
+        return "Chưa xác định";
+      }
+
+      return date.toLocaleString("vi-VN");
     } catch {
-      return dateString || "-";
+      return "Chưa xác định";
+    }
+  };
+
+  const formatDateOnly = (dateString: string) => {
+    try {
+      if (!dateString) return "-";
+
+      const date = new Date(dateString);
+
+      // Check if date is valid and not the epoch (1970-01-01)
+      if (isNaN(date.getTime()) || date.getFullYear() === 1970) {
+        return "Chưa xác định";
+      }
+
+      return date.toLocaleDateString("vi-VN");
+    } catch {
+      return "Chưa xác định";
     }
   };
 
@@ -463,19 +430,56 @@ export default function InternalDocumentReceivedDetailPage() {
   return (
     <div className="container mx-auto py-6 space-y-8">
       {/* Header */}
-      <div className="flex items-center space-x-4">
-        <Button variant="outline" size="icon" asChild>
-          <Link href="/van-ban-den">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-        </Button>
-        <div className="space-y-1">
-          <h1 className="text-2xl font-bold tracking-tight text-primary">
-            Chi tiết văn bản nội bộ nhận được
-          </h1>
-          <p className="text-muted-foreground">
-            Thông tin chi tiết của văn bản {documentDetail.documentNumber}
-          </p>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-4">
+          <Button variant="outline" size="icon" asChild>
+            <Link href="/van-ban-den">
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          </Button>
+          <div className="space-y-1">
+            <h1 className="text-2xl font-bold tracking-tight text-primary">
+              Chi tiết văn bản nội bộ nhận được
+            </h1>
+            <p className="text-muted-foreground">
+              Thông tin chi tiết của văn bản {documentDetail.documentNumber}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center space-x-2">
+          {/* Document Read Status */}
+          <DocumentReadStats
+            documentId={Number(documentId)}
+            documentType="INCOMING_INTERNAL"
+            onGetStatistics={(docId) =>
+              documentReadStatusAPI.getDocumentReadStatistics(
+                docId,
+                "INCOMING_INTERNAL"
+              )
+            }
+            variant="compact"
+            className="mr-4"
+          />
+
+          {/* Document Readers Dialog */}
+          <DocumentReadersDialog
+            documentId={Number(documentId)}
+            documentType="INCOMING_INTERNAL"
+            documentTitle={documentDetail.title}
+            onGetReaders={(docId) =>
+              documentReadStatusAPI.getDocumentReaders(
+                docId,
+                "INCOMING_INTERNAL"
+              )
+            }
+            onGetStatistics={(docId) =>
+              documentReadStatusAPI.getDocumentReadStatistics(
+                docId,
+                "INCOMING_INTERNAL"
+              )
+            }
+          />
         </div>
       </div>
 
@@ -509,7 +513,7 @@ export default function InternalDocumentReceivedDetailPage() {
                     Ngày ký
                   </label>
                   <p className="font-medium">
-                    {formatDate(documentDetail.signingDate)}
+                    {formatDateOnly(documentDetail.signingDate)}
                   </p>
                 </div>
                 <div>
@@ -517,7 +521,14 @@ export default function InternalDocumentReceivedDetailPage() {
                     Độ ưu tiên
                   </label>
                   <div className="mt-1">
-                    {getPriorityBadge(documentDetail.priority)}
+                    {documentDetail.priority ? (
+                      <UrgencyBadge
+                        level={documentDetail.priority}
+                        size="sm"
+                      />
+                    ) : (
+                      <Badge variant="outline">Chưa xác định</Badge>
+                    )}
                   </div>
                 </div>
               </div>
@@ -701,7 +712,7 @@ export default function InternalDocumentReceivedDetailPage() {
                             <h4 className="font-medium text-sm">
                               {reply.documentNumber}
                             </h4>
-                            {getPriorityBadge(reply.priority)}
+                            {getPriorityBadge(reply.urgencyLevel)}
                             {getStatusBadge(reply.status)}
                           </div>
                           <h5 className="font-semibold text-base mb-2">

@@ -53,6 +53,12 @@ import { useHierarchicalDepartments } from "@/hooks/use-hierarchical-departments
 import { getSentDocuments } from "@/lib/api/internalDocumentApi";
 import { useDocumentReadStatus } from "@/hooks/use-document-read-status";
 import { usePageVisibility } from "@/hooks/use-page-visibility";
+import { useUniversalReadStatus } from "@/hooks/use-universal-read-status";
+import {
+  outgoingInternalReadStatus,
+  outgoingExternalReadStatus,
+} from "@/lib/api/documentReadStatus";
+import { InternalDocument } from "@/lib/api/internalDocumentApi";
 
 // Interface for external documents (original format)
 interface OutgoingDocument {
@@ -64,50 +70,6 @@ interface OutgoingDocument {
   status: string;
   departmentId?: number;
   departmentName?: string;
-}
-
-// Interface for internal documents (new format from API)
-interface InternalDocument {
-  id: number;
-  documentNumber: string;
-  title: string;
-  summary: string;
-  documentType: string;
-  signingDate: string;
-  urgencyLevel: UrgencyLevel;
-  notes?: string;
-  status: "DRAFT" | "SENT" | "APPROVED";
-  isInternal: boolean | null;
-  senderId: number;
-  senderName: string;
-  senderDepartment: string;
-  recipients: {
-    id: number;
-    departmentId: number;
-    departmentName: string;
-    userId?: number;
-    userName?: string;
-    isRead: boolean;
-    readAt?: string;
-    receivedAt: string;
-    notes?: string;
-  }[];
-  attachments: {
-    id: number;
-    filename: string;
-    contentType: string;
-    fileSize: number;
-    uploadedAt: string;
-    uploadedByName?: string;
-    description?: string;
-  }[];
-  replyToId?: number;
-  replyToTitle?: string;
-  replyCount: number;
-  createdAt: string;
-  updatedAt: string;
-  isRead: boolean;
-  readAt?: string;
 }
 
 export default function OutgoingDocumentsPage() {
@@ -139,6 +101,7 @@ export default function OutgoingDocumentsPage() {
   // Sử dụng hooks trạng thái đọc và page visibility
   const { subscribe, getReadStatus, updateMultipleReadStatus } =
     useDocumentReadStatus();
+  const universalReadStatus = useUniversalReadStatus();
   const isPageVisible = usePageVisibility();
 
   const hasFullAccess = hasRole([
@@ -150,10 +113,11 @@ export default function OutgoingDocumentsPage() {
     "ROLE_PHO_CHINH_UY",
   ]);
 
-  // Subscribe to read status changes
+  // Subscribe to read status changes - only once
   useEffect(() => {
-    return subscribe();
-  }, [subscribe]);
+    const unsubscribe = subscribe();
+    return unsubscribe;
+  }, []); // Empty dependency array to avoid re-subscription
 
   // Refresh data when page becomes visible again
   useEffect(() => {
@@ -319,6 +283,34 @@ export default function OutgoingDocumentsPage() {
     }
   }, [currentPage, pageSize, user?.id]);
 
+  // Load read status for external documents when they change
+  useEffect(() => {
+    if (outgoingDocuments.length > 0) {
+      const documentIds = outgoingDocuments
+        .map((doc) => Number(doc.id))
+        .filter((id) => !isNaN(id));
+      if (documentIds.length > 0) {
+        universalReadStatus.loadBatchReadStatus(
+          documentIds,
+          "OUTGOING_EXTERNAL"
+        );
+      }
+    }
+  }, [outgoingDocuments.length]); // Only depend on length, not the array itself
+
+  // Load read status for internal documents when they change
+  useEffect(() => {
+    if (internalDocuments.length > 0) {
+      const documentIds = internalDocuments.map((doc) => doc.id);
+      if (documentIds.length > 0) {
+        universalReadStatus.loadBatchReadStatus(
+          documentIds,
+          "OUTGOING_INTERNAL"
+        );
+      }
+    }
+  }, [internalDocuments.length]); // Only depend on length, not the array itself
+
   // Helper functions for filtering and formatting
   const getChildDepartmentIds = (departmentId: string) => {
     if (departmentId === "all") return [];
@@ -368,9 +360,18 @@ export default function OutgoingDocumentsPage() {
 
   const formatDate = (dateString: string) => {
     try {
-      return new Date(dateString).toLocaleDateString("vi-VN");
+      if (!dateString) return "Chưa xác định";
+
+      const date = new Date(dateString);
+
+      // Check if date is valid and not the epoch (1970-01-01)
+      if (isNaN(date.getTime()) || date.getFullYear() === 1970) {
+        return "Chưa xác định";
+      }
+
+      return date.toLocaleDateString("vi-VN");
     } catch {
-      return dateString || "-";
+      return "Chưa xác định";
     }
   };
 
@@ -430,6 +431,77 @@ export default function OutgoingDocumentsPage() {
 
     return matchesSearch && matchesStatus;
   });
+
+  // Handle click on internal document to mark as read and navigate
+  const handleInternalDocumentClick = async (doc: InternalDocument) => {
+    try {
+      // For outgoing internal documents, use universal read status
+      const currentReadStatus = universalReadStatus.getReadStatus(
+        doc.id,
+        "OUTGOING_INTERNAL"
+      );
+
+      // Mark as read if not already read
+      if (!currentReadStatus) {
+        try {
+          await universalReadStatus.markAsRead(doc.id, "OUTGOING_INTERNAL");
+          console.log(
+            "Internal outgoing document marked as read successfully:",
+            doc.id
+          );
+        } catch (markError) {
+          console.error(
+            "Error marking internal outgoing document as read:",
+            markError
+          );
+        }
+      }
+
+      // Navigate to document detail page
+      window.location.href = `/van-ban-di/noi-bo/${doc.id}`;
+    } catch (error) {
+      console.error("Error handling internal document click:", error);
+      // Still navigate even if marking as read fails
+      window.location.href = `/van-ban-di/noi-bo/${doc.id}`;
+    }
+  };
+
+  // Handle click on external document to mark as read and navigate
+  const handleExternalDocumentClick = async (doc: OutgoingDocument) => {
+    try {
+      // Check current read status using universal read status hook
+      const currentReadStatus = universalReadStatus.getReadStatus(
+        Number(doc.id),
+        "OUTGOING_EXTERNAL"
+      );
+
+      // Mark as read if not already read
+      if (!currentReadStatus) {
+        try {
+          await universalReadStatus.markAsRead(
+            Number(doc.id),
+            "OUTGOING_EXTERNAL"
+          );
+          console.log(
+            "External outgoing document marked as read successfully:",
+            doc.id
+          );
+        } catch (markError) {
+          console.error(
+            "Error marking external outgoing document as read:",
+            markError
+          );
+        }
+      }
+
+      // Navigate to document detail page
+      window.location.href = `/van-ban-di/${doc.id}`;
+    } catch (error) {
+      console.error("Error handling external document click:", error);
+      // Still navigate even if marking as read fails
+      window.location.href = `/van-ban-di/${doc.id}`;
+    }
+  };
 
   const isLoading = activeTab === "internal" ? loadingInternal : loading;
   const currentDocuments =
@@ -538,12 +610,6 @@ export default function OutgoingDocumentsPage() {
 
         <TabsContent value="internal" className="mt-6">
           <Card className="border-primary/10 shadow-sm">
-            <CardHeader className="bg-primary/5 border-b">
-              <CardTitle>Danh sách văn bản đi nội bộ</CardTitle>
-              <CardDescription>
-                Các văn bản nội bộ đã được gửi trong tổ chức
-              </CardDescription>
-            </CardHeader>
             <CardContent className="p-0">
               <Table>
                 <TableHeader className="bg-accent/50">
@@ -557,49 +623,94 @@ export default function OutgoingDocumentsPage() {
                     <TableHead className="hidden md:table-cell">
                       Người nhận
                     </TableHead>
-                    <TableHead>Độ ưu tiên</TableHead>
+                    <TableHead>Độ khẩn</TableHead>
                     <TableHead>Trạng thái</TableHead>
+                    <TableHead>Trạng thái đọc</TableHead>
                     <TableHead className="text-right">Thao tác</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredInternalDocuments.length > 0 ? (
-                    filteredInternalDocuments.map((doc) => (
-                      <TableRow key={doc.id} className="hover:bg-accent/30">
-                        <TableCell className="font-medium">
-                          {doc.documentNumber}
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell">
-                          {formatDate(doc.signingDate)}
-                        </TableCell>
-                        <TableCell className="max-w-[300px] truncate">
-                          {doc.title}
-                        </TableCell>
-                        <TableCell className="hidden lg:table-cell">
-                          {doc.documentType}
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell">
-                          {getRecipientSummary(doc.recipients)}
-                        </TableCell>
-                        <TableCell>{getUrgencyBadge(doc.priority)}</TableCell>
-                        <TableCell>{getStatusBadge(doc.status)}</TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="hover:bg-primary/10 hover:text-primary"
-                            asChild
-                          >
-                            <Link href={`/van-ban-di/noi-bo/${doc.id}`}>
+                    filteredInternalDocuments.map((doc) => {
+                      const isRead = universalReadStatus.getReadStatus(
+                        doc.id,
+                        "OUTGOING_INTERNAL"
+                      );
+                      return (
+                        <TableRow
+                          key={doc.id}
+                          className={`hover:bg-accent/30 cursor-pointer ${
+                            !isRead
+                              ? "bg-blue-50/50 border-l-4 border-l-blue-500"
+                              : ""
+                          }`}
+                          onClick={() => handleInternalDocumentClick(doc)}
+                        >
+                          <TableCell className="font-medium">
+                            {doc.documentNumber}
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell">
+                            {formatDate(doc.signingDate)}
+                          </TableCell>
+                          <TableCell className="max-w-[300px] truncate">
+                            <div className="flex items-center gap-2">
+                              {!isRead && (
+                                <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />
+                              )}
+                              <span className={!isRead ? "font-semibold" : ""}>
+                                {doc.title}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="hidden lg:table-cell">
+                            {doc.documentType}
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell">
+                            {getRecipientSummary(doc.recipients)}
+                          </TableCell>
+                          <TableCell>
+                            {getUrgencyBadge(doc.priority)}
+                          </TableCell>
+                          <TableCell>{getStatusBadge(doc.status)}</TableCell>
+                          <TableCell>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className={`${
+                                isRead
+                                  ? "text-green-600 hover:text-green-700"
+                                  : "text-blue-600 hover:text-blue-700"
+                              }`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                universalReadStatus.toggleReadStatus(
+                                  doc.id,
+                                  "OUTGOING_INTERNAL"
+                                );
+                              }}
+                            >
+                              {isRead ? "Đã đọc" : "Chưa đọc"}
+                            </Button>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="hover:bg-primary/10 hover:text-primary"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleInternalDocumentClick(doc);
+                              }}
+                            >
                               Chi tiết
-                            </Link>
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={8} className="h-24 text-center">
+                      <TableCell colSpan={9} className="h-24 text-center">
                         {currentDocuments.length === 0 && !isLoading
                           ? "Chưa có văn bản nội bộ nào"
                           : "Không có văn bản nào phù hợp với điều kiện tìm kiếm"}
@@ -627,6 +738,7 @@ export default function OutgoingDocumentsPage() {
                       Nơi nhận
                     </TableHead>
                     <TableHead>Trạng thái</TableHead>
+                    <TableHead>Trạng thái đọc</TableHead>
                     {hasFullAccess && (
                       <TableHead className="hidden md:table-cell">
                         Đơn vị
@@ -637,42 +749,86 @@ export default function OutgoingDocumentsPage() {
                 </TableHeader>
                 <TableBody>
                   {filteredExternalDocuments.length > 0 ? (
-                    filteredExternalDocuments.map((doc) => (
-                      <TableRow key={doc.id} className="hover:bg-accent/30">
-                        <TableCell className="font-medium">
-                          {doc.number}
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell">
-                          {doc.sentDate}
-                        </TableCell>
-                        <TableCell className="max-w-[300px] truncate">
-                          {doc.title}
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell">
-                          {doc.recipient}
-                        </TableCell>
-                        <TableCell>{getStatusBadge(doc.status)}</TableCell>
-                        {hasFullAccess && (
-                          <TableCell className="hidden md:table-cell">
-                            {doc.departmentName}
+                    filteredExternalDocuments.map((doc) => {
+                      const isRead = universalReadStatus.getReadStatus(
+                        Number(doc.id),
+                        "OUTGOING_EXTERNAL"
+                      );
+                      return (
+                        <TableRow
+                          key={doc.id}
+                          className={`hover:bg-accent/30 cursor-pointer ${
+                            !isRead
+                              ? "bg-blue-50/50 border-l-4 border-l-blue-500"
+                              : ""
+                          }`}
+                          onClick={() => handleExternalDocumentClick(doc)}
+                        >
+                          <TableCell className="font-medium">
+                            {doc.number}
                           </TableCell>
-                        )}
-                        <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="hover:bg-primary/10 hover:text-primary"
-                            asChild
-                          >
-                            <Link href={`/van-ban-di/${doc.id}`}>Chi tiết</Link>
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))
+                          <TableCell className="hidden md:table-cell">
+                            {doc.sentDate}
+                          </TableCell>
+                          <TableCell className="max-w-[300px] truncate">
+                            <div className="flex items-center gap-2">
+                              {!isRead && (
+                                <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />
+                              )}
+                              <span className={!isRead ? "font-semibold" : ""}>
+                                {doc.title}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell">
+                            {doc.recipient}
+                          </TableCell>
+                          <TableCell>{getStatusBadge(doc.status)}</TableCell>
+                          <TableCell>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className={`${
+                                isRead
+                                  ? "text-green-600 hover:text-green-700"
+                                  : "text-blue-600 hover:text-blue-700"
+                              }`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                universalReadStatus.toggleReadStatus(
+                                  Number(doc.id),
+                                  "OUTGOING_EXTERNAL"
+                                );
+                              }}
+                            >
+                              {isRead ? "Đã đọc" : "Chưa đọc"}
+                            </Button>
+                          </TableCell>
+                          {hasFullAccess && (
+                            <TableCell className="hidden md:table-cell">
+                              {doc.departmentName}
+                            </TableCell>
+                          )}
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="hover:bg-primary/10 hover:text-primary"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleExternalDocumentClick(doc);
+                              }}
+                            >
+                              Chi tiết
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
                   ) : (
                     <TableRow>
                       <TableCell
-                        colSpan={hasFullAccess ? 7 : 6}
+                        colSpan={hasFullAccess ? 8 : 7}
                         className="h-24 text-center"
                       >
                         {currentDocuments.length === 0 && !isLoading
@@ -748,7 +904,7 @@ export default function OutgoingDocumentsPage() {
         </div>
       )}
 
-      {/* Empty state */}
+      {/* Empty state
       {currentDocuments.length === 0 && !isLoading && (
         <div className="flex h-[40vh] items-center justify-center">
           <div className="text-center">
@@ -774,7 +930,7 @@ export default function OutgoingDocumentsPage() {
             </Button>
           </div>
         </div>
-      )}
+      )} */}
     </div>
   );
 }

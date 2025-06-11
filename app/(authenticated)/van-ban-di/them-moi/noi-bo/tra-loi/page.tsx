@@ -593,12 +593,6 @@ export default function ReplyInternalDocumentPage() {
           {/* Recipients Card */}
           <div className="space-y-6">
             <Card>
-              <CardHeader className="bg-primary/5 border-b">
-                <CardTitle>Người nhận</CardTitle>
-                <CardDescription>
-                  Chọn phòng ban hoặc cá nhân nhận văn bản
-                </CardDescription>
-              </CardHeader>
               <CardContent className="pt-6">
                 {isLoadingDepartmentList ? (
                   <div className="flex items-center justify-center p-4">

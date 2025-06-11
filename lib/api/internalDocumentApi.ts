@@ -1,11 +1,147 @@
 // lib/api/internalDocumentApi.ts
 import api from "./config";
 import axios from "axios";
+import { UrgencyLevel } from "@/lib/types/urgency";
+
+// Priority enum (tương đương InternalDocument.Priority)
+
+
+// RecipientRequest tương đương nested class trong DTO
+export interface RecipientRequest {
+  departmentId: number;  // @NotNull
+  userId?: number | null; // nullable
+  notes?: string;
+}
+
+// CreateInternalDocumentDTO
+export interface CreateInternalDocumentDTO {
+  documentNumber: string;  // @NotBlank
+  title: string;           // @NotBlank, @Size(max = 2000)
+  summary?: string;
+  documentType?: string;
+  signingDate?: string; // ISO date string (LocalDateTime)
+  urgencyLevel: UrgencyLevel;  // @NotNull, default: Priority.KHAN
+  notes?: string;
+  recipients: RecipientRequest[];  // @NotNull, @Size(min=1)
+  replyToId?: number;
+  signer?: string;
+}
+// Interface for internal documents (new format from API)
+export interface InternalDocument {
+  id: number;
+  documentNumber: string;
+  title: string;
+  summary: string;
+  documentType: string;
+  signingDate: string;
+  urgencyLevel: UrgencyLevel;
+  priority?: UrgencyLevel
+  notes?: string;
+  status: "DRAFT" | "SENT" | "APPROVED";
+  isInternal: boolean | null;
+  senderId: number;
+  senderName: string;
+  senderDepartment: string;
+  recipients: {
+    id: number;
+    departmentId: number;
+    departmentName: string;
+    userId?: number;
+    userName?: string;
+    isRead: boolean;
+    readAt?: string;
+    receivedAt: string;
+    notes?: string;
+  }[];
+  attachments: {
+    id: number;
+    filename: string;
+    contentType: string;
+    fileSize: number;
+    uploadedAt: string;
+    uploadedByName?: string;
+    description?: string;
+  }[];
+  replyToId?: number;
+  replyToTitle?: string;
+  replyCount: number;
+  createdAt: string;
+  updatedAt: string;
+  isRead: boolean;
+  readAt?: string;
+}
+export interface InternalDocumentDetail extends InternalDocument {
+  documentNumber: string;
+  title: string;
+  summary: string;
+  documentType: string;
+  signingDate: string;
+  signer?: string;
+  urgencyLevel: UrgencyLevel;
+  notes?: string;
+  status: "DRAFT" | "SENT" | "APPROVED";
+  isInternal: boolean | null;
+  senderId: number;
+  senderName: string;
+  senderDepartment: string;
+  recipients: {
+    id: number;
+    departmentId: number;
+    departmentName: string;
+    userId?: number;
+    userName?: string;
+    isRead: boolean;
+    readAt?: string;
+    receivedAt: string;
+    notes?: string;
+  }[];
+  attachments: {
+    id: number;
+    filename: string;
+    contentType: string;
+    fileSize: number;
+    uploadedAt: string;
+    uploadedByName?: string;
+    description?: string;
+  }[];
+  replyToId?: number;
+  replyToTitle?: string;
+  replyCount: number;
+  createdAt: string;
+  updatedAt: string;
+  isRead: boolean;
+  readAt?: string;
+}
+
+export interface DocumentHistory {
+  id: number;
+  action: string;
+  details: string;
+  performedBy: {
+    id: number;
+    name: string;
+    fullName: string;
+  };
+  performedAt: string;
+  ipAddress?: string;
+  userAgent?: string;
+}
+
+export interface DocumentStats {
+  replyCount: number;
+  historyCount: number;
+  isRead: boolean;
+  readAt?: string;
+  createdAt: string;
+  lastActivity: string;
+}
 
 export const createInternalDocument = async (
-  document: any,
+  document: CreateInternalDocumentDTO,
   files?: File[],
-  descriptions?: string[]
+  descriptions?: string[],
+  onUploadProgress?: (progressEvent: any) => void,
+  cancelToken?: any
 ) => {
   const formData = new FormData();
   formData.append("document", JSON.stringify(document));
@@ -22,6 +158,9 @@ export const createInternalDocument = async (
 
   const response = await api.post("/internal-documents", formData, {
     headers: { "Content-Type": "multipart/form-data" },
+    onUploadProgress,
+    cancelToken,
+    timeout: 600000, // 10 minutes timeout for large files
   });
 
   return response.data;

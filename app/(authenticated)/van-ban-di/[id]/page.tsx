@@ -49,17 +49,22 @@ import {
   incomingDocumentsAPI,
   IncomingDocumentDTO,
   DocumentWorkflowDTO,
+  DocumentAttachmentDTO,
 } from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRouter } from "next/navigation";
 import { getStatusBadgeInfo } from "@/lib/utils";
 import { isPDFFile } from "@/lib/utils/pdf-viewer";
+import { DocumentReadersDialog } from "@/components/document-readers-dialog";
+import { DocumentReadStats } from "@/components/document-read-stats";
+import { outgoingExternalReadStatus } from "@/lib/api/documentReadStatus";
+// Remove unused import
 
 export default function OutgoingDocumentDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
   const unwrappedParams = use(params);
   const { id } = unwrappedParams;
@@ -72,6 +77,7 @@ export default function OutgoingDocumentDetailPage({
   const [_document, setDocument] = useState<OutgoingDocumentDTO>();
   const [relatedDocuments, setRelatedDocuments] =
     useState<IncomingDocumentDTO>();
+  const [attachments, setAttachments] = useState<DocumentAttachmentDTO[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [approvalComment, setApprovalComment] = useState("");
@@ -87,6 +93,19 @@ export default function OutgoingDocumentDetailPage({
     title: string;
   } | null>(null);
 
+  // Fetch attachments function
+  const fetchAttachments = async () => {
+    try {
+      const attachmentsData = await outgoingDocumentsAPI.getDocumentAttachments(
+        documentId
+      );
+      setAttachments(attachmentsData);
+    } catch (error) {
+      console.error("Error fetching attachments:", error);
+      // Don't show error toast as this might be expected if API doesn't exist yet
+    }
+  };
+
   useEffect(() => {
     // Biến để kiểm tra component còn mounted hay không
     let isMounted = true;
@@ -100,6 +119,9 @@ export default function OutgoingDocumentDetailPage({
           outgoingDocumentsAPI.getOutgoingDocumentById(documentId),
           workflowAPI.getDocumentHistory(documentId),
         ]);
+
+        // Fetch attachments
+        await fetchAttachments();
 
         // Kiểm tra component còn mounted không trước khi cập nhật state
         if (!isMounted) return;
@@ -280,6 +302,54 @@ export default function OutgoingDocumentDetailPage({
       });
       return null;
     }
+  };
+
+  // Handle download specific attachment
+  const handleDownloadSpecificAttachment = async (
+    file: DocumentAttachmentDTO
+  ) => {
+    try {
+      const blob = await outgoingDocumentsAPI.downloadSpecificAttachment(
+        documentId,
+        file.id
+      );
+
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = file.originalFilename || "document";
+
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast({
+        title: "Thành công",
+        description: `Đang tải ${file.originalFilename}`,
+      });
+    } catch (error) {
+      console.error("Error downloading specific attachment:", error);
+      // Fallback to generic download
+      try {
+        await handleDownloadAttachment();
+      } catch (fallbackError) {
+        toast({
+          title: "Lỗi",
+          description: "Không thể tải tệp đính kèm",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
+  // Handle preview specific PDF
+  const handlePreviewSpecificPDF = (file: DocumentAttachmentDTO) => {
+    setSelectedFileForPreview({
+      fileName: file.originalFilename,
+      title: `${_document?.title || "Tài liệu"} - ${file.originalFilename}`,
+    });
+    setPdfViewerOpen(true);
   };
 
   const handleApprove = async () => {
@@ -1220,6 +1290,24 @@ export default function OutgoingDocumentDetailPage({
           </h1>
         </div>
         <div className="flex items-center space-x-2">
+          {/* Document Read Status */}
+          <DocumentReadStats
+            documentId={documentId}
+            documentType="OUTGOING_EXTERNAL"
+            onGetStatistics={outgoingExternalReadStatus.getStatistics}
+            variant="compact"
+            className="mr-4"
+          />
+
+          {/* Document Readers Dialog */}
+          <DocumentReadersDialog
+            documentId={documentId}
+            documentType="OUTGOING_EXTERNAL"
+            documentTitle={_document.title}
+            onGetReaders={outgoingExternalReadStatus.getReaders}
+            onGetStatistics={outgoingExternalReadStatus.getStatistics}
+          />
+
           {renderActionButtons()}
         </div>
       </div>
@@ -1286,9 +1374,10 @@ export default function OutgoingDocumentDetailPage({
                 <p className="text-sm font-medium text-muted-foreground mb-2">
                   Nội dung văn bản
                 </p>
-                <div className="rounded-md border p-4 bg-accent/30 whitespace-pre-line">
-                  {_document.summary}
-                </div>
+                <div
+                  className="rounded-md border p-4 bg-accent/30 whitespace-pre-line"
+                  dangerouslySetInnerHTML={{ __html: _document.summary }}
+                ></div>
               </div>
               <Separator className="bg-primary/10" />
               <div>
@@ -1296,57 +1385,69 @@ export default function OutgoingDocumentDetailPage({
                   Tệp đính kèm
                 </p>
                 <div className="space-y-2">
-                  {_document.attachments && _document.attachments.length > 0 ? (
-                    _document.attachments.map((file: any, index: number) => (
+                  {attachments.length > 0 ? (
+                    attachments.map((file, index) => (
                       <div
                         key={index}
                         className="flex items-center justify-between rounded-md border border-primary/10 p-2 bg-accent/30"
                       >
                         <div className="flex items-center space-x-2">
                           <FileText className="h-4 w-4 text-primary" />
-                          <span className="text-sm">
-                            {file.name || file.filename}
-                          </span>
+                          <div className="flex flex-col">
+                            <span className="text-sm">
+                              {file.originalFilename}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {Math.round(file.fileSize / 1024)} KB
+                            </span>
+                          </div>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <span className="text-xs text-muted-foreground">
-                            {file.size
-                              ? `${Math.round(file.size / 1024)} KB`
-                              : ""}
-                          </span>
+                          {isPDFFile(file.originalFilename) && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
+                              onClick={() => handlePreviewSpecificPDF(file)}
+                              title="Xem trước PDF"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
-                            onClick={handleDownloadAttachment}
+                            onClick={() =>
+                              handleDownloadSpecificAttachment(file)
+                            }
                           >
                             <Download className="h-4 w-4" />
                           </Button>
                         </div>
                       </div>
                     ))
-                  ) : _document.attachments || _document.attachmentFilename ? (
+                  ) : _document?.attachmentFilename ? (
                     <div className="flex items-center justify-between rounded-md border border-primary/10 p-2 bg-accent/30">
                       <div className="flex items-center space-x-2">
                         <FileText className="h-4 w-4 text-primary" />
                         <span className="text-sm">
-                          {_document.attachmentFilename?.split("/").pop() ||
+                          {_document.attachmentFilename.split("/").pop() ||
                             "Tệp đính kèm"}
                         </span>
                       </div>
                       <div className="flex items-center space-x-2">
-                        {_document.attachmentFilename &&
-                          isPDFFile("", _document.attachmentFilename) && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
-                              onClick={handlePreviewPDF}
-                              title="Xem trước PDF"
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                          )}
+                        {isPDFFile("", _document.attachmentFilename) && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
+                            onClick={handlePreviewPDF}
+                            title="Xem trước PDF"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="icon"

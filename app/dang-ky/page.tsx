@@ -177,7 +177,7 @@ export default function RegisterPage() {
     } catch (error: any) {
       console.error("Registration error:", error);
       setError(
-        error.response?.data?.message ||
+        error.response?.data ||
           "Đăng ký thất bại. Vui lòng thử lại sau."
       );
     } finally {

@@ -48,6 +48,9 @@ import {
 } from "@/lib/types/urgency";
 import { UrgencyBadge } from "@/components/urgency-badge";
 import type { DocumentAttachmentDTO } from "@/lib/api/types";
+import { DocumentReadersDialog } from "@/components/document-readers-dialog";
+import { DocumentReadStats } from "@/components/document-read-stats";
+import { incomingExternalReadStatus } from "@/lib/api/documentReadStatus";
 
 export default function DocumentDetailPage({
   params,
@@ -854,6 +857,24 @@ export default function DocumentDetailPage({
           </h1>
         </div>
         <div className="flex items-center space-x-2">
+          {/* Document Read Status */}
+          <DocumentReadStats
+            documentId={documentId!}
+            documentType="INCOMING_EXTERNAL"
+            onGetStatistics={incomingExternalReadStatus.getStatistics}
+            variant="compact"
+            className="mr-4"
+          />
+
+          {/* Document Readers Dialog */}
+          <DocumentReadersDialog
+            documentId={documentId!}
+            documentType="INCOMING_EXTERNAL"
+            documentTitle={_document.title}
+            onGetReaders={incomingExternalReadStatus.getReaders}
+            onGetStatistics={incomingExternalReadStatus.getStatistics}
+          />
+
           {renderActionButtons()}
         </div>
       </div>

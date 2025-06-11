@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
+
+  import {Card,
   CardContent,
   CardDescription,
   CardHeader,
@@ -42,49 +42,11 @@ import {
 } from "@/lib/api/internalDocumentApi";
 import { useDocumentReadStatus } from "@/hooks/use-document-read-status";
 import { downloadPdfWithWatermark, isPdfFile } from "@/lib/utils/pdf-watermark";
-
-interface InternalDocumentDetail {
-  id: number;
-  documentNumber: string;
-  title: string;
-  summary: string;
-  documentType: string;
-  signingDate: string;
-  priority: "NORMAL" | "HIGH" | "URGENT";
-  notes?: string;
-  status: "DRAFT" | "SENT" | "APPROVED";
-  isInternal: boolean | null;
-  senderId: number;
-  senderName: string;
-  senderDepartment: string;
-  recipients: {
-    id: number;
-    departmentId: number;
-    departmentName: string;
-    userId?: number;
-    userName?: string;
-    isRead: boolean;
-    readAt?: string;
-    receivedAt: string;
-    notes?: string;
-  }[];
-  attachments: {
-    id: number;
-    filename: string;
-    contentType: string;
-    fileSize: number;
-    uploadedAt: string;
-    uploadedByName?: string;
-    description?: string;
-  }[];
-  replyToId?: number;
-  replyToTitle?: string;
-  replyCount: number;
-  createdAt: string;
-  updatedAt: string;
-  isRead: boolean;
-  readAt?: string;
-}
+import { DocumentReadersDialog } from "@/components/document-readers-dialog";
+import { DocumentReadStats } from "@/components/document-read-stats";
+import { outgoingInternalReadStatus } from "@/lib/api/documentReadStatus";
+import { InternalDocumentDetail } from "@/lib/api/internalDocumentApi";
+import { UrgencyBadge } from "@/components/urgency-badge";
 
 export default function InternalDocumentDetailPage() {
   const params = useParams();
@@ -105,7 +67,7 @@ export default function InternalDocumentDetailPage() {
         setLoading(true);
         const response = await getDocumentById(Number(documentId));
         setDocument(response);
-
+        console.log("Debug document:", response);
         if (response && response.isRead) {
           globalMarkAsRead(Number(documentId));
         }
@@ -128,9 +90,35 @@ export default function InternalDocumentDetailPage() {
 
   const formatDate = (dateString: string) => {
     try {
-      return new Date(dateString).toLocaleString("vi-VN");
+      if (!dateString) return "-";
+
+      const date = new Date(dateString);
+
+      // Check if date is valid and not the epoch (1970-01-01)
+      if (isNaN(date.getTime()) || date.getFullYear() === 1970) {
+        return "Chưa xác định";
+      }
+
+      return date.toLocaleString("vi-VN");
     } catch {
-      return dateString || "-";
+      return "Chưa xác định";
+    }
+  };
+
+  const formatDateOnly = (dateString: string) => {
+    try {
+      if (!dateString) return "-";
+
+      const date = new Date(dateString);
+
+      // Check if date is valid and not the epoch (1970-01-01)
+      if (isNaN(date.getTime()) || date.getFullYear() === 1970) {
+        return "Chưa xác định";
+      }
+
+      return date.toLocaleDateString("vi-VN");
+    } catch {
+      return "Chưa xác định";
     }
   };
 
@@ -254,19 +242,41 @@ export default function InternalDocumentDetailPage() {
   return (
     <div className="container mx-auto py-6 space-y-8">
       {/* Header */}
-      <div className="flex items-center space-x-4">
-        <Button variant="outline" size="icon" asChild>
-          <Link href="/van-ban-di">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-        </Button>
-        <div className="space-y-1">
-          <h1 className="text-2xl font-bold tracking-tight text-primary">
-            Chi tiết văn bản nội bộ
-          </h1>
-          <p className="text-muted-foreground">
-            Thông tin chi tiết của văn bản {_document.documentNumber}
-          </p>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-4">
+          <Button variant="outline" size="icon" asChild>
+            <Link href="/van-ban-di">
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          </Button>
+          <div className="space-y-1">
+            <h1 className="text-2xl font-bold tracking-tight text-primary">
+              Chi tiết văn bản nội bộ
+            </h1>
+            <p className="text-muted-foreground">
+              Thông tin chi tiết của văn bản {_document.documentNumber}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center space-x-2">
+          {/* Document Read Status */}
+          <DocumentReadStats
+            documentId={Number(documentId)}
+            documentType="OUTGOING_INTERNAL"
+            onGetStatistics={outgoingInternalReadStatus.getStatistics}
+            variant="compact"
+            className="mr-4"
+          />
+
+          {/* Document Readers Dialog */}
+          <DocumentReadersDialog
+            documentId={Number(documentId)}
+            documentType="OUTGOING_INTERNAL"
+            documentTitle={_document.title}
+            onGetReaders={outgoingInternalReadStatus.getReaders}
+            onGetStatistics={outgoingInternalReadStatus.getStatistics}
+          />
         </div>
       </div>
 
@@ -300,15 +310,19 @@ export default function InternalDocumentDetailPage() {
                     Ngày ký
                   </label>
                   <p className="font-medium">
-                    {formatDate(_document.signingDate)}
+                    {formatDateOnly(_document.signingDate)}
                   </p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">
-                    Độ ưu tiên
+                    Độ khẩn
                   </label>
                   <div className="mt-1">
-                    {getPriorityBadge(_document.priority)}
+                    {_document.priority ? (
+                      <UrgencyBadge level={_document.priority} size="sm" />
+                    )  : (
+                      <Badge variant="outline">Chưa xác định</Badge>
+                    )}
                   </div>
                 </div>
               </div>
@@ -476,6 +490,15 @@ export default function InternalDocumentDetailPage() {
                     <p className="text-sm font-medium">Người gửi</p>
                     <p className="text-sm text-muted-foreground">
                       {_document.senderName}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <User className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">Người ký</p>
+                    <p className="text-sm text-muted-foreground">
+                      {_document.signer}
                     </p>
                   </div>
                 </div>

@@ -291,4 +291,55 @@ export const outgoingDocumentsAPI = {
     );
     return response.data;
   },
+
+  /**
+   * Get document attachments
+   * @param id Document ID
+   * @returns List of document attachments
+   */
+  getDocumentAttachments: async (
+    id: number
+  ): Promise<DocumentAttachmentDTO[]> => {
+    try {
+      const response = await api.get(`/documents/outgoing/${id}/attachments`);
+      return response.data || [];
+    } catch (error) {
+      console.error(
+        `Error getting attachments for outgoing document ${id}:`,
+        error
+      );
+      // Return empty array if endpoint doesn't exist yet
+      return [];
+    }
+  },
+
+  /**
+   * Download specific attachment by attachment ID
+   * @param documentId Document ID
+   * @param attachmentId Attachment ID
+   * @returns Blob data for download
+   */
+  downloadSpecificAttachment: async (
+    documentId: number,
+    attachmentId: number
+  ): Promise<Blob> => {
+    try {
+      const response = await api.get(
+        `/documents/outgoing/${documentId}/attachments/${attachmentId}`,
+        {
+          responseType: "blob",
+          headers: {
+            Accept: "application/hal+json",
+          },
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error(
+        `Error downloading specific attachment ${attachmentId} for outgoing document ${documentId}:`,
+        error
+      );
+      throw error;
+    }
+  },
 };

@@ -29,6 +29,7 @@ import {
   Users,
   Settings,
   Building,
+  Building2,
   UserCheck,
   Menu,
   ChevronDown,
@@ -108,6 +109,12 @@ export const Header = () => {
       title: "Loại văn bản",
       href: "/loai-van-ban",
       icon: FileType,
+      permission: "ROLE_ADMIN",
+    },
+    {
+      title: "Đơn vị ngoài",
+      href: "/don-vi-ngoai",
+      icon: Building2,
       permission: "ROLE_ADMIN",
     },
     {

@@ -15,7 +15,6 @@ import {
   ArrowLeft,
   Save,
   Send,
-  X,
   Building,
   User,
   Users,
@@ -49,9 +48,11 @@ import {
 import { DepartmentTree } from "@/components/department-tree";
 import { useDepartmentSelection } from "@/hooks/use-department-selection";
 import { useDepartmentUsers } from "@/hooks/use-department-users";
-import { createInternalDocument } from "@/lib/api/internalDocumentApi";
+import { createInternalDocument, CreateInternalDocumentDTO } from "@/lib/api/internalDocumentApi";
 import { RichTextEditor } from "@/components/ui";
-// Leadership role configuration
+import { useFileUpload } from "@/hooks/use-file-upload";
+import { FileUploadProgress } from "@/components/ui/file-upload-progress";
+
 const leadershipRoleOrder: Record<string, number> = {
   ROLE_CUC_TRUONG: 1,
   ROLE_CUC_PHO: 2,
@@ -133,16 +134,21 @@ export default function CreateInternalOutgoingDocumentPage() {
   // State for form data
   const [formData, setFormData] = useState({
     documentNumber: "",
-    sentDate: new Date(),
+    signingDate: new Date(),
     documentType: "",
     title: "",
-    content: "",
+    summary: "",
     urgencyLevel: URGENCY_LEVELS.KHAN,
-    note: "",
+    notes: "",
+    signer:""
   });
 
-  // State for file attachment
-  const [file, setFile] = useState<File | null>(null);
+  // Use file upload hook
+  const fileUpload = useFileUpload({
+    maxSize: 200, // 50MB max per file
+    maxFiles: 10,
+  });
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationErrors, setValidationErrors] = useState<
     Record<string, string>
@@ -190,14 +196,21 @@ export default function CreateInternalOutgoingDocumentPage() {
 
   const handleDateChange = (date: Date | undefined) => {
     if (date) {
-      setFormData((prev) => ({ ...prev, sentDate: date }));
+      setFormData((prev) => ({ ...prev, signingDate: date }));
     }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0]);
+    if (e.target.files) {
+      const newFiles = Array.from(e.target.files);
+      fileUpload.addFiles(newFiles);
+      // Reset input to allow selecting the same file again
+      e.target.value = "";
     }
+  };
+
+  const handleRemoveFile = (index: number) => {
+    fileUpload.removeFile(index);
   };
 
   const findUserById = (deptId: number, userId: number) => {
@@ -250,27 +263,37 @@ export default function CreateInternalOutgoingDocumentPage() {
 
     try {
       setIsSubmitting(true);
+      fileUpload.setUploading(true);
+      fileUpload.resetUpload();
 
-      const documentData = {
+      const documentData: CreateInternalDocumentDTO =  {
         documentNumber: formData.documentNumber,
         title: formData.title,
-        content: formData.content,
+        summary: formData.summary,
         documentType: formData.documentType,
         urgencyLevel: formData.urgencyLevel,
-        note: formData.note,
-        sentDate: formData.sentDate.toISOString(),
-        recipientDepartments: secondaryDepartments.map((deptId) => {
-          const dept = findDepartmentById(deptId);
-          return {
-            departmentId: deptId,
-            departmentName: dept?.name || "",
-          };
-        }),
+        notes: formData.notes,
+        signingDate: formData.signingDate.toISOString(),
+        signer: formData.signer,
+        recipients: secondaryDepartments.map((deptId) => ({
+          departmentId: deptId,
+        })),
       };
+
+      // Create cancel token for upload
+      const cancelTokenSource = fileUpload.createCancelToken();
 
       const response = await createInternalDocument(
         documentData,
-        file ? [file] : undefined
+        fileUpload.files.length > 0 ? fileUpload.files : undefined,
+        undefined, // descriptions
+        (progressEvent: any) => {
+          const percentCompleted = Math.round(
+            (progressEvent.loaded * 100) / progressEvent.total
+          );
+          fileUpload.setUploadProgress(percentCompleted);
+        },
+        cancelTokenSource.token
       );
 
       addNotification({
@@ -287,6 +310,17 @@ export default function CreateInternalOutgoingDocumentPage() {
       router.push("/van-ban-di");
     } catch (error: any) {
       console.error("Error creating document:", error);
+
+      if (error.code === "ECONNABORTED" || error.message.includes("timeout")) {
+        fileUpload.setError(
+          "Tải lên bị timeout. Vui lòng thử lại với file nhỏ hơn."
+        );
+      } else if (error.message.includes("cancelled")) {
+        fileUpload.setError("Tải lên đã bị hủy.");
+      } else {
+        fileUpload.setError(error.message || "Không thể tải lên file");
+      }
+
       toast({
         title: "Lỗi",
         description: error.message || "Không thể tạo văn bản",
@@ -294,65 +328,62 @@ export default function CreateInternalOutgoingDocumentPage() {
       });
     } finally {
       setIsSubmitting(false);
+      fileUpload.setUploading(false);
     }
   };
 
-  const handleSaveDraft = async () => {
-    try {
-      setIsSubmitting(true);
+  // const handleSaveDraft = async () => {
+  //   try {
+  //     setIsSubmitting(true);
 
-      const documentData = {
-        documentNumber: formData.documentNumber,
-        title: formData.title,
-        content: formData.content,
-        documentType: formData.documentType,
-        urgencyLevel: formData.urgencyLevel,
-        note: formData.note,
-        sentDate: formData.sentDate.toISOString(),
-        recipientDepartments: secondaryDepartments.map((deptId) => {
-          const dept = findDepartmentById(deptId);
-          return {
-            departmentId: deptId,
-            departmentName: dept?.name || "",
-          };
-        }),
-        isDraft: true,
-      };
+  //     const documentData: CreateInternalDocumentDTO = {
+  //       documentNumber: formData.documentNumber,
+  //       title: formData.title,
+  //       summary: formData.summary,
+  //       documentType: formData.documentType,
+  //       urgencyLevel: formData.urgencyLevel,
+  //       notes: formData.notes,
+  //       signingDate: formData.signingDate.toISOString(),
+  //       recipients: secondaryDepartments.map((deptId) => ({
+  //         departmentId: deptId,
+  //       })),
+       
+  //     };
 
-      const response = await createInternalDocument(
-        documentData,
-        file ? [file] : undefined
-      );
+  //     const response = await createInternalDocument(
+  //       documentData,
+  //       fileUpload.files.length > 0 ? fileUpload.files : undefined
+  //     );
 
-      addNotification({
-        title: "Nháp đã được lưu",
-        message: `Nháp văn bản "${formData.title}" đã được lưu thành công.`,
-        type: "info",
-      });
+  //     addNotification({
+  //       title: "Nháp đã được lưu",
+  //       message: `Nháp văn bản "${formData.title}" đã được lưu thành công.`,
+  //       type: "info",
+  //     });
 
-      toast({
-        title: "Thành công",
-        description: "Nháp văn bản đã được lưu thành công",
-      });
+  //     toast({
+  //       title: "Thành công",
+  //       description: "Nháp văn bản đã được lưu thành công",
+  //     });
 
-      router.push("/van-ban-di");
-    } catch (error: any) {
-      console.error("Error saving draft:", error);
-      toast({
-        title: "Lỗi",
-        description: error.message || "Không thể lưu nháp văn bản",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  //     router.push("/van-ban-di");
+  //   } catch (error: any) {
+  //     console.error("Error saving draft:", error);
+  //     toast({
+  //       title: "Lỗi",
+  //       description: error.message || "Không thể lưu nháp văn bản",
+  //       variant: "destructive",
+  //     });
+  //   } finally {
+  //     setIsSubmitting(false);
+  //   }
+  // };
 
   const showAllUsers = (user: any) => null;
 
   return (
     <div className="min-h-screen bg-gray-50/30">
-      <div className="container mx-auto py-6 max-w-5xl px-4">
+      <div className="max-w-[1536px] mx-auto py-6 max-w-5xl px-4">
         <div className="flex items-center space-x-2 mb-6">
           <Button variant="outline" size="icon" asChild>
             <Link href="/van-ban-di/them-moi">
@@ -392,9 +423,9 @@ export default function CreateInternalOutgoingDocumentPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="sentDate">Ngày ban hành</Label>
+                  <Label htmlFor="sentDate">Ngày ký</Label>
                   <DatePicker
-                    date={formData.sentDate}
+                    date={formData.signingDate}
                     setDate={handleDateChange}
                   />
                 </div>
@@ -431,7 +462,7 @@ export default function CreateInternalOutgoingDocumentPage() {
                 </div>
               </div>
 
-              <div className="grid gap-6 md:grid-cols-2 mt-6">
+              <div className="grid gap-6 md:grid-cols-3 mt-6">
                 <div className="space-y-2">
                   <Label htmlFor="title">
                     Tiêu đề <span className="text-red-500">*</span>
@@ -453,7 +484,7 @@ export default function CreateInternalOutgoingDocumentPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="priority">Độ ưu tiên</Label>
+                  <Label htmlFor="priority">Độ Khẩn</Label>
                   <Select
                     value={formData.urgencyLevel}
                     onValueChange={(value) =>
@@ -477,6 +508,17 @@ export default function CreateInternalOutgoingDocumentPage() {
                     </SelectContent>
                   </Select>
                 </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="signer">Người ký</Label>
+                  <Input
+                    id="signer"
+                    name="signer"
+                    value={formData.signer}
+                    onChange={handleInputChange}
+                    placeholder="Nhập người ký"
+                  />
+                </div>
               </div>
 
               <div className="space-y-2 mt-6">
@@ -486,6 +528,20 @@ export default function CreateInternalOutgoingDocumentPage() {
                   type="file"
                   onChange={handleFileChange}
                   className="cursor-pointer"
+                  multiple
+                />
+
+                {/* File Upload Progress */}
+                <FileUploadProgress
+                  files={fileUpload.files}
+                  uploadProgress={fileUpload.uploadProgress}
+                  isUploading={fileUpload.isUploading}
+                  error={fileUpload.error}
+                  onRemoveFile={handleRemoveFile}
+                  onCancelUpload={fileUpload.cancelUpload}
+                  formatFileSize={fileUpload.formatFileSize}
+                  getTotalSize={fileUpload.getTotalSize}
+                  className="mt-3"
                 />
               </div>
             </CardContent>
@@ -496,20 +552,11 @@ export default function CreateInternalOutgoingDocumentPage() {
             {/* Content Card - Takes 2 columns */}
             <div className="lg:col-span-2">
               <Card>
-                <CardHeader className="bg-primary/5 border-b">
-                  <CardTitle className="flex items-center gap-2">
-                    <FileText className="h-5 w-5" />
-                    Nội dung văn bản
-                  </CardTitle>
-                  <CardDescription>
-                    Soạn nội dung chi tiết của văn bản
-                  </CardDescription>
-                </CardHeader>
                 <CardContent className="pt-6">
                   <div className="space-y-2">
                     <Label htmlFor="content">Nội dung văn bản</Label>
                     <RichTextEditor
-                      content={formData.content}
+                      content={formData.summary}
                       onChange={handleRichTextChange("content")}
                       placeholder="Nhập nội dung văn bản"
                       minHeight="400px"
@@ -521,15 +568,6 @@ export default function CreateInternalOutgoingDocumentPage() {
 
             {/* Recipients Card - Takes 1 column */}
             <Card className="h-fit">
-              <CardHeader className="bg-primary/5 border-b">
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="h-5 w-5" />
-                  Người nhận
-                </CardTitle>
-                <CardDescription>
-                  Chọn phòng ban hoặc cá nhân nhận văn bản
-                </CardDescription>
-              </CardHeader>
               <CardContent className="pt-6">
                 {isLoadingDepartmentList ? (
                   <div className="flex items-center justify-center p-4">
@@ -607,7 +645,7 @@ export default function CreateInternalOutgoingDocumentPage() {
                         Gửi văn bản
                       </Button>
 
-                      <Button
+                      {/* <Button
                         type="button"
                         variant="outline"
                         className="w-full"
@@ -620,7 +658,7 @@ export default function CreateInternalOutgoingDocumentPage() {
                           <Save className="mr-2 h-4 w-4" />
                         )}
                         Lưu nháp
-                      </Button>
+                      </Button> */}
                     </div>
                   </div>
                 )}
@@ -630,20 +668,11 @@ export default function CreateInternalOutgoingDocumentPage() {
 
           {/* Notes Section */}
           <Card>
-            <CardHeader className="bg-primary/5 border-b">
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                Ghi chú
-              </CardTitle>
-              <CardDescription>
-                Thêm ghi chú bổ sung cho văn bản (nếu có)
-              </CardDescription>
-            </CardHeader>
             <CardContent className="pt-6">
               <div className="space-y-2">
                 <Label htmlFor="note">Ghi chú</Label>
                 <RichTextEditor
-                  content={formData.note}
+                  content={formData.notes}
                   onChange={handleRichTextChange("note")}
                   placeholder="Nhập ghi chú (nếu có)"
                   minHeight="150px"
