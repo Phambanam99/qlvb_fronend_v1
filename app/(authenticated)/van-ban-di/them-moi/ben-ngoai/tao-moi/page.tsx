@@ -10,7 +10,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Loader2, ArrowLeft, Save, Send, FileText, User, Users } from "lucide-react";
+import {
+  Loader2,
+  ArrowLeft,
+  Save,
+  Send,
+  FileText,
+  User,
+  Users,
+} from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { useNotifications } from "@/lib/notifications-context";
@@ -28,7 +36,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { workflowAPI, usersAPI } from "@/lib/api";
+import { workflowAPI, usersAPI, senderApi, SenderDTO } from "@/lib/api";
 
 export default function CreateExternalOutgoingDocumentPage() {
   const router = useRouter();
@@ -57,50 +65,52 @@ export default function CreateExternalOutgoingDocumentPage() {
   const [isLoadingApprovers, setIsLoadingApprovers] = useState(false);
   const [approvers, setApprovers] = useState<any[]>([]);
 
-  // Fetch approvers when component mounts
+  // State for recipients/senders
+  const [isLoadingRecipients, setIsLoadingRecipients] = useState(false);
+  const [recipients, setRecipients] = useState<SenderDTO[]>([]);
+
+  // Fetch approvers and recipients when component mounts
   useState(() => {
-    const fetchApprovers = async () => {
+    const fetchData = async () => {
       if (!user || !user.id) {
         console.error("No user ID available");
         return;
       }
 
       try {
+        // Fetch approvers
         setIsLoadingApprovers(true);
-
-        // Get users who can approve for the current user
         const leaderUsers = await usersAPI.getUserForApproval(user.id);
-
-        // Get senior leaders across all departments
         const seniorLeadersResponse =
           await usersAPI.getUsersByRoleAndDepartment(
             ["ROLE_SENIOR_LEADER"],
             0 // 0 to get from all departments
           );
-
-        // Combine both lists
         const allApprovers = [...leaderUsers, ...seniorLeadersResponse];
-
-        // Remove duplicates if any (by ID)
         const uniqueApprovers = allApprovers.filter(
           (approver, index, self) =>
             index === self.findIndex((a) => a.id === approver.id)
         );
-
         setApprovers(uniqueApprovers);
+
+        // Fetch recipients/senders
+        setIsLoadingRecipients(true);
+        const sendersData = await senderApi.getAllSenders();
+        setRecipients(sendersData || []);
       } catch (error) {
-        console.error("Error fetching approvers:", error);
+        console.error("Error fetching data:", error);
         toast({
           title: "Lỗi",
-          description: "Không thể tải danh sách người phê duyệt",
+          description: "Không thể tải dữ liệu",
           variant: "destructive",
         });
       } finally {
         setIsLoadingApprovers(false);
+        setIsLoadingRecipients(false);
       }
     };
 
-    fetchApprovers();
+    fetchData();
   }, [user, toast]);
 
   // Input change handlers
@@ -277,7 +287,7 @@ export default function CreateExternalOutgoingDocumentPage() {
                     required
                   />
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="sentDate">Ngày ban hành</Label>
                   <DatePicker
@@ -317,14 +327,38 @@ export default function CreateExternalOutgoingDocumentPage() {
                   <Label htmlFor="recipient">
                     Nơi nhận <span className="text-red-500">*</span>
                   </Label>
-                  <Input
-                    id="recipient"
-                    name="recipient"
+                  <Select
                     value={formData.recipient}
-                    onChange={handleInputChange}
-                    placeholder="Nhập nơi nhận văn bản"
-                    required
-                  />
+                    onValueChange={(value) =>
+                      handleSelectChange("recipient", value)
+                    }
+                  >
+                    <SelectTrigger id="recipient">
+                      <SelectValue placeholder="Chọn nơi nhận văn bản" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {isLoadingRecipients ? (
+                        <SelectItem value="loading" disabled>
+                          Đang tải danh sách...
+                        </SelectItem>
+                      ) : recipients.length === 0 ? (
+                        <SelectItem value="empty" disabled>
+                          Chưa có nơi nhận nào
+                        </SelectItem>
+                      ) : (
+                        recipients.map((recipient) => (
+                          <SelectItem key={recipient.id} value={recipient.name}>
+                            {recipient.name}
+                            {recipient.description && (
+                              <span className="text-xs text-muted-foreground ml-2">
+                                - {recipient.description}
+                              </span>
+                            )}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
@@ -378,9 +412,7 @@ export default function CreateExternalOutgoingDocumentPage() {
                   <User className="h-5 w-5" />
                   Thông tin phê duyệt
                 </CardTitle>
-                <CardDescription>
-                  Người soạn thảo và phê duyệt
-                </CardDescription>
+                <CardDescription>Người soạn thảo và phê duyệt</CardDescription>
               </CardHeader>
               <CardContent className="pt-6">
                 <div className="space-y-4">
@@ -506,9 +538,9 @@ export default function CreateExternalOutgoingDocumentPage() {
           {/* Info Note */}
           <div className="rounded-md bg-amber-50 border border-amber-200 p-4">
             <p className="text-sm text-amber-800">
-              <span className="font-medium">Lưu ý:</span> Sau khi gửi, văn
-              bản sẽ được chuyển đến người phê duyệt để xem xét trước khi
-              ban hành chính thức.
+              <span className="font-medium">Lưu ý:</span> Sau khi gửi, văn bản
+              sẽ được chuyển đến người phê duyệt để xem xét trước khi ban hành
+              chính thức.
             </p>
           </div>
         </form>

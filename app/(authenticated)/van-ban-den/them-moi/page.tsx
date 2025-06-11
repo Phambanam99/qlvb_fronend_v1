@@ -395,23 +395,7 @@ export default function AddIncomingDocumentPage() {
       </nav>
 
       {/* Page Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <Button variant="outline" size="icon" asChild>
-            <Link href="/van-ban-den">
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">
-              Thêm văn bản đến
-            </h1>
-            <p className="text-muted-foreground">
-              Tạo mới văn bản đến và phân công xử lý
-            </p>
-          </div>
-        </div>
-      </div>
+     
 
       <form onSubmit={handleSubmit}>
         <div className="grid gap-6 lg:grid-cols-2">
