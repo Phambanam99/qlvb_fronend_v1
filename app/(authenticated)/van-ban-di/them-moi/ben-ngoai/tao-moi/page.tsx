@@ -36,7 +36,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { workflowAPI, usersAPI, senderApi, SenderDTO } from "@/lib/api";
+import {
+  workflowAPI,
+  usersAPI,
+  senderApi,
+  SenderDTO,
+  documentTypesAPI,
+  DocumentTypeDTO,
+} from "@/lib/api";
 
 export default function CreateExternalOutgoingDocumentPage() {
   const router = useRouter();
@@ -69,6 +76,10 @@ export default function CreateExternalOutgoingDocumentPage() {
   const [isLoadingRecipients, setIsLoadingRecipients] = useState(false);
   const [recipients, setRecipients] = useState<SenderDTO[]>([]);
 
+  // State for document types
+  const [isLoadingDocumentTypes, setIsLoadingDocumentTypes] = useState(false);
+  const [documentTypes, setDocumentTypes] = useState<DocumentTypeDTO[]>([]);
+
   // Fetch approvers and recipients when component mounts
   useEffect(() => {
     const fetchData = async () => {
@@ -97,6 +108,12 @@ export default function CreateExternalOutgoingDocumentPage() {
         setIsLoadingRecipients(true);
         const sendersData = await senderApi.getAllSenders();
         setRecipients(sendersData || []);
+
+        // Fetch document types
+        setIsLoadingDocumentTypes(true);
+        const documentTypesData =
+          await documentTypesAPI.getActiveDocumentTypes();
+        setDocumentTypes(documentTypesData || []);
       } catch (error) {
         console.error("Error fetching data:", error);
         toast({
@@ -107,6 +124,7 @@ export default function CreateExternalOutgoingDocumentPage() {
       } finally {
         setIsLoadingApprovers(false);
         setIsLoadingRecipients(false);
+        setIsLoadingDocumentTypes(false);
       }
     };
 
@@ -300,13 +318,33 @@ export default function CreateExternalOutgoingDocumentPage() {
 
                 <div className="space-y-2">
                   <Label htmlFor="documentType">Loại văn bản</Label>
-                  <Input
-                    id="documentType"
-                    name="documentType"
+                  <Select
                     value={formData.documentType}
-                    onChange={handleInputChange}
-                    placeholder="Nhập loại văn bản"
-                  />
+                    onValueChange={(value) =>
+                      handleSelectChange("documentType", value)
+                    }
+                  >
+                    <SelectTrigger id="documentType">
+                      <SelectValue placeholder="Chọn loại văn bản" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {isLoadingDocumentTypes ? (
+                        <SelectItem value="loading" disabled>
+                          Đang tải danh sách...
+                        </SelectItem>
+                      ) : documentTypes.length === 0 ? (
+                        <SelectItem value="empty" disabled>
+                          Chưa có loại văn bản nào
+                        </SelectItem>
+                      ) : (
+                        documentTypes.map((docType) => (
+                          <SelectItem key={docType.id} value={docType.name}>
+                            {docType.name}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
