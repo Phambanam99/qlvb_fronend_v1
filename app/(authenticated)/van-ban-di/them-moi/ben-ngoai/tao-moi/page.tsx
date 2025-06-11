@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,7 +27,7 @@ import { UrgencyLevel, URGENCY_LEVELS } from "@/lib/types/urgency";
 import { UrgencySelect } from "@/components/urgency-select";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { DatePicker } from "@/components/ui/date-picker";
 import {
   Select,
@@ -70,7 +70,7 @@ export default function CreateExternalOutgoingDocumentPage() {
   const [recipients, setRecipients] = useState<SenderDTO[]>([]);
 
   // Fetch approvers and recipients when component mounts
-  useState(() => {
+  useEffect(() => {
     const fetchData = async () => {
       if (!user || !user.id) {
         console.error("No user ID available");
@@ -114,11 +114,13 @@ export default function CreateExternalOutgoingDocumentPage() {
   }, [user, toast]);
 
   // Input change handlers
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleRichTextChange = (name: string) => (html: string) => {
+    setFormData((prev) => ({ ...prev, [name]: html }));
   };
 
   const handleSelectChange = (name: string, value: string) => {
@@ -168,7 +170,7 @@ export default function CreateExternalOutgoingDocumentPage() {
         receivingDepartmentText: formData.recipient,
         signingDate: formData.sentDate,
         approverId: formData.approver,
-        priority: formData.priority,
+        priority: formData.urgencyLevel,
         notes: formData.note,
         status: "PENDING_APPROVAL", // Set status for submission (not draft)
       };
@@ -226,7 +228,7 @@ export default function CreateExternalOutgoingDocumentPage() {
         receivingDepartmentText: formData.recipient,
         signingDate: formData.sentDate,
         approverId: formData.approver,
-        priority: formData.priority,
+        priority: formData.urgencyLevel,
         notes: formData.note,
         status: "DRAFT", // Set status as draft
       };
@@ -379,26 +381,14 @@ export default function CreateExternalOutgoingDocumentPage() {
             {/* Content Card - Takes 2 columns */}
             <div className="lg:col-span-2">
               <Card>
-                <CardHeader className="bg-primary/5 border-b">
-                  <CardTitle className="flex items-center gap-2">
-                    <FileText className="h-5 w-5" />
-                    Nội dung văn bản
-                  </CardTitle>
-                  <CardDescription>
-                    Soạn nội dung chi tiết của văn bản
-                  </CardDescription>
-                </CardHeader>
                 <CardContent className="pt-6">
                   <div className="space-y-2">
                     <Label htmlFor="content">Nội dung văn bản</Label>
-                    <Textarea
-                      id="content"
-                      name="content"
-                      value={formData.content}
-                      onChange={handleInputChange}
+                    <RichTextEditor
+                      content={formData.content}
+                      onChange={handleRichTextChange("content")}
                       placeholder="Nhập nội dung văn bản"
-                      rows={15}
-                      className="min-h-[400px]"
+                      minHeight="400px"
                     />
                   </div>
                 </CardContent>
@@ -487,7 +477,7 @@ export default function CreateExternalOutgoingDocumentPage() {
                       )}
                       Gửi phê duyệt
                     </Button>
-
+                    {/* 
                     <Button
                       type="button"
                       variant="outline"
@@ -501,7 +491,7 @@ export default function CreateExternalOutgoingDocumentPage() {
                         <Save className="mr-2 h-4 w-4" />
                       )}
                       Lưu nháp
-                    </Button>
+                    </Button> */}
                   </div>
                 </div>
               </CardContent>
@@ -522,14 +512,11 @@ export default function CreateExternalOutgoingDocumentPage() {
             <CardContent className="pt-6">
               <div className="space-y-2">
                 <Label htmlFor="note">Ghi chú</Label>
-                <Textarea
-                  id="note"
-                  name="note"
-                  value={formData.note}
-                  onChange={handleInputChange}
+                <RichTextEditor
+                  content={formData.note}
+                  onChange={handleRichTextChange("note")}
                   placeholder="Nhập ghi chú cho người phê duyệt (nếu có)"
-                  rows={4}
-                  className="min-h-[120px]"
+                  minHeight="120px"
                 />
               </div>
             </CardContent>
