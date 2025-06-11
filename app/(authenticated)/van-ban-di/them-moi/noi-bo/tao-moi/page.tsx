@@ -200,32 +200,23 @@ export default function CreateInternalOutgoingDocumentPage() {
     }
   };
 
-  // Helper function to find user by ID
   const findUserById = (deptId: number, userId: number) => {
-    const users = departmentUsers[deptId] || [];
-    return users.find((user) => user.id === userId) || null;
+    const deptUsers = departmentUsers[deptId] || [];
+    return deptUsers.find((user) => user.id === userId);
   };
 
-  // Handle primary department selection
   const handleSelectPrimaryDepartment = (deptId: number | string) => {
-    // Convert string IDs back to number if needed
-    const id =
-      typeof deptId === "string" && deptId.includes("-")
-        ? deptId
-        : Number(deptId);
-    selectPrimaryDepartment(id as number);
+    const numericId = typeof deptId === "string" ? parseInt(deptId) : deptId;
+    selectPrimaryDepartment(numericId);
+    fetchDepartmentUsers(numericId);
   };
 
-  // Handle secondary department selection
   const handleSelectSecondaryDepartment = (deptId: number | string) => {
-    const id =
-      typeof deptId === "string" && deptId.includes("-")
-        ? deptId
-        : Number(deptId);
-    selectSecondaryDepartment(id as number);
+    const numericId = typeof deptId === "string" ? parseInt(deptId) : deptId;
+    selectSecondaryDepartment(numericId);
+    fetchDepartmentUsers(numericId);
   };
 
-  // Validation function
   const validateForm = () => {
     const errors: Record<string, string> = {};
 
@@ -234,7 +225,7 @@ export default function CreateInternalOutgoingDocumentPage() {
     }
 
     if (!formData.title.trim()) {
-      errors.title = "Tiêu đề văn bản là bắt buộc";
+      errors.title = "Tiêu đề là bắt buộc";
     }
 
     if (secondaryDepartments.length === 0) {
@@ -245,16 +236,13 @@ export default function CreateInternalOutgoingDocumentPage() {
     return Object.keys(errors).length === 0;
   };
 
-  // Form submission handlers
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validate form
     if (!validateForm()) {
       toast({
-        title: "Thiếu thông tin",
-        description:
-          "Vui lòng điền đầy đủ thông tin bắt buộc và chọn ít nhất một người nhận",
+        title: "Lỗi",
+        description: "Vui lòng kiểm tra lại thông tin đã nhập",
         variant: "destructive",
       });
       return;
@@ -263,55 +251,45 @@ export default function CreateInternalOutgoingDocumentPage() {
     try {
       setIsSubmitting(true);
 
-      // Prepare document data - convert selected departments and users to the right format
-      const recipients = secondaryDepartments.map((id: number | string) => {
-        // Check if this is a composite ID (department-user)
-        if (typeof id === "string" && id.includes("-")) {
-          const [departmentId, userId] = id.split("-").map(Number);
-          return { departmentId, userId };
-        } else {
-          // Just a department
-          return { departmentId: Number(id) };
-        }
-      });
-      console.log("recipients ", recipients);
-      // Prepare document data
-      const documentData: any = {
+      const documentData = {
         documentNumber: formData.documentNumber,
         title: formData.title,
-        summary: formData.content,
+        content: formData.content,
         documentType: formData.documentType,
-        signingDate: formData.sentDate,
         urgencyLevel: formData.urgencyLevel,
-        notes: formData.note,
-        recipients: recipients,
-        status: "PENDING_APPROVAL", // Set status for submission (not draft)
-        isInternal: true,
+        note: formData.note,
+        sentDate: formData.sentDate.toISOString(),
+        recipientDepartments: secondaryDepartments.map((deptId) => {
+          const dept = findDepartmentById(deptId);
+          return {
+            departmentId: deptId,
+            departmentName: dept?.name || "",
+          };
+        }),
       };
-      console.log("documentData ", documentData);
-      // Call API to create internal outgoing document
-      await createInternalDocument(documentData, file ? [file] : undefined);
 
-      // Show success notification
-      toast({
-        title: "Thành công",
-        description: "Văn bản nội bộ đã được tạo và gửi",
-      });
+      const response = await createInternalDocument(
+        documentData,
+        file ? [file] : undefined
+      );
 
       addNotification({
-        title: "Văn bản nội bộ mới",
-        message: `Văn bản "${formData.title}" đã được tạo và gửi`,
+        title: "Văn bản đã được tạo",
+        message: `Văn bản "${formData.title}" đã được tạo và gửi thành công.`,
         type: "success",
       });
 
-      // Redirect to outgoing documents list
+      toast({
+        title: "Thành công",
+        description: "Văn bản đã được tạo và gửi thành công",
+      });
+
       router.push("/van-ban-di");
     } catch (error: any) {
       console.error("Error creating document:", error);
       toast({
         title: "Lỗi",
-        description:
-          error.response?.data?.message || "Có lỗi xảy ra khi tạo văn bản",
+        description: error.message || "Không thể tạo văn bản",
         variant: "destructive",
       });
     } finally {
@@ -320,65 +298,49 @@ export default function CreateInternalOutgoingDocumentPage() {
   };
 
   const handleSaveDraft = async () => {
-    // Validate minimal required fields
-    if (!formData.documentNumber || !formData.title) {
-      toast({
-        title: "Thiếu thông tin",
-        description: "Vui lòng điền ít nhất số văn bản và tiêu đề",
-        variant: "destructive",
-      });
-      return;
-    }
-
     try {
       setIsSubmitting(true);
 
-      // Prepare document data - convert selected departments and users to the right format
-      const recipients = secondaryDepartments.map((id: number | string) => {
-        // Check if this is a composite ID (department-user)
-        if (typeof id === "string" && id.includes("-")) {
-          const [departmentId, userId] = id.split("-").map(Number);
-          return { departmentId, userId };
-        } else {
-          // Just a department
-          return { departmentId: Number(id) };
-        }
-      });
-
-      // Prepare document data
-      const documentData: any = {
+      const documentData = {
         documentNumber: formData.documentNumber,
         title: formData.title,
-        summary: formData.content,
+        content: formData.content,
         documentType: formData.documentType,
-        signingDate: formData.sentDate,
         urgencyLevel: formData.urgencyLevel,
-        notes: formData.note,
-        recipients: recipients,
-        status: "DRAFT", // Set status as draft
-        isInternal: true,
+        note: formData.note,
+        sentDate: formData.sentDate.toISOString(),
+        recipientDepartments: secondaryDepartments.map((deptId) => {
+          const dept = findDepartmentById(deptId);
+          return {
+            departmentId: deptId,
+            departmentName: dept?.name || "",
+          };
+        }),
+        isDraft: true,
       };
 
-      // Call API to create internal outgoing document as draft
-      await workflowAPI.createInternalOutgoingDocument(
+      const response = await createInternalDocument(
         documentData,
-        file || null
+        file ? [file] : undefined
       );
 
-      // Show success notification
-      toast({
-        title: "Thành công",
-        description: "Văn bản nội bộ đã được lưu nháp",
+      addNotification({
+        title: "Nháp đã được lưu",
+        message: `Nháp văn bản "${formData.title}" đã được lưu thành công.`,
+        type: "info",
       });
 
-      // Redirect to outgoing documents list
+      toast({
+        title: "Thành công",
+        description: "Nháp văn bản đã được lưu thành công",
+      });
+
       router.push("/van-ban-di");
     } catch (error: any) {
       console.error("Error saving draft:", error);
       toast({
         title: "Lỗi",
-        description:
-          error.response?.data?.message || "Có lỗi xảy ra khi lưu nháp",
+        description: error.message || "Không thể lưu nháp văn bản",
         variant: "destructive",
       });
     } finally {
@@ -386,11 +348,10 @@ export default function CreateInternalOutgoingDocumentPage() {
     }
   };
 
-  // Create a function that always returns null to show all users
   const showAllUsers = (user: any) => null;
 
   return (
-    <div className="container py-6 max-w-5xl">
+    <div className="container py-6 max-w-6xl">
       <div className="flex items-center space-x-2 mb-6">
         <Button variant="outline" size="icon" asChild>
           <Link href="/van-ban-di/them-moi">
@@ -403,74 +364,46 @@ export default function CreateInternalOutgoingDocumentPage() {
       </div>
 
       <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
-        <div className="grid gap-6 md:grid-cols-2">
-          {/* Document Information Card */}
-          <Card>
-            <CardHeader className="bg-primary/5 border-b">
-              <CardTitle>Thông tin văn bản</CardTitle>
-              <CardDescription>
-                Nhập thông tin chi tiết của văn bản nội bộ
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6 pt-6">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="documentNumber">
-                    Số văn bản <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="documentNumber"
-                    name="documentNumber"
-                    value={formData.documentNumber}
-                    onChange={handleInputChange}
-                    placeholder="Nhập số văn bản"
-                    required
-                    className={
-                      validationErrors.documentNumber ? "border-red-500" : ""
-                    }
-                  />
-                  {validationErrors.documentNumber && (
-                    <p className="text-sm text-red-500">
-                      {validationErrors.documentNumber}
-                    </p>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="sentDate">Ngày ban hành</Label>
-                  <DatePicker
-                    date={formData.sentDate}
-                    setDate={handleDateChange}
-                  />
-                </div>
-              </div>
-
+        {/* Basic Document Information */}
+        <Card>
+          <CardHeader className="bg-primary/5 border-b">
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Thông tin cơ bản
+            </CardTitle>
+            <CardDescription>
+              Nhập thông tin cơ bản của văn bản nội bộ
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <div className="grid gap-6 md:grid-cols-3">
               <div className="space-y-2">
-                <Label htmlFor="title">
-                  Tiêu đề <span className="text-red-500">*</span>
+                <Label htmlFor="documentNumber">
+                  Số văn bản <span className="text-red-500">*</span>
                 </Label>
                 <Input
-                  id="title"
-                  name="title"
-                  value={formData.title}
+                  id="documentNumber"
+                  name="documentNumber"
+                  value={formData.documentNumber}
                   onChange={handleInputChange}
-                  placeholder="Nhập tiêu đề văn bản"
+                  placeholder="Nhập số văn bản"
                   required
-                  className={validationErrors.title ? "border-red-500" : ""}
+                  className={
+                    validationErrors.documentNumber ? "border-red-500" : ""
+                  }
                 />
-                {validationErrors.title && (
+                {validationErrors.documentNumber && (
                   <p className="text-sm text-red-500">
-                    {validationErrors.title}
+                    {validationErrors.documentNumber}
                   </p>
                 )}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="content">Nội dung</Label>
-                <RichTextEditor
-                  content={formData.content}
-                  onChange={handleRichTextChange("content")}
-                  placeholder="Nhập nội dung văn bản"
-                  minHeight="200px"
+                <Label htmlFor="sentDate">Ngày ban hành</Label>
+                <DatePicker
+                  date={formData.sentDate}
+                  setDate={handleDateChange}
                 />
               </div>
 
@@ -504,6 +437,28 @@ export default function CreateInternalOutgoingDocumentPage() {
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+
+            <div className="grid gap-6 md:grid-cols-2 mt-6">
+              <div className="space-y-2">
+                <Label htmlFor="title">
+                  Tiêu đề <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="title"
+                  name="title"
+                  value={formData.title}
+                  onChange={handleInputChange}
+                  placeholder="Nhập tiêu đề văn bản"
+                  required
+                  className={validationErrors.title ? "border-red-500" : ""}
+                />
+                {validationErrors.title && (
+                  <p className="text-sm text-red-500">
+                    {validationErrors.title}
+                  </p>
+                )}
+              </div>
 
               <div className="space-y-2">
                 <Label htmlFor="priority">Độ ưu tiên</Label>
@@ -530,14 +485,41 @@ export default function CreateInternalOutgoingDocumentPage() {
                   </SelectContent>
                 </Select>
               </div>
+            </div>
 
+            <div className="space-y-2 mt-6">
+              <Label htmlFor="file">Tệp đính kèm</Label>
+              <Input
+                id="file"
+                type="file"
+                onChange={handleFileChange}
+                className="cursor-pointer"
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Content and Recipients */}
+        <div className="grid gap-6 lg:grid-cols-2">
+          {/* Content Card */}
+          <Card>
+            <CardHeader className="bg-primary/5 border-b">
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Nội dung văn bản
+              </CardTitle>
+              <CardDescription>
+                Soạn nội dung chi tiết của văn bản
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6 pt-6">
               <div className="space-y-2">
-                <Label htmlFor="file">Tệp đính kèm</Label>
-                <Input
-                  id="file"
-                  type="file"
-                  onChange={handleFileChange}
-                  className="cursor-pointer"
+                <Label htmlFor="content">Nội dung văn bản</Label>
+                <RichTextEditor
+                  content={formData.content}
+                  onChange={handleRichTextChange("content")}
+                  placeholder="Nhập nội dung văn bản"
+                  minHeight="300px"
                 />
               </div>
 
@@ -547,128 +529,128 @@ export default function CreateInternalOutgoingDocumentPage() {
                   content={formData.note}
                   onChange={handleRichTextChange("note")}
                   placeholder="Nhập ghi chú (nếu có)"
-                  minHeight="100px"
+                  minHeight="150px"
                 />
               </div>
             </CardContent>
           </Card>
 
           {/* Recipients Card */}
-          <div className="space-y-6">
-            <Card>
-              <CardHeader className="bg-primary/5 border-b">
-                <CardTitle>Người nhận</CardTitle>
-                <CardDescription>
-                  Chọn phòng ban hoặc cá nhân nhận văn bản
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="pt-6">
-                {isLoadingDepartmentList ? (
-                  <div className="flex items-center justify-center p-4">
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    <span>Đang tải danh sách phòng ban...</span>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>
-                        Danh sách phòng ban và người dùng{" "}
-                        {validationErrors.recipients && (
-                          <span className="text-red-500">*</span>
-                        )}
-                      </Label>
-                      <div className="border rounded-md overflow-hidden">
-                        <div className="bg-primary/5 px-4 py-2 border-b flex items-center justify-between">
-                          <span className="text-sm font-medium">
-                            Chọn người nhận văn bản
-                          </span>
-                        </div>
-                        <div className="max-h-[400px] overflow-y-auto">
-                          <DepartmentTree
-                            departments={departments}
-                            expandedDepartments={new Set(expandedDepartments)}
-                            toggleDepartment={toggleDepartment}
-                            onSelectSecondaryDepartment={
-                              handleSelectSecondaryDepartment
-                            }
-                            secondaryDepartments={secondaryDepartments as any}
-                            departmentUsers={departmentUsers}
-                            isLoadingUsers={isLoadingUsers}
-                            onDepartmentExpand={fetchDepartmentUsers}
-                            getLeadershipRole={showAllUsers}
-                            getRoleDisplayName={getRoleDisplayName}
-                            selectionMode="secondary"
-                            maxHeight="400px"
-                            secondaryButtonText="Chọn"
-                          />
-                        </div>
-                      </div>
+          <Card>
+            <CardHeader className="bg-primary/5 border-b">
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Người nhận
+              </CardTitle>
+              <CardDescription>
+                Chọn phòng ban hoặc cá nhân nhận văn bản
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-6">
+              {isLoadingDepartmentList ? (
+                <div className="flex items-center justify-center p-4">
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  <span>Đang tải danh sách phòng ban...</span>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>
+                      Danh sách phòng ban và người dùng{" "}
                       {validationErrors.recipients && (
-                        <p className="text-sm text-red-500">
-                          {validationErrors.recipients}
-                        </p>
+                        <span className="text-red-500">*</span>
                       )}
+                    </Label>
+                    <div className="border rounded-md overflow-hidden">
+                      <div className="bg-primary/5 px-4 py-2 border-b flex items-center justify-between">
+                        <span className="text-sm font-medium">
+                          Chọn người nhận văn bản
+                        </span>
+                      </div>
+                      <div className="max-h-[400px] overflow-y-auto">
+                        <DepartmentTree
+                          departments={departments}
+                          expandedDepartments={new Set(expandedDepartments)}
+                          toggleDepartment={toggleDepartment}
+                          onSelectSecondaryDepartment={
+                            handleSelectSecondaryDepartment
+                          }
+                          secondaryDepartments={secondaryDepartments as any}
+                          departmentUsers={departmentUsers}
+                          isLoadingUsers={isLoadingUsers}
+                          onDepartmentExpand={fetchDepartmentUsers}
+                          getLeadershipRole={showAllUsers}
+                          getRoleDisplayName={getRoleDisplayName}
+                          selectionMode="secondary"
+                          maxHeight="400px"
+                          secondaryButtonText="Chọn"
+                        />
+                      </div>
                     </div>
+                    {validationErrors.recipients && (
+                      <p className="text-sm text-red-500">
+                        {validationErrors.recipients}
+                      </p>
+                    )}
+                  </div>
 
-                    <div className="flex items-center gap-4 text-xs mt-1">
-                      <div className="flex items-center gap-1">
-                        <div className="w-3 h-3 rounded-sm border border-blue-500 bg-white"></div>
-                        <span>Người nhận</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Building className="h-3 w-3 text-muted-foreground" />
-                        <span>Đơn vị lớn</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Users className="h-3 w-3 text-muted-foreground" />
-                        <span>Đơn vị nhỏ</span>
-                      </div>
+                  <div className="flex items-center gap-4 text-xs mt-1">
+                    <div className="flex items-center gap-1">
+                      <div className="w-3 h-3 rounded-sm border border-blue-500 bg-white"></div>
+                      <span>Người nhận</span>
                     </div>
-
-                    <div className="mt-6 space-y-2">
-                      <div className="flex justify-center space-x-2">
-                        <Button
-                          type="submit"
-                          className="w-full"
-                          disabled={isSubmitting}
-                        >
-                          {isSubmitting ? (
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          ) : (
-                            <Send className="mr-2 h-4 w-4" />
-                          )}
-                          Gửi văn bản
-                        </Button>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="w-full"
-                        onClick={handleSaveDraft}
-                        disabled={isSubmitting}
-                      >
-                        {isSubmitting ? (
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        ) : (
-                          <Save className="mr-2 h-4 w-4" />
-                        )}
-                        Lưu nháp
-                      </Button>
+                    <div className="flex items-center gap-1">
+                      <Building className="h-3 w-3 text-muted-foreground" />
+                      <span>Đơn vị lớn</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Users className="h-3 w-3 text-muted-foreground" />
+                      <span>Đơn vị nhỏ</span>
                     </div>
                   </div>
-                )}
-              </CardContent>
-            </Card>
 
-            <div className="rounded-md bg-amber-50 border border-amber-200 p-3">
-              <p className="text-sm text-amber-800">
-                <span className="font-medium">Lưu ý:</span> Văn bản nội bộ sẽ
-                được gửi đến tất cả phòng ban và cá nhân được chọn. Văn bản được
-                gửi đến phòng ban sẽ được chuyển đến trưởng phòng của phòng ban
-                đó.
-              </p>
-            </div>
-          </div>
+                  <div className="mt-6 space-y-2">
+                    <Button
+                      type="submit"
+                      className="w-full"
+                      disabled={isSubmitting}
+                    >
+                      {isSubmitting ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Send className="mr-2 h-4 w-4" />
+                      )}
+                      Gửi văn bản
+                    </Button>
+
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full"
+                      onClick={handleSaveDraft}
+                      disabled={isSubmitting}
+                    >
+                      {isSubmitting ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Save className="mr-2 h-4 w-4" />
+                      )}
+                      Lưu nháp
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Note Card */}
+        <div className="rounded-md bg-amber-50 border border-amber-200 p-4">
+          <p className="text-sm text-amber-800">
+            <span className="font-medium">Lưu ý:</span> Văn bản nội bộ sẽ được
+            gửi đến tất cả phòng ban và cá nhân được chọn. Văn bản được gửi đến
+            phòng ban sẽ được chuyển đến trưởng phòng của phòng ban đó.
+          </p>
         </div>
       </form>
     </div>

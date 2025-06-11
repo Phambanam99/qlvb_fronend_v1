@@ -452,13 +452,6 @@ export default function OutgoingDocumentsPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col space-y-2">
-        <h1 className="text-3xl font-bold text-primary">Văn bản đi</h1>
-        <p className="text-muted-foreground">
-          Quản lý và theo dõi các văn bản đi
-        </p>
-      </div>
-
       <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
         <div className="flex w-full sm:w-auto items-center space-x-2">
           <div className="relative w-full sm:w-[300px]">
