@@ -351,324 +351,326 @@ export default function CreateInternalOutgoingDocumentPage() {
   const showAllUsers = (user: any) => null;
 
   return (
-    <div className="container py-6 max-w-6xl">
-      <div className="flex items-center space-x-2 mb-6">
-        <Button variant="outline" size="icon" asChild>
-          <Link href="/van-ban-di/them-moi">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-        </Button>
-        <h1 className="text-2xl font-bold tracking-tight text-primary">
-          Tạo văn bản đi mới - Nội bộ
-        </h1>
-      </div>
+    <div className="min-h-screen bg-gray-50/30">
+      <div className="container mx-auto py-6 max-w-5xl px-4">
+        <div className="flex items-center space-x-2 mb-6">
+          <Button variant="outline" size="icon" asChild>
+            <Link href="/van-ban-di/them-moi">
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          </Button>
+          <h1 className="text-2xl font-bold tracking-tight text-primary">
+            Tạo văn bản đi mới - Nội bộ
+          </h1>
+        </div>
 
-      <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
-        {/* Basic Document Information */}
-        <Card>
-          <CardHeader className="bg-primary/5 border-b">
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Thông tin cơ bản
-            </CardTitle>
-            <CardDescription>
-              Nhập thông tin cơ bản của văn bản nội bộ
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pt-6">
-            <div className="grid gap-6 md:grid-cols-3">
-              <div className="space-y-2">
-                <Label htmlFor="documentNumber">
-                  Số văn bản <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="documentNumber"
-                  name="documentNumber"
-                  value={formData.documentNumber}
-                  onChange={handleInputChange}
-                  placeholder="Nhập số văn bản"
-                  required
-                  className={
-                    validationErrors.documentNumber ? "border-red-500" : ""
-                  }
-                />
-                {validationErrors.documentNumber && (
-                  <p className="text-sm text-red-500">
-                    {validationErrors.documentNumber}
-                  </p>
-                )}
-              </div>
+        <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
+          {/* Basic Document Information */}
+          <Card>
+            <CardHeader className="bg-primary/5 border-b">
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Thông tin cơ bản
+              </CardTitle>
+              <CardDescription>
+                Nhập thông tin cơ bản của văn bản nội bộ
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <div className="grid gap-6 md:grid-cols-3">
+                <div className="space-y-2">
+                  <Label htmlFor="documentNumber">
+                    Số văn bản <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="documentNumber"
+                    name="documentNumber"
+                    value={formData.documentNumber}
+                    onChange={handleInputChange}
+                    placeholder="Nhập số văn bản"
+                    required
+                    className={
+                      validationErrors.documentNumber ? "border-red-500" : ""
+                    }
+                  />
+                  {validationErrors.documentNumber && (
+                    <p className="text-sm text-red-500">
+                      {validationErrors.documentNumber}
+                    </p>
+                  )}
+                </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="sentDate">Ngày ban hành</Label>
-                <DatePicker
-                  date={formData.sentDate}
-                  setDate={handleDateChange}
-                />
-              </div>
+                <div className="space-y-2">
+                  <Label htmlFor="sentDate">Ngày ban hành</Label>
+                  <DatePicker
+                    date={formData.sentDate}
+                    setDate={handleDateChange}
+                  />
+                </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="documentType">Loại văn bản</Label>
-                <Select
-                  value={formData.documentType}
-                  onValueChange={(value) =>
-                    handleSelectChange("documentType", value)
-                  }
-                >
-                  <SelectTrigger id="documentType">
-                    <SelectValue placeholder="Chọn loại văn bản" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {isLoadingDocumentTypes ? (
-                      <SelectItem value="loading" disabled>
-                        Đang tải danh sách loại văn bản...
-                      </SelectItem>
-                    ) : documentTypes.length === 0 ? (
-                      <SelectItem value="empty" disabled>
-                        Chưa có loại văn bản nào
-                      </SelectItem>
-                    ) : (
-                      documentTypes.map((type) => (
-                        <SelectItem key={type.id} value={type.name}>
-                          {type.name}
+                <div className="space-y-2">
+                  <Label htmlFor="documentType">Loại văn bản</Label>
+                  <Select
+                    value={formData.documentType}
+                    onValueChange={(value) =>
+                      handleSelectChange("documentType", value)
+                    }
+                  >
+                    <SelectTrigger id="documentType">
+                      <SelectValue placeholder="Chọn loại văn bản" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {isLoadingDocumentTypes ? (
+                        <SelectItem value="loading" disabled>
+                          Đang tải danh sách loại văn bản...
                         </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
+                      ) : documentTypes.length === 0 ? (
+                        <SelectItem value="empty" disabled>
+                          Chưa có loại văn bản nào
+                        </SelectItem>
+                      ) : (
+                        documentTypes.map((type) => (
+                          <SelectItem key={type.id} value={type.name}>
+                            {type.name}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-            </div>
 
-            <div className="grid gap-6 md:grid-cols-2 mt-6">
-              <div className="space-y-2">
-                <Label htmlFor="title">
-                  Tiêu đề <span className="text-red-500">*</span>
-                </Label>
+              <div className="grid gap-6 md:grid-cols-2 mt-6">
+                <div className="space-y-2">
+                  <Label htmlFor="title">
+                    Tiêu đề <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="title"
+                    name="title"
+                    value={formData.title}
+                    onChange={handleInputChange}
+                    placeholder="Nhập tiêu đề văn bản"
+                    required
+                    className={validationErrors.title ? "border-red-500" : ""}
+                  />
+                  {validationErrors.title && (
+                    <p className="text-sm text-red-500">
+                      {validationErrors.title}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="priority">Độ ưu tiên</Label>
+                  <Select
+                    value={formData.urgencyLevel}
+                    onValueChange={(value) =>
+                      handleSelectChange("urgencyLevel", value)
+                    }
+                  >
+                    <SelectTrigger id="priority">
+                      <SelectValue placeholder="Chọn độ ưu tiên" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={URGENCY_LEVELS.KHAN}>Khẩn</SelectItem>
+                      <SelectItem value={URGENCY_LEVELS.THUONG_KHAN}>
+                        Thượng khẩn
+                      </SelectItem>
+                      <SelectItem value={URGENCY_LEVELS.HOA_TOC}>
+                        Hỏa tốc
+                      </SelectItem>
+                      <SelectItem value={URGENCY_LEVELS.HOA_TOC_HEN_GIO}>
+                        Hỏa tốc hẹn giờ
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-2 mt-6">
+                <Label htmlFor="file">Tệp đính kèm</Label>
                 <Input
-                  id="title"
-                  name="title"
-                  value={formData.title}
-                  onChange={handleInputChange}
-                  placeholder="Nhập tiêu đề văn bản"
-                  required
-                  className={validationErrors.title ? "border-red-500" : ""}
+                  id="file"
+                  type="file"
+                  onChange={handleFileChange}
+                  className="cursor-pointer"
                 />
-                {validationErrors.title && (
-                  <p className="text-sm text-red-500">
-                    {validationErrors.title}
-                  </p>
-                )}
               </div>
+            </CardContent>
+          </Card>
 
-              <div className="space-y-2">
-                <Label htmlFor="priority">Độ ưu tiên</Label>
-                <Select
-                  value={formData.urgencyLevel}
-                  onValueChange={(value) =>
-                    handleSelectChange("urgencyLevel", value)
-                  }
-                >
-                  <SelectTrigger id="priority">
-                    <SelectValue placeholder="Chọn độ ưu tiên" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={URGENCY_LEVELS.KHAN}>Khẩn</SelectItem>
-                    <SelectItem value={URGENCY_LEVELS.THUONG_KHAN}>
-                      Thượng khẩn
-                    </SelectItem>
-                    <SelectItem value={URGENCY_LEVELS.HOA_TOC}>
-                      Hỏa tốc
-                    </SelectItem>
-                    <SelectItem value={URGENCY_LEVELS.HOA_TOC_HEN_GIO}>
-                      Hỏa tốc hẹn giờ
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+          {/* Content and Recipients */}
+          <div className="grid gap-6 lg:grid-cols-3">
+            {/* Content Card - Takes 2 columns */}
+            <div className="lg:col-span-2">
+              <Card>
+                <CardHeader className="bg-primary/5 border-b">
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    Nội dung văn bản
+                  </CardTitle>
+                  <CardDescription>
+                    Soạn nội dung chi tiết của văn bản
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="pt-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="content">Nội dung văn bản</Label>
+                    <RichTextEditor
+                      content={formData.content}
+                      onChange={handleRichTextChange("content")}
+                      placeholder="Nhập nội dung văn bản"
+                      minHeight="400px"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
             </div>
 
-            <div className="space-y-2 mt-6">
-              <Label htmlFor="file">Tệp đính kèm</Label>
-              <Input
-                id="file"
-                type="file"
-                onChange={handleFileChange}
-                className="cursor-pointer"
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Content and Recipients */}
-        <div className="grid gap-6 lg:grid-cols-3">
-          {/* Content Card - Takes 2 columns */}
-          <div className="lg:col-span-2">
-            <Card>
+            {/* Recipients Card - Takes 1 column */}
+            <Card className="h-fit">
               <CardHeader className="bg-primary/5 border-b">
                 <CardTitle className="flex items-center gap-2">
-                  <FileText className="h-5 w-5" />
-                  Nội dung văn bản
+                  <Users className="h-5 w-5" />
+                  Người nhận
                 </CardTitle>
                 <CardDescription>
-                  Soạn nội dung chi tiết của văn bản
+                  Chọn phòng ban hoặc cá nhân nhận văn bản
                 </CardDescription>
               </CardHeader>
               <CardContent className="pt-6">
-                <div className="space-y-2">
-                  <Label htmlFor="content">Nội dung văn bản</Label>
-                  <RichTextEditor
-                    content={formData.content}
-                    onChange={handleRichTextChange("content")}
-                    placeholder="Nhập nội dung văn bản"
-                    minHeight="400px"
-                  />
-                </div>
+                {isLoadingDepartmentList ? (
+                  <div className="flex items-center justify-center p-4">
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    <span>Đang tải danh sách phòng ban...</span>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>
+                        Danh sách phòng ban{" "}
+                        {validationErrors.recipients && (
+                          <span className="text-red-500">*</span>
+                        )}
+                      </Label>
+                      <div className="border rounded-md overflow-hidden">
+                        <div className="bg-primary/5 px-3 py-2 border-b">
+                          <span className="text-sm font-medium">
+                            Chọn người nhận
+                          </span>
+                        </div>
+                        <div className="max-h-[300px] overflow-y-auto">
+                          <DepartmentTree
+                            departments={departments}
+                            expandedDepartments={new Set(expandedDepartments)}
+                            toggleDepartment={toggleDepartment}
+                            onSelectSecondaryDepartment={
+                              handleSelectSecondaryDepartment
+                            }
+                            secondaryDepartments={secondaryDepartments as any}
+                            departmentUsers={departmentUsers}
+                            isLoadingUsers={isLoadingUsers}
+                            onDepartmentExpand={fetchDepartmentUsers}
+                            getLeadershipRole={showAllUsers}
+                            getRoleDisplayName={getRoleDisplayName}
+                            selectionMode="secondary"
+                            maxHeight="300px"
+                            secondaryButtonText="Chọn"
+                          />
+                        </div>
+                      </div>
+                      {validationErrors.recipients && (
+                        <p className="text-sm text-red-500">
+                          {validationErrors.recipients}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                      <div className="flex items-center gap-1">
+                        <div className="w-2 h-2 rounded-sm border border-blue-500 bg-white"></div>
+                        <span>Người nhận</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Building className="h-3 w-3 text-muted-foreground" />
+                        <span>Đơn vị lớn</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Users className="h-3 w-3 text-muted-foreground" />
+                        <span>Đơn vị nhỏ</span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2 pt-4">
+                      <Button
+                        type="submit"
+                        className="w-full"
+                        disabled={isSubmitting}
+                      >
+                        {isSubmitting ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <Send className="mr-2 h-4 w-4" />
+                        )}
+                        Gửi văn bản
+                      </Button>
+
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full"
+                        onClick={handleSaveDraft}
+                        disabled={isSubmitting}
+                      >
+                        {isSubmitting ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <Save className="mr-2 h-4 w-4" />
+                        )}
+                        Lưu nháp
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
 
-          {/* Recipients Card - Takes 1 column */}
-          <Card className="h-fit">
+          {/* Notes Section */}
+          <Card>
             <CardHeader className="bg-primary/5 border-b">
               <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                Người nhận
+                <FileText className="h-5 w-5" />
+                Ghi chú
               </CardTitle>
               <CardDescription>
-                Chọn phòng ban hoặc cá nhân nhận văn bản
+                Thêm ghi chú bổ sung cho văn bản (nếu có)
               </CardDescription>
             </CardHeader>
             <CardContent className="pt-6">
-              {isLoadingDepartmentList ? (
-                <div className="flex items-center justify-center p-4">
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  <span>Đang tải danh sách phòng ban...</span>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>
-                      Danh sách phòng ban{" "}
-                      {validationErrors.recipients && (
-                        <span className="text-red-500">*</span>
-                      )}
-                    </Label>
-                    <div className="border rounded-md overflow-hidden">
-                      <div className="bg-primary/5 px-3 py-2 border-b">
-                        <span className="text-sm font-medium">
-                          Chọn người nhận
-                        </span>
-                      </div>
-                      <div className="max-h-[300px] overflow-y-auto">
-                        <DepartmentTree
-                          departments={departments}
-                          expandedDepartments={new Set(expandedDepartments)}
-                          toggleDepartment={toggleDepartment}
-                          onSelectSecondaryDepartment={
-                            handleSelectSecondaryDepartment
-                          }
-                          secondaryDepartments={secondaryDepartments as any}
-                          departmentUsers={departmentUsers}
-                          isLoadingUsers={isLoadingUsers}
-                          onDepartmentExpand={fetchDepartmentUsers}
-                          getLeadershipRole={showAllUsers}
-                          getRoleDisplayName={getRoleDisplayName}
-                          selectionMode="secondary"
-                          maxHeight="300px"
-                          secondaryButtonText="Chọn"
-                        />
-                      </div>
-                    </div>
-                    {validationErrors.recipients && (
-                      <p className="text-sm text-red-500">
-                        {validationErrors.recipients}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-2 text-xs">
-                    <div className="flex items-center gap-1">
-                      <div className="w-2 h-2 rounded-sm border border-blue-500 bg-white"></div>
-                      <span>Người nhận</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Building className="h-3 w-3 text-muted-foreground" />
-                      <span>Đơn vị lớn</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Users className="h-3 w-3 text-muted-foreground" />
-                      <span>Đơn vị nhỏ</span>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2 pt-4">
-                    <Button
-                      type="submit"
-                      className="w-full"
-                      disabled={isSubmitting}
-                    >
-                      {isSubmitting ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <Send className="mr-2 h-4 w-4" />
-                      )}
-                      Gửi văn bản
-                    </Button>
-
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="w-full"
-                      onClick={handleSaveDraft}
-                      disabled={isSubmitting}
-                    >
-                      {isSubmitting ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <Save className="mr-2 h-4 w-4" />
-                      )}
-                      Lưu nháp
-                    </Button>
-                  </div>
-                </div>
-              )}
+              <div className="space-y-2">
+                <Label htmlFor="note">Ghi chú</Label>
+                <RichTextEditor
+                  content={formData.note}
+                  onChange={handleRichTextChange("note")}
+                  placeholder="Nhập ghi chú (nếu có)"
+                  minHeight="150px"
+                />
+              </div>
             </CardContent>
           </Card>
-        </div>
 
-        {/* Notes Section */}
-        <Card>
-          <CardHeader className="bg-primary/5 border-b">
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Ghi chú
-            </CardTitle>
-            <CardDescription>
-              Thêm ghi chú bổ sung cho văn bản (nếu có)
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pt-6">
-            <div className="space-y-2">
-              <Label htmlFor="note">Ghi chú</Label>
-              <RichTextEditor
-                content={formData.note}
-                onChange={handleRichTextChange("note")}
-                placeholder="Nhập ghi chú (nếu có)"
-                minHeight="150px"
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Info Note */}
-        <div className="rounded-md bg-amber-50 border border-amber-200 p-4">
-          <p className="text-sm text-amber-800">
-            <span className="font-medium">Lưu ý:</span> Văn bản nội bộ sẽ được
-            gửi đến tất cả phòng ban và cá nhân được chọn. Văn bản được gửi đến
-            phòng ban sẽ được chuyển đến trưởng phòng của phòng ban đó.
-          </p>
-        </div>
-      </form>
+          {/* Info Note */}
+          <div className="rounded-md bg-amber-50 border border-amber-200 p-4">
+            <p className="text-sm text-amber-800">
+              <span className="font-medium">Lưu ý:</span> Văn bản nội bộ sẽ được
+              gửi đến tất cả phòng ban và cá nhân được chọn. Văn bản được gửi
+              đến phòng ban sẽ được chuyển đến trưởng phòng của phòng ban đó.
+            </p>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
