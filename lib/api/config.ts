@@ -11,15 +11,39 @@ const api = axios.create({
     "Content-Type": "application/json",
   },
 });
-
+// List các endpoint không cần auth
+const publicEndpoints = [
+  "/auth/login",
+  "/auth/register",
+  "/auth/forgot-password",
+];
+// Hàm kiểm tra xem request có cần token không
+function requiresAuth(url?: string): boolean {
+  if (!url) return true;
+  return !publicEndpoints.some((path) => url.includes(path));
+}
 // Add request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
     // Use localStorage only in browser environment
     if (typeof window !== "undefined") {
-      const token = localStorage.getItem("token");
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
+      const token = localStorage.getItem("accessToken");
+      if (requiresAuth(config.url)) {
+        // Validate token before adding to header
+        if (token && token !== "undefined" && token !== "null") {
+          config.headers.Authorization = `Bearer ${token}`;
+          // Debug log để verify
+          console.log(
+            "API Request: Added Authorization header:",
+            config.headers.Authorization.substring(0, 20) + "..."
+          );
+        } else {
+          console.warn(
+            "API Request: No valid token available for:",
+            config.url
+          );
+          delete config.headers.Authorization;
+        }
       }
     }
     return config;
@@ -41,7 +65,8 @@ api.interceptors.response.use(
 
       // Handle 401 Unauthorized - redirect to login
       if (error.response.status === 401 && typeof window !== "undefined") {
-        localStorage.removeItem("token");
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("refreshToken");
         window.location.href = "/dang-nhap";
       }
     } else if (error.request) {

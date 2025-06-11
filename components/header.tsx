@@ -29,9 +29,13 @@ import {
   Users,
   Settings,
   Building,
+  Building2,
   UserCheck,
   Menu,
   ChevronDown,
+  HelpCircle,
+  Database,
+  FileType,
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
@@ -45,9 +49,10 @@ export const Header = () => {
   const { user, logout, hasPermission } = useAuth();
   const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isDataLibraryOpen, setIsDataLibraryOpen] = useState(false);
 
-  // Định nghĩa các mục menu với quyền hạn tương ứng
-  const navItems = [
+  // Định nghĩa các mục menu chính
+  const mainNavItems = [
     {
       title: "Văn bản đến",
       href: "/van-ban-den",
@@ -73,6 +78,16 @@ export const Header = () => {
       permission: null, // Tất cả người dùng đều có thể xem
     },
     {
+      title: "Cài đặt",
+      href: "/cai-dat",
+      icon: Settings,
+      permission: "ROLE_ADMIN",
+    },
+  ];
+
+  // Định nghĩa các mục trong Thư viện dữ liệu
+  const dataLibraryItems = [
+    {
       title: "Người dùng",
       href: "/nguoi-dung",
       icon: Users,
@@ -91,16 +106,40 @@ export const Header = () => {
       permission: "ROLE_ADMIN",
     },
     {
-      title: "Cài đặt",
-      href: "/cai-dat",
-      icon: Settings,
+      title: "Loại văn bản",
+      href: "/loai-van-ban",
+      icon: FileType,
+      permission: "ROLE_ADMIN",
+    },
+    {
+      title: "Đơn vị ngoài",
+      href: "/don-vi-ngoai",
+      icon: Building2,
+      permission: "ROLE_ADMIN",
+    },
+    {
+      title: "Quản lý hướng dẫn",
+      href: "/admin/guide-files",
+      icon: HelpCircle,
       permission: "ROLE_ADMIN",
     },
   ];
 
   // Lọc các mục menu dựa trên quyền hạn
-  const filteredNavItems = navItems.filter(
+  const filteredMainNavItems = mainNavItems.filter(
     (item) => item.permission === null || hasPermission(item.permission)
+  );
+
+  const filteredDataLibraryItems = dataLibraryItems.filter(
+    (item) => item.permission === null || hasPermission(item.permission)
+  );
+
+  // Kiểm tra xem có quyền truy cập Thư viện dữ liệu không
+  const hasDataLibraryAccess = filteredDataLibraryItems.length > 0;
+
+  // Kiểm tra xem có tab nào trong thư viện dữ liệu đang active không
+  const isDataLibraryActive = dataLibraryItems.some(
+    (item) => pathname === item.href || pathname.startsWith(`${item.href}/`)
   );
 
   return (
@@ -118,7 +157,8 @@ export const Header = () => {
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center space-x-1 flex-1">
-          {filteredNavItems.map((item) => {
+          {/* Main navigation items */}
+          {filteredMainNavItems.map((item) => {
             const isActive =
               pathname === item.href || pathname.startsWith(`${item.href}/`);
             return (
@@ -137,6 +177,54 @@ export const Header = () => {
               </Link>
             );
           })}
+
+          {/* Data Library Dropdown */}
+          {hasDataLibraryAccess && (
+            <DropdownMenu
+              open={isDataLibraryOpen}
+              onOpenChange={setIsDataLibraryOpen}
+            >
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className={cn(
+                    "flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-colors hover:bg-accent hover:text-accent-foreground",
+                    isDataLibraryActive
+                      ? "bg-accent text-accent-foreground"
+                      : "text-muted-foreground"
+                  )}
+                >
+                  <Database className="h-4 w-4" />
+                  Thư viện dữ liệu
+                  <ChevronDown className="h-3 w-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-56">
+                <DropdownMenuLabel>Quản lý dữ liệu</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {filteredDataLibraryItems.map((item) => {
+                  const isActive =
+                    pathname === item.href ||
+                    pathname.startsWith(`${item.href}/`);
+                  return (
+                    <DropdownMenuItem key={item.href} asChild>
+                      <Link
+                        href={item.href}
+                        className={cn(
+                          "flex items-center gap-2 w-full",
+                          isActive && "bg-accent"
+                        )}
+                        onClick={() => setIsDataLibraryOpen(false)}
+                      >
+                        <item.icon className="h-4 w-4" />
+                        {item.title}
+                      </Link>
+                    </DropdownMenuItem>
+                  );
+                })}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </nav>
 
         {/* Mobile Navigation */}
@@ -156,7 +244,9 @@ export const Header = () => {
             <DropdownMenuContent align="start" className="w-64">
               <DropdownMenuLabel>Chức năng</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              {filteredNavItems.map((item) => {
+
+              {/* Main navigation items for mobile */}
+              {filteredMainNavItems.map((item) => {
                 const isActive =
                   pathname === item.href ||
                   pathname.startsWith(`${item.href}/`);
@@ -176,6 +266,34 @@ export const Header = () => {
                   </DropdownMenuItem>
                 );
               })}
+
+              {/* Data Library items for mobile */}
+              {hasDataLibraryAccess && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel>Thư viện dữ liệu</DropdownMenuLabel>
+                  {filteredDataLibraryItems.map((item) => {
+                    const isActive =
+                      pathname === item.href ||
+                      pathname.startsWith(`${item.href}/`);
+                    return (
+                      <DropdownMenuItem key={item.href} asChild>
+                        <Link
+                          href={item.href}
+                          className={cn(
+                            "flex items-center gap-2 w-full",
+                            isActive && "bg-accent"
+                          )}
+                          onClick={() => setIsMenuOpen(false)}
+                        >
+                          <item.icon className="h-4 w-4" />
+                          {item.title}
+                        </Link>
+                      </DropdownMenuItem>
+                    );
+                  })}
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -217,6 +335,12 @@ export const Header = () => {
                 <Link href="/profile" className="flex items-center">
                   <User className="mr-2 h-4 w-4" />
                   <span>Hồ sơ</span>
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/huong-dan-su-dung" className="flex items-center">
+                  <HelpCircle className="mr-2 h-4 w-4" />
+                  <span>Hướng dẫn sử dụng</span>
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem

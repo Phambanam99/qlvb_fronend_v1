@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Paperclip } from "lucide-react";
+import { Paperclip, Trash } from "lucide-react";
 import { DocumentTypeManager } from "./document-type-manager";
 import { RecipientSelector } from "./recipient-selector";
 
@@ -18,21 +18,23 @@ interface DocumentInfoFormProps {
     content: string;
   };
   documentScope: "INTERNAL" | "EXTERNAL";
-  file: File | null;
+  files: File[];
   onInputChange: (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => void;
   onSelectChange: (name: string, value: string) => void;
   onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onRemoveFile: (index: number) => void;
 }
 
 export function DocumentInfoForm({
   formData,
   documentScope,
-  file,
+  files,
   onInputChange,
   onSelectChange,
   onFileChange,
+  onRemoveFile,
 }: DocumentInfoFormProps) {
   return (
     <div className="space-y-6">
@@ -108,6 +110,7 @@ export function DocumentInfoForm({
           <Input
             id="attachments"
             type="file"
+            multiple
             onChange={onFileChange}
             className="hidden"
           />
@@ -120,14 +123,26 @@ export function DocumentInfoForm({
             Chọn tệp
           </Button>
           <span className="text-sm text-muted-foreground">
-            {file ? file.name : "Chưa có tệp nào được chọn"}
+            {files.length > 0
+              ? `Đã chọn ${files.length} tệp`
+              : "Chưa có tệp nào được chọn"}
           </span>
         </div>
-        {file && (
+        {files.length > 0 && (
           <div className="mt-2">
-            <div className="text-sm">
-              {file.name} ({(file.size / 1024).toFixed(2)} KB)
-            </div>
+            {files.map((file, index) => (
+              <div key={index} className="text-sm">
+                {file.name} ({(file.size / 1024).toFixed(2)} KB)
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => onRemoveFile(index)}
+                >
+                  <Trash className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
           </div>
         )}
       </div>

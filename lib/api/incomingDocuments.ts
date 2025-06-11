@@ -1,5 +1,6 @@
 import api from "./config";
 import type { DocumentAttachmentDTO } from "./types";
+import { UserDTO } from "./users";
 
 // src/constants/document-status.ts
 
@@ -38,28 +39,25 @@ export const DocumentProcessingStatus = {
     code: "leader_commented",
     displayName: "Thủ trưởng đã cho ý kiến",
   },
- 
 
   // Final statuses
   PUBLISHED: { code: "published", displayName: "Đã ban hành" },
   COMPLETED: { code: "completed", displayName: "Hoàn thành" },
   REJECTED: { code: "rejected", displayName: "Từ chối" },
   ARCHIVED: { code: "archived", displayName: "Lưu trữ" },
-  HEADER_DEPARTMENT_REVIEWING:
-  {
-    code: "department_reviewing", 
-    displayName: "Chỉ  huy đang xem xét"
+  HEADER_DEPARTMENT_REVIEWING: {
+    code: "department_reviewing",
+    displayName: "Chỉ  huy đang xem xét",
   },
-    HEADER_DEPARTMENT_APPROVED:   {
-      code: "department_approved", 
-      displayName: "Chỉ huy đã phê duyệt"
-    },
-   
-    HEADER_DEPARTMENT_COMMENTED:
-    {
-      code: "department_commented", 
-      displayName:"Chỉ huy đã cho ý kiến"
-    },
+  HEADER_DEPARTMENT_APPROVED: {
+    code: "department_approved",
+    displayName: "Chỉ huy đã phê duyệt",
+  },
+
+  HEADER_DEPARTMENT_COMMENTED: {
+    code: "department_commented",
+    displayName: "Chỉ huy đã cho ý kiến",
+  },
 } as const;
 
 // ------------------
@@ -96,6 +94,15 @@ export const getStatusByDisplayName = (
 export const getAllStatuses = (): Status[] =>
   Object.values(DocumentProcessingStatus);
 
+// Document Classification API Response
+export interface DocumentClassificationResponse {
+  statusDescription: string;
+  documentId: number;
+  userName: string;
+  userId: number;
+  status: string;
+}
+
 export interface IncomingDocumentDTO {
   id?: number;
   title: string;
@@ -118,9 +125,13 @@ export interface IncomingDocumentDTO {
   primaryProcessorId?: number;
   created?: string;
   changed?: string;
-  attachmentFilename?: string;
+  trackingStatus?: string;
+  trackingStatusDisplayName?: string;
+  attachmentFilename?: string; // Legacy single file
   storageLocation?: string;
   primaryProcessDepartmentId?: number;
+  userPrimaryProcessor?: UserDTO,
+  attachments?: DocumentAttachmentDTO[]; // New multiple files
 }
 
 export const incomingDocumentsAPI = {
@@ -133,11 +144,12 @@ export const incomingDocumentsAPI = {
   getAllDocuments: async (
     page = 0,
     size = 10
-  ): Promise<{ content: IncomingDocumentDTO[] }> => {
+  ): Promise<{ content: IncomingDocumentDTO[]; page: any }> => {
     try {
       const response = await api.get("/documents/incoming", {
         params: { page, size },
       });
+      console.log("backend ", response);
 
       // Map backend response to frontend expected format
       const documents = response.data.content.map(
@@ -150,7 +162,13 @@ export const incomingDocumentsAPI = {
         })
       );
 
-      return { content: documents };
+      return {
+        content: documents,
+        page: {
+          totalPages: response.data.totalPages,
+          totalElements: response.data.totalElements,
+        },
+      };
     } catch (error) {
       console.error("Error fetching incoming documents:", error);
       throw error;
@@ -324,6 +342,46 @@ export const incomingDocumentsAPI = {
    * @param id Document ID
    * @returns List of document attachments
    */
+  getDocumentAttachments: async (
+    id: number
+  ): Promise<DocumentAttachmentDTO[]> => {
+    try {
+      const response = await api.get(`/documents/incoming/${id}/attachments`);
+      return response.data || [];
+    } catch (error) {
+      console.error(`Error getting attachments for document ${id}:`, error);
+      // Return empty array if endpoint doesn't exist yet
+      return [];
+    }
+  },
+
+  /**
+   * Get document classification status for current user
+   * @param documentId Document ID
+   * @returns Document classification status
+   */
+  getDocumentClassification: async (
+    documentId: number
+  ): Promise<DocumentClassificationResponse> => {
+    try {
+      const response = await api.get(
+        `/documents/classification/${documentId}`,
+        {
+          headers: {
+            Accept: "application/hal+json",
+          },
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error(
+        `Error getting document classification for document ${documentId}:`,
+        error
+      );
+      throw error;
+    }
+  },
+
   downloadIncomingAttachment: async (id: number): Promise<Blob> => {
     try {
       const response = await api.get(`/documents/incoming/${id}/attachment`, {
@@ -336,6 +394,36 @@ export const incomingDocumentsAPI = {
     } catch (error) {
       console.error(
         `Error downloading attachment for incoming document ${id}:`,
+        error
+      );
+      throw error;
+    }
+  },
+
+  /**
+   * Download specific attachment by attachment ID
+   * @param documentId Document ID
+   * @param attachmentId Attachment ID
+   * @returns Blob data for download
+   */
+  downloadSpecificAttachment: async (
+    documentId: number,
+    attachmentId: number
+  ): Promise<Blob> => {
+    try {
+      const response = await api.get(
+        `/documents/incoming/${documentId}/attachments/${attachmentId}`,
+        {
+          responseType: "blob",
+          headers: {
+            Accept: "application/hal+json",
+          },
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error(
+        `Error downloading specific attachment ${attachmentId} for document ${documentId}:`,
         error
       );
       throw error;

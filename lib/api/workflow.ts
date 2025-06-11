@@ -219,28 +219,41 @@ export const workflowAPI = {
     );
     return response.data;
   },
-  createFullDocument: async (data: any, file: File) => {
+  createFullDocument: async (data: any, files: File[]) => {
     const formData = new FormData();
-    if (file) {
-      formData.append("attachments", file);
+
+    // Append each file individually
+    if (files && files.length > 0) {
+      files.forEach((file) => {
+        formData.append("attachments", file);
+      });
     }
+
     formData.append(
       "data",
       new Blob([JSON.stringify(data)], { type: "application/json" })
     );
 
-    const response = await api.post("/workflow/full", formData, {
-      headers: {
-        "Content-Type": undefined, // Để Axios tự động xử lý với FormData
-      },
-    });
+    const response = await api.post(
+      "/workflow/full-multi-attachments",
+      formData,
+      {
+        headers: {
+          "Content-Type": undefined, // Để Axios tự động xử lý với FormData
+        },
+      }
+    );
     return response.data;
   },
-  createOugoingAlone: async (data: any, file: File | null) => {
+  createOugoingAlone: async (data: any, files: File[] | null) => {
     const formData = new FormData();
-    if (file) {
-      formData.append("attachment", file);
-    }
+   
+      // Append each file individually
+      if (files && files.length > 0) {
+        files.forEach((file) => {
+          formData.append("attachments", file);
+        });
+      }
     formData.append(
       "data",
       new Blob([JSON.stringify(data)], { type: "application/json" })

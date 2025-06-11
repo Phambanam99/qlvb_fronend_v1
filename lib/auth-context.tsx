@@ -44,13 +44,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
 
   const validateToken = () => {
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem("accessToken");
 
     if (isTokenExpired(token)) {
       console.log(
         "AuthContext: Token hết hạn hoặc không hợp lệ, tự động đăng xuất"
       );
-      localStorage.removeItem("token");
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("refreshToken");
       Cookies.remove("auth-token");
       setUser(null);
       setIsAuthenticated(false);
@@ -67,7 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const checkAuth = async () => {
       try {
         console.log("AuthContext: Checking authentication status...");
-        const token = localStorage.getItem("token");
+        const token = localStorage.getItem("accessToken");
 
         if (token && !isTokenExpired(token)) {
           console.log(
@@ -94,13 +95,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           } else {
             console.log("AuthContext: No token found");
           }
-          localStorage.removeItem("token");
+          localStorage.removeItem("accessToken");
+          localStorage.removeItem("refreshToken");
           Cookies.remove("auth-token");
           setIsAuthenticated(false);
         }
       } catch (err) {
         console.error("AuthContext: Auth check failed:", err);
-        localStorage.removeItem("token");
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("refreshToken");
         Cookies.remove("auth-token");
         setIsAuthenticated(false);
       } finally {
@@ -135,13 +138,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setError(null);
       console.log("Đang thực hiện đăng nhập cho tài khoản:", username);
       const userData = await authAPI.login(username, password);
-      const { token, user } = userData;
+      const { accessToken, refreshToken, user } = userData;
 
-      localStorage.setItem("token", token);
+      // Debug logs để xác nhận token được nhận
+      console.log(
+        "Received accessToken:",
+        accessToken?.substring(0, 20) + "..."
+      );
+      console.log(
+        "Received refreshToken:",
+        refreshToken?.substring(0, 20) + "..."
+      );
+
+      // Lưu token với đúng property names từ backend
+      localStorage.setItem("accessToken", accessToken);
+      localStorage.setItem("refreshToken", refreshToken);
+
       if (rememberMe) {
-        Cookies.set("auth-token", token, { expires: 30, sameSite: "strict" });
+        Cookies.set("auth-token", accessToken, {
+          expires: 30,
+          sameSite: "strict",
+        });
       } else {
-        Cookies.set("auth-token", token, { sameSite: "strict" });
+        Cookies.set("auth-token", accessToken, { sameSite: "strict" });
       }
 
       const userInfo = {
@@ -175,7 +194,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
-      localStorage.removeItem("token");
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("refreshToken");
       Cookies.remove("auth-token");
       setUser(null);
       router.push("/dang-nhap");

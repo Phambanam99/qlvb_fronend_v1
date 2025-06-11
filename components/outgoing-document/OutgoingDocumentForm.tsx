@@ -28,6 +28,7 @@ import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { useNotifications } from "@/lib/notifications-context";
 import { useToast } from "@/components/ui/use-toast";
+import { UrgencyLevel, URGENCY_LEVELS } from "@/lib/types/urgency";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -79,7 +80,7 @@ export default function OutgoingDocumentForm({
     isConfidential: false,
     notes: "",
     approverId: "", // Người phê duyệt
-    priority: "normal", // Độ ưu tiên
+    urgencyLevel: URGENCY_LEVELS.KHAN, // Độ khẩn
   });
 
   // State khác
@@ -203,7 +204,7 @@ export default function OutgoingDocumentForm({
         if (isMounted) {
           setDepartments(departmentsData.content || []);
         }
-        console.log("oke")
+        console.log("oke");
         // 2. Lấy danh sách người phê duyệt
         if (user?.departmentId) {
           try {
@@ -215,7 +216,7 @@ export default function OutgoingDocumentForm({
             const usersResponse = await usersAPI.getUserForApproval(
               user.id || 0
             );
-            console.log("check",usersResponse);
+            console.log("check", usersResponse);
             const leaderUsers = usersResponse;
 
             // Lấy danh sách người dùng có vai trò lãnh đạo cấp cao
@@ -285,7 +286,7 @@ export default function OutgoingDocumentForm({
             isConfidential: doc.confidential || false, // Điều chỉnh tên trường
             notes: doc.notes || "", // Có thể cần điều chỉnh tên trường
             approverId: doc.approver?.id || "", // Điều chỉnh tên trường
-            priority: doc.priority || "normal", // Có thể cần điều chỉnh tên trường
+            urgencyLevel: doc.urgencyLevel || URGENCY_LEVELS.KHAN, // Có thể cần điều chỉnh tên trường
           });
 
           // Lấy tệp đính kèm hiện có
@@ -354,7 +355,7 @@ export default function OutgoingDocumentForm({
         formDataToSubmit.append("approverId", formData.approverId);
       }
 
-      formDataToSubmit.append("priority", formData.priority);
+      formDataToSubmit.append("urgencyLevel", formData.urgencyLevel);
 
       // Thêm replyToId nếu có
       if (replyToId) {
@@ -811,7 +812,7 @@ export default function OutgoingDocumentForm({
                     </p>
                     <p className="text-sm text-muted-foreground">
                       {user?.roleDisplayNames || "Chức vụ"} -{" "}
-                      {user?.departmentName  || "Phòng ban"}
+                      {user?.departmentName || "Phòng ban"}
                     </p>
                   </div>
                 </div>
@@ -846,18 +847,25 @@ export default function OutgoingDocumentForm({
                 <div className="space-y-2">
                   <Label htmlFor="priority">Độ ưu tiên</Label>
                   <Select
-                    value={formData.priority}
+                    value={formData.urgencyLevel}
                     onValueChange={(value) =>
-                      handleSelectChange("priority", value)
+                      handleSelectChange("urgencyLevel", value)
                     }
                   >
                     <SelectTrigger id="priority">
                       <SelectValue placeholder="Chọn độ ưu tiên" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="normal">Bình thường</SelectItem>
-                      <SelectItem value="high">Cao</SelectItem>
-                      <SelectItem value="urgent">Khẩn</SelectItem>
+                      <SelectItem value={URGENCY_LEVELS.KHAN}>Khẩn</SelectItem>
+                      <SelectItem value={URGENCY_LEVELS.THUONG_KHAN}>
+                        Thượng khẩn
+                      </SelectItem>
+                      <SelectItem value={URGENCY_LEVELS.HOA_TOC}>
+                        Hỏa tốc
+                      </SelectItem>
+                      <SelectItem value={URGENCY_LEVELS.HOA_TOC_HEN_GIO}>
+                        Hỏa tốc hẹn giờ
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

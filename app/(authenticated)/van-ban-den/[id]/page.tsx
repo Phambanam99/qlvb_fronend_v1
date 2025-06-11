@@ -13,11 +13,19 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Download, FileText, Send, UserCheck } from "lucide-react";
+import {
+  ArrowLeft,
+  Download,
+  FileText,
+  Send,
+  UserCheck,
+  Eye,
+} from "lucide-react";
 import Link from "next/link";
 import DocumentResponseForm from "@/components/document-response-form";
 import DocumentResponseList from "@/components/document-response-list";
 import DocumentProcessingHistory from "@/components/document-processing-history";
+import PDFViewerModal from "@/components/ui/pdf-viewer-modal";
 import {
   getStatusByCode,
   incomingDocumentsAPI,
@@ -31,6 +39,18 @@ import { DepartmentDTO } from "@/lib/api";
 import { de } from "date-fns/locale";
 import { useRouter } from "next/navigation";
 import { downloadPdfWithWatermark, isPdfFile } from "@/lib/utils/pdf-watermark";
+import { isPDFFile } from "@/lib/utils/pdf-viewer";
+import { DocumentStatusBadge } from "@/components/document-status-badge";
+import {
+  UrgencyLevel,
+  URGENCY_LEVELS,
+  migrateFromOldUrgency,
+} from "@/lib/types/urgency";
+import { UrgencyBadge } from "@/components/urgency-badge";
+import type { DocumentAttachmentDTO } from "@/lib/api/types";
+import { DocumentReadersDialog } from "@/components/document-readers-dialog";
+import { DocumentReadStats } from "@/components/document-read-stats";
+import { incomingExternalReadStatus } from "@/lib/api/documentReadStatus";
 
 export default function DocumentDetailPage({
   params,
@@ -52,129 +72,152 @@ export default function DocumentDetailPage({
   const router = useRouter();
 
   const [_document, setDocument] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [departments, setDepartments] = useState<any[]>([]);
+  const [pdfViewerOpen, setPdfViewerOpen] = useState(false);
+  const [selectedFileForPreview, setSelectedFileForPreview] =
+    useState<string>("");
+  const [attachments, setAttachments] = useState<DocumentAttachmentDTO[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   // State để theo dõi trạng thái loading khi chuyển trang
   const [isNavigating, setIsNavigating] = useState(false);
   // fetch all departments with document id using useEffect
-
-  const [departments, setDepartments] = useState<DepartmentDTO[]>([]);
-  useEffect(() => {
-    const fetchDepartments = async () => {
-      if (!documentId) return;
-
-      try {
-        const response = await incomingDocumentsAPI.getAllDepartments(
-          documentId
-        );
-        setDepartments(response);
-      } catch (error) {
-        console.error("Error fetching departments:", error);
-        toast({
-          title: "Lỗi",
-          description: "Không thể tải danh sách đơn vị",
-          variant: "destructive",
-        });
-      }
-    };
-
-    fetchDepartments();
-  }, [documentId, toast]);
 
   // State để theo dõi trạng thái loading của nhiều loại dữ liệu
   const [isDocumentLoading, setIsDocumentLoading] = useState(true);
   const [isWorkflowLoading, setIsWorkflowLoading] = useState(true);
   const [isHistoryLoading, setIsHistoryLoading] = useState(true);
 
+  // Fetch departments for document
+  const fetchDepartments = async () => {
+    if (!documentId) return;
+
+    try {
+      const response = await incomingDocumentsAPI.getAllDepartments(documentId);
+      setDepartments(response);
+    } catch (error) {
+      console.error("Error fetching departments:", error);
+      toast({
+        title: "Lỗi",
+        description: "Không thể tải danh sách đơn vị",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Fetch attachments for document
+  const fetchAttachments = async () => {
+    if (!documentId) return;
+
+    try {
+      const response = await incomingDocumentsAPI.getDocumentAttachments(
+        Number(documentId)
+      );
+      setAttachments(response);
+    } catch (error) {
+      console.error("Error fetching attachments:", error);
+      // Don't show toast error for attachments as it might not be supported yet
+    }
+  };
+
   // Tracking overall loading status
   useEffect(() => {
     // Chỉ đặt isLoading = false khi tất cả dữ liệu đã tải xong
-    setIsLoading(
+    setLoading(
       isDocumentLoading || isWorkflowLoading || isHistoryLoading || !user
     );
   }, [isDocumentLoading, isWorkflowLoading, isHistoryLoading, user]);
 
+  // Fetch document data
   useEffect(() => {
-    const fetchDocument = async () => {
-      if (!documentId || !user) {
-        return; // Tránh gọi API khi không có ID hoặc user
-      }
+    if (!documentId) return;
 
-      try {
-        console.log("Bắt đầu tải dữ liệu văn bản:", {
-          documentId,
-          timestamp: new Date().toISOString(),
-          user: user?.fullName,
-        });
+    fetchDepartments();
+    fetchAttachments();
+  }, [documentId, toast]);
 
-        // Bắt đầu tải document
-        setIsDocumentLoading(true);
-        setIsWorkflowLoading(true);
-        setIsHistoryLoading(true);
-
-        // Fetch document details
-        const response = await incomingDocumentsAPI.getIncomingDocumentById(
-          documentId
-        );
-        console.log("1. Tải văn bản thành công:", response);
-        setIsDocumentLoading(false);
-
-        // Fetch document workflow status
-        const workflowStatus = await workflowAPI.getDocumentStatus(documentId);
-        console.log("2. Tải workflow status thành công:", workflowStatus);
-        setIsWorkflowLoading(false);
-
-        // Fetch document history
-        const history = await workflowAPI.getDocumentHistory(documentId);
-        console.log("3. Tải history thành công:", history);
-        setIsHistoryLoading(false);
-
-        // Combine data
-        const documentData = {
-          ...response.data,
-          status: workflowStatus.status,
-          assignedToId: workflowStatus.assignedToId,
-          assignedToName: workflowStatus.assignedToName,
-          history: history,
-          assignedToIds: workflowStatus.assignedToIds,
-          assignedToNames: workflowStatus.assignedToNames,
-
-          // Add empty arrays for frontend compatibility
-          attachments: [],
-          relatedDocuments: [],
-          responses: [],
-        };
-        console.log(
-          "✅ Tất cả dữ liệu đã tải xong, bắt đầu render",
-          documentData
-        );
-        setDocument(documentData);
-        setError(null);
-      } catch (err: any) {
-        console.error("❌ Lỗi khi tải dữ liệu văn bản:", err);
-        setError(err.message || "Không thể tải thông tin văn bản");
-        toast({
-          title: "Lỗi",
-          description: "Không thể tải thông tin văn bản",
-          variant: "destructive",
-        });
-      } finally {
-        // Đảm bảo tất cả loại dữ liệu đều được đánh dấu là đã hoàn thành,
-        // tránh kẹt ở trạng thái loading vĩnh viễn
-        setIsDocumentLoading(false);
-        setIsWorkflowLoading(false);
-        setIsHistoryLoading(false);
-      }
-    };
+  // Fetch main document data
+  useEffect(() => {
+    if (!documentId || !user) return;
 
     fetchDocument();
-  }, [documentId, toast, user]);
+  }, [documentId, user]);
 
-  const getStatusBadge = (status: string, displayName?: string) => {
-    const badgeInfo = getStatusBadgeInfo(status, displayName);
-    return <Badge variant={badgeInfo.variant}>{badgeInfo.text}</Badge>;
+  const fetchDocument = async () => {
+    if (!documentId || !user) {
+      return; // Tránh gọi API khi không có ID hoặc user
+    }
+
+    try {
+      console.log("Bắt đầu tải dữ liệu văn bản:", {
+        documentId,
+        timestamp: new Date().toISOString(),
+        user: user?.fullName,
+      });
+
+      // Bắt đầu tải document
+      setIsDocumentLoading(true);
+      setIsWorkflowLoading(true);
+      setIsHistoryLoading(true);
+
+      // Fetch document details
+      const response = await incomingDocumentsAPI.getIncomingDocumentById(
+        documentId
+      );
+      console.log("1. Tải văn bản thành công:", response);
+      setIsDocumentLoading(false);
+
+      // Fetch document workflow status
+      const workflowStatus = await workflowAPI.getDocumentStatus(documentId);
+      console.log("2. Tải workflow status thành công:", workflowStatus);
+      setIsWorkflowLoading(false);
+
+      // Fetch document history
+      const history = await workflowAPI.getDocumentHistory(documentId);
+      console.log("3. Tải history thành công:", history);
+      setIsHistoryLoading(false);
+
+      // Combine data
+      const documentData = {
+        ...response.data,
+        status: workflowStatus.status,
+        assignedToId: workflowStatus.assignedToId,
+        assignedToName: workflowStatus.assignedToName,
+        history: history,
+        assignedToIds: workflowStatus.assignedToIds,
+        assignedToNames: workflowStatus.assignedToNames,
+
+        // Add empty arrays for frontend compatibility
+        attachments: [],
+        relatedDocuments: [],
+        responses: [],
+      };
+      console.log(
+        "✅ Tất cả dữ liệu đã tải xong, bắt đầu render",
+        documentData
+      );
+      setDocument(documentData);
+      setError(null);
+    } catch (err: any) {
+      console.error("❌ Lỗi khi tải dữ liệu văn bản:", err);
+      setError(err.message || "Không thể tải thông tin văn bản");
+      toast({
+        title: "Lỗi",
+        description: "Không thể tải thông tin văn bản",
+        variant: "destructive",
+      });
+    } finally {
+      // Đảm bảo tất cả loại dữ liệu đều được đánh dấu là đã hoàn thành,
+      // tránh kẹt ở trạng thái loading vĩnh viễn
+      setIsDocumentLoading(false);
+      setIsWorkflowLoading(false);
+      setIsHistoryLoading(false);
+    }
   };
 
+  // REMOVED: getStatusBadge function - replaced by DocumentStatusBadge component
+
+  // Download single attachment (legacy support)
   const handleDownloadAttachment = async () => {
     if (!_document.attachmentFilename) {
       toast({
@@ -198,18 +241,16 @@ export default function DocumentDetailPage({
       const blob = await incomingDocumentsAPI.downloadIncomingAttachment(
         documentId
       );
-
       const filename =
         _document.attachmentFilename.split("/").pop() || "document.pdf";
 
-      // Kiểm tra nếu là file PDF và có thông tin người dùng thì thêm watermark
+      // Check if it's a PDF file and user has a name for watermark
       if (isPdfFile(filename) && user?.fullName) {
         try {
           await downloadPdfWithWatermark(blob, filename, user.fullName);
-
           toast({
             title: "Thành công",
-            description: `Đã tải xuống file PDF với watermark: ${filename}`,
+            description: `Đã tải xuống file PDF với watermark và timestamp: ${filename}`,
           });
           return;
         } catch (watermarkError) {
@@ -225,12 +266,11 @@ export default function DocumentDetailPage({
         }
       }
 
-      // Tải xuống bình thường cho non-PDF hoặc khi watermark thất bại
+      // Regular download for non-PDF files or when watermark fails
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
       a.download = filename;
-
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
@@ -238,15 +278,165 @@ export default function DocumentDetailPage({
 
       toast({
         title: "Thành công",
-        description: "Đang tải tệp xuống",
+        description: `Đã tải xuống file ${filename}`,
       });
     } catch (error) {
-      console.error("Lỗi khi tải tệp đính kèm:", error);
+      console.error("Error downloading attachment:", error);
       toast({
         title: "Lỗi",
-        description: "Không thể tải tệp đính kèm. Vui lòng thử lại sau.",
+        description: "Không thể tải xuống file. Vui lòng thử lại sau.",
         variant: "destructive",
       });
+    }
+  };
+
+  // Download specific attachment from multiple files
+  const handleDownloadSpecificAttachment = async (
+    file: DocumentAttachmentDTO
+  ) => {
+    if (!documentId) {
+      toast({
+        title: "Lỗi",
+        description: "Không xác định được ID văn bản",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Try to download specific attachment first, fallback to generic if not available
+      let blob: Blob;
+      if (file.id) {
+        try {
+          blob = await incomingDocumentsAPI.downloadSpecificAttachment(
+            documentId,
+            file.id
+          );
+        } catch (specificError) {
+          console.log(
+            "Specific attachment download failed, falling back to generic:",
+            specificError
+          );
+          blob = await incomingDocumentsAPI.downloadIncomingAttachment(
+            documentId
+          );
+        }
+      } else {
+        blob = await incomingDocumentsAPI.downloadIncomingAttachment(
+          documentId
+        );
+      }
+      const filename = file.originalFilename;
+
+      // Check if it's a PDF file and user has a name for watermark
+      if (isPdfFile(filename) && user?.fullName) {
+        try {
+          console.log("Downloading PDF with watermark:", {
+            filename,
+            userFullName: user.fullName,
+            blob,
+          });
+          await downloadPdfWithWatermark(blob, filename, user.fullName);
+          toast({
+            title: "Thành công",
+            description: `Đã tải xuống file PDF với watermark và timestamp: ${filename}`,
+          });
+          return;
+        } catch (watermarkError) {
+          console.error(
+            "Error adding watermark, falling back to normal download:",
+            watermarkError
+          );
+          toast({
+            title: "Cảnh báo",
+            description: "Không thể thêm watermark, tải xuống file gốc",
+            variant: "destructive",
+          });
+        }
+      }
+
+      // Regular download for non-PDF files or when watermark fails
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast({
+        title: "Thành công",
+        description: `Đã tải xuống file ${filename}`,
+      });
+    } catch (error) {
+      console.error("Error downloading specific attachment:", error);
+      toast({
+        title: "Lỗi",
+        description: "Không thể tải xuống file. Vui lòng thử lại sau.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Handle PDF preview for single file (legacy)
+  const handlePreviewPDF = () => {
+    if (!_document.attachmentFilename) {
+      toast({
+        title: "Lỗi",
+        description: "Không có tệp đính kèm để xem trước",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const fileName =
+      _document.attachmentFilename.split("/").pop() || "document.pdf";
+
+    setSelectedFileForPreview(fileName);
+    setPdfViewerOpen(true);
+  };
+
+  // Handle PDF preview for specific file from multiple attachments
+  const handlePreviewSpecificPDF = (file: DocumentAttachmentDTO) => {
+    setSelectedFileForPreview(file.originalFilename);
+    setPdfViewerOpen(true);
+  };
+
+  // Download file for PDF viewer
+  const handlePDFDownload = async () => {
+    if (!documentId) return null;
+
+    try {
+      // Check if we're viewing a specific file from multiple attachments
+      const currentFile = attachments.find(
+        (file) => file.originalFilename === selectedFileForPreview
+      );
+
+      if (currentFile && currentFile.id) {
+        // Try to download specific attachment
+        try {
+          return await incomingDocumentsAPI.downloadSpecificAttachment(
+            documentId,
+            currentFile.id
+          );
+        } catch (specificError) {
+          console.log(
+            "Specific attachment download failed for PDF viewer, falling back to generic:",
+            specificError
+          );
+        }
+      }
+
+      // Fallback to generic download
+      return await incomingDocumentsAPI.downloadIncomingAttachment(documentId);
+    } catch (error) {
+      toast({
+        title: "Lỗi",
+        description: "Không thể tải file PDF",
+        variant: "destructive",
+      });
+      return null;
     }
   };
 
@@ -287,7 +477,7 @@ export default function DocumentDetailPage({
         return;
       }
 
-      setIsLoading(true);
+      setLoading(true);
       await workflowAPI.startProcessingDocument(documentId, {
         documentId: documentId,
         status: "SPECIALIST_PROCESSING",
@@ -310,7 +500,7 @@ export default function DocumentDetailPage({
         variant: "destructive",
       });
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
   const hasDepartmentAccess =
@@ -633,7 +823,7 @@ export default function DocumentDetailPage({
     );
   };
 
-  if (isLoading) {
+  if (loading) {
     return <DocumentDetailSkeleton />;
   }
 
@@ -667,6 +857,24 @@ export default function DocumentDetailPage({
           </h1>
         </div>
         <div className="flex items-center space-x-2">
+          {/* Document Read Status */}
+          <DocumentReadStats
+            documentId={documentId!}
+            documentType="INCOMING_EXTERNAL"
+            onGetStatistics={incomingExternalReadStatus.getStatistics}
+            variant="compact"
+            className="mr-4"
+          />
+
+          {/* Document Readers Dialog */}
+          <DocumentReadersDialog
+            documentId={documentId!}
+            documentType="INCOMING_EXTERNAL"
+            documentTitle={_document.title}
+            onGetReaders={incomingExternalReadStatus.getReaders}
+            onGetStatistics={incomingExternalReadStatus.getStatistics}
+          />
+
           {renderActionButtons()}
         </div>
       </div>
@@ -677,15 +885,31 @@ export default function DocumentDetailPage({
             <CardHeader className="bg-primary/5 border-b">
               <div className="flex items-center justify-between">
                 <CardTitle>{_document.documentNumber}</CardTitle>
-                {getStatusBadge(
-                  _document.status,
-                  getStatusByCode(_document.status)?.displayName!
-                )}
+                <DocumentStatusBadge
+                  documentId={documentId!}
+                  fallbackStatus={_document.status}
+                  fallbackDisplayStatus={
+                    getStatusByCode(_document.status)?.displayName
+                  }
+                />
               </div>
               <CardDescription>{_document.title}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 pt-6">
               <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Loại văn bản
+                  </p>
+                  <p>{_document.documentType || "Chưa phân loại"}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Số tham chiếu
+                  </p>
+                  <p>{_document.referenceNumber || "Không có"}</p>
+                </div>
+
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">
                     Ngày nhận
@@ -698,15 +922,54 @@ export default function DocumentDetailPage({
                 </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">
-                    Đơn vị gửi
+                    Cơ quan ban hành
                   </p>
                   <p>{_document.issuingAuthority}</p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">
+                    Đơn vị gửi
+                  </p>
+                  <p>
+                    {_document.sendingDepartmentName ||
+                      _document.issuingAuthority}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Độ khẩn
+                  </p>
+                  <UrgencyBadge
+                    level={_document.urgencyLevel as UrgencyLevel}
+                    size="sm"
+                  />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Mức độ bảo mật
+                  </p>
+                  <Badge
+                    variant={
+                      _document.securityLevel === "SECRET"
+                        ? "destructive"
+                        : "outline"
+                    }
+                  >
+                    {_document.securityLevel === "NORMAL"
+                      ? "Thường"
+                      : _document.securityLevel === "CONFIDENTIAL"
+                      ? "Mật"
+                      : _document.securityLevel === "SECRET"
+                      ? "Tối mật"
+                      : _document.securityLevel === "TOP_SECRET"
+                      ? "Tuyệt mật"
+                      : _document.securityLevel}
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">
                     Đơn vị xử lý
                   </p>
-
                   <div className="flex space-x-2 gap-1">
                     {departments.length > 0 &&
                       departments.map((department) => (
@@ -735,17 +998,23 @@ export default function DocumentDetailPage({
                 <p className="text-sm font-medium text-muted-foreground mb-2">
                   Trích yếu nội dung
                 </p>
-                <p className="text-sm">{_document.summary}</p>
+                <div className="text-sm bg-gray-50 p-3 rounded-md border">
+                  {_document.summary}
+                </div>
               </div>
               <Separator className="bg-primary/10" />
               <div>
                 <p className="text-sm font-medium text-muted-foreground mb-2">
                   Ý kiến chỉ đạo của Thủ trưởng
                 </p>
-                <p className="text-sm">
-                  {_document.notes || "Chưa có ý kiến chỉ đạo"}
-                </p>
+                <div
+                  className="text-sm bg-blue-50 p-3 rounded-md border prose prose-sm max-w-none"
+                  dangerouslySetInnerHTML={{
+                    __html: _document.notes || "Chưa có ý kiến chỉ đạo",
+                  }}
+                ></div>
               </div>
+
               <Separator className="bg-primary/10" />
 
               <div>
@@ -753,7 +1022,54 @@ export default function DocumentDetailPage({
                   Tệp đính kèm
                 </p>
                 <div className="space-y-2">
-                  {_document.attachmentFilename ? (
+                  {/* First check if we have multiple attachments from API */}
+                  {attachments.length > 0 ? (
+                    attachments.map(
+                      (file: DocumentAttachmentDTO, index: number) => (
+                        <div
+                          key={file.id || index}
+                          className="flex items-center justify-between rounded-md border border-primary/10 p-2 bg-accent/30"
+                        >
+                          <div className="flex items-center space-x-2">
+                            <FileText className="h-4 w-4 text-primary" />
+                            <span className="text-sm">
+                              {file.originalFilename}
+                            </span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <span className="text-xs text-muted-foreground">
+                              {file.fileSize
+                                ? `${(file.fileSize / 1024).toFixed(1)} KB`
+                                : ""}
+                            </span>
+                            {isPDFFile("", file.originalFilename) && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
+                                onClick={() => handlePreviewSpecificPDF(file)}
+                                title="Xem trước PDF"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
+                              onClick={() =>
+                                handleDownloadSpecificAttachment(file)
+                              }
+                              title="Tải xuống"
+                            >
+                              <Download className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      )
+                    )
+                  ) : _document.attachmentFilename ? (
+                    /* Fallback to single file if multiple attachments not available */
                     <div className="flex items-center justify-between rounded-md border border-primary/10 p-2 bg-accent/30">
                       <div className="flex items-center space-x-2">
                         <FileText className="h-4 w-4 text-primary" />
@@ -762,41 +1078,29 @@ export default function DocumentDetailPage({
                             "Tài liệu đính kèm"}
                         </span>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
-                        onClick={handleDownloadAttachment}
-                      >
-                        <Download className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ) : _document.attachments &&
-                    _document.attachments.length > 0 ? (
-                    _document.attachments.map((file: any, index: number) => (
-                      <div
-                        key={index}
-                        className="flex items-center justify-between rounded-md border border-primary/10 p-2 bg-accent/30"
-                      >
-                        <div className="flex items-center space-x-2">
-                          <FileText className="h-4 w-4 text-primary" />
-                          <span className="text-sm">{file.name}</span>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <span className="text-xs text-muted-foreground">
-                            {file.size}
-                          </span>
+                      <div className="flex items-center space-x-2">
+                        {isPDFFile("", _document.attachmentFilename) && (
                           <Button
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
-                            onClick={() => handleDownloadAttachment()}
+                            onClick={handlePreviewPDF}
+                            title="Xem trước PDF"
                           >
-                            <Download className="h-4 w-4" />
+                            <Eye className="h-4 w-4" />
                           </Button>
-                        </div>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
+                          onClick={handleDownloadAttachment}
+                          title="Tải xuống"
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
                       </div>
-                    ))
+                    </div>
                   ) : (
                     <p className="text-sm text-muted-foreground">
                       Không có tệp đính kèm
@@ -824,9 +1128,9 @@ export default function DocumentDetailPage({
             </TabsList>
             <TabsContent value="responses" className="space-y-4 pt-4">
               <DocumentResponseList documentId={_document.id} />
-              {hasRole(["ROLE_TRO_LY", "ROLE_NHAN_VIEN"]) && (
+              {/* {hasRole(["ROLE_TRO_LY", "ROLE_NHAN_VIEN"]) && (
                 <DocumentResponseForm documentId={_document.id} />
-              )}
+              )} */}
             </TabsContent>
             <TabsContent value="history" className="pt-4">
               <DocumentProcessingHistory documentId={_document.id} />
@@ -845,10 +1149,13 @@ export default function DocumentDetailPage({
                   Trạng thái
                 </p>
                 <div className="mt-1">
-                  {getStatusBadge(
-                    _document.status,
-                    getStatusByCode(_document.status)?.displayName!
-                  )}
+                  <DocumentStatusBadge
+                    documentId={documentId!}
+                    fallbackStatus={_document.status}
+                    fallbackDisplayStatus={
+                      getStatusByCode(_document.status)?.displayName
+                    }
+                  />
                 </div>
               </div>
               <Separator className="bg-primary/10" />
@@ -929,6 +1236,58 @@ export default function DocumentDetailPage({
                     : "Chưa thiết lập thời hạn"}
                 </p>
               </div>
+              <Separator className="bg-primary/10" />
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Trạng thái theo dõi
+                </p>
+                <div className="mt-1">
+                  {_document.trackingStatus ? (
+                    <Badge variant="outline">
+                      {_document.trackingStatusDisplayName ||
+                        _document.trackingStatus}
+                    </Badge>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Chưa có trạng thái theo dõi
+                    </p>
+                  )}
+                </div>
+              </div>
+              {_document.emailSource && (
+                <>
+                  <Separator className="bg-primary/10" />
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">
+                      Nguồn email
+                    </p>
+                    <p className="mt-1 text-sm">{_document.emailSource}</p>
+                  </div>
+                </>
+              )}
+
+              {(_document.created || _document.changed) && (
+                <>
+                  <Separator className="bg-primary/10" />
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-muted-foreground">
+                      Thông tin hệ thống
+                    </p>
+                    {_document.created && (
+                      <div className="text-xs text-muted-foreground">
+                        <span className="font-medium">Ngày tạo:</span>{" "}
+                        {new Date(_document.created).toLocaleString("vi-VN")}
+                      </div>
+                    )}
+                    {_document.changed && (
+                      <div className="text-xs text-muted-foreground">
+                        <span className="font-medium">Cập nhật cuối:</span>{" "}
+                        {new Date(_document.changed).toLocaleString("vi-VN")}
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
             </CardContent>
             <CardFooter className="bg-accent/30 border-t border-primary/10">
               {hasRole(["ROLE_TRUONG_PHONG", "ROLE_PHO_PHONG"]) &&
@@ -1050,6 +1409,22 @@ export default function DocumentDetailPage({
           </Card>
         </div>
       </div>
+
+      {/* PDF Viewer Modal */}
+      <PDFViewerModal
+        isOpen={pdfViewerOpen}
+        onClose={() => {
+          setPdfViewerOpen(false);
+          setSelectedFileForPreview("");
+        }}
+        fileName={selectedFileForPreview}
+        title={_document.title || "Tài liệu đính kèm"}
+        onDownload={handlePDFDownload}
+        options={{
+          allowDownload: true,
+          allowPrint: true,
+        }}
+      />
     </div>
   );
 }

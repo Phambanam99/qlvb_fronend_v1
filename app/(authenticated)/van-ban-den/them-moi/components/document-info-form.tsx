@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { Paperclip, Plus, X } from "lucide-react";
 import { DocumentTypeDTO } from "@/lib/api";
+import { URGENCY_LEVELS } from "@/lib/types/urgency";
 
 interface DocumentInfoFormProps {
   // Document basic info
@@ -398,8 +399,14 @@ export function DocumentInfoForm({
               <SelectValue placeholder="Chọn độ khẩn" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="NORMAL">Bình thường</SelectItem>
-              <SelectItem value="URGENT">Khẩn</SelectItem>
+              <SelectItem value={URGENCY_LEVELS.KHAN}>Khẩn</SelectItem>
+              <SelectItem value={URGENCY_LEVELS.THUONG_KHAN}>
+                Thượng khẩn
+              </SelectItem>
+              <SelectItem value={URGENCY_LEVELS.HOA_TOC}>Hỏa tốc</SelectItem>
+              <SelectItem value={URGENCY_LEVELS.HOA_TOC_HEN_GIO}>
+                Hỏa tốc hẹn giờ
+              </SelectItem>
               <SelectItem value="IMMEDIATE">Hỏa tốc</SelectItem>
             </SelectContent>
           </Select>
@@ -467,6 +474,7 @@ export function DocumentInfoForm({
           <Input
             id="attachments"
             type="file"
+            multiple
             onChange={handleFileChange}
             className="hidden"
           />

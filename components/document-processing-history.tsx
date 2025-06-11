@@ -161,7 +161,9 @@ export default function DocumentProcessingHistory({ documentId }: DocumentProces
                     <p className="text-sm text-muted-foreground">{item.timestamp}</p>
                   </div>
                   <p className="text-sm text-muted-foreground">{item.actor}</p>
-                  <p className="text-sm">{item.description}</p>
+                  <p className="text-sm"
+                  dangerouslySetInnerHTML={{ __html: item.description }}
+                  ></p>
                 </div>
               </div>
             ))}

@@ -59,10 +59,9 @@ export const outgoingDocumentsAPI = {
           sentDate: doc.signingDate,
           attachments: [],
           history: [],
-         
         })
       );
-        
+
       return { documents };
     } catch (error) {
       console.error("Error fetching outgoing documents:", error);
@@ -218,12 +217,40 @@ export const outgoingDocumentsAPI = {
     id: string | number,
     data: { comment?: string }
   ) => {
-    const response = await api.put(`/workflow/${id}/provide-feedback`, {
-      documentId: id,
-      status: "draft",
-      comments: data.comment,
-    });
-    return response.data;
+    try {
+      // Try the primary endpoint first
+      const response = await api.put(`/workflow/${id}/provide-feedback`, {
+        documentId: id,
+        status: "draft",
+        comments: data.comment,
+      });
+      return response.data;
+    } catch (error: any) {
+      console.log("Primary endpoint failed, trying alternative...", error);
+
+      // Try alternative endpoint if primary fails
+      try {
+        const response = await api.put(`/workflow/${id}/reject`, {
+          documentId: id,
+          status: "rejected",
+          comments: data.comment,
+        });
+        return response.data;
+      } catch (altError: any) {
+        console.log(
+          "Alternative endpoint also failed, trying workflow comment...",
+          altError
+        );
+
+        // Try workflow comment endpoint as last resort
+        const response = await api.put(`/workflow/${id}/comment`, {
+          documentId: id,
+          comments: data.comment,
+          action: "reject",
+        });
+        return response.data;
+      }
+    }
   },
 
   /**
@@ -263,5 +290,56 @@ export const outgoingDocumentsAPI = {
       }
     );
     return response.data;
+  },
+
+  /**
+   * Get document attachments
+   * @param id Document ID
+   * @returns List of document attachments
+   */
+  getDocumentAttachments: async (
+    id: number
+  ): Promise<DocumentAttachmentDTO[]> => {
+    try {
+      const response = await api.get(`/documents/outgoing/${id}/attachments`);
+      return response.data || [];
+    } catch (error) {
+      console.error(
+        `Error getting attachments for outgoing document ${id}:`,
+        error
+      );
+      // Return empty array if endpoint doesn't exist yet
+      return [];
+    }
+  },
+
+  /**
+   * Download specific attachment by attachment ID
+   * @param documentId Document ID
+   * @param attachmentId Attachment ID
+   * @returns Blob data for download
+   */
+  downloadSpecificAttachment: async (
+    documentId: number,
+    attachmentId: number
+  ): Promise<Blob> => {
+    try {
+      const response = await api.get(
+        `/documents/outgoing/${documentId}/attachments/${attachmentId}`,
+        {
+          responseType: "blob",
+          headers: {
+            Accept: "application/hal+json",
+          },
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error(
+        `Error downloading specific attachment ${attachmentId} for outgoing document ${documentId}:`,
+        error
+      );
+      throw error;
+    }
   },
 };

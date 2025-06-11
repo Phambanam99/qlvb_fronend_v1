@@ -4,6 +4,14 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
+  UrgencyLevel,
+  URGENCY_LEVELS,
+  migrateFromOldUrgency,
+  getUrgencyBadgeVariant,
+  getUrgencyLabel,
+} from "@/lib/types/urgency";
+import { UrgencyBadge } from "@/components/urgency-badge";
+import {
   Card,
   CardContent,
   CardDescription,
@@ -81,12 +89,12 @@ export default function ReplyInternalDocumentPage() {
     documentType: "",
     title: "",
     summary: "",
-    priority: "normal" as "normal" | "high" | "urgent",
+    urgencyLevel: URGENCY_LEVELS.KHAN as UrgencyLevel,
     notes: "",
   });
 
-  // State for file attachment
-  const [file, setFile] = useState<File | null>(null);
+  // State for file attachments (multiple files)
+  const [files, setFiles] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationErrors, setValidationErrors] = useState<
     Record<string, string>
@@ -110,10 +118,7 @@ export default function ReplyInternalDocumentPage() {
           ...prev,
           title: `Trả lời: ${originalDoc.title}`,
           documentType: originalDoc.documentType,
-          priority: originalDoc.priority.toLowerCase() as
-            | "normal"
-            | "high"
-            | "urgent",
+          urgencyLevel: originalDoc.priority.toLowerCase() as UrgencyLevel,
         }));
 
         // Fetch document types
@@ -163,20 +168,14 @@ export default function ReplyInternalDocumentPage() {
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0]);
+    if (e.target.files) {
+      const selectedFiles = Array.from(e.target.files);
+      setFiles(selectedFiles);
     }
   };
 
-  // Priority display mapping
-  const getPriorityBadge = (priority: string) => {
-    const variants = {
-      NORMAL: { variant: "outline" as const, text: "Bình thường" },
-      HIGH: { variant: "secondary" as const, text: "Cao" },
-      URGENT: { variant: "destructive" as const, text: "Khẩn" },
-    };
-    const info = variants[priority as keyof typeof variants] || variants.NORMAL;
-    return <Badge variant={info.variant}>{info.text}</Badge>;
+  const removeFile = (index: number) => {
+    setFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   const formatDate = (dateString: string) => {
@@ -244,15 +243,15 @@ export default function ReplyInternalDocumentPage() {
           },
         ],
       };
-      console.log("File to be sent:", file);
-      console.log("Files array:", file ? [file] : undefined);
+      console.log("Files to be sent:", files);
+      console.log("Files array:", files.length > 0 ? files : undefined);
       console.log("Reply data:", replyData);
 
       // Call API to create reply
       await replyToDocumentWithAttachments(
         Number(originalDocumentId),
         replyData,
-        file ? [file] : undefined
+        files.length > 0 ? files : undefined
       );
 
       // Show success notification
@@ -418,7 +417,7 @@ export default function ReplyInternalDocumentPage() {
                   Độ ưu tiên
                 </label>
                 <div className="mt-1">
-                  {getPriorityBadge(originalDocument.priority)}
+                  {getUrgencyLabel(originalDocument.priority)}
                 </div>
               </div>
             </div>
@@ -566,22 +565,69 @@ export default function ReplyInternalDocumentPage() {
                       <SelectValue placeholder="Chọn độ ưu tiên" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="normal">Bình thường</SelectItem>
-                      <SelectItem value="high">Cao</SelectItem>
-                      <SelectItem value="urgent">Khẩn</SelectItem>
+                      <SelectItem value={URGENCY_LEVELS.KHAN}>Khẩn</SelectItem>
+                      <SelectItem value={URGENCY_LEVELS.THUONG_KHAN}>
+                        Thượng khẩn
+                      </SelectItem>
+                      <SelectItem value={URGENCY_LEVELS.HOA_TOC}>
+                        Hỏa tốc
+                      </SelectItem>
+                      <SelectItem value={URGENCY_LEVELS.HOA_TOC_HEN_GIO}>
+                        Hỏa tốc hẹn giờ
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="file">Tệp đính kèm</Label>
+                <Label htmlFor="files">Tệp đính kèm</Label>
                 <Input
-                  id="file"
+                  id="files"
                   type="file"
+                  multiple
                   onChange={handleFileChange}
                   className="cursor-pointer"
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.jpg,.jpeg,.png"
                 />
+                <p className="text-sm text-muted-foreground">
+                  Có thể chọn nhiều file. Định dạng hỗ trợ: PDF, Word, Excel,
+                  PowerPoint, hình ảnh, văn bản.
+                </p>
+
+                {/* Display selected files */}
+                {files.length > 0 && (
+                  <div className="space-y-2">
+                    <Label>Các file đã chọn:</Label>
+                    <div className="space-y-2">
+                      {files.map((file, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center justify-between p-2 border rounded-md bg-gray-50"
+                        >
+                          <div className="flex items-center space-x-2">
+                            <FileText className="h-4 w-4 text-blue-500" />
+                            <span className="text-sm font-medium">
+                              {file.name}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              ({(file.size / 1024 / 1024).toFixed(2)} MB)
+                            </span>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeFile(index)}
+                            className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                          >
+                            Xóa
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2">

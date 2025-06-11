@@ -41,6 +41,28 @@ export function useDocumentForm() {
   const { toast } = useToast();
   const router = useRouter();
 
+  // File management helper functions
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const newFiles = Array.from(e.target.files);
+      setFiles((prev) => [...prev, ...newFiles]);
+      // Reset input value to allow selecting the same file again
+      e.target.value = "";
+    }
+  };
+
+  const handleRemoveFile = (index: number) => {
+    setFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const clearFiles = () => {
+    setFiles([]);
+  };
+
+  const addFiles = (newFiles: File[]) => {
+    setFiles((prev) => [...prev, ...newFiles]);
+  };
+
   // Fetch document types
   useEffect(() => {
     const fetchDocumentTypes = async () => {
@@ -70,14 +92,14 @@ export function useDocumentForm() {
     documentPurpose: "PROCESS" | "NOTIFICATION" = "PROCESS",
     notificationScope?: "ALL_UNITS" | "SPECIFIC_UNITS"
   ) => {
-    if (documentPurpose === "PROCESS" && !primaryDepartment) {
-      toast({
-        title: "Lỗi",
-        description: "Vui lòng chọn phòng ban xử lý chính",
-        variant: "destructive",
-      });
-      return;
-    }
+    // if (documentPurpose === "PROCESS" && !primaryDepartment) {
+    //   toast({
+    //     title: "Lỗi",
+    //     description: "Vui lòng chọn phòng ban xử lý chính",
+    //     variant: "destructive",
+    //   });
+    //   return;
+    // }
 
     if (
       documentPurpose === "NOTIFICATION" &&
@@ -113,7 +135,9 @@ export function useDocumentForm() {
         processingStatus:
           documentPurpose === "PROCESS" ? "PENDING" : "NOTIFIED",
         closureRequest: closureRequest,
-        closureDeadline: closureDeadline,
+        closureDeadline: closureDeadline
+          ? new Date(closureDeadline)
+          : undefined,
         sendingDepartmentName: sendingDepartmentName,
         emailSource: emailSource,
       };
@@ -129,7 +153,9 @@ export function useDocumentForm() {
           documentPurpose === "PROCESS" ? "Đã đăng ký" : "Đã thông báo",
         comments: documentNotes,
         primaryDepartmentId:
-          documentPurpose === "PROCESS" ? primaryDepartment : null,
+          documentPurpose === "PROCESS"
+            ? primaryDepartment || undefined
+            : undefined,
         collaboratingDepartmentIds: secondaryDepartments,
         closureDeadline:
           documentPurpose === "PROCESS" ? deadlineDate : undefined,
@@ -141,10 +167,36 @@ export function useDocumentForm() {
       };
 
       if (files.length > 0) {
-        await workflowAPI.createFullDocument(data, files[0]);
+        try {
+          // Try to send all files using the multi-attachment endpoint
+          await workflowAPI.createFullDocument(data, files);
+        } catch (error: any) {
+          // If multi-attachment fails (403 or other errors), fallback to single file
+          if (
+            error.response?.status === 403 ||
+            error.message?.includes("403")
+          ) {
+            console.warn(
+              "Multi-attachment endpoint not available, falling back to single file"
+            );
+            await workflowAPI.createFullDocument(data, [files[0]]);
+
+            if (files.length > 1) {
+              toast({
+                title: "Cảnh báo",
+                description: `Chỉ có thể upload 1 file. ${
+                  files.length - 1
+                } file khác đã bị bỏ qua.`,
+                variant: "destructive",
+              });
+            }
+          } else {
+            throw error; // Re-throw other errors
+          }
+        }
       } else {
-        // If no files, create document without attachment
-        await workflowAPI.createDocumentWithoutAttachment(data);
+        // If no files, create document without attachment using existing createFullDocument
+        await workflowAPI.createFullDocument(data, []);
       }
 
       toast({
@@ -206,5 +258,10 @@ export function useDocumentForm() {
     isLoadingDocumentTypes,
     isSubmitting,
     handleSubmit,
+    // File management functions
+    handleFileChange,
+    handleRemoveFile,
+    clearFiles,
+    addFiles,
   };
 }

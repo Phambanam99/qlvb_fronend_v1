@@ -10,11 +10,20 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Loader2, ArrowLeft, Save, Send } from "lucide-react";
+import {
+  Loader2,
+  ArrowLeft,
+  Save,
+  Send,
+  FileText,
+  Paperclip,
+  X,
+} from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { useNotifications } from "@/lib/notifications-context";
 import { useToast } from "@/components/ui/use-toast";
+import { UrgencyLevel, URGENCY_LEVELS } from "@/lib/types/urgency";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -26,7 +35,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { workflowAPI, incomingDocumentsAPI, usersAPI } from "@/lib/api";
+import {
+  workflowAPI,
+  incomingDocumentsAPI,
+  usersAPI,
+  DocumentWorkflowDTO,
+  OutgoingDocumentDTO,
+} from "@/lib/api";
 import { ReplyDocumentInfo } from "../../components/reply-document-info";
 
 export default function ReplyExternalDocumentPage() {
@@ -46,12 +61,12 @@ export default function ReplyExternalDocumentPage() {
     title: "",
     content: "",
     approver: "",
-    priority: "normal",
+    urgencyLevel: URGENCY_LEVELS.KHAN,
     note: "",
   });
 
-  // State for file attachment and incoming document
-  const [file, setFile] = useState<File | null>(null);
+  // State for file attachments and incoming document (multiple files)
+  const [files, setFiles] = useState<File[]>([]);
   const [incomingDocument, setIncomingDocument] = useState<any>(null);
 
   // State for loading states
@@ -163,9 +178,16 @@ export default function ReplyExternalDocumentPage() {
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0]);
+    if (e.target.files) {
+      const newFiles = Array.from(e.target.files);
+      setFiles((prev) => [...prev, ...newFiles]);
+      // Reset input value to allow selecting the same file again
+      e.target.value = "";
     }
+  };
+
+  const handleRemoveFile = (index: number) => {
+    setFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   // Form submission handlers
@@ -200,24 +222,29 @@ export default function ReplyExternalDocumentPage() {
       setIsSubmitting(true);
 
       // Prepare document data
-      const documentData: any = {
+      const workflowData: DocumentWorkflowDTO = {
+        status: "REGISTERED",
+        statusDisplayName: "Đã đăng ký",
+        comments: formData.note,
+      };
+      const _document: OutgoingDocumentDTO = {
         documentNumber: formData.documentNumber,
+        signingDate: formData.sentDate,
+        receivingDepartmentText: formData.recipient,
+        documentType: formData.documentType,
         title: formData.title,
         summary: formData.content,
-        documentType: formData.documentType,
-        receivingDepartmentText: formData.recipient,
-        signingDate: formData.sentDate,
-        approverId: formData.approver,
-        priority: formData.priority,
-        notes: formData.note,
-        status: "PENDING_APPROVAL", // Set status for submission (not draft)
+      };
+      const documentData = {
+        document: _document,
+        workflow: workflowData,
       };
 
       // Call API to create response document
       await workflowAPI.createResponseDocument(
         documentData,
         replyToId,
-        file || undefined
+        files.length > 0 ? files[0] : undefined
       );
 
       // Show success notification
@@ -227,9 +254,10 @@ export default function ReplyExternalDocumentPage() {
       });
 
       addNotification({
-        title: "Văn bản trả lời mới",
-        message: `Văn bản trả lời "${formData.title}" đã được tạo và gửi phê duyệt`,
+        title: "Văn bản trả lời đã được tạo",
+        message: "Văn bản trả lời đã được lưu và chờ phê duyệt.",
         type: "success",
+        link: "/van-ban-di",
       });
 
       // Redirect to outgoing documents list
@@ -280,7 +308,7 @@ export default function ReplyExternalDocumentPage() {
         receivingDepartmentText: formData.recipient,
         signingDate: formData.sentDate,
         approverId: formData.approver,
-        priority: formData.priority,
+        urgencyLevel: formData.urgencyLevel,
         notes: formData.note,
         status: "DRAFT", // Set status as draft
       };
@@ -289,7 +317,7 @@ export default function ReplyExternalDocumentPage() {
       await workflowAPI.createResponseDocument(
         documentData,
         replyToId,
-        file || undefined
+        files.length > 0 ? files[0] : undefined
       );
 
       // Show success notification
@@ -429,12 +457,57 @@ export default function ReplyExternalDocumentPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="file">Tệp đính kèm</Label>
-                <Input
-                  id="file"
-                  type="file"
-                  onChange={handleFileChange}
-                  className="cursor-pointer"
-                />
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="file"
+                    type="file"
+                    multiple
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => document.getElementById("file")?.click()}
+                  >
+                    <Paperclip className="mr-2 h-4 w-4" />
+                    Chọn tệp
+                  </Button>
+                  <span className="text-sm text-muted-foreground">
+                    {files.length > 0
+                      ? `Đã chọn ${files.length} tệp`
+                      : "Chưa có tệp nào được chọn"}
+                  </span>
+                </div>
+                {files.length > 0 && (
+                  <div className="mt-2 space-y-2">
+                    {files.map((file, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between p-2 bg-gray-50 rounded-md"
+                      >
+                        <div className="flex items-center space-x-2">
+                          <Paperclip className="h-4 w-4 text-gray-500" />
+                          <span className="text-sm font-medium">
+                            {file.name}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            ({(file.size / 1024).toFixed(2)} KB)
+                          </span>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveFile(index)}
+                          className="h-6 w-6 p-0"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -500,18 +573,25 @@ export default function ReplyExternalDocumentPage() {
               <div className="space-y-2">
                 <Label htmlFor="priority">Độ ưu tiên</Label>
                 <Select
-                  value={formData.priority}
+                  value={formData.urgencyLevel}
                   onValueChange={(value) =>
-                    handleSelectChange("priority", value)
+                    handleSelectChange("urgencyLevel", value)
                   }
                 >
                   <SelectTrigger id="priority">
                     <SelectValue placeholder="Chọn độ ưu tiên" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="normal">Bình thường</SelectItem>
-                    <SelectItem value="high">Cao</SelectItem>
-                    <SelectItem value="urgent">Khẩn</SelectItem>
+                    <SelectItem value={URGENCY_LEVELS.KHAN}>Khẩn</SelectItem>
+                    <SelectItem value={URGENCY_LEVELS.THUONG_KHAN}>
+                      Thượng khẩn
+                    </SelectItem>
+                    <SelectItem value={URGENCY_LEVELS.HOA_TOC}>
+                      Hỏa tốc
+                    </SelectItem>
+                    <SelectItem value={URGENCY_LEVELS.HOA_TOC_HEN_GIO}>
+                      Hỏa tốc hẹn giờ
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>

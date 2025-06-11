@@ -49,6 +49,8 @@ import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import { getStatusBadgeInfo } from "@/lib/utils";
 import { useNotifications } from "@/lib/notifications-context";
+import PDFViewerModal from "@/components/ui/pdf-viewer-modal";
+import { isPDFFile } from "@/lib/utils/pdf-viewer";
 
 // Định nghĩa kiểu dữ liệu cho Response
 interface DocumentResponse {
@@ -80,12 +82,20 @@ export default function DocumentResponseList({
   const { user, hasRole } = useAuth();
   const { addNotification } = useNotifications();
   const [responses, setResponses] = useState<DocumentResponse[]>([]);
-  const [rejectionReason, setRejectionReason] = useState("");
-  const [returnToSpecialistReason, setReturnToSpecialistReason] = useState("");
   const [selectedResponseId, setSelectedResponseId] = useState<number | null>(
     null
   );
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [returnToSpecialistReason, setReturnToSpecialistReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // PDF Viewer states
+  const [pdfViewerOpen, setPdfViewerOpen] = useState(false);
+  const [selectedFileForPreview, setSelectedFileForPreview] = useState<{
+    fileName: string;
+    title: string;
+    responseId: number;
+  } | null>(null);
 
   // Kiểm tra xem người dùng có quyền chấp nhận/từ chối hay không
   const canApproveReject =
@@ -135,12 +145,9 @@ export default function DocumentResponseList({
       const blob = await outgoingDocumentsAPI.downloadAttachmentDocument(
         responses.id
       );
-
       const url = window.URL.createObjectURL(blob);
-
       const a = document.createElement("a");
       a.href = url;
-
       const filename =
         responses.attachmentFilename.split("/").pop() || "document.pdf";
       a.download = filename;
@@ -161,6 +168,45 @@ export default function DocumentResponseList({
         description: "Không thể tải tệp đính kèm. Vui lòng thử lại sau.",
         variant: "destructive",
       });
+    }
+  };
+
+  // Handle PDF preview
+  const handlePreviewPDF = (response: DocumentResponse) => {
+    if (!response.attachmentFilename) {
+      toast({
+        title: "Lỗi",
+        description: "Không có tệp đính kèm để xem trước",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const fileName =
+      response.attachmentFilename.split("/").pop() || "document.pdf";
+
+    setSelectedFileForPreview({
+      fileName,
+      title: response.title || "Tài liệu đính kèm",
+      responseId: response.id,
+    });
+    setPdfViewerOpen(true);
+  };
+
+  // Download file for PDF viewer
+  const handlePDFDownload = async () => {
+    if (!selectedFileForPreview) return null;
+    try {
+      return await outgoingDocumentsAPI.downloadAttachmentDocument(
+        selectedFileForPreview.responseId
+      );
+    } catch (error) {
+      toast({
+        title: "Lỗi",
+        description: "Không thể tải file PDF",
+        variant: "destructive",
+      });
+      return null;
     }
   };
 
@@ -251,10 +297,7 @@ export default function DocumentResponseList({
     };
     try {
       // Gọi API để trả lại văn bản cho trợ lý
-      await workflowAPI.returnDocumentToSpecialist(
-        selectedResponseId,
-        cmt
-      );
+      await workflowAPI.returnDocumentToSpecialist(selectedResponseId, cmt);
 
       // Cập nhật danh sách văn bản với trạng thái mới
       setResponses(
@@ -408,14 +451,27 @@ export default function DocumentResponseList({
                           "Tài liệu đính kèm"}
                       </span>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
-                      onClick={() => handleDownloadAttachment(response)}
-                    >
-                      <Download className="h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center space-x-2">
+                      {isPDFFile("", response.attachmentFilename) && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
+                          onClick={() => handlePreviewPDF(response)}
+                          title="Xem trước PDF"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
+                        onClick={() => handleDownloadAttachment(response)}
+                      >
+                        <Download className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 </>
               )}
@@ -616,6 +672,22 @@ export default function DocumentResponseList({
           </Card>
         ))
       )}
+
+      {/* PDF Viewer Modal */}
+      <PDFViewerModal
+        isOpen={pdfViewerOpen}
+        onClose={() => {
+          setPdfViewerOpen(false);
+          setSelectedFileForPreview(null);
+        }}
+        fileName={selectedFileForPreview?.fileName}
+        title={selectedFileForPreview?.title}
+        onDownload={handlePDFDownload}
+        options={{
+          allowDownload: true,
+          allowPrint: true,
+        }}
+      />
     </div>
   );
 }

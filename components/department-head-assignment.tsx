@@ -39,6 +39,7 @@ import { useRouter } from "next/navigation";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Link } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
+import { RichTextEditor } from "./ui";
 interface DepartmentHeadAssignmentProps {
   documentId: number;
   departmentId: number;
@@ -380,14 +381,13 @@ export default function DepartmentHeadAssignment({
           {/* Nhập ý kiến chỉ đạo */}
           <div className="space-y-2">
             <Label htmlFor="comments">Ý kiến chỉ đạo</Label>
-            <Textarea
-              id="comments"
+            <RichTextEditor
               placeholder="Nhập ý kiến chỉ đạo và yêu cầu đối với cán bộ xử lý..."
-              value={comments}
-              onChange={(e) => setComments(e.target.value)}
-              rows={4}
-              disabled={hasChildDepts}
+              content={comments}
+              onChange={(content) => setComments(content)}
+              editable={!hasChildDepts}
             />
+            
           </div>
         </CardContent>
         <CardFooter className="flex justify-end space-x-2">

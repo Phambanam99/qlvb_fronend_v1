@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -49,7 +49,7 @@ import { useDocumentForm } from "@/hooks/use-document-form";
 import { useDepartmentUsers } from "@/hooks/use-department-users";
 import { useDocumentTypeManagement } from "@/hooks/use-document-type-management";
 import { useSenderManagement } from "@/hooks/use-sender-management";
-
+import { RichTextEditor } from "@/components/ui";
 // Import new components
 import { DocumentPurposeSelector } from "./components/document-purpose-selector";
 import { ProcessingSection } from "./components/processing-section";
@@ -109,7 +109,6 @@ const getRoleDisplayName = (role: string): string => {
 
 export default function AddIncomingDocumentPage() {
   const { toast } = useToast();
-  const formRef = useRef<HTMLFormElement>(null);
 
   // Use custom hooks
   const {
@@ -160,6 +159,10 @@ export default function AddIncomingDocumentPage() {
     isLoadingDocumentTypes,
     isSubmitting,
     handleSubmit: submitDocument,
+    // File management functions
+    handleFileChange,
+    handleRemoveFile,
+    clearFiles,
   } = useDocumentForm();
 
   const {
@@ -220,10 +223,10 @@ export default function AddIncomingDocumentPage() {
       errors.sendingDepartmentName = "Đơn vị gửi là bắt buộc";
     }
 
-    // Chỉ validate phòng ban xử lý chính khi văn bản cần xử lý
-    if (documentPurpose === "PROCESS" && !primaryDepartment) {
-      errors.primaryDepartment = "Phòng ban xử lý chính là bắt buộc";
-    }
+    // // Chỉ validate phòng ban xử lý chính khi văn bản cần xử lý
+    // if (documentPurpose === "PROCESS" && !primaryDepartment) {
+    //   errors.primaryDepartment = "Phòng ban xử lý chính là bắt buộc";
+    // }
 
     // Validate notification scope
     if (
@@ -239,17 +242,7 @@ export default function AddIncomingDocumentPage() {
     return Object.keys(errors).length === 0;
   };
 
-  // Handle file change
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      setFiles([e.target.files[0]]);
-    }
-  };
-
-  // Handle file removal
-  const handleRemoveFile = (index: number) => {
-    setFiles((prevFiles) => prevFiles.filter((_, i) => i !== index));
-  };
+  // File handling is now managed by the useDocumentForm hook
 
   // Handle primary department selection
   const handleSelectPrimaryDepartment = (deptId: number | string) => {
@@ -336,25 +329,8 @@ export default function AddIncomingDocumentPage() {
       return;
     }
 
-    // Merge form data
-    const formData = new FormData(formRef.current!);
-
-    // Update state from form
-    setDocumentNumber(formData.get("documentNumber") as string);
-    setDocumentCode(formData.get("referenceNumber") as string);
-    setDocumentTitle(formData.get("title") as string);
-    setDocumentSummary(formData.get("summary") as string);
-    setDocumentNotes(formData.get("notes") as string);
-    setSendingDepartmentName(formData.get("issuingAuthority") as string);
-    setEmailSource((formData.get("emailSource") as string) || "");
-
-    const signingDate = formData.get("signingDate") as string;
-    const receivedDateStr = formData.get("receivedDate") as string;
-    const deadlineStr = formData.get("deadline") as string;
-
-    if (signingDate) setDocumentDate(new Date(signingDate));
-    if (receivedDateStr) setReceivedDate(new Date(receivedDateStr));
-    if (deadlineStr) setClosureDeadline(deadlineStr);
+    // No need to read from FormData since all data is managed by useState
+    // All form fields are already managed by useState through custom hooks
 
     // Prepare processing data based on document purpose
     const processingData = {
@@ -412,25 +388,8 @@ export default function AddIncomingDocumentPage() {
       </nav>
 
       {/* Page Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <Button variant="outline" size="icon" asChild>
-            <Link href="/van-ban-den">
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">
-              Thêm văn bản đến
-            </h1>
-            <p className="text-muted-foreground">
-              Tạo mới văn bản đến và phân công xử lý
-            </p>
-          </div>
-        </div>
-      </div>
 
-      <form ref={formRef} onSubmit={handleSubmit} encType="multipart/form-data">
+      <form onSubmit={handleSubmit}>
         <div className="grid gap-6 lg:grid-cols-2">
           {/* Document Information Card */}
           <Card className="bg-card">
@@ -624,17 +583,16 @@ export default function AddIncomingDocumentPage() {
                     ? "Ghi chú"
                     : "Nội dung thông báo"}
                 </Label>
-                <Textarea
-                  id="notes"
-                  name="notes"
-                  value={documentNotes}
-                  onChange={(e) => setDocumentNotes(e.target.value)}
+                <RichTextEditor
+                  content={documentNotes}
+                  onChange={(content) => setDocumentNotes(content)}
                   placeholder={
                     documentPurpose === "PROCESS"
                       ? "Nhập ghi chú cho phòng ban xử lý (nếu có)"
                       : "Nhập nội dung thông báo (nếu có)"
                   }
-                  rows={3}
+                  className={validationErrors.summary ? "border-red-500" : ""}
+                  minHeight="150px"
                 />
               </div>
 
@@ -699,7 +657,6 @@ export default function AddIncomingDocumentPage() {
               type="submit"
               disabled={
                 isSubmitting ||
-                (documentPurpose === "PROCESS" && !primaryDepartment) ||
                 (documentPurpose === "NOTIFICATION" &&
                   notificationScope === "SPECIFIC_UNITS" &&
                   secondaryDepartments.length === 0)
