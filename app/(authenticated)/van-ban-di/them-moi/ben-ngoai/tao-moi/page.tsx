@@ -18,6 +18,8 @@ import {
   FileText,
   User,
   Users,
+  Paperclip,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
@@ -64,8 +66,8 @@ export default function CreateExternalOutgoingDocumentPage() {
     note: "",
   });
 
-  // State for file attachment
-  const [file, setFile] = useState<File | null>(null);
+  // State for file attachments (multiple files)
+  const [files, setFiles] = useState<File[]>([]);
 
   // State for loading states
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -152,9 +154,16 @@ export default function CreateExternalOutgoingDocumentPage() {
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0]);
+    if (e.target.files) {
+      const newFiles = Array.from(e.target.files);
+      setFiles((prev) => [...prev, ...newFiles]);
+      // Reset input value to allow selecting the same file again
+      e.target.value = "";
     }
+  };
+
+  const handleRemoveFile = (index: number) => {
+    setFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   // Form submission handlers
@@ -194,7 +203,10 @@ export default function CreateExternalOutgoingDocumentPage() {
       };
 
       // Call API to create outgoing document
-      await workflowAPI.createOugoingAlone(documentData, file || null);
+      await workflowAPI.createOugoingAlone(
+        documentData,
+        files.length > 0 ? files[0] : null
+      );
 
       // Show success notification
       toast({
@@ -252,7 +264,10 @@ export default function CreateExternalOutgoingDocumentPage() {
       };
 
       // Call API to create outgoing document as draft
-      await workflowAPI.createOugoingAlone(documentData, file || null);
+      await workflowAPI.createOugoingAlone(
+        documentData,
+        files.length > 0 ? files[0] : null
+      );
 
       // Show success notification
       toast({
@@ -404,12 +419,57 @@ export default function CreateExternalOutgoingDocumentPage() {
 
               <div className="space-y-2 mt-6">
                 <Label htmlFor="file">Tệp đính kèm</Label>
-                <Input
-                  id="file"
-                  type="file"
-                  onChange={handleFileChange}
-                  className="cursor-pointer"
-                />
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="file"
+                    type="file"
+                    multiple
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => document.getElementById("file")?.click()}
+                  >
+                    <Paperclip className="mr-2 h-4 w-4" />
+                    Chọn tệp
+                  </Button>
+                  <span className="text-sm text-muted-foreground">
+                    {files.length > 0
+                      ? `Đã chọn ${files.length} tệp`
+                      : "Chưa có tệp nào được chọn"}
+                  </span>
+                </div>
+                {files.length > 0 && (
+                  <div className="mt-2 space-y-2">
+                    {files.map((file, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between p-2 bg-gray-50 rounded-md"
+                      >
+                        <div className="flex items-center space-x-2">
+                          <Paperclip className="h-4 w-4 text-gray-500" />
+                          <span className="text-sm font-medium">
+                            {file.name}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            ({(file.size / 1024).toFixed(2)} KB)
+                          </span>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveFile(index)}
+                          className="h-6 w-6 p-0"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
