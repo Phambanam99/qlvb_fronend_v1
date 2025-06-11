@@ -500,43 +500,35 @@ export default function CreateInternalOutgoingDocumentPage() {
         </Card>
 
         {/* Content and Recipients */}
-        <div className="grid gap-6 lg:grid-cols-2">
-          {/* Content Card */}
-          <Card>
-            <CardHeader className="bg-primary/5 border-b">
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                Nội dung văn bản
-              </CardTitle>
-              <CardDescription>
-                Soạn nội dung chi tiết của văn bản
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6 pt-6">
-              <div className="space-y-2">
-                <Label htmlFor="content">Nội dung văn bản</Label>
-                <RichTextEditor
-                  content={formData.content}
-                  onChange={handleRichTextChange("content")}
-                  placeholder="Nhập nội dung văn bản"
-                  minHeight="300px"
-                />
-              </div>
+        <div className="grid gap-6 lg:grid-cols-3">
+          {/* Content Card - Takes 2 columns */}
+          <div className="lg:col-span-2">
+            <Card>
+              <CardHeader className="bg-primary/5 border-b">
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5" />
+                  Nội dung văn bản
+                </CardTitle>
+                <CardDescription>
+                  Soạn nội dung chi tiết của văn bản
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <div className="space-y-2">
+                  <Label htmlFor="content">Nội dung văn bản</Label>
+                  <RichTextEditor
+                    content={formData.content}
+                    onChange={handleRichTextChange("content")}
+                    placeholder="Nhập nội dung văn bản"
+                    minHeight="400px"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="note">Ghi chú</Label>
-                <RichTextEditor
-                  content={formData.note}
-                  onChange={handleRichTextChange("note")}
-                  placeholder="Nhập ghi chú (nếu có)"
-                  minHeight="150px"
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Recipients Card */}
-          <Card>
+          {/* Recipients Card - Takes 1 column */}
+          <Card className="h-fit">
             <CardHeader className="bg-primary/5 border-b">
               <CardTitle className="flex items-center gap-2">
                 <Users className="h-5 w-5" />
@@ -556,18 +548,18 @@ export default function CreateInternalOutgoingDocumentPage() {
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label>
-                      Danh sách phòng ban và người dùng{" "}
+                      Danh sách phòng ban{" "}
                       {validationErrors.recipients && (
                         <span className="text-red-500">*</span>
                       )}
                     </Label>
                     <div className="border rounded-md overflow-hidden">
-                      <div className="bg-primary/5 px-4 py-2 border-b flex items-center justify-between">
+                      <div className="bg-primary/5 px-3 py-2 border-b">
                         <span className="text-sm font-medium">
-                          Chọn người nhận văn bản
+                          Chọn người nhận
                         </span>
                       </div>
-                      <div className="max-h-[400px] overflow-y-auto">
+                      <div className="max-h-[300px] overflow-y-auto">
                         <DepartmentTree
                           departments={departments}
                           expandedDepartments={new Set(expandedDepartments)}
@@ -582,7 +574,7 @@ export default function CreateInternalOutgoingDocumentPage() {
                           getLeadershipRole={showAllUsers}
                           getRoleDisplayName={getRoleDisplayName}
                           selectionMode="secondary"
-                          maxHeight="400px"
+                          maxHeight="300px"
                           secondaryButtonText="Chọn"
                         />
                       </div>
@@ -594,9 +586,9 @@ export default function CreateInternalOutgoingDocumentPage() {
                     )}
                   </div>
 
-                  <div className="flex items-center gap-4 text-xs mt-1">
+                  <div className="flex flex-wrap items-center gap-2 text-xs">
                     <div className="flex items-center gap-1">
-                      <div className="w-3 h-3 rounded-sm border border-blue-500 bg-white"></div>
+                      <div className="w-2 h-2 rounded-sm border border-blue-500 bg-white"></div>
                       <span>Người nhận</span>
                     </div>
                     <div className="flex items-center gap-1">
@@ -609,7 +601,7 @@ export default function CreateInternalOutgoingDocumentPage() {
                     </div>
                   </div>
 
-                  <div className="mt-6 space-y-2">
+                  <div className="space-y-2 pt-4">
                     <Button
                       type="submit"
                       className="w-full"
@@ -644,7 +636,31 @@ export default function CreateInternalOutgoingDocumentPage() {
           </Card>
         </div>
 
-        {/* Note Card */}
+        {/* Notes Section */}
+        <Card>
+          <CardHeader className="bg-primary/5 border-b">
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Ghi chú
+            </CardTitle>
+            <CardDescription>
+              Thêm ghi chú bổ sung cho văn bản (nếu có)
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <div className="space-y-2">
+              <Label htmlFor="note">Ghi chú</Label>
+              <RichTextEditor
+                content={formData.note}
+                onChange={handleRichTextChange("note")}
+                placeholder="Nhập ghi chú (nếu có)"
+                minHeight="150px"
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Info Note */}
         <div className="rounded-md bg-amber-50 border border-amber-200 p-4">
           <p className="text-sm text-amber-800">
             <span className="font-medium">Lưu ý:</span> Văn bản nội bộ sẽ được
