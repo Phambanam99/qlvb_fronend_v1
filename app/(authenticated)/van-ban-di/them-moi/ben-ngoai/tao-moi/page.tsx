@@ -205,7 +205,7 @@ export default function CreateExternalOutgoingDocumentPage() {
       // Call API to create outgoing document
       await workflowAPI.createOugoingAlone(
         documentData,
-        files.length > 0 ? files[0] : null
+        files.length > 0 ? files : null
       );
 
       // Show success notification
@@ -266,7 +266,7 @@ export default function CreateExternalOutgoingDocumentPage() {
       // Call API to create outgoing document as draft
       await workflowAPI.createOugoingAlone(
         documentData,
-        files.length > 0 ? files[0] : null
+        files.length > 0 ? files : null
       );
 
       // Show success notification

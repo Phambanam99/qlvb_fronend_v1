@@ -159,6 +159,10 @@ export default function AddIncomingDocumentPage() {
     isLoadingDocumentTypes,
     isSubmitting,
     handleSubmit: submitDocument,
+    // File management functions
+    handleFileChange,
+    handleRemoveFile,
+    clearFiles,
   } = useDocumentForm();
 
   const {
@@ -238,18 +242,7 @@ export default function AddIncomingDocumentPage() {
     return Object.keys(errors).length === 0;
   };
 
-  // Handle file change
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      const newFiles = Array.from(e.target.files);
-      setFiles((prevFiles) => [...prevFiles, ...newFiles]);
-    }
-  };
-
-  // Handle file removal
-  const handleRemoveFile = (index: number) => {
-    setFiles((prevFiles) => prevFiles.filter((_, i) => i !== index));
-  };
+  // File handling is now managed by the useDocumentForm hook
 
   // Handle primary department selection
   const handleSelectPrimaryDepartment = (deptId: number | string) => {
@@ -395,7 +388,6 @@ export default function AddIncomingDocumentPage() {
       </nav>
 
       {/* Page Header */}
-     
 
       <form onSubmit={handleSubmit}>
         <div className="grid gap-6 lg:grid-cols-2">

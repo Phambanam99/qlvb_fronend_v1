@@ -245,11 +245,15 @@ export const workflowAPI = {
     );
     return response.data;
   },
-  createOugoingAlone: async (data: any, file: File | null) => {
+  createOugoingAlone: async (data: any, files: File[] | null) => {
     const formData = new FormData();
-    if (file) {
-      formData.append("attachment", file);
-    }
+   
+      // Append each file individually
+      if (files && files.length > 0) {
+        files.forEach((file) => {
+          formData.append("attachments", file);
+        });
+      }
     formData.append(
       "data",
       new Blob([JSON.stringify(data)], { type: "application/json" })

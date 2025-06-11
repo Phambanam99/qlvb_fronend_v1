@@ -41,6 +41,28 @@ export function useDocumentForm() {
   const { toast } = useToast();
   const router = useRouter();
 
+  // File management helper functions
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const newFiles = Array.from(e.target.files);
+      setFiles((prev) => [...prev, ...newFiles]);
+      // Reset input value to allow selecting the same file again
+      e.target.value = "";
+    }
+  };
+
+  const handleRemoveFile = (index: number) => {
+    setFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const clearFiles = () => {
+    setFiles([]);
+  };
+
+  const addFiles = (newFiles: File[]) => {
+    setFiles((prev) => [...prev, ...newFiles]);
+  };
+
   // Fetch document types
   useEffect(() => {
     const fetchDocumentTypes = async () => {
@@ -236,5 +258,10 @@ export function useDocumentForm() {
     isLoadingDocumentTypes,
     isSubmitting,
     handleSubmit,
+    // File management functions
+    handleFileChange,
+    handleRemoveFile,
+    clearFiles,
+    addFiles,
   };
 }
