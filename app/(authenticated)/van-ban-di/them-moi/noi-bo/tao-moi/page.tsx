@@ -419,18 +419,35 @@ export default function CreateInternalOutgoingDocumentPage() {
   return (
     <div className="min-h-screen bg-gray-50/30">
       <div className="max-w-[1536px] mx-auto py-6 max-w-5xl px-4">
-        <div className="flex items-center space-x-2 mb-6">
-          <Button variant="outline" size="icon" asChild>
-            <Link href="/van-ban-di/them-moi">
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
-          </Button>
-          <h1 className="text-2xl font-bold tracking-tight text-primary">
-            Tạo văn bản đi mới - Nội bộ
-          </h1>
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center space-x-2">
+            <Button variant="outline" size="icon" asChild>
+              <Link href="/van-ban-di/them-moi">
+                <ArrowLeft className="h-4 w-4" />
+              </Link>
+            </Button>
+            <h1 className="text-2xl font-bold tracking-tight text-primary">
+              Tạo văn bản đi mới - Nội bộ
+            </h1>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button
+              type="submit"
+              form="document-form"
+              disabled={isSubmitting}
+              className="bg-primary hover:bg-primary/90"
+            >
+              {isSubmitting ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="mr-2 h-4 w-4" />
+              )}
+              Gửi văn bản
+            </Button>
+          </div>
         </div>
 
-        <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
+        <form ref={formRef} id="document-form" onSubmit={handleSubmit} className="space-y-6">
           {/* Basic Document Information */}
           <Card>
             <CardContent className="pt-6">
@@ -836,35 +853,7 @@ export default function CreateInternalOutgoingDocumentPage() {
                       </div>
                     </div>
 
-                    <div className="space-y-2 pt-4">
-                      <Button
-                        type="submit"
-                        className="w-full"
-                        disabled={isSubmitting}
-                      >
-                        {isSubmitting ? (
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        ) : (
-                          <Send className="mr-2 h-4 w-4" />
-                        )}
-                        Gửi văn bản
-                      </Button>
 
-                      {/* <Button
-                        type="button"
-                        variant="outline"
-                        className="w-full"
-                        onClick={handleSaveDraft}
-                        disabled={isSubmitting}
-                      >
-                        {isSubmitting ? (
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        ) : (
-                          <Save className="mr-2 h-4 w-4" />
-                        )}
-                        Lưu nháp
-                      </Button> */}
-                    </div>
                   </div>
                 )}
               </CardContent>

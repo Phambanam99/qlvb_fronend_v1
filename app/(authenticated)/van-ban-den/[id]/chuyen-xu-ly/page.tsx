@@ -327,15 +327,33 @@ export default function AssignDocumentPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center space-x-2">
-        <Button variant="outline" size="icon" asChild>
-          <Link href={`/van-ban-den/${documentId}`}>
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-        </Button>
-        <h1 className="text-2xl font-bold tracking-tight">
-          Chuyển xử lý văn bản
-        </h1>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-2">
+          <Button variant="outline" size="icon" asChild>
+            <Link href={`/van-ban-den/${documentId}`}>
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          </Button>
+          <h1 className="text-2xl font-bold tracking-tight">
+            Chuyển xử lý văn bản
+          </h1>
+        </div>
+        <div className="flex items-center space-x-2">
+          <Button
+            type="submit"
+            form="assign-form"
+            disabled={isSubmitting || !primaryDepartment}
+            className="bg-primary hover:bg-primary/90"
+          >
+            {isSubmitting ? (
+              "Đang xử lý..."
+            ) : (
+              <>
+                <Send className="mr-2 h-4 w-4" /> Chuyển xử lý
+              </>
+            )}
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-7">
@@ -471,7 +489,7 @@ export default function AssignDocumentPage() {
         </div>
 
         <div className="md:col-span-3">
-          <form onSubmit={handleSubmit}>
+          <form id="assign-form" onSubmit={handleSubmit}>
             <Card className="bg-card">
               <CardHeader className="bg-primary/5 border-b">
                 <CardTitle>Chuyển xử lý</CardTitle>
@@ -757,19 +775,7 @@ export default function AssignDocumentPage() {
                     </div>
                   </div>
 
-                  <Button
-                    type="submit"
-                    disabled={isSubmitting || !primaryDepartment}
-                    className="w-full bg-primary hover:bg-primary/90 mt-4"
-                  >
-                    {isSubmitting ? (
-                      "Đang xử lý..."
-                    ) : (
-                      <>
-                        <Send className="mr-2 h-4 w-4" /> Chuyển xử lý
-                      </>
-                    )}
-                  </Button>
+
                 </div>
               </CardContent>
             </Card>

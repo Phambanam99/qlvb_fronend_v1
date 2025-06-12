@@ -369,15 +369,46 @@ export default function ReplyInternalDocumentPage() {
 
   return (
     <div className="container py-6 max-w-5xl">
-      <div className="flex items-center space-x-2 mb-6">
-        <Button variant="outline" size="icon" asChild>
-          <Link href={`/van-ban-den/noi-bo/${originalDocumentId}`}>
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-        </Button>
-        <h1 className="text-2xl font-bold tracking-tight text-primary">
-          Trả lời văn bản nội bộ
-        </h1>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center space-x-2">
+          <Button variant="outline" size="icon" asChild>
+            <Link href={`/van-ban-den/noi-bo/${originalDocumentId}`}>
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          </Button>
+          <h1 className="text-2xl font-bold tracking-tight text-primary">
+            Trả lời văn bản nội bộ
+          </h1>
+        </div>
+        <div className="flex items-center space-x-2">
+          <Button
+            type="button"
+            variant="outline"
+            form="reply-form"
+            onClick={handleSaveDraft}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="mr-2 h-4 w-4" />
+            )}
+            Lưu nháp
+          </Button>
+          <Button
+            type="submit"
+            form="reply-form"
+            disabled={isSubmitting}
+            className="bg-primary hover:bg-primary/90"
+          >
+            {isSubmitting ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="mr-2 h-4 w-4" />
+            )}
+            Gửi trả lời
+          </Button>
+        </div>
       </div>
 
       <div className="space-y-6">
@@ -443,7 +474,7 @@ export default function ReplyInternalDocumentPage() {
         </Card>
 
         {/* Reply Form */}
-        <form ref={formRef} onSubmit={handleSubmit}>
+        <form ref={formRef} id="reply-form" onSubmit={handleSubmit}>
           <Card>
             <CardHeader className="bg-primary/5 border-b">
               <CardTitle>Thông tin văn bản trả lời</CardTitle>
@@ -640,34 +671,7 @@ export default function ReplyInternalDocumentPage() {
                 />
               </div>
 
-              <div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-2">
-                <Button
-                  type="submit"
-                  className="flex-1"
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Send className="mr-2 h-4 w-4" />
-                  )}
-                  Gửi trả lời
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="flex-1"
-                  onClick={handleSaveDraft}
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Save className="mr-2 h-4 w-4" />
-                  )}
-                  Lưu nháp
-                </Button>
-              </div>
+
             </CardContent>
           </Card>
         </form>
