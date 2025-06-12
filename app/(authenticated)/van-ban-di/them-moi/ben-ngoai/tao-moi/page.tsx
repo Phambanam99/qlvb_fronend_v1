@@ -64,6 +64,17 @@ export default function CreateExternalOutgoingDocumentPage() {
     approver: "",
     urgencyLevel: URGENCY_LEVELS.KHAN,
     note: "",
+    // New fields for OutgoingDocument
+    draftingDepartmentEntityId: user?.departmentId || "",
+    securityLevel: "normal", // normal, confidential, secret, top_secret
+    documentSignerId: "",
+    isSecureTransmission: false,
+    processingDeadline: null as Date | null,
+    issuingAgency: "",
+    distributionType: 1, // 1=regular, 2=confidential, 3=copy_book, 5=party, 10=steering_committee
+    numberOfCopies: 1,
+    numberOfPages: 1,
+    noPaperCopy: false,
   });
 
   // State for file attachments (multiple files)
@@ -200,6 +211,17 @@ export default function CreateExternalOutgoingDocumentPage() {
         priority: formData.urgencyLevel,
         notes: formData.note,
         status: "PENDING_APPROVAL", // Set status for submission (not draft)
+        // New fields
+        draftingDepartmentEntityId: formData.draftingDepartmentEntityId,
+        securityLevel: formData.securityLevel,
+        documentSignerId: formData.documentSignerId,
+        isSecureTransmission: formData.isSecureTransmission,
+        processingDeadline: formData.processingDeadline,
+        issuingAgency: formData.issuingAgency,
+        distributionType: formData.distributionType,
+        numberOfCopies: formData.numberOfCopies,
+        numberOfPages: formData.numberOfPages,
+        noPaperCopy: formData.noPaperCopy,
       };
 
       // Call API to create outgoing document
@@ -261,6 +283,17 @@ export default function CreateExternalOutgoingDocumentPage() {
         priority: formData.urgencyLevel,
         notes: formData.note,
         status: "DRAFT", // Set status as draft
+        // New fields
+        draftingDepartmentEntityId: formData.draftingDepartmentEntityId,
+        securityLevel: formData.securityLevel,
+        documentSignerId: formData.documentSignerId,
+        isSecureTransmission: formData.isSecureTransmission,
+        processingDeadline: formData.processingDeadline,
+        issuingAgency: formData.issuingAgency,
+        distributionType: formData.distributionType,
+        numberOfCopies: formData.numberOfCopies,
+        numberOfPages: formData.numberOfPages,
+        noPaperCopy: formData.noPaperCopy,
       };
 
       // Call API to create outgoing document as draft
@@ -360,6 +393,127 @@ export default function CreateExternalOutgoingDocumentPage() {
                       )}
                     </SelectContent>
                   </Select>
+                </div>
+              </div>
+
+              {/* New fields for OutgoingDocument */}
+              <div className="grid gap-6 md:grid-cols-3 mt-6">
+                <div className="space-y-2">
+                  <Label htmlFor="securityLevel">Độ mật</Label>
+                  <Select
+                    value={formData.securityLevel}
+                    onValueChange={(value) =>
+                      handleSelectChange("securityLevel", value)
+                    }
+                  >
+                    <SelectTrigger id="securityLevel">
+                      <SelectValue placeholder="Chọn độ mật" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="normal">Bình thường</SelectItem>
+                      <SelectItem value="confidential">Mật</SelectItem>
+                      <SelectItem value="secret">Tối mật</SelectItem>
+                      <SelectItem value="top_secret">Tuyệt mật</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="distributionType">Khối phát hành</Label>
+                  <Select
+                    value={formData.distributionType.toString()}
+                    onValueChange={(value) =>
+                      setFormData(prev => ({ ...prev, distributionType: parseInt(value) }))
+                    }
+                  >
+                    <SelectTrigger id="distributionType">
+                      <SelectValue placeholder="Chọn khối phát hành" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">Đi thường</SelectItem>
+                      <SelectItem value="2">Đi mật</SelectItem>
+                      <SelectItem value="3">Sổ sao</SelectItem>
+                      <SelectItem value="5">Đi đảng</SelectItem>
+                      <SelectItem value="10">Đi ban chỉ đạo</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="issuingAgency">Cơ quan ban hành</Label>
+                  <Input
+                    id="issuingAgency"
+                    name="issuingAgency"
+                    value={formData.issuingAgency}
+                    onChange={handleInputChange}
+                    placeholder="Nhập cơ quan ban hành"
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-6 md:grid-cols-4 mt-6">
+                <div className="space-y-2">
+                  <Label htmlFor="numberOfCopies">Số bản</Label>
+                  <Input
+                    id="numberOfCopies"
+                    name="numberOfCopies"
+                    type="number"
+                    min="1"
+                    value={formData.numberOfCopies}
+                    onChange={(e) => setFormData(prev => ({ ...prev, numberOfCopies: parseInt(e.target.value) || 1 }))}
+                    placeholder="Số bản"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="numberOfPages">Số tờ</Label>
+                  <Input
+                    id="numberOfPages"
+                    name="numberOfPages"
+                    type="number"
+                    min="1"
+                    value={formData.numberOfPages}
+                    onChange={(e) => setFormData(prev => ({ ...prev, numberOfPages: parseInt(e.target.value) || 1 }))}
+                    placeholder="Số tờ"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="processingDeadline">Hạn xử lý</Label>
+                  <Input
+                    id="processingDeadline"
+                    name="processingDeadline"
+                    type="date"
+                    value={formData.processingDeadline?.toISOString().split("T")[0] || ""}
+                    onChange={(e) => setFormData(prev => ({ 
+                      ...prev, 
+                      processingDeadline: e.target.value ? new Date(e.target.value) : null 
+                    }))}
+                  />
+                </div>
+
+                <div className="space-y-2 flex items-end">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="isSecureTransmission"
+                      checked={formData.isSecureTransmission}
+                      onChange={(e) => setFormData(prev => ({ ...prev, isSecureTransmission: e.target.checked }))}
+                    />
+                    <Label htmlFor="isSecureTransmission">Chuyển bằng điện mật</Label>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid gap-6 md:grid-cols-1 mt-6">
+                <div className="space-y-2 flex items-center">
+                  <input
+                    type="checkbox"
+                    id="noPaperCopy"
+                    checked={formData.noPaperCopy}
+                    onChange={(e) => setFormData(prev => ({ ...prev, noPaperCopy: e.target.checked }))}
+                  />
+                  <Label htmlFor="noPaperCopy" className="ml-2">Không gửi bản giấy</Label>
                 </div>
               </div>
 

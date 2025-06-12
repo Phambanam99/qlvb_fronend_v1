@@ -71,7 +71,7 @@ import { incomingExternalReadStatus } from "@/lib/api/documentReadStatus";
 import { InternalDocument, InternalDocumentDetail, DocumentHistory,
   DocumentStats,
 } from "@/lib/api/internalDocumentApi";
-
+import { documentReadStatusAPI } from "@/lib/api/documentReadStatus";
 // Role có quyền xem toàn bộ văn bản
 const FULL_ACCESS_ROLES = [
   "ROLE_ADMIN",
@@ -896,7 +896,7 @@ export default function IncomingDocumentsPage() {
       if (!currentReadStatus) {
         try {
           await markDocumentAsRead(doc.id);
-
+          await documentReadStatusAPI.markAsRead(doc.id, "INCOMING_INTERNAL");
           // Update document in the local state to reflect the change
           setInternalDocuments((prevDocs) =>
             prevDocs.map((d) =>
