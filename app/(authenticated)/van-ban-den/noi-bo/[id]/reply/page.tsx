@@ -51,7 +51,10 @@ import {
   replyToDocument,
   replyToDocumentWithAttachments,
 } from "@/lib/api/internalDocumentApi";
-import { documentTypesAPI, DocumentTypeDTO } from "@/lib/api";
+import { documentTypesAPI, DocumentTypeDTO, usersAPI, departmentsAPI } from "@/lib/api";
+import { UserDTO } from "@/lib/api/users";
+import { DepartmentDTO } from "@/lib/api/departments";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface OriginalDocument {
   id: number;
@@ -91,6 +94,17 @@ export default function ReplyInternalDocumentPage() {
     summary: "",
     urgencyLevel: URGENCY_LEVELS.KHAN as UrgencyLevel,
     notes: "",
+    signer: "",
+    draftingDepartmentId: undefined as number | undefined,
+    securityLevel: 'NORMAL' as 'NORMAL' | 'CONFIDENTIAL' | 'SECRET' | 'TOP_SECRET',
+    documentSignerId: undefined as number | undefined,
+    isSecureTransmission: false,
+    processingDeadline: undefined as Date | undefined,
+    issuingAgency: "",
+    distributionType: 'REGULAR' as 'REGULAR' | 'CONFIDENTIAL' | 'COPY_BOOK' | 'PARTY' | 'STEERING_COMMITTEE',
+    numberOfCopies: undefined as number | undefined,
+    numberOfPages: undefined as number | undefined,
+    noPaperCopy: false,
   });
 
   // State for file attachments (multiple files)
@@ -103,6 +117,60 @@ export default function ReplyInternalDocumentPage() {
   // State for document types
   const [documentTypes, setDocumentTypes] = useState<DocumentTypeDTO[]>([]);
   const [isLoadingDocumentTypes, setIsLoadingDocumentTypes] = useState(false);
+
+  // State for departments and users
+  const [departments, setDepartments] = useState<DepartmentDTO[]>([]);
+  const [leadershipUsers, setLeadershipUsers] = useState<UserDTO[]>([]);
+  const [isLoadingDepartments, setIsLoadingDepartments] = useState(false);
+  const [isLoadingLeadershipUsers, setIsLoadingLeadershipUsers] = useState(false);
+
+  // Leadership roles for document signers
+  const LEADERSHIP_ROLES = [
+    "ROLE_CUC_TRUONG",
+    "ROLE_CUC_PHO", 
+    "ROLE_CHINH_UY",
+    "ROLE_PHO_CHINH_UY",
+    "ROLE_TRUONG_PHONG",
+    "ROLE_PHO_PHONG",
+    "ROLE_TRUONG_BAN",
+    "ROLE_PHO_BAN",
+    "ROLE_CUM_TRUONG",
+    "ROLE_PHO_CUM_TRUONG",
+    "ROLE_TRAM_TRUONG"
+  ];
+
+  const getRoleDisplayName = (role: string): string => {
+    switch (role) {
+      case "ROLE_CUC_TRUONG":
+        return "Cục trưởng";
+      case "ROLE_CUC_PHO":
+        return "Cục phó";
+      case "ROLE_CHINH_UY":
+        return "Chính ủy";
+      case "ROLE_PHO_CHINH_UY":
+        return "Phó Chính ủy";
+      case "ROLE_TRUONG_PHONG":
+        return "Trưởng phòng";
+      case "ROLE_PHO_PHONG":
+        return "Phó phòng";
+      case "ROLE_TRAM_TRUONG":
+        return "Trạm trưởng";
+      case "ROLE_PHO_TRAM_TRUONG":
+        return "Phó Trạm trưởng";
+      case "ROLE_CHINH_TRI_VIEN_TRAM":
+        return "Chính trị viên trạm";
+      case "ROLE_CUM_TRUONG":
+        return "Cụm trưởng";
+      case "ROLE_PHO_CUM_TRUONG":
+        return "Phó cụm trưởng";
+      case "ROLE_CHINH_TRI_VIEN_CUM":
+        return "Chính trị viên cụm";
+      case "ROLE_TRUONG_BAN":
+        return "Trưởng Ban";
+      default:
+        return role.replace("ROLE_", "").replace(/_/g, " ").toLowerCase();
+    }
+  };
 
   // Load original document and document types
   useEffect(() => {
@@ -125,6 +193,21 @@ export default function ReplyInternalDocumentPage() {
         setIsLoadingDocumentTypes(true);
         const types = await documentTypesAPI.getAllDocumentTypes();
         setDocumentTypes(types);
+
+        // Fetch departments
+        setIsLoadingDepartments(true);
+        const depts = await departmentsAPI.getAllDepartments();
+        setDepartments(depts);
+
+        // Fetch leadership users for current user's department
+        if (user?.departmentId) {
+          setIsLoadingLeadershipUsers(true);
+          const users = await usersAPI.getUsersByDepartment(user.departmentId);
+          const leaders = users.filter(u => 
+            u.roles?.some(role => LEADERSHIP_ROLES.includes(role))
+          );
+          setLeadershipUsers(leaders);
+        }
       } catch (error) {
         console.error("Error fetching data:", error);
         toast({
@@ -136,6 +219,8 @@ export default function ReplyInternalDocumentPage() {
       } finally {
         setLoadingOriginal(false);
         setIsLoadingDocumentTypes(false);
+        setIsLoadingDepartments(false);
+        setIsLoadingLeadershipUsers(false);
       }
     };
 
@@ -165,6 +250,19 @@ export default function ReplyInternalDocumentPage() {
     if (date) {
       setFormData((prev) => ({ ...prev, signingDate: date }));
     }
+  };
+
+  const handleProcessingDeadlineChange = (date: Date | undefined) => {
+    setFormData((prev) => ({ ...prev, processingDeadline: date }));
+  };
+
+  const handleNumberInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value ? parseInt(value) : undefined }));
+  };
+
+  const handleCheckboxChange = (name: string) => (checked: boolean) => {
+    setFormData((prev) => ({ ...prev, [name]: checked }));
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -202,6 +300,18 @@ export default function ReplyInternalDocumentPage() {
       errors.summary = "Nội dung trả lời là bắt buộc";
     }
 
+    if (!formData.documentType.trim()) {
+      errors.documentType = "Loại văn bản là bắt buộc";
+    }
+
+    if (!formData.documentSignerId) {
+      errors.documentSignerId = "Người ký là bắt buộc";
+    }
+
+    if (!formData.draftingDepartmentId) {
+      errors.draftingDepartmentId = "Đơn vị soạn thảo là bắt buộc";
+    }
+
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -230,8 +340,19 @@ export default function ReplyInternalDocumentPage() {
         summary: formData.summary,
         documentType: formData.documentType,
         signingDate: formData.signingDate,
-        priority: formData.priority.toUpperCase(),
+        priority: formData.urgencyLevel.toUpperCase(),
         notes: formData.notes,
+        signer: formData.signer,
+        draftingDepartmentId: formData.draftingDepartmentId,
+        securityLevel: formData.securityLevel,
+        documentSignerId: formData.documentSignerId,
+        isSecureTransmission: formData.isSecureTransmission,
+        processingDeadline: formData.processingDeadline,
+        issuingAgency: formData.issuingAgency,
+        distributionType: formData.distributionType,
+        numberOfCopies: formData.numberOfCopies,
+        numberOfPages: formData.numberOfPages,
+        noPaperCopy: formData.noPaperCopy,
         replyToId: Number(originalDocumentId),
         status: "SENT",
         isInternal: true,
@@ -302,8 +423,19 @@ export default function ReplyInternalDocumentPage() {
         summary: formData.summary,
         documentType: formData.documentType,
         signingDate: formData.signingDate,
-        priority: formData.priority.toUpperCase(),
+        priority: formData.urgencyLevel.toUpperCase(),
         notes: formData.notes,
+        signer: formData.signer,
+        draftingDepartmentId: formData.draftingDepartmentId,
+        securityLevel: formData.securityLevel,
+        documentSignerId: formData.documentSignerId,
+        isSecureTransmission: formData.isSecureTransmission,
+        processingDeadline: formData.processingDeadline,
+        issuingAgency: formData.issuingAgency,
+        distributionType: formData.distributionType,
+        numberOfCopies: formData.numberOfCopies,
+        numberOfPages: formData.numberOfPages,
+        noPaperCopy: formData.noPaperCopy,
         replyToId: Number(originalDocumentId),
         status: "DRAFT",
         isInternal: true,
@@ -367,8 +499,8 @@ export default function ReplyInternalDocumentPage() {
     );
   }
 
-  return (
-    <div className="container py-6 max-w-5xl">
+      return (
+      <div className="container mx-auto py-8 max-w-7xl px-4 sm:px-6 lg:px-8">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-2">
           <Button variant="outline" size="icon" asChild>
@@ -482,56 +614,78 @@ export default function ReplyInternalDocumentPage() {
                 Nhập thông tin cho văn bản trả lời
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6 pt-6">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="documentNumber">
-                    Số văn bản <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="documentNumber"
-                    name="documentNumber"
-                    value={formData.documentNumber}
-                    onChange={handleInputChange}
-                    placeholder="Nhập số văn bản trả lời"
-                    required
-                    className={
-                      validationErrors.documentNumber ? "border-red-500" : ""
-                    }
-                  />
-                  {validationErrors.documentNumber && (
-                    <p className="text-sm text-red-500">
-                      {validationErrors.documentNumber}
-                    </p>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signingDate">Ngày ký</Label>
-                  <DatePicker
-                    date={formData.signingDate}
-                    setDate={handleDateChange}
-                  />
+            <CardContent className="space-y-8 pt-6">
+              {/* Basic Information Section */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-primary border-b pb-2">
+                  Thông tin cơ bản
+                </h3>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="documentNumber">
+                      Số văn bản <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="documentNumber"
+                      name="documentNumber"
+                      value={formData.documentNumber}
+                      onChange={handleInputChange}
+                      placeholder="Nhập số văn bản trả lời"
+                      required
+                      className={
+                        validationErrors.documentNumber ? "border-red-500" : ""
+                      }
+                    />
+                    {validationErrors.documentNumber && (
+                      <p className="text-sm text-red-500">
+                        {validationErrors.documentNumber}
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="signingDate">Ngày ký</Label>
+                    <DatePicker
+                      date={formData.signingDate}
+                      setDate={handleDateChange}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="issuingAgency">Cơ quan ban hành</Label>
+                    <Input
+                      id="issuingAgency"
+                      name="issuingAgency"
+                      value={formData.issuingAgency}
+                      onChange={handleInputChange}
+                      placeholder="Nhập cơ quan ban hành"
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="title">
-                  Tiêu đề <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="title"
-                  name="title"
-                  value={formData.title}
-                  onChange={handleInputChange}
-                  placeholder="Nhập tiêu đề văn bản trả lời"
-                  required
-                  className={validationErrors.title ? "border-red-500" : ""}
-                />
-                {validationErrors.title && (
-                  <p className="text-sm text-red-500">
-                    {validationErrors.title}
-                  </p>
-                )}
+              {/* Document Content Section */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-primary border-b pb-2">
+                  Nội dung văn bản
+                </h3>
+                <div className="space-y-2">
+                  <Label htmlFor="title">
+                    Tiêu đề <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="title"
+                    name="title"
+                    value={formData.title}
+                    onChange={handleInputChange}
+                    placeholder="Nhập tiêu đề văn bản trả lời"
+                    required
+                    className={validationErrors.title ? "border-red-500" : ""}
+                  />
+                  {validationErrors.title && (
+                    <p className="text-sm text-red-500">
+                      {validationErrors.title}
+                    </p>
+                  )}
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -552,66 +706,280 @@ export default function ReplyInternalDocumentPage() {
                 )}
               </div>
 
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="documentType">Loại văn bản</Label>
-                  <Select
-                    value={formData.documentType}
-                    onValueChange={(value) =>
-                      handleSelectChange("documentType", value)
-                    }
-                  >
-                    <SelectTrigger id="documentType">
-                      <SelectValue placeholder="Chọn loại văn bản" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {isLoadingDocumentTypes ? (
-                        <SelectItem value="loading" disabled>
-                          Đang tải danh sách loại văn bản...
-                        </SelectItem>
-                      ) : documentTypes.length === 0 ? (
-                        <SelectItem value="empty" disabled>
-                          Chưa có loại văn bản nào
-                        </SelectItem>
-                      ) : (
-                        documentTypes.map((type) => (
-                          <SelectItem key={type.id} value={type.name}>
-                            {type.name}
+              {/* Document Classification Section */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-primary border-b pb-2">
+                  Phân loại và mức độ
+                </h3>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="documentType">
+                      Loại văn bản <span className="text-red-500">*</span>
+                    </Label>
+                    <Select
+                      value={formData.documentType}
+                      onValueChange={(value) =>
+                        handleSelectChange("documentType", value)
+                      }
+                    >
+                      <SelectTrigger 
+                        id="documentType"
+                        className={validationErrors.documentType ? "border-red-500" : ""}
+                      >
+                        <SelectValue placeholder="Chọn loại văn bản" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {isLoadingDocumentTypes ? (
+                          <SelectItem value="loading" disabled>
+                            Đang tải danh sách loại văn bản...
                           </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
-                </div>
+                        ) : documentTypes.length === 0 ? (
+                          <SelectItem value="empty" disabled>
+                            Chưa có loại văn bản nào
+                          </SelectItem>
+                        ) : (
+                          documentTypes.map((type) => (
+                            <SelectItem key={type.id} value={type.name}>
+                              {type.name}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                    {validationErrors.documentType && (
+                      <p className="text-sm text-red-500">
+                        {validationErrors.documentType}
+                      </p>
+                    )}
+                  </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="priority">Độ ưu tiên</Label>
-                  <Select
-                    value={formData.priority}
-                    onValueChange={(value) =>
-                      handleSelectChange("priority", value)
-                    }
-                  >
-                    <SelectTrigger id="priority">
-                      <SelectValue placeholder="Chọn độ ưu tiên" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={URGENCY_LEVELS.KHAN}>Khẩn</SelectItem>
-                      <SelectItem value={URGENCY_LEVELS.THUONG_KHAN}>
-                        Thượng khẩn
-                      </SelectItem>
-                      <SelectItem value={URGENCY_LEVELS.HOA_TOC}>
-                        Hỏa tốc
-                      </SelectItem>
-                      <SelectItem value={URGENCY_LEVELS.HOA_TOC_HEN_GIO}>
-                        Hỏa tốc hẹn giờ
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="space-y-2">
+                    <Label htmlFor="urgencyLevel">Độ ưu tiên</Label>
+                    <Select
+                      value={formData.urgencyLevel}
+                      onValueChange={(value) =>
+                        handleSelectChange("urgencyLevel", value)
+                      }
+                    >
+                      <SelectTrigger id="urgencyLevel">
+                        <SelectValue placeholder="Chọn độ ưu tiên" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={URGENCY_LEVELS.KHAN}>Khẩn</SelectItem>
+                        <SelectItem value={URGENCY_LEVELS.THUONG_KHAN}>
+                          Thượng khẩn
+                        </SelectItem>
+                        <SelectItem value={URGENCY_LEVELS.HOA_TOC}>
+                          Hỏa tốc
+                        </SelectItem>
+                        <SelectItem value={URGENCY_LEVELS.HOA_TOC_HEN_GIO}>
+                          Hỏa tốc hẹn giờ
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="securityLevel">Mức độ bảo mật</Label>
+                    <Select
+                      value={formData.securityLevel}
+                      onValueChange={(value) =>
+                        handleSelectChange("securityLevel", value)
+                      }
+                    >
+                      <SelectTrigger id="securityLevel">
+                        <SelectValue placeholder="Chọn mức độ bảo mật" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="NORMAL">Thường</SelectItem>
+                        <SelectItem value="CONFIDENTIAL">Mật</SelectItem>
+                        <SelectItem value="SECRET">Tối mật</SelectItem>
+                        <SelectItem value="TOP_SECRET">Tuyệt mật</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
 
-              <div className="space-y-2">
+              {/* Signer and Department Section */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-primary border-b pb-2">
+                  Người ký và đơn vị soạn thảo
+                </h3>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="documentSignerId">
+                      Người ký <span className="text-red-500">*</span>
+                    </Label>
+                    <Select
+                      value={formData.documentSignerId?.toString() || ""}
+                      onValueChange={(value) =>
+                        handleSelectChange("documentSignerId", value)
+                      }
+                    >
+                      <SelectTrigger 
+                        id="documentSignerId"
+                        className={validationErrors.documentSignerId ? "border-red-500" : ""}
+                      >
+                        <SelectValue placeholder="Chọn người ký" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {isLoadingLeadershipUsers ? (
+                          <SelectItem value="loading" disabled>
+                            Đang tải danh sách lãnh đạo...
+                          </SelectItem>
+                        ) : leadershipUsers.length === 0 ? (
+                          <SelectItem value="empty" disabled>
+                            Chưa có lãnh đạo nào
+                          </SelectItem>
+                        ) : (
+                          leadershipUsers.map((user) => (
+                            <SelectItem key={user.id} value={user.id.toString()}>
+                              {user.fullName} - {getRoleDisplayName(user.roles?.[0] || "")}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                    {validationErrors.documentSignerId && (
+                      <p className="text-sm text-red-500">
+                        {validationErrors.documentSignerId}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="draftingDepartmentId">
+                      Đơn vị soạn thảo <span className="text-red-500">*</span>
+                    </Label>
+                    <Select
+                      value={formData.draftingDepartmentId?.toString() || ""}
+                      onValueChange={(value) =>
+                        handleSelectChange("draftingDepartmentId", value)
+                      }
+                    >
+                      <SelectTrigger 
+                        id="draftingDepartmentId"
+                        className={validationErrors.draftingDepartmentId ? "border-red-500" : ""}
+                      >
+                        <SelectValue placeholder="Chọn đơn vị soạn thảo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {isLoadingDepartments ? (
+                          <SelectItem value="loading" disabled>
+                            Đang tải danh sách đơn vị...
+                          </SelectItem>
+                        ) : departments.length === 0 ? (
+                          <SelectItem value="empty" disabled>
+                            Chưa có đơn vị nào
+                          </SelectItem>
+                        ) : (
+                          departments.map((dept) => (
+                            <SelectItem key={dept.id} value={dept.id.toString()}>
+                              {dept.name}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                    {validationErrors.draftingDepartmentId && (
+                      <p className="text-sm text-red-500">
+                        {validationErrors.draftingDepartmentId}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Processing and Distribution Section */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-primary border-b pb-2">
+                  Thông tin xử lý và phân phối
+                </h3>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="processingDeadline">Hạn xử lý</Label>
+                    <DatePicker
+                      date={formData.processingDeadline}
+                      setDate={handleProcessingDeadlineChange}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="distributionType">Loại phân phối</Label>
+                    <Select
+                      value={formData.distributionType}
+                      onValueChange={(value) =>
+                        handleSelectChange("distributionType", value)
+                      }
+                    >
+                      <SelectTrigger id="distributionType">
+                        <SelectValue placeholder="Chọn loại phân phối" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="REGULAR">Thường</SelectItem>
+                        <SelectItem value="CONFIDENTIAL">Mật</SelectItem>
+                        <SelectItem value="COPY_BOOK">Sao lưu</SelectItem>
+                        <SelectItem value="PARTY">Đảng</SelectItem>
+                        <SelectItem value="STEERING_COMMITTEE">Ban chỉ đạo</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="numberOfCopies">Số bản</Label>
+                    <Input
+                      id="numberOfCopies"
+                      name="numberOfCopies"
+                      type="number"
+                      min="1"
+                      value={formData.numberOfCopies || ""}
+                      onChange={handleNumberInputChange}
+                      placeholder="Nhập số bản"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="numberOfPages">Số trang</Label>
+                    <Input
+                      id="numberOfPages"
+                      name="numberOfPages"
+                      type="number"
+                      min="1"
+                      value={formData.numberOfPages || ""}
+                      onChange={handleNumberInputChange}
+                      placeholder="Nhập số trang"
+                    />
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="isSecureTransmission"
+                      checked={formData.isSecureTransmission}
+                      onCheckedChange={handleCheckboxChange("isSecureTransmission")}
+                    />
+                    <Label htmlFor="isSecureTransmission">Truyền tải bảo mật</Label>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="noPaperCopy"
+                      checked={formData.noPaperCopy}
+                      onCheckedChange={handleCheckboxChange("noPaperCopy")}
+                    />
+                    <Label htmlFor="noPaperCopy">Không in bản giấy</Label>
+                  </div>
+                </div>
+              </div>
+
+              {/* Attachments Section */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-primary border-b pb-2">
+                  Tệp đính kèm
+                </h3>
+                <div className="space-y-2">
                 <Label htmlFor="files">Tệp đính kèm</Label>
                 <Input
                   id="files"
@@ -661,16 +1029,24 @@ export default function ReplyInternalDocumentPage() {
                 )}
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="notes">Ghi chú</Label>
-                <RichTextEditor
-                  content={formData.notes}
-                  onChange={handleRichTextChange("notes")}
-                  placeholder="Nhập ghi chú (nếu có)"
-                  minHeight="100px"
-                />
+                </div>
               </div>
 
+              {/* Notes Section */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-primary border-b pb-2">
+                  Ghi chú
+                </h3>
+                <div className="space-y-2">
+                  <Label htmlFor="notes">Ghi chú</Label>
+                  <RichTextEditor
+                    content={formData.notes}
+                    onChange={handleRichTextChange("notes")}
+                    placeholder="Nhập ghi chú (nếu có)"
+                    minHeight="100px"
+                  />
+                </div>
+              </div>
 
             </CardContent>
           </Card>
