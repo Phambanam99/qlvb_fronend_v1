@@ -488,7 +488,7 @@ export default function CreateInternalOutgoingDocumentPage() {
         </div>
 
         <form ref={formRef} id="document-form" onSubmit={handleSubmit} className="space-y-6">
-          {/* Basic Document Information */}
+          {/* Document Information */}
           <Card>
             <CardContent className="pt-6">
               <div className="grid gap-6 md:grid-cols-3">
@@ -613,42 +613,8 @@ export default function CreateInternalOutgoingDocumentPage() {
                 </div>
               </div>
 
-              <div className="space-y-2 mt-6">
-                <Label htmlFor="file">Tệp đính kèm</Label>
-                <Input
-                  id="file"
-                  type="file"
-                  onChange={handleFileChange}
-                  className="cursor-pointer"
-                  multiple
-                />
-
-                {/* File Upload Progress */}
-                <FileUploadProgress
-                  files={fileUpload.files}
-                  uploadProgress={fileUpload.uploadProgress}
-                  isUploading={fileUpload.isUploading}
-                  error={fileUpload.error}
-                  onRemoveFile={handleRemoveFile}
-                  onCancelUpload={fileUpload.cancelUpload}
-                  formatFileSize={fileUpload.formatFileSize}
-                  getTotalSize={fileUpload.getTotalSize}
-                  className="mt-3"
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Additional Document Information - Moved up */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Thông tin bổ sung</CardTitle>
-              <CardDescription>
-                Các thông tin chi tiết khác của văn bản
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid gap-6 md:grid-cols-3">
+              {/* Additional Information - Merged */}
+              <div className="grid gap-6 md:grid-cols-3 mt-6">
                 <div className="space-y-2">
                   <Label htmlFor="draftingDepartmentId">Đơn vị soạn thảo</Label>
                   <Select
@@ -665,7 +631,7 @@ export default function CreateInternalOutgoingDocumentPage() {
                     </SelectTrigger>
                     <SelectContent>
                       {departments
-                        .filter(dept => !dept.children || dept.children.length === 0 || dept.name.includes("Chỉ huy cục")) // Chỉ hiển thị đơn vị cấp cao
+                        .filter(dept => !dept.children || dept.children.length === 0 || dept.name.includes("Chỉ huy cục"))
                         .map((dept) => (
                           <SelectItem key={dept.id} value={dept.id.toString()}>
                             {dept.name}
@@ -712,7 +678,6 @@ export default function CreateInternalOutgoingDocumentPage() {
                     <SelectContent>
                       {Object.values(departmentUsers).flat()
                         .filter((user, index, self) => 
-                          // Remove duplicates and ensure user.id exists
                           user.id && index === self.findIndex(u => u.id === user.id)
                         )
                         .map((user) => (
@@ -725,7 +690,7 @@ export default function CreateInternalOutgoingDocumentPage() {
                 </div>
               </div>
 
-              <div className="grid gap-6 md:grid-cols-3">
+              <div className="grid gap-6 md:grid-cols-3 mt-6">
                 <div className="space-y-2">
                   <Label htmlFor="processingDeadline">Hạn xử lý</Label>
                   <DatePicker
@@ -767,7 +732,7 @@ export default function CreateInternalOutgoingDocumentPage() {
                 </div>
               </div>
 
-              <div className="grid gap-6 md:grid-cols-3">
+              <div className="grid gap-6 md:grid-cols-3 mt-6">
                 <div className="space-y-2">
                   <Label htmlFor="numberOfCopies">Số bản sao</Label>
                   <Input
@@ -815,6 +780,8 @@ export default function CreateInternalOutgoingDocumentPage() {
               </div>
             </CardContent>
           </Card>
+
+
 
           {/* Content and Recipients */}
           <div className="grid gap-6 lg:grid-cols-3">
@@ -957,6 +924,35 @@ export default function CreateInternalOutgoingDocumentPage() {
                   onChange={handleRichTextChange("note")}
                   placeholder="Nhập ghi chú (nếu có)"
                   minHeight="150px"
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* File Attachments Section */}
+          <Card>
+            <CardContent className="pt-6">
+              <div className="space-y-2">
+                <Label htmlFor="file">Tệp đính kèm</Label>
+                <Input
+                  id="file"
+                  type="file"
+                  onChange={handleFileChange}
+                  className="cursor-pointer"
+                  multiple
+                />
+
+                {/* File Upload Progress */}
+                <FileUploadProgress
+                  files={fileUpload.files}
+                  uploadProgress={fileUpload.uploadProgress}
+                  isUploading={fileUpload.isUploading}
+                  error={fileUpload.error}
+                  onRemoveFile={handleRemoveFile}
+                  onCancelUpload={fileUpload.cancelUpload}
+                  formatFileSize={fileUpload.formatFileSize}
+                  getTotalSize={fileUpload.getTotalSize}
+                  className="mt-3"
                 />
               </div>
             </CardContent>
