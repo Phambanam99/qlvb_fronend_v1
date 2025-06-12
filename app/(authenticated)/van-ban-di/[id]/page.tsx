@@ -1368,6 +1368,102 @@ export default function OutgoingDocumentDetailPage({
                       "Chưa phê duyệt"}
                   </p>
                 </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Đơn vị soạn thảo
+                  </p>
+                  <p>{_document.draftingDepartment?.name || "Chưa xác định"}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Mức độ bảo mật
+                  </p>
+                  <Badge
+                    variant={
+                      _document.securityLevel === "SECRET"
+                        ? "destructive"
+                        : "outline"
+                    }
+                  >
+                    {_document.securityLevel === "NORMAL"
+                      ? "Thường"
+                      : _document.securityLevel === "CONFIDENTIAL"
+                      ? "Mật"
+                      : _document.securityLevel === "SECRET"
+                      ? "Tối mật"
+                      : _document.securityLevel === "TOP_SECRET"
+                      ? "Tuyệt mật"
+                      : _document.securityLevel || "Thường"}
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Người ký duyệt
+                  </p>
+                  <p>{_document.signer?.fullName || "Chưa xác định"}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Chuyển đảm bảo an toàn
+                  </p>
+                  <Badge variant={_document.secureTransmission ? "default" : "outline"}>
+                    {_document.secureTransmission ? "Có" : "Không"}
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Hạn xử lý
+                  </p>
+                  <p>
+                    {_document.processingDeadline
+                      ? new Date(_document.processingDeadline).toLocaleDateString("vi-VN")
+                      : "Không có"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Cơ quan ban hành
+                  </p>
+                  <p>{_document.issuingAgency || "Chưa xác định"}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Loại phân phối
+                  </p>
+                  <Badge variant="outline">
+                    {_document.distributionType === "TYPE_1"
+                      ? "Loại 1"
+                      : _document.distributionType === "TYPE_2"
+                      ? "Loại 2"
+                      : _document.distributionType === "TYPE_3"
+                      ? "Loại 3"
+                      : _document.distributionType === "TYPE_5"
+                      ? "Loại 5"
+                      : _document.distributionType === "TYPE_10"
+                      ? "Loại 10"
+                      : "Chưa xác định"}
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Số bản sao
+                  </p>
+                  <p>{_document.numberOfCopies || "0"}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Số trang
+                  </p>
+                  <p>{_document.numberOfPages || "0"}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Không có bản giấy
+                  </p>
+                  <Badge variant={_document.noPaperCopy ? "default" : "outline"}>
+                    {_document.noPaperCopy ? "Có" : "Không"}
+                  </Badge>
+                </div>
               </div>
               <Separator className="bg-primary/10" />
               <div>

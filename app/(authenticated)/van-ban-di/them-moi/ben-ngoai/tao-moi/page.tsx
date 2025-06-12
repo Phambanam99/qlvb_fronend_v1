@@ -649,13 +649,7 @@ export default function CreateExternalOutgoingDocumentPage() {
 
             {/* Approval Card - Takes 1 column */}
             <Card className="h-fit">
-              <CardHeader className="bg-primary/5 border-b">
-                <CardTitle className="flex items-center gap-2">
-                  <User className="h-5 w-5" />
-                  Thông tin phê duyệt
-                </CardTitle>
-                <CardDescription>Người soạn thảo và phê duyệt</CardDescription>
-              </CardHeader>
+             
               <CardContent className="pt-6">
                 <div className="space-y-4">
                   <div className="space-y-2">
@@ -752,15 +746,7 @@ export default function CreateExternalOutgoingDocumentPage() {
 
           {/* Notes Section */}
           <Card>
-            <CardHeader className="bg-primary/5 border-b">
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                Ghi chú
-              </CardTitle>
-              <CardDescription>
-                Thêm ghi chú cho người phê duyệt (nếu có)
-              </CardDescription>
-            </CardHeader>
+          
             <CardContent className="pt-6">
               <div className="space-y-2">
                 <Label htmlFor="note">Ghi chú</Label>

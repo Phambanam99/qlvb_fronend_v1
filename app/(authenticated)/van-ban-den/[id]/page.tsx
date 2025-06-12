@@ -946,6 +946,18 @@ export default function DocumentDetailPage({
                 </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">
+                    Số thu
+                  </p>
+                  <p>{_document.receiptNumber || "Chưa có"}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Cán bộ xử lý
+                  </p>
+                  <p>{_document.processingOfficer?.fullName || "Chưa phân công"}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">
                     Mức độ bảo mật
                   </p>
                   <Badge
