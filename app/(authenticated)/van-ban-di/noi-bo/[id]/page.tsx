@@ -303,7 +303,7 @@ export default function InternalDocumentDetailPage() {
                   <label className="text-sm font-medium text-muted-foreground">
                     Loại văn bản
                   </label>
-                  <p className="font-medium">{_document.documentType}</p>
+                  <p className="font-medium">{_document.documentType || "Chưa xác định"}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">
@@ -323,6 +323,106 @@ export default function InternalDocumentDetailPage() {
                     )  : (
                       <Badge variant="outline">Chưa xác định</Badge>
                     )}
+                  </div>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Additional Information Section */}
+              <div>
+                <h4 className="text-lg font-semibold mb-4">Thông tin bổ sung</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">
+                      Đơn vị soạn thảo
+                    </label>
+                    <p className="font-medium">{_document.draftingDepartment?.name || "Chưa xác định"}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">
+                      Độ mật
+                    </label>
+                    <p className="font-medium">
+                      {_document.securityLevel === 'NORMAL' && 'Thường'}
+                      {_document.securityLevel === 'CONFIDENTIAL' && 'Mật'}
+                      {_document.securityLevel === 'SECRET' && 'Tối mật'}
+                      {_document.securityLevel === 'TOP_SECRET' && 'Tuyệt mật'}
+                      {!_document.securityLevel && 'Chưa xác định'}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">
+                      Người ký duyệt
+                    </label>
+                    <p className="font-medium">{_document.documentSigner?.fullName || "Chưa xác định"}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">
+                      Hạn xử lý
+                    </label>
+                    <p className="font-medium">
+                      {_document.processingDeadline ? formatDateOnly(_document.processingDeadline) : "Chưa xác định"}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">
+                      Cơ quan ban hành
+                    </label>
+                    <p className="font-medium">{_document.issuingAgency || "Chưa xác định"}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">
+                      Khối phân phối
+                    </label>
+                    <p className="font-medium">
+                      {_document.distributionType === 'REGULAR' && 'Đi thường'}
+                      {_document.distributionType === 'CONFIDENTIAL' && 'Đi mật'}
+                      {_document.distributionType === 'COPY_BOOK' && 'Sổ sao'}
+                      {_document.distributionType === 'PARTY' && 'Đi đảng'}
+                      {_document.distributionType === 'STEERING_COMMITTEE' && 'Đi ban chỉ đạo'}
+                      {!_document.distributionType && 'Chưa xác định'}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">
+                      Số bản sao
+                    </label>
+                    <p className="font-medium">{_document.numberOfCopies || "Chưa xác định"}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">
+                      Số trang
+                    </label>
+                    <p className="font-medium">{_document.numberOfPages || "Chưa xác định"}</p>
+                  </div>
+                </div>
+
+                {/* Additional checkboxes info */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">
+                      Chuyển bằng điện mật
+                    </label>
+                    <p className="font-medium">
+                      {_document.isSecureTransmission ? (
+                        <Badge variant="default">Có</Badge>
+                      ) : (
+                        <Badge variant="outline">Không</Badge>
+                      )}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">
+                      Không gửi bản giấy
+                    </label>
+                    <p className="font-medium">
+                      {_document.noPaperCopy ? (
+                        <Badge variant="default">Có</Badge>
+                      ) : (
+                        <Badge variant="outline">Không</Badge>
+                      )}
+                    </p>
                   </div>
                 </div>
               </div>
