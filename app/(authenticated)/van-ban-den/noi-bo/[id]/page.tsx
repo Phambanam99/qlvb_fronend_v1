@@ -535,13 +535,15 @@ export default function InternalDocumentReceivedDetailPage() {
                   <label className="text-sm font-medium text-muted-foreground">
                     Độ mật
                   </label>
+                  <div>
                   <Badge
                     variant={
                       documentDetail.securityLevel === "SECRET"
                         ? "destructive"
                         : "outline"
                     }
-                  >
+                    >
+                      
                     {documentDetail.securityLevel === "NORMAL"
                       ? "Thường"
                       : documentDetail.securityLevel === "CONFIDENTIAL"
@@ -551,7 +553,8 @@ export default function InternalDocumentReceivedDetailPage() {
                       : documentDetail.securityLevel === "TOP_SECRET"
                       ? "Tuyệt mật"
                       : documentDetail.securityLevel || "Thường"}
-                  </Badge>
+                    </Badge>
+                    </div>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">
@@ -565,9 +568,11 @@ export default function InternalDocumentReceivedDetailPage() {
                   <label className="text-sm font-medium text-muted-foreground">
                     Chuyển bằng điện mật
                   </label>
+                 <div>
                   <Badge variant={documentDetail.isSecureTransmission ? "default" : "outline"}>
                     {documentDetail.isSecureTransmission ? "Có" : "Không"}
                   </Badge>
+                 </div>
                 </div>
                 {documentDetail.processingDeadline && (
                   <div>
@@ -591,9 +596,10 @@ export default function InternalDocumentReceivedDetailPage() {
                   <label className="text-sm font-medium text-muted-foreground">
                     Khối phân phối
                   </label>
-                  <Badge variant="outline">
+                 <div> <Badge variant="outline">
                     {documentDetail.distributionTypeDisplayName || "Chưa xác định"}
                   </Badge>
+                    </div>
                 </div>
                 {(documentDetail.numberOfCopies || documentDetail.numberOfPages) && (
                   <div>
@@ -609,9 +615,11 @@ export default function InternalDocumentReceivedDetailPage() {
                   <label className="text-sm font-medium text-muted-foreground">
                     Không gửi bản giấy
                   </label>
+                  <div>
                   <Badge variant={documentDetail.noPaperCopy ? "default" : "outline"}>
                     {documentDetail.noPaperCopy ? "Đúng" : "Không"}
-                  </Badge>
+                    </Badge>
+                    </div>
                 </div>
               </div>
 
