@@ -332,7 +332,7 @@ export default function InternalDocumentDetailPage() {
               <Separator />
 
               {/* Debug Info - Remove after fixing */}
-              <div>
+              {/* <div>
                 <h4 className="text-lg font-semibold mb-4 text-red-600">Debug Info (Remove Later)</h4>
                 <div className="bg-gray-100 p-4 rounded mb-4 text-xs">
                   <p><strong>draftingDepartment:</strong> {JSON.stringify(_document.draftingDepartment)}</p>
@@ -340,7 +340,7 @@ export default function InternalDocumentDetailPage() {
                   <p><strong>securityLevel:</strong> {_document.securityLevel}</p>
                   <p><strong>documentSigner:</strong> {JSON.stringify(_document.documentSigner)}</p>
                 </div>
-              </div>
+              </div> */}
 
               {/* Additional Information Section */}
               <div>
@@ -419,25 +419,25 @@ export default function InternalDocumentDetailPage() {
                     <label className="text-sm font-medium text-muted-foreground">
                       Chuyển bằng điện mật
                     </label>
-                    <p className="font-medium">
+                    <div className="font-medium">
                       {_document.isSecureTransmission ? (
                         <Badge variant="default">Có</Badge>
                       ) : (
                         <Badge variant="outline">Không</Badge>
                       )}
-                    </p>
+                    </div>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">
                       Không gửi bản giấy
                     </label>
-                    <p className="font-medium">
+                    <div className="font-medium">
                       {_document.noPaperCopy ? (
                         <Badge variant="default">Có</Badge>
                       ) : (
                         <Badge variant="outline">Không</Badge>
                       )}
-                    </p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -608,15 +608,7 @@ export default function InternalDocumentDetailPage() {
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <User className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm font-medium">Người ký</p>
-                    <p className="text-sm text-muted-foreground">
-                      {_document.signer}
-                    </p>
-                  </div>
-                </div>
+                
 
                 <div className="flex items-center gap-2">
                   <Building className="h-4 w-4 text-muted-foreground" />
