@@ -20,6 +20,7 @@ import {
   Users,
   Calendar,
   FileText,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
@@ -243,6 +244,29 @@ export default function CreateInternalOutgoingDocumentPage() {
     return deptUsers.find((user) => user.id === userId);
   };
 
+  // Helper function to parse recipient info
+  const getRecipientInfo = (recipientId: number | string) => {
+    if (typeof recipientId === "string" && recipientId.includes("-")) {
+      const [deptId, userId] = recipientId.split("-").map(Number);
+      const dept = findDepartmentById(deptId);
+      const user = findUserById(deptId, userId);
+      return {
+        type: "user" as const,
+        department: dept,
+        user: user,
+        displayName: user ? `${dept?.name} - ${user.fullName}` : `${dept?.name} - User not found`
+      };
+    } else {
+      const dept = findDepartmentById(Number(recipientId));
+      return {
+        type: "department" as const,
+        department: dept,
+        user: null,
+        displayName: dept?.name || "Department not found"
+      };
+    }
+  };
+
   const handleSelectPrimaryDepartment = (deptId: number | string) => {
     const numericId = typeof deptId === "string" ? parseInt(deptId) : deptId;
     selectPrimaryDepartment(numericId);
@@ -250,9 +274,18 @@ export default function CreateInternalOutgoingDocumentPage() {
   };
 
   const handleSelectSecondaryDepartment = (deptId: number | string) => {
-    const numericId = typeof deptId === "string" ? parseInt(deptId) : deptId;
-    selectSecondaryDepartment(numericId);
-    fetchDepartmentUsers(numericId);
+    // Handle both department IDs and composite user IDs (departmentId-userId)
+    if (typeof deptId === "string" && deptId.includes("-")) {
+      // This is a composite ID (departmentId-userId)
+      const [departmentId] = deptId.split("-").map(Number);
+      selectSecondaryDepartment(deptId as any); // Keep the composite ID
+      fetchDepartmentUsers(departmentId);
+    } else {
+      // This is a regular department ID
+      const numericId = typeof deptId === "string" ? parseInt(deptId) : deptId;
+      selectSecondaryDepartment(numericId);
+      fetchDepartmentUsers(numericId);
+    }
   };
 
   const validateForm = () => {
@@ -310,9 +343,16 @@ export default function CreateInternalOutgoingDocumentPage() {
         numberOfCopies: formData.numberOfCopies,
         numberOfPages: formData.numberOfPages,
         noPaperCopy: formData.noPaperCopy,
-        recipients: secondaryDepartments.map((deptId) => ({
-          departmentId: deptId,
-        })),
+        recipients: secondaryDepartments.map((recipient: any) => {
+          if (typeof recipient === "string" && recipient.includes("-")) {
+            // This is a composite ID (departmentId-userId)
+            const [departmentId, userId] = recipient.split("-").map(Number);
+            return { departmentId, userId };
+          } else {
+            // This is a regular department ID
+            return { departmentId: Number(recipient) };
+          }
+        }),
       };
 
       // Create cancel token for upload
@@ -837,6 +877,44 @@ export default function CreateInternalOutgoingDocumentPage() {
                         </p>
                       )}
                     </div>
+
+                    {/* Selected Recipients Display */}
+                    {secondaryDepartments.length > 0 && (
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium text-blue-600">
+                          Đã chọn ({secondaryDepartments.length})
+                        </Label>
+                        <div className="space-y-1 max-h-32 overflow-y-auto">
+                          {secondaryDepartments.map((recipientId: any) => {
+                            const recipientInfo = getRecipientInfo(recipientId);
+                            return (
+                              <div
+                                key={recipientId}
+                                className="flex items-center justify-between p-2 bg-blue-50 border border-blue-200 rounded-md text-sm"
+                              >
+                                <div className="flex items-center gap-2">
+                                  {recipientInfo.type === "user" ? (
+                                    <Users className="h-3 w-3 text-blue-600" />
+                                  ) : (
+                                    <Building className="h-3 w-3 text-blue-600" />
+                                  )}
+                                  <span className="text-blue-800">{recipientInfo.displayName}</span>
+                                </div>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0 text-blue-600 hover:bg-blue-100"
+                                  onClick={() => handleSelectSecondaryDepartment(recipientId)}
+                                  type="button"
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
 
                     <div className="flex flex-wrap items-center gap-2 text-xs">
                       <div className="flex items-center gap-1">
