@@ -530,7 +530,7 @@ export default function DashboardPage() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-2 md:space-y-0">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-primary">
-            {getGreeting()}, {user?.fullName}! 👋
+            {getGreeting()}, Đồng chí {user?.fullName}! 👋
           </h1>
           <div className="text-muted-foreground flex items-center gap-2">
             <User className="h-4 w-4" />

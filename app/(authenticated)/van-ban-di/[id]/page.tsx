@@ -1376,7 +1376,7 @@ export default function OutgoingDocumentDetailPage({
                 </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">
-                    Mức độ bảo mật
+                    Độ mật
                   </p>
                   <Badge
                     variant={
@@ -1404,7 +1404,7 @@ export default function OutgoingDocumentDetailPage({
                 </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">
-                    Chuyển đảm bảo an toàn
+                    Chuyển bằng điện mật
                   </p>
                   <Badge variant={_document.secureTransmission ? "default" : "outline"}>
                     {_document.secureTransmission ? "Có" : "Không"}
@@ -1428,20 +1428,10 @@ export default function OutgoingDocumentDetailPage({
                 </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">
-                    Loại phân phối
+                    Khối phân phối
                   </p>
                   <Badge variant="outline">
-                    {_document.distributionType === "TYPE_1"
-                      ? "Loại 1"
-                      : _document.distributionType === "TYPE_2"
-                      ? "Loại 2"
-                      : _document.distributionType === "TYPE_3"
-                      ? "Loại 3"
-                      : _document.distributionType === "TYPE_5"
-                      ? "Loại 5"
-                      : _document.distributionType === "TYPE_10"
-                      ? "Loại 10"
-                      : "Chưa xác định"}
+                    {_document.distributionTypeDisplayName}
                   </Badge>
                 </div>
                 <div>
@@ -1458,10 +1448,10 @@ export default function OutgoingDocumentDetailPage({
                 </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">
-                    Không có bản giấy
+                    Không gửi bản giấy
                   </p>
-                  <Badge variant={_document.noPaperCopy ? "default" : "outline"}>
-                    {_document.noPaperCopy ? "Có" : "Không"}
+                  <Badge variant={ "outline"}>
+                    {_document.noPaperCopy ? "Đúng" : "Không"}
                   </Badge>
                 </div>
               </div>

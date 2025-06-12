@@ -531,6 +531,96 @@ export default function InternalDocumentReceivedDetailPage() {
                     )}
                   </div>
                 </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">
+                    Đơn vị soạn thảo
+                  </label>
+                  <p className="font-medium">
+                    {documentDetail.draftingDepartment?.name || "Chưa xác định"}
+                  </p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">
+                    Độ mật
+                  </label>
+                  <Badge
+                    variant={
+                      documentDetail.securityLevel === "SECRET"
+                        ? "destructive"
+                        : "outline"
+                    }
+                  >
+                    {documentDetail.securityLevel === "NORMAL"
+                      ? "Thường"
+                      : documentDetail.securityLevel === "CONFIDENTIAL"
+                      ? "Mật"
+                      : documentDetail.securityLevel === "SECRET"
+                      ? "Tối mật"
+                      : documentDetail.securityLevel === "TOP_SECRET"
+                      ? "Tuyệt mật"
+                      : documentDetail.securityLevel || "Thường"}
+                  </Badge>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">
+                    Người ký duyệt
+                  </label>
+                  <p className="font-medium">
+                    {documentDetail.documentSigner?.fullName || "Chưa xác định"}
+                  </p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">
+                    Chuyển bằng điện mật
+                  </label>
+                  <Badge variant={documentDetail.isSecureTransmission ? "default" : "outline"}>
+                    {documentDetail.isSecureTransmission ? "Có" : "Không"}
+                  </Badge>
+                </div>
+                {documentDetail.processingDeadline && (
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">
+                      Hạn xử lý
+                    </label>
+                    <p className="font-medium">
+                      {formatDateOnly(documentDetail.processingDeadline)}
+                    </p>
+                  </div>
+                )}
+                {documentDetail.issuingAgency && (
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">
+                      Cơ quan ban hành
+                    </label>
+                    <p className="font-medium">{documentDetail.issuingAgency}</p>
+                  </div>
+                )}
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">
+                    Khối phân phối
+                  </label>
+                  <Badge variant="outline">
+                    {documentDetail.distributionTypeDisplayName || "Chưa xác định"}
+                  </Badge>
+                </div>
+                {(documentDetail.numberOfCopies || documentDetail.numberOfPages) && (
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">
+                      Số bản sao / Số trang
+                    </label>
+                    <p className="font-medium">
+                      {documentDetail.numberOfCopies || 0} bản / {documentDetail.numberOfPages || 0} trang
+                    </p>
+                  </div>
+                )}
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">
+                    Không gửi bản giấy
+                  </label>
+                  <Badge variant={documentDetail.noPaperCopy ? "default" : "outline"}>
+                    {documentDetail.noPaperCopy ? "Đúng" : "Không"}
+                  </Badge>
+                </div>
               </div>
 
               <Separator />

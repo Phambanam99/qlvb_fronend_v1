@@ -25,6 +25,18 @@ export interface CreateInternalDocumentDTO {
   recipients: RecipientRequest[];  // @NotNull, @Size(min=1)
   replyToId?: number;
   signer?: string;
+  
+  // New fields matching OutgoingDocument
+  draftingDepartmentId?: number;
+  securityLevel?: 'NORMAL' | 'CONFIDENTIAL' | 'SECRET' | 'TOP_SECRET';
+  documentSignerId?: number;
+  isSecureTransmission?: boolean;
+  processingDeadline?: string; // ISO date string
+  issuingAgency?: string;
+  distributionType?: 'REGULAR' | 'CONFIDENTIAL' | 'COPY_BOOK' | 'PARTY' | 'STEERING_COMMITTEE';
+  numberOfCopies?: number;
+  numberOfPages?: number;
+  noPaperCopy?: boolean;
 }
 // Interface for internal documents (new format from API)
 export interface InternalDocument {
@@ -42,6 +54,28 @@ export interface InternalDocument {
   senderId: number;
   senderName: string;
   senderDepartment: string;
+  
+  // New fields matching OutgoingDocument
+  draftingDepartment?: {
+    id: number;
+    name: string;
+    code?: string;
+  };
+  securityLevel?: 'NORMAL' | 'CONFIDENTIAL' | 'SECRET' | 'TOP_SECRET';
+  documentSigner?: {
+    id: number;
+    fullName: string;
+    username?: string;
+  };
+  isSecureTransmission?: boolean;
+  processingDeadline?: string;
+  issuingAgency?: string;
+  distributionType?: 'REGULAR' | 'CONFIDENTIAL' | 'COPY_BOOK' | 'PARTY' | 'STEERING_COMMITTEE';
+  distributionTypeDisplayName?: string;
+  numberOfCopies?: number;
+  numberOfPages?: number;
+  noPaperCopy?: boolean;
+  
   recipients: {
     id: number;
     departmentId: number;
@@ -84,6 +118,28 @@ export interface InternalDocumentDetail extends InternalDocument {
   senderId: number;
   senderName: string;
   senderDepartment: string;
+  
+  // New fields matching OutgoingDocument
+  draftingDepartment?: {
+    id: number;
+    name: string;
+    code?: string;
+  };
+  securityLevel?: 'NORMAL' | 'CONFIDENTIAL' | 'SECRET' | 'TOP_SECRET';
+  documentSigner?: {
+    id: number;
+    fullName: string;
+    username?: string;
+  };
+  isSecureTransmission?: boolean;
+  processingDeadline?: string;
+  issuingAgency?: string;
+  distributionType?: 'REGULAR' | 'CONFIDENTIAL' | 'COPY_BOOK' | 'PARTY' | 'STEERING_COMMITTEE';
+  distributionTypeDisplayName?: string;
+  numberOfCopies?: number;
+  numberOfPages?: number;
+  noPaperCopy?: boolean;
+  
   recipients: {
     id: number;
     departmentId: number;

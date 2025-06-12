@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   workflowAPI,
   usersAPI,
@@ -140,7 +141,17 @@ export default function CreateInternalOutgoingDocumentPage() {
     summary: "",
     urgencyLevel: URGENCY_LEVELS.KHAN,
     notes: "",
-    signer:""
+    signer: "",
+    draftingDepartmentId: undefined as number | undefined,
+    securityLevel: 'NORMAL' as 'NORMAL' | 'CONFIDENTIAL' | 'SECRET' | 'TOP_SECRET',
+    documentSignerId: undefined as number | undefined,
+    isSecureTransmission: false,
+    processingDeadline: undefined as Date | undefined,
+    issuingAgency: "",
+    distributionType: 'REGULAR' as 'REGULAR' | 'CONFIDENTIAL' | 'COPY_BOOK' | 'PARTY' | 'STEERING_COMMITTEE',
+    numberOfCopies: undefined as number | undefined,
+    numberOfPages: undefined as number | undefined,
+    noPaperCopy: false,
   });
 
   // Use file upload hook
@@ -198,6 +209,20 @@ export default function CreateInternalOutgoingDocumentPage() {
     if (date) {
       setFormData((prev) => ({ ...prev, signingDate: date }));
     }
+  };
+
+  const handleProcessingDeadlineChange = (date: Date | undefined) => {
+    setFormData((prev) => ({ ...prev, processingDeadline: date }));
+  };
+
+  const handleNumberInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    const numValue = value === '' ? undefined : parseInt(value);
+    setFormData((prev) => ({ ...prev, [name]: numValue }));
+  };
+
+  const handleCheckboxChange = (name: string) => (checked: boolean) => {
+    setFormData((prev) => ({ ...prev, [name]: checked }));
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -275,6 +300,16 @@ export default function CreateInternalOutgoingDocumentPage() {
         notes: formData.notes,
         signingDate: formData.signingDate.toISOString(),
         signer: formData.signer,
+        draftingDepartmentId: formData.draftingDepartmentId,
+        securityLevel: formData.securityLevel,
+        documentSignerId: formData.documentSignerId,
+        isSecureTransmission: formData.isSecureTransmission,
+        processingDeadline: formData.processingDeadline?.toISOString(),
+        issuingAgency: formData.issuingAgency,
+        distributionType: formData.distributionType,
+        numberOfCopies: formData.numberOfCopies,
+        numberOfPages: formData.numberOfPages,
+        noPaperCopy: formData.noPaperCopy,
         recipients: secondaryDepartments.map((deptId) => ({
           departmentId: deptId,
         })),
@@ -543,6 +578,176 @@ export default function CreateInternalOutgoingDocumentPage() {
                   getTotalSize={fileUpload.getTotalSize}
                   className="mt-3"
                 />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Additional Document Information */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Thông tin bổ sung</CardTitle>
+              <CardDescription>
+                Các thông tin chi tiết khác của văn bản
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid gap-6 md:grid-cols-3">
+                <div className="space-y-2">
+                  <Label htmlFor="draftingDepartmentId">Đơn vị soạn thảo</Label>
+                  <Select
+                    value={formData.draftingDepartmentId?.toString() || ""}
+                    onValueChange={(value) =>
+                      setFormData(prev => ({ 
+                        ...prev, 
+                        draftingDepartmentId: value ? parseInt(value) : undefined 
+                      }))
+                    }
+                  >
+                    <SelectTrigger id="draftingDepartmentId">
+                      <SelectValue placeholder="Chọn đơn vị soạn thảo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {departments.map((dept) => (
+                        <SelectItem key={dept.id} value={dept.id.toString()}>
+                          {dept.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="securityLevel">Độ mật</Label>
+                  <Select
+                    value={formData.securityLevel}
+                    onValueChange={(value) =>
+                      handleSelectChange("securityLevel", value)
+                    }
+                  >
+                    <SelectTrigger id="securityLevel">
+                      <SelectValue placeholder="Chọn độ mật" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="NORMAL">Thường</SelectItem>
+                      <SelectItem value="CONFIDENTIAL">Mật</SelectItem>
+                      <SelectItem value="SECRET">Tối mật</SelectItem>
+                      <SelectItem value="TOP_SECRET">Tuyệt mật</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="documentSignerId">Người ký duyệt</Label>
+                  <Select
+                    value={formData.documentSignerId?.toString() || ""}
+                    onValueChange={(value) =>
+                      setFormData(prev => ({ 
+                        ...prev, 
+                        documentSignerId: value ? parseInt(value) : undefined 
+                      }))
+                    }
+                  >
+                    <SelectTrigger id="documentSignerId">
+                      <SelectValue placeholder="Chọn người ký duyệt" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.values(departmentUsers).flat().map((user) => (
+                        <SelectItem key={user.id} value={user.id.toString()}>
+                          {user.fullName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid gap-6 md:grid-cols-3">
+                <div className="space-y-2">
+                  <Label htmlFor="processingDeadline">Hạn xử lý</Label>
+                  <DatePicker
+                    date={formData.processingDeadline}
+                    setDate={handleProcessingDeadlineChange}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="issuingAgency">Cơ quan ban hành</Label>
+                  <Input
+                    id="issuingAgency"
+                    name="issuingAgency"
+                    value={formData.issuingAgency}
+                    onChange={handleInputChange}
+                    placeholder="Nhập cơ quan ban hành"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="distributionType">Khối phân phối</Label>
+                  <Select
+                    value={formData.distributionType}
+                    onValueChange={(value) =>
+                      handleSelectChange("distributionType", value)
+                    }
+                  >
+                    <SelectTrigger id="distributionType">
+                      <SelectValue placeholder="Chọn khối phân phối" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="REGULAR">Đi thường</SelectItem>
+                      <SelectItem value="CONFIDENTIAL">Đi mật</SelectItem>
+                      <SelectItem value="COPY_BOOK">Sổ sao</SelectItem>
+                      <SelectItem value="PARTY">Đi đảng</SelectItem>
+                      <SelectItem value="STEERING_COMMITTEE">Đi ban chỉ đạo</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid gap-6 md:grid-cols-3">
+                <div className="space-y-2">
+                  <Label htmlFor="numberOfCopies">Số bản sao</Label>
+                  <Input
+                    id="numberOfCopies"
+                    name="numberOfCopies"
+                    type="number"
+                    value={formData.numberOfCopies || ""}
+                    onChange={handleNumberInputChange}
+                    placeholder="Nhập số bản sao"
+                    min="0"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="numberOfPages">Số trang</Label>
+                  <Input
+                    id="numberOfPages"
+                    name="numberOfPages"
+                    type="number"
+                    value={formData.numberOfPages || ""}
+                    onChange={handleNumberInputChange}
+                    placeholder="Nhập số trang"
+                    min="0"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="isSecureTransmission"
+                      checked={formData.isSecureTransmission}
+                      onCheckedChange={handleCheckboxChange("isSecureTransmission")}
+                    />
+                    <Label htmlFor="isSecureTransmission">Chuyển bằng điện mật</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="noPaperCopy"
+                      checked={formData.noPaperCopy}
+                      onCheckedChange={handleCheckboxChange("noPaperCopy")}
+                    />
+                    <Label htmlFor="noPaperCopy">Không gửi bản giấy</Label>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
