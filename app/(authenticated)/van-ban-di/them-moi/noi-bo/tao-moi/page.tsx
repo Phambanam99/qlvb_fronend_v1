@@ -639,7 +639,7 @@ export default function CreateInternalOutgoingDocumentPage() {
             </CardContent>
           </Card>
 
-          {/* Additional Document Information */}
+          {/* Additional Document Information - Moved up */}
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Thông tin bổ sung</CardTitle>
@@ -664,11 +664,13 @@ export default function CreateInternalOutgoingDocumentPage() {
                       <SelectValue placeholder="Chọn đơn vị soạn thảo" />
                     </SelectTrigger>
                     <SelectContent>
-                      {departments.map((dept) => (
-                        <SelectItem key={dept.id} value={dept.id.toString()}>
-                          {dept.name}
-                        </SelectItem>
-                      ))}
+                      {departments
+                        .filter(dept => !dept.children || dept.children.length === 0 || dept.name.includes("Chỉ huy cục")) // Chỉ hiển thị đơn vị cấp cao
+                        .map((dept) => (
+                          <SelectItem key={dept.id} value={dept.id.toString()}>
+                            {dept.name}
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -708,11 +710,16 @@ export default function CreateInternalOutgoingDocumentPage() {
                       <SelectValue placeholder="Chọn người ký duyệt" />
                     </SelectTrigger>
                     <SelectContent>
-                      {Object.values(departmentUsers).flat().map((user) => (
-                        <SelectItem key={user.id} value={user.id.toString()}>
-                          {user.fullName}
-                        </SelectItem>
-                      ))}
+                      {Object.values(departmentUsers).flat()
+                        .filter((user, index, self) => 
+                          // Remove duplicates and ensure user.id exists
+                          user.id && index === self.findIndex(u => u.id === user.id)
+                        )
+                        .map((user) => (
+                          <SelectItem key={user.id} value={user.id!.toString()}>
+                            {user.fullName}
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -813,23 +820,25 @@ export default function CreateInternalOutgoingDocumentPage() {
           <div className="grid gap-6 lg:grid-cols-3">
             {/* Content Card - Takes 2 columns */}
             <div className="lg:col-span-2">
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="space-y-2">
+              <Card className="h-full">
+                <CardContent className="pt-6 h-full">
+                  <div className="space-y-2 h-full flex flex-col">
                     <Label htmlFor="content">Nội dung văn bản</Label>
-                    <RichTextEditor
-                      content={formData.summary}
-                      onChange={handleRichTextChange("content")}
-                      placeholder="Nhập nội dung văn bản"
-                      minHeight="400px"
-                    />
+                    <div className="flex-1">
+                      <RichTextEditor
+                        content={formData.summary}
+                        onChange={handleRichTextChange("content")}
+                        placeholder="Nhập nội dung văn bản"
+                        minHeight="500px"
+                      />
+                    </div>
                   </div>
                 </CardContent>
               </Card>
             </div>
 
             {/* Recipients Card - Takes 1 column */}
-            <Card className="h-fit">
+            <Card className="h-full">
               <CardContent className="pt-6">
                 {isLoadingDepartmentList ? (
                   <div className="flex items-center justify-center p-4">
