@@ -46,17 +46,18 @@ import { useToast } from "@/components/ui/use-toast";
 import {
   getDocumentById,
   downloadAttachment,
-  markDocumentAsRead,
   getInternalDocumentHistory,
   getDocumentStats,
   getDocumentReplies,
+  getDocumentReaders,
+  getDocumentReadStatistics,
 } from "@/lib/api/internalDocumentApi";
 import { useDocumentReadStatus } from "@/hooks/use-document-read-status";
 import { useAuth } from "@/lib/auth-context";
 import { downloadPdfWithWatermark, isPdfFile } from "@/lib/utils/pdf-watermark";
 import { DocumentReadersDialog } from "@/components/document-readers-dialog";
 import { DocumentReadStats } from "@/components/document-read-stats";
-import { documentReadStatusAPI } from "@/lib/api/documentReadStatus";
+import { outgoingInternalReadStatus } from "@/lib/api/documentReadStatus";
 import { InternalDocument, InternalDocumentDetail, DocumentHistory,
   DocumentStats,
 } from "@/lib/api/internalDocumentApi";
@@ -103,7 +104,7 @@ export default function InternalDocumentReceivedDetailPage() {
           // Automatically mark as read if not already read
           if (!response.isRead) {
             try {
-              await markDocumentAsRead(Number(documentId));
+              await outgoingInternalReadStatus.markAsRead(Number(documentId));
               // Update local state
               documentWithAttachments.isRead = true;
               documentWithAttachments.readAt = new Date().toISOString();
@@ -320,7 +321,7 @@ export default function InternalDocumentReceivedDetailPage() {
 
     try {
       setMarkingAsRead(true);
-      await markDocumentAsRead(documentDetail.id);
+      await outgoingInternalReadStatus.markAsRead(documentDetail.id);
       setDocumentDetail({
         ...documentDetail,
         isRead: true,
@@ -451,12 +452,9 @@ export default function InternalDocumentReceivedDetailPage() {
           {/* Document Read Status */}
           <DocumentReadStats
             documentId={Number(documentId)}
-            documentType="INCOMING_INTERNAL"
+            documentType="OUTGOING_INTERNAL"
             onGetStatistics={(docId) =>
-              documentReadStatusAPI.getDocumentReadStatistics(
-                docId,
-                "INCOMING_INTERNAL"
-              )
+              getDocumentReadStatistics(docId)
             }
             variant="compact"
             className="mr-4"
@@ -465,19 +463,13 @@ export default function InternalDocumentReceivedDetailPage() {
           {/* Document Readers Dialog */}
           <DocumentReadersDialog
             documentId={Number(documentId)}
-            documentType="INCOMING_INTERNAL"
+            documentType="OUTGOING_INTERNAL"
             documentTitle={documentDetail.title}
             onGetReaders={(docId) =>
-              documentReadStatusAPI.getDocumentReaders(
-                docId,
-                "INCOMING_INTERNAL"
-              )
+              getDocumentReaders(docId)
             }
             onGetStatistics={(docId) =>
-              documentReadStatusAPI.getDocumentReadStatistics(
-                docId,
-                "INCOMING_INTERNAL"
-              )
+              getDocumentReadStatistics(docId)
             }
           />
         </div>
@@ -757,7 +749,7 @@ export default function InternalDocumentReceivedDetailPage() {
                           </time>
                         </div>
                         <p className="text-sm text-gray-500">
-                          Bởi: {entry.performedByName || "Hệ thống"}
+                          Bởi: {entry.performedBy?.fullName || entry.performedBy?.name || "Hệ thống"}
                         </p>
                         {entry.details && (
                           <p className="text-sm text-gray-600 mt-1">

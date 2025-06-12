@@ -605,7 +605,7 @@ export default function CreateExternalOutgoingDocumentPage() {
                         content={formData.content}
                         onChange={handleRichTextChange("content")}
                         placeholder="Nhập nội dung văn bản"
-                        minHeight="500px"
+                        minHeight="200px"
                       />
                     </div>
                   </div>

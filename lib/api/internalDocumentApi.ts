@@ -283,6 +283,7 @@ export const getUnreadDocuments = async (page = 0, size = 10) => {
   return response.data;
 };
 
+// DEPRECATED: Use DocumentReadStatusService instead
 export const countUnreadDocuments = async () => {
   const response = await api.get("/internal-documents/unread/count");
   return response.data.unreadCount;
@@ -313,6 +314,7 @@ export const advancedSearchDocuments = async (filters: {
   return response.data;
 };
 
+// DEPRECATED: Use DocumentReadStatusService instead  
 export const markDocumentAsRead = async (id: number) => {
   const response = await api.post(`/internal-documents/${id}/mark-read`);
   return response.data;
@@ -482,4 +484,20 @@ export const downloadAttachment = async (
     }
   );
   return response;
+};
+
+// NEW: Document readers API using unified system
+export const getDocumentReaders = async (id: number) => {
+  const response = await api.get(`/internal-documents/${id}/readers`);
+  return response.data;
+};
+
+export const getDocumentReadersOnly = async (id: number) => {
+  const response = await api.get(`/internal-documents/${id}/readers/read-only`);
+  return response.data;
+};
+
+export const getDocumentReadStatistics = async (id: number) => {
+  const response = await api.get(`/internal-documents/${id}/read-statistics`);
+  return response.data;
 };
