@@ -47,6 +47,7 @@ import {
   documentTypesAPI,
   DocumentTypeDTO,
 } from "@/lib/api";
+import { UserDTO } from "@/lib/api/users";
 import { DepartmentTree } from "@/components/department-tree";
 import { useDepartmentSelection } from "@/hooks/use-department-selection";
 import { useDepartmentUsers } from "@/hooks/use-department-users";
@@ -54,6 +55,7 @@ import { createInternalDocument, CreateInternalDocumentDTO } from "@/lib/api/int
 import { RichTextEditor } from "@/components/ui";
 import { useFileUpload } from "@/hooks/use-file-upload";
 import { FileUploadProgress } from "@/components/ui/file-upload-progress";
+import { usersAPI as userAPI } from "@/lib/api/users";
 
 const leadershipRoleOrder: Record<string, number> = {
   ROLE_CUC_TRUONG: 1,
@@ -105,6 +107,21 @@ const getRoleDisplayName = (role: string): string => {
   }
 };
 
+// Leadership roles for filtering document signers
+const LEADERSHIP_ROLES = [
+  "ROLE_CUC_TRUONG",
+  "ROLE_CUC_PHO", 
+  "ROLE_CHINH_UY",
+  "ROLE_PHO_CHINH_UY",
+  "ROLE_TRUONG_PHONG",
+  "ROLE_PHO_PHONG",
+  "ROLE_TRUONG_BAN",
+  "ROLE_PHO_BAN",
+  "ROLE_CUM_TRUONG",
+  "ROLE_PHO_CUM_TRUONG",
+  "ROLE_TRAM_TRUONG"
+];
+
 export default function CreateInternalOutgoingDocumentPage() {
   const router = useRouter();
   const { user } = useAuth();
@@ -132,6 +149,10 @@ export default function CreateInternalOutgoingDocumentPage() {
     fetchDepartmentUsers,
     getLeadershipRole,
   } = useDepartmentUsers(leadershipRoleOrder);
+
+  // State for document signers (leadership users in current department)
+  const [leadershipUsers, setLeadershipUsers] = useState<UserDTO[]>([]);
+  const [isLoadingLeadershipUsers, setIsLoadingLeadershipUsers] = useState(false);
 
   // State for form data
   const [formData, setFormData] = useState({
@@ -191,6 +212,40 @@ export default function CreateInternalOutgoingDocumentPage() {
 
     fetchDocumentTypes();
   }, [toast]);
+
+  // Auto-set drafting department and load leadership users when user is available
+  useEffect(() => {
+    if (user && user.departmentId) {
+      // Auto-set drafting department from current user
+      setFormData(prev => ({
+        ...prev,
+        draftingDepartmentId: user.departmentId
+      }));
+
+      // Load leadership users for document signer dropdown
+      const fetchLeadershipUsers = async () => {
+        try {
+          setIsLoadingLeadershipUsers(true);
+          const leaders = await usersAPI.getUsersByRoleAndDepartment(
+            LEADERSHIP_ROLES,
+            user.departmentId!
+          );
+          setLeadershipUsers(leaders);
+        } catch (error) {
+          console.error("Error fetching leadership users:", error);
+          toast({
+            title: "Lỗi",
+            description: "Không thể tải danh sách lãnh đạo đơn vị",
+            variant: "destructive",
+          });
+        } finally {
+          setIsLoadingLeadershipUsers(false);
+        }
+      };
+
+      fetchLeadershipUsers();
+    }
+  }, [user, toast]);
 
   // Input change handlers
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -625,20 +680,24 @@ export default function CreateInternalOutgoingDocumentPage() {
                         draftingDepartmentId: value ? parseInt(value) : undefined 
                       }))
                     }
+                    disabled={true} // Auto-set from current user, cannot be changed
                   >
-                    <SelectTrigger id="draftingDepartmentId">
-                      <SelectValue placeholder="Chọn đơn vị soạn thảo" />
+                    <SelectTrigger id="draftingDepartmentId" className="bg-gray-50">
+                      <SelectValue placeholder={
+                        user?.departmentName || "Đơn vị soạn thảo"
+                      } />
                     </SelectTrigger>
                     <SelectContent>
-                      {departments
-                        .filter(dept => !dept.children || dept.children.length === 0 || dept.name.includes("Chỉ huy cục"))
-                        .map((dept) => (
-                          <SelectItem key={dept.id} value={dept.id.toString()}>
-                            {dept.name}
-                          </SelectItem>
-                        ))}
+                      {user?.departmentId && (
+                        <SelectItem key={user.departmentId} value={user.departmentId.toString()}>
+                          {user.departmentName || "Đơn vị hiện tại"}
+                        </SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
+                  <p className="text-sm text-gray-500">
+                    Tự động lấy từ đơn vị của bạn
+                  </p>
                 </div>
 
                 <div className="space-y-2">
@@ -671,22 +730,36 @@ export default function CreateInternalOutgoingDocumentPage() {
                         documentSignerId: value ? parseInt(value) : undefined 
                       }))
                     }
+                    disabled={isLoadingLeadershipUsers}
                   >
                     <SelectTrigger id="documentSignerId">
-                      <SelectValue placeholder="Chọn người ký duyệt" />
+                      <SelectValue placeholder={
+                        isLoadingLeadershipUsers 
+                          ? "Đang tải danh sách lãnh đạo..." 
+                          : "Chọn người ký duyệt"
+                      } />
                     </SelectTrigger>
                     <SelectContent>
-                      {Object.values(departmentUsers).flat()
-                        .filter((user, index, self) => 
-                          user.id && index === self.findIndex(u => u.id === user.id)
-                        )
-                        .map((user) => (
-                          <SelectItem key={user.id} value={user.id!.toString()}>
-                            {user.fullName}
-                          </SelectItem>
-                        ))}
+                      {leadershipUsers.map((leader) => (
+                        <SelectItem key={leader.id} value={leader.id!.toString()}>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{leader.fullName}</span>
+                            <span className="text-sm text-gray-500">
+                              {leader.roleDisplayNames?.join(", ") || "Lãnh đạo"}
+                            </span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                      {leadershipUsers.length === 0 && !isLoadingLeadershipUsers && (
+                        <SelectItem value="" disabled>
+                          Không có lãnh đạo trong đơn vị
+                        </SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
+                  <p className="text-sm text-gray-500">
+                    Chỉ hiển thị lãnh đạo đơn vị của bạn
+                  </p>
                 </div>
               </div>
 
