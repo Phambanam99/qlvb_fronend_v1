@@ -509,28 +509,28 @@ export default function CreateExternalOutgoingDocumentPage() {
                   />
                 </div>
 
-                <div className="space-y-2 flex items-end">
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id="isSecureTransmission"
-                      checked={formData.isSecureTransmission}
-                      onChange={(e) => setFormData(prev => ({ ...prev, isSecureTransmission: e.target.checked }))}
-                    />
-                    <Label htmlFor="isSecureTransmission">Chuyển bằng điện mật</Label>
+                <div className="space-y-2">
+                  <Label>Tùy chọn khác</Label>
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="isSecureTransmission"
+                        checked={formData.isSecureTransmission}
+                        onChange={(e) => setFormData(prev => ({ ...prev, isSecureTransmission: e.target.checked }))}
+                      />
+                      <Label htmlFor="isSecureTransmission">Chuyển bằng điện mật</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="noPaperCopy"
+                        checked={formData.noPaperCopy}
+                        onChange={(e) => setFormData(prev => ({ ...prev, noPaperCopy: e.target.checked }))}
+                      />
+                      <Label htmlFor="noPaperCopy">Không gửi bản giấy</Label>
+                    </div>
                   </div>
-                </div>
-              </div>
-
-              <div className="grid gap-6 md:grid-cols-1 mt-6">
-                <div className="space-y-2 flex items-center">
-                  <input
-                    type="checkbox"
-                    id="noPaperCopy"
-                    checked={formData.noPaperCopy}
-                    onChange={(e) => setFormData(prev => ({ ...prev, noPaperCopy: e.target.checked }))}
-                  />
-                  <Label htmlFor="noPaperCopy" className="ml-2">Không gửi bản giấy</Label>
                 </div>
               </div>
 
@@ -588,60 +588,7 @@ export default function CreateExternalOutgoingDocumentPage() {
                 </div>
               </div>
 
-              <div className="space-y-2 mt-6">
-                <Label htmlFor="file">Tệp đính kèm</Label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    id="file"
-                    type="file"
-                    multiple
-                    onChange={handleFileChange}
-                    className="hidden"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => document.getElementById("file")?.click()}
-                  >
-                    <Paperclip className="mr-2 h-4 w-4" />
-                    Chọn tệp
-                  </Button>
-                  <span className="text-sm text-muted-foreground">
-                    {files.length > 0
-                      ? `Đã chọn ${files.length} tệp`
-                      : "Chưa có tệp nào được chọn"}
-                  </span>
-                </div>
-                {files.length > 0 && (
-                  <div className="mt-2 space-y-2">
-                    {files.map((file, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center justify-between p-2 bg-gray-50 rounded-md"
-                      >
-                        <div className="flex items-center space-x-2">
-                          <Paperclip className="h-4 w-4 text-gray-500" />
-                          <span className="text-sm font-medium">
-                            {file.name}
-                          </span>
-                          <span className="text-xs text-gray-500">
-                            ({(file.size / 1024).toFixed(2)} KB)
-                          </span>
-                        </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleRemoveFile(index)}
-                          className="h-6 w-6 p-0"
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+
             </CardContent>
           </Card>
 
@@ -649,23 +596,25 @@ export default function CreateExternalOutgoingDocumentPage() {
           <div className="grid gap-6 lg:grid-cols-3">
             {/* Content Card - Takes 2 columns */}
             <div className="lg:col-span-2">
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="space-y-2">
+              <Card className="h-full">
+                <CardContent className="pt-6 h-full">
+                  <div className="space-y-2 h-full flex flex-col">
                     <Label htmlFor="content">Nội dung văn bản</Label>
-                    <RichTextEditor
-                      content={formData.content}
-                      onChange={handleRichTextChange("content")}
-                      placeholder="Nhập nội dung văn bản"
-                      minHeight="400px"
-                    />
+                    <div className="flex-1">
+                      <RichTextEditor
+                        content={formData.content}
+                        onChange={handleRichTextChange("content")}
+                        placeholder="Nhập nội dung văn bản"
+                        minHeight="500px"
+                      />
+                    </div>
                   </div>
                 </CardContent>
               </Card>
             </div>
 
             {/* Approval Card - Takes 1 column */}
-            <Card className="h-fit">
+            <Card className="h-full">
              
               <CardContent className="pt-6">
                 <div className="space-y-4">
@@ -745,6 +694,66 @@ export default function CreateExternalOutgoingDocumentPage() {
                   placeholder="Nhập ghi chú cho người phê duyệt (nếu có)"
                   minHeight="120px"
                 />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* File Attachments Section */}
+          <Card>
+            <CardContent className="pt-6">
+              <div className="space-y-2">
+                <Label htmlFor="file">Tệp đính kèm</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="file"
+                    type="file"
+                    multiple
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => document.getElementById("file")?.click()}
+                  >
+                    <Paperclip className="mr-2 h-4 w-4" />
+                    Chọn tệp
+                  </Button>
+                  <span className="text-sm text-muted-foreground">
+                    {files.length > 0
+                      ? `Đã chọn ${files.length} tệp`
+                      : "Chưa có tệp nào được chọn"}
+                  </span>
+                </div>
+                {files.length > 0 && (
+                  <div className="mt-2 space-y-2">
+                    {files.map((file, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between p-2 bg-gray-50 rounded-md"
+                      >
+                        <div className="flex items-center space-x-2">
+                          <Paperclip className="h-4 w-4 text-gray-500" />
+                          <span className="text-sm font-medium">
+                            {file.name}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            ({(file.size / 1024).toFixed(2)} KB)
+                          </span>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveFile(index)}
+                          className="h-6 w-6 p-0"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

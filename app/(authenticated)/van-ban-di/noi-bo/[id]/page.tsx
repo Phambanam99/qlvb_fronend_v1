@@ -329,7 +329,7 @@ export default function InternalDocumentDetailPage() {
                 </div>
               </div>
 
-              <Separator />
+        
 
               {/* Debug Info - Remove after fixing */}
               {/* <div>
@@ -344,7 +344,7 @@ export default function InternalDocumentDetailPage() {
 
               {/* Additional Information Section */}
               <div>
-                <h4 className="text-lg font-semibold mb-4">Thông tin bổ sung</h4>
+               
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">
