@@ -68,6 +68,8 @@ export default function InternalDocumentDetailPage() {
         const response = await getDocumentById(Number(documentId));
         setDocument(response);
         console.log("Debug document:", response);
+        console.log("Drafting department:", response.draftingDepartment);
+        console.log("Sender department:", response.senderDepartment);
         if (response && response.isRead) {
           globalMarkAsRead(Number(documentId));
         }
@@ -329,6 +331,17 @@ export default function InternalDocumentDetailPage() {
 
               <Separator />
 
+              {/* Debug Info - Remove after fixing */}
+              <div>
+                <h4 className="text-lg font-semibold mb-4 text-red-600">Debug Info (Remove Later)</h4>
+                <div className="bg-gray-100 p-4 rounded mb-4 text-xs">
+                  <p><strong>draftingDepartment:</strong> {JSON.stringify(_document.draftingDepartment)}</p>
+                  <p><strong>senderDepartment:</strong> {_document.senderDepartment}</p>
+                  <p><strong>securityLevel:</strong> {_document.securityLevel}</p>
+                  <p><strong>documentSigner:</strong> {JSON.stringify(_document.documentSigner)}</p>
+                </div>
+              </div>
+
               {/* Additional Information Section */}
               <div>
                 <h4 className="text-lg font-semibold mb-4">Thông tin bổ sung</h4>
@@ -337,7 +350,9 @@ export default function InternalDocumentDetailPage() {
                     <label className="text-sm font-medium text-muted-foreground">
                       Đơn vị soạn thảo
                     </label>
-                    <p className="font-medium">{_document.draftingDepartment?.name || "Chưa xác định"}</p>
+                    <p className="font-medium">
+                      {_document.draftingDepartment?.name || _document.senderDepartment || "Chưa xác định"}
+                    </p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">
