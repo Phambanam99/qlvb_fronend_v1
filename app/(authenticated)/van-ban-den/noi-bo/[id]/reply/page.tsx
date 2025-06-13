@@ -355,10 +355,30 @@ export default function ReplyInternalDocumentPage() {
 
     setIsSubmitting(true);
     try {
+      // Additional validation for IDs
+      if (!formData.documentSignerId) {
+        toast({
+          title: "Lỗi",
+          description: "Vui lòng chọn người ký văn bản",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (!departmentId) {
+        toast({
+          title: "Lỗi", 
+          description: "Không tìm thấy thông tin phòng ban của người dùng",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const formDataToSubmit = {
         ...formData,
-        createdBy: userId,
-        draftingDepartmentId: departmentId,
+        createdBy: Number(userId), // Ensure it's a number
+        draftingDepartmentId: Number(departmentId), // Ensure it's a number
+        documentSignerId: Number(formData.documentSignerId), // Ensure it's a number
       };
 
       // Prepare reply document data
@@ -368,11 +388,18 @@ export default function ReplyInternalDocumentPage() {
         status: "SENT",
         recipients: [
           {
-            departmentId: originalDocument?.senderDepartment ? Number(originalDocument.senderDepartment) : undefined,
-            userId: undefined, // Reply to department
+            departmentId: originalDocument?.senderDepartment ? Number(originalDocument.senderDepartment) : null,
+            userId: null, // Reply to department
           },
         ],
       };
+
+      // Log the data being sent to debug
+      console.log("Sending reply data:", {
+        originalDocumentId: Number(originalDocumentId),
+        replyData,
+        hasFiles: files.length > 0
+      });
 
       // Submit the reply
       let result_;
