@@ -375,37 +375,43 @@ export default function ReplyInternalDocumentPage() {
       };
 
       // Submit the reply
+      let result_;
       if (files.length > 0) {
-        const result_ = await replyToDocumentWithAttachments(Number(originalDocumentId), replyData, files);
-        console.log("tf", result_);
-        if (result_.success === false) {
-      toast({
-        title: "Lỗi",
-        description: result_.message,
-        variant: "destructive",
-      });
-      return;
-        }
+        result_ = await replyToDocumentWithAttachments(Number(originalDocumentId), replyData, files);
       } else {
-        const result_ = await replyToDocument(Number(originalDocumentId), replyData);
-        const result = result_.data;
+        result_ = await replyToDocument(Number(originalDocumentId), replyData);
       }
 
-      // Show success message
-      toast({
-        title: "Thành công",
-        description: "Văn bản trả lời đã được gửi",
-      });
+      console.log("API Response:", result_);
 
-      // Add notification
-      addNotification({
-        title: "Văn bản trả lời mới",
-        message: `Văn bản trả lời "${formDataToSubmit.title}" đã được gửi`,
-        type: "success",
-      });
+      // Check for errors in the response
+      if (result_.success === false || (result_.message && result_.data === null)) {
+        toast({
+          title: "Lỗi",
+          description: result_.message || "Có lỗi xảy ra khi gửi văn bản",
+          variant: "destructive",
+        });
+        return; // Stop execution if there's an error
+      }
 
-      // Navigate back to document list with internal tab
-      router.push("/van-ban-den?tab=internal");
+      // Only show success if no errors
+      if (result_.success !== false && result_.data !== null) {
+        // Show success message
+        toast({
+          title: "Thành công",
+          description: "Văn bản trả lời đã được gửi",
+        });
+
+        // Add notification
+        addNotification({
+          title: "Văn bản trả lời mới",
+          message: `Văn bản trả lời "${formDataToSubmit.title}" đã được gửi`,
+          type: "success",
+        });
+
+        // Navigate back to document list with internal tab
+        router.push("/van-ban-den?tab=internal");
+      }
     } catch (error) {
       console.error("Error submitting form:", error);
       toast({
