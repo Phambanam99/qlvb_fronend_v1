@@ -765,7 +765,7 @@ export default function InternalDocumentReceivedDetailPage() {
                           </time>
                         </div>
                         <p className="text-sm text-gray-500">
-                          Bởi: {entry.performedBy?.fullName || entry.performedBy?.name || "Hệ thống"}
+                          Bởi: {entry.performedByName || "Hệ thống"}
                         </p>
                         {entry.details && (
                           <p className="text-sm text-gray-600 mt-1">

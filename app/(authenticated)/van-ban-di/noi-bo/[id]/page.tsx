@@ -39,6 +39,13 @@ import { useAuth } from "@/lib/auth-context";
 import {
   getDocumentById,
   downloadAttachment,
+  getInternalDocumentHistory,
+  getDocumentStats,
+  getDocumentReplies,
+  getDocumentReaders,
+  getDocumentReadStatistics,
+  DocumentHistory,
+  DocumentStats,
 } from "@/lib/api/internalDocumentApi";
 import { useDocumentReadStatus } from "@/hooks/use-document-read-status";
 import { downloadPdfWithWatermark, isPdfFile } from "@/lib/utils/pdf-watermark";
@@ -58,6 +65,13 @@ export default function InternalDocumentDetailPage() {
     null
   );
   const [loading, setLoading] = useState(true);
+  
+  // Add state for history, stats, and replies
+  const [documentHistory, setDocumentHistory] = useState<DocumentHistory[]>([]);
+  const [documentStats, setDocumentStats] = useState<DocumentStats | null>(null);
+  const [documentReplies, setDocumentReplies] = useState<InternalDocumentDetail[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [loadingStats, setLoadingStats] = useState(false);
 
   const documentId = params.id as string;
 
@@ -91,19 +105,64 @@ export default function InternalDocumentDetailPage() {
     }
   }, [documentId, toast, globalMarkAsRead]);
 
-  const formatDate = (dateString: string) => {
-    try {
-      if (!dateString) return "-";
+  // Fetch history, stats, and replies data
+  useEffect(() => {
+    const fetchHistoryAndStats = async () => {
+      if (!documentId || !_document) return;
 
-      const date = new Date(dateString);
+      try {
+        // Fetch history
+        setLoadingHistory(true);
+        const historyResponse_ = await getInternalDocumentHistory(
+          Number(documentId)
+        );
+        // Handle ResponseDTO format: extract data from response
+        const historyResponse = historyResponse_?.data?.data || historyResponse_?.data || [];
+        console.log("Debug history:", historyResponse);
+        setDocumentHistory(historyResponse || []);
 
-      // Check if date is valid and not the epoch (1970-01-01)
-      if (isNaN(date.getTime()) || date.getFullYear() === 1970) {
-        return "Chưa xác định";
+        // Fetch stats
+        setLoadingStats(true);
+        const statsResponse_ = await getDocumentStats(Number(documentId));
+        // Handle ResponseDTO format: extract data from response
+        const statsResponse = statsResponse_?.data?.data || statsResponse_?.data || null;
+        console.log("Debug stats:", statsResponse);
+        setDocumentStats(statsResponse);
+
+        // Fetch replies
+        const repliesResponse_ = await getDocumentReplies(Number(documentId));
+        // Handle ResponseDTO format: extract data from response
+        const repliesResponse = repliesResponse_?.data?.data || repliesResponse_?.data || [];
+        console.log("Debug replies:", repliesResponse);
+        setDocumentReplies(repliesResponse || []);
+      } catch (error) {
+        console.error("Error fetching document history/stats:", error);
+        // Fallback to empty data if API not available
+        setDocumentHistory([]);
+        setDocumentStats(null);
+        setDocumentReplies([]);
+      } finally {
+        setLoadingHistory(false);
+        setLoadingStats(false);
       }
+    };
 
-      return date.toLocaleString("vi-VN");
-    } catch {
+         fetchHistoryAndStats();
+   }, [documentId, _document]);
+
+   const formatDate = (dateString: string) => {
+     try {
+       if (!dateString) return "-";
+
+       const date = new Date(dateString);
+
+       // Check if date is valid and not the epoch (1970-01-01)
+       if (isNaN(date.getTime()) || date.getFullYear() === 1970) {
+         return "Chưa xác định";
+       }
+
+       return date.toLocaleString("vi-VN");
+     } catch {
       return "Chưa xác định";
     }
   };
@@ -212,6 +271,37 @@ export default function InternalDocumentDetailPage() {
     }
   };
 
+  // Helper functions for action icons and display names
+  const getActionIcon = (action: string) => {
+    switch (action) {
+      case "CREATED":
+        return <FileText className="h-4 w-4 text-blue-500" />;
+      case "REPLIED":
+        return <MessageSquare className="h-4 w-4 text-green-500" />;
+      case "READ":
+        return <Eye className="h-4 w-4 text-gray-500" />;
+      case "ATTACHMENT_ADDED":
+        return <Paperclip className="h-4 w-4 text-purple-500" />;
+      default:
+        return <Clock className="h-4 w-4 text-gray-400" />;
+    }
+  };
+
+  const getActionDisplayName = (action: string) => {
+    switch (action) {
+      case "CREATED":
+        return "Tạo văn bản";
+      case "REPLIED":
+        return "Trả lời";
+      case "READ":
+        return "Đọc văn bản";
+      case "ATTACHMENT_ADDED":
+        return "Đính kèm file";
+      default:
+        return action;
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex h-[80vh] items-center justify-center">
@@ -247,28 +337,27 @@ export default function InternalDocumentDetailPage() {
     <div className="container mx-auto py-6 space-y-8">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <Button variant="outline" size="icon" asChild>
+        <div className="flex items-center gap-4">
+          <Button variant="outline" asChild>
             <Link href="/van-ban-di">
-              <ArrowLeft className="h-4 w-4" />
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Quay lại danh sách
             </Link>
           </Button>
-          <div className="space-y-1">
-            <h1 className="text-2xl font-bold tracking-tight text-primary">
-              Chi tiết văn bản nội bộ
-            </h1>
-            <p className="text-muted-foreground">
-              Thông tin chi tiết của văn bản {_document.documentNumber}
-            </p>
+
+          <div className="flex items-center space-x-4">
+            <h1 className="text-2xl font-bold">Chi tiết văn bản nội bộ</h1>
           </div>
         </div>
-
-        <div className="flex items-center space-x-2">
-          {/* Document Read Status */}
+        
+        {/* Add Document Read Stats and Readers Dialog */}
+        <div className="flex items-center gap-2">
           <DocumentReadStats
             documentId={Number(documentId)}
             documentType="OUTGOING_INTERNAL"
-            onGetStatistics={outgoingInternalReadStatus.getStatistics}
+            onGetStatistics={(docId) =>
+              getDocumentReadStatistics(docId)
+            }
             variant="compact"
             className="mr-4"
           />
@@ -277,9 +366,13 @@ export default function InternalDocumentDetailPage() {
           <DocumentReadersDialog
             documentId={Number(documentId)}
             documentType="OUTGOING_INTERNAL"
-            documentTitle={_document.title}
-            onGetReaders={outgoingInternalReadStatus.getReaders}
-            onGetStatistics={outgoingInternalReadStatus.getStatistics}
+            documentTitle={_document?.title}
+            onGetReaders={(docId) =>
+              getDocumentReaders(docId)
+            }
+            onGetStatistics={(docId) =>
+              getDocumentReadStatistics(docId)
+            }
           />
         </div>
       </div>
@@ -527,6 +620,133 @@ export default function InternalDocumentDetailPage() {
               </Table>
             </CardContent>
           </Card>
+
+          {/* Interaction History */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Clock className="h-5 w-5" />
+                Lịch sử tương tác
+                {documentStats && (
+                  <Badge variant="outline" className="ml-2">
+                    {documentStats.historyCount} hoạt động
+                  </Badge>
+                )}
+              </CardTitle>
+              <CardDescription>
+                Theo dõi các hoạt động và tương tác với văn bản
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loadingHistory ? (
+                <div className="flex items-center justify-center p-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  <span className="ml-2 text-sm text-muted-foreground">
+                    Đang tải lịch sử...
+                  </span>
+                </div>
+              ) : documentHistory.length > 0 ? (
+                <div className="space-y-4">
+                  {documentHistory.map((entry, index) => (
+                    <div
+                      key={entry.id || index}
+                      className="flex items-start space-x-3 border-l-2 border-gray-200 pl-4 pb-4 last:pb-0"
+                    >
+                      <div className="flex-shrink-0 mt-1">
+                        {getActionIcon(entry.action)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-medium text-gray-900">
+                            {entry.details}
+                          </p>
+                          <time className="text-sm text-gray-500">
+                            {formatDate(entry.performedAt)}
+                          </time>
+                        </div>
+                        <p className="text-sm text-gray-500">
+                          Bởi: {entry.performedBy?.fullName || entry.performedBy?.name || "Hệ thống"}
+                        </p>
+                        {entry.details && (
+                          <p className="text-sm text-gray-600 mt-1">
+                            {entry.details}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <Clock className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-500">Chưa có lịch sử tương tác nào</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Document Replies */}
+          {documentReplies && documentReplies.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <MessageSquare className="h-5 w-5" />
+                  Văn bản trả lời ({documentReplies.length})
+                </CardTitle>
+                <CardDescription>
+                  Danh sách các văn bản trả lời cho văn bản này
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {documentReplies.map((reply) => (
+                    <div
+                      key={reply.id}
+                      className="border rounded-lg p-4 hover:bg-gray-50"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <h4 className="font-medium text-sm">
+                              {reply.documentNumber}
+                            </h4>
+                            {reply.priority && getPriorityBadge(reply.priority)}
+                            {getStatusBadge(reply.status)}
+                          </div>
+                          <h5 className="font-semibold text-base mb-2">
+                            {reply.title}
+                          </h5>
+                          {reply.summary && (
+                            <p
+                              className="text-sm text-gray-600 mb-2 line-clamp-2"
+                              dangerouslySetInnerHTML={{
+                                __html: reply.summary,
+                              }}
+                            ></p>
+                          )}
+                          <div className="flex items-center gap-4 text-xs text-gray-500">
+                            <span>
+                              <User className="h-3 w-3 inline mr-1" />
+                              {reply.senderName}
+                            </span>
+                            <span>
+                              <Calendar className="h-3 w-3 inline mr-1" />
+                              {formatDate(reply.createdAt)}
+                            </span>
+                          </div>
+                        </div>
+                        <Button variant="outline" size="sm" asChild>
+                          <Link href={`/van-ban-di/noi-bo/${reply.id}`}>
+                            Xem chi tiết
+                          </Link>
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Attachments */}
           {_document.attachments.length > 0 && (
