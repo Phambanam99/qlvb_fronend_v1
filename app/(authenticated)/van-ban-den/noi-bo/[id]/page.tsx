@@ -81,6 +81,10 @@ export default function InternalDocumentReceivedDetailPage() {
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [loadingStats, setLoadingStats] = useState(false);
   const [markingAsRead, setMarkingAsRead] = useState(false);
+  
+  // Add state for recipients visibility
+  const [showAllRecipients, setShowAllRecipients] = useState(false);
+  const RECIPIENTS_PREVIEW_COUNT = 5; // Show first 5 recipients by default
 
   const { markAsRead: globalMarkAsRead } = useDocumentReadStatus();
 
@@ -673,9 +677,20 @@ export default function InternalDocumentReceivedDetailPage() {
             documentDetail.recipients.length > 0 && (
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Users className="h-5 w-5" />
-                    Danh sách người nhận ({documentDetail.recipients.length})
+                  <CardTitle className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Users className="h-5 w-5" />
+                      Danh sách người nhận ({documentDetail.recipients.length})
+                    </div>
+                    {documentDetail.recipients.length > RECIPIENTS_PREVIEW_COUNT && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowAllRecipients(!showAllRecipients)}
+                      >
+                        {showAllRecipients ? "Thu gọn" : `Xem tất cả (${documentDetail.recipients.length})`}
+                      </Button>
+                    )}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -690,7 +705,10 @@ export default function InternalDocumentReceivedDetailPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {documentDetail.recipients.map((recipient) => (
+                      {(showAllRecipients 
+                        ? documentDetail.recipients 
+                        : documentDetail.recipients.slice(0, RECIPIENTS_PREVIEW_COUNT)
+                      ).map((recipient) => (
                         <TableRow key={recipient.id}>
                           <TableCell className="font-medium">
                             {recipient.departmentName}
@@ -717,6 +735,20 @@ export default function InternalDocumentReceivedDetailPage() {
                       ))}
                     </TableBody>
                   </Table>
+                  
+                  {/* Show hidden count when collapsed */}
+                  {!showAllRecipients && documentDetail.recipients.length > RECIPIENTS_PREVIEW_COUNT && (
+                    <div className="mt-4 text-center">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowAllRecipients(true)}
+                        className="text-muted-foreground hover:text-foreground"
+                      >
+                        + {documentDetail.recipients.length - RECIPIENTS_PREVIEW_COUNT} người nhận khác
+                      </Button>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )}

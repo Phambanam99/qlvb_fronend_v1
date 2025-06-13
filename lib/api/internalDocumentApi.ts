@@ -179,6 +179,7 @@ export interface DocumentHistory {
     fullName: string;
   };
   performedAt: string;
+  performedByName: string;
   ipAddress?: string;
   userAgent?: string;
 }
