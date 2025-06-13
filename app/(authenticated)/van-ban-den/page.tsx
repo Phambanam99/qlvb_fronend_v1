@@ -54,7 +54,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { useIncomingDocuments } from "@/lib/store";
 import { useAuth } from "@/lib/auth-context";
 import { IncomingDocumentDTO } from "@/lib/api";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useHierarchicalDepartments } from "@/hooks/use-hierarchical-departments";
 import {
   getReceivedDocumentsExcludingSent,
@@ -228,6 +228,7 @@ export default function IncomingDocumentsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [activeTab, setActiveTab] = useState("internal");
+  const searchParams = useSearchParams();
   const [processingStatusTab, setProcessingStatusTab] =
     useState("not_processed"); // Tab con cho trạng thái xử lý
   const [internalDocuments, setInternalDocuments] = useState<
@@ -280,6 +281,14 @@ export default function IncomingDocumentsPage() {
 
   // Use simplified status tabs instead of complex role-based logic
   const userProcessingStatus = SIMPLE_STATUS_TABS;
+
+  // Handle URL parameters to set initial tab
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam === 'internal' || tabParam === 'external') {
+      setActiveTab(tabParam);
+    }
+  }, [searchParams]);
 
   // Kiểm tra người dùng có quyền xem tất cả không
   const hasFullAccess = FULL_ACCESS_ROLES.some((role) => hasRole(role));

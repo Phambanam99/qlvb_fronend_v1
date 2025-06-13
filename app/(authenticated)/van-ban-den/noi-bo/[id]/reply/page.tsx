@@ -404,8 +404,8 @@ export default function ReplyInternalDocumentPage() {
         type: "success",
       });
 
-      // Navigate back to document list
-      router.push("/van-ban-den/noi-bo");
+      // Navigate back to document list with internal tab
+      router.push("/van-ban-den?tab=internal");
     } catch (error) {
       console.error("Error submitting form:", error);
       toast({
