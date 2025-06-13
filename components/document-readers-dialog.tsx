@@ -68,17 +68,41 @@ export function DocumentReadersDialog({
       setLoading(true);
       setError(null);
       
+      // Debug logging
+      console.log("DocumentReadersDialog loadData called with:", {
+        documentId,
+        documentType,
+        onGetReaders: typeof onGetReaders,
+        onGetStatistics: typeof onGetStatistics
+      });
+      
+      // Validate required props
+      if (typeof onGetReaders !== 'function') {
+        throw new Error(`onGetReaders is not a function, got: ${typeof onGetReaders}`);
+      }
+      
+      if (typeof onGetStatistics !== 'function') {
+        throw new Error(`onGetStatistics is not a function, got: ${typeof onGetStatistics}`);
+      }
+      
+      if (!documentId) {
+        throw new Error(`documentId is required, got: ${documentId}`);
+      }
+      
       const [readersData, statsData] = await Promise.all([
         onGetReaders(documentId),
         onGetStatistics(documentId)
       ]);
       
+      console.log("Document readers data:", readersData);
+      console.log("Document stats data:", statsData);
       
       setReaders(readersData);
       setStatistics(statsData);
     } catch (err) {
       console.error("Error loading document readers:", err);
-      setError("Không thể tải danh sách người đọc");
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      setError(`Không thể tải danh sách người đọc: ${errorMessage}`);
     } finally {
       setLoading(false);
     }
