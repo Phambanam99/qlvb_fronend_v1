@@ -162,20 +162,24 @@ export default function InternalDocumentReceivedDetailPage() {
         const historyResponse_ = await getInternalDocumentHistory(
           Number(documentId)
         );
-        const historyResponse = historyResponse_.data;
-        // console.log("Debug history:", historyResponse);
+        // Handle ResponseDTO format: extract data from response
+        const historyResponse = historyResponse_?.data?.data || historyResponse_?.data || [];
+        console.log("Debug history:", historyResponse);
         setDocumentHistory(historyResponse || []);
 
         // Fetch stats
         setLoadingStats(true);
         const statsResponse_ = await getDocumentStats(Number(documentId));
-        const statsResponse = statsResponse_.data;
-        // console.log("Debug stats:", statsResponse);
+        // Handle ResponseDTO format: extract data from response
+        const statsResponse = statsResponse_?.data?.data || statsResponse_?.data || null;
+        console.log("Debug stats:", statsResponse);
         setDocumentStats(statsResponse);
 
         // Fetch replies
         const repliesResponse_ = await getDocumentReplies(Number(documentId));
-        const repliesResponse = repliesResponse_.data;
+        // Handle ResponseDTO format: extract data from response
+        const repliesResponse = repliesResponse_?.data?.data || repliesResponse_?.data || [];
+        console.log("Debug replies:", repliesResponse);
         setDocumentReplies(repliesResponse || []);
       } catch (error) {
         console.error("Error fetching document history/stats:", error);
@@ -761,7 +765,7 @@ export default function InternalDocumentReceivedDetailPage() {
                           </time>
                         </div>
                         <p className="text-sm text-gray-500">
-                          Bởi: {entry.performedByName || "Hệ thống"}
+                          Bởi: {entry.performedBy?.fullName || entry.performedBy?.name || "Hệ thống"}
                         </p>
                         {entry.details && (
                           <p className="text-sm text-gray-600 mt-1">
