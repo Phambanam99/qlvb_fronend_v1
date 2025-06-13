@@ -97,8 +97,18 @@ export function DocumentReadersDialog({
       console.log("Document readers data:", readersData);
       console.log("Document stats data:", statsData);
       
-      setReaders(readersData);
-      setStatistics(statsData);
+      // Handle ResponseDTO format - extract data if wrapped
+      const readers = Array.isArray(readersData) 
+        ? readersData 
+        : (readersData as any)?.data || readersData;
+        
+      const statistics = (statsData as any)?.data || statsData;
+      
+      console.log("Processed readers:", readers);
+      console.log("Processed statistics:", statistics);
+      
+      setReaders(readers);
+      setStatistics(statistics);
     } catch (err) {
       console.error("Error loading document readers:", err);
       const errorMessage = err instanceof Error ? err.message : String(err);
