@@ -676,86 +676,6 @@ export default function InternalDocumentReceivedDetailPage() {
             </CardContent>
           </Card>
 
-          {/* Recipients Table */}
-          {documentDetail.recipients &&
-            documentDetail.recipients.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Users className="h-5 w-5" />
-                      Danh sách người nhận ({documentDetail.recipients.length})
-                    </div>
-                    {documentDetail.recipients.length > RECIPIENTS_PREVIEW_COUNT && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setShowAllRecipients(!showAllRecipients)}
-                      >
-                        {showAllRecipients ? "Thu gọn" : `Xem tất cả (${documentDetail.recipients.length})`}
-                      </Button>
-                    )}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Đơn vị</TableHead>
-                        <TableHead>Người nhận</TableHead>
-                        <TableHead>Trạng thái</TableHead>
-                        <TableHead>Thời gian nhận</TableHead>
-                        <TableHead>Thời gian đọc</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {(showAllRecipients 
-                        ? documentDetail.recipients 
-                        : documentDetail.recipients.slice(0, RECIPIENTS_PREVIEW_COUNT)
-                      ).map((recipient) => (
-                        <TableRow key={recipient.id}>
-                          <TableCell className="font-medium">
-                            {recipient.departmentName}
-                          </TableCell>
-                          <TableCell>
-                            {recipient.userName || "Toàn đơn vị"}
-                          </TableCell>
-                          <TableCell>
-                            <Badge
-                              variant={recipient.isRead ? "default" : "outline"}
-                            >
-                              {recipient.isRead ? "Đã đọc" : "Chưa đọc"}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            {formatDate(recipient.receivedAt)}
-                          </TableCell>
-                          <TableCell>
-                            {recipient.readAt
-                              ? formatDate(recipient.readAt)
-                              : "-"}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                  
-                  {/* Show hidden count when collapsed */}
-                  {!showAllRecipients && documentDetail.recipients.length > RECIPIENTS_PREVIEW_COUNT && (
-                    <div className="mt-4 text-center">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setShowAllRecipients(true)}
-                        className="text-muted-foreground hover:text-foreground"
-                      >
-                        + {documentDetail.recipients.length - RECIPIENTS_PREVIEW_COUNT} người nhận khác
-                      </Button>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )}
 
           {/* Interaction History */}
           <Card>
@@ -1128,6 +1048,70 @@ export default function InternalDocumentReceivedDetailPage() {
               </Button>
             </CardContent>
           </Card>
+          
+          {/* Recipients Table */}
+          {documentDetail.recipients &&
+            documentDetail.recipients.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Users className="h-5 w-5" />
+                      Danh sách người nhận ({documentDetail.recipients.length})
+                    </div>
+                    {documentDetail.recipients.length > RECIPIENTS_PREVIEW_COUNT && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowAllRecipients(!showAllRecipients)}
+                      >
+                        {showAllRecipients ? "Thu gọn" : `Xem tất cả (${documentDetail.recipients.length})`}
+                      </Button>
+                    )}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Đơn vị</TableHead>
+                        <TableHead>Người nhận</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {(showAllRecipients 
+                        ? documentDetail.recipients 
+                        : documentDetail.recipients.slice(0, RECIPIENTS_PREVIEW_COUNT)
+                      ).map((recipient) => (
+                        <TableRow key={recipient.id}>
+                          <TableCell className="font-medium">
+                            {recipient.departmentName}
+                          </TableCell>
+                          <TableCell>
+                            {recipient.userName || "Toàn đơn vị"}
+                          </TableCell>
+                          
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  
+                  {/* Show hidden count when collapsed */}
+                  {!showAllRecipients && documentDetail.recipients.length > RECIPIENTS_PREVIEW_COUNT && (
+                    <div className="mt-4 text-center">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowAllRecipients(true)}
+                        className="text-muted-foreground hover:text-foreground"
+                      >
+                        + {documentDetail.recipients.length - RECIPIENTS_PREVIEW_COUNT} người nhận khác
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
         </div>
       </div>
     </div>
