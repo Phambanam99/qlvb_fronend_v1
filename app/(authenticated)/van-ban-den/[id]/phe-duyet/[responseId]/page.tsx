@@ -47,10 +47,12 @@ export default function DocumentApprovalPage({ params }: { params: { id: string;
       try {
         setLoading(true)
         // Fetch document and response data in parallel
-        const [documentData, responseData] = await Promise.all([
-          incomingDocumentsAPI.getDocumentById(params.id),
+        const [documentData_, responseData_] = await Promise.all([
+          incomingDocumentsAPI.getIncomingDocumentById(params.id),
           documentResponsesAPI.getResponseById(params.responseId),
         ])
+        const documentData = documentData_.data;
+        const responseData = responseData_.data;
 
         setDocument(documentData)
         setResponse(responseData)

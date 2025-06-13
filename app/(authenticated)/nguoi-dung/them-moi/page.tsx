@@ -57,11 +57,12 @@ export default function AddUserPage() {
     const fetchData = async () => {
       try {
         setIsLoading(true);
-        const [departmentsResponse, rolesResponse] = await Promise.all([
+        const [departmentsResponse_, rolesResponse_] = await Promise.all([
           departmentsAPI.getAllDepartments(),
           rolesAPI.getAllRoles(),
         ]);
-
+        const departmentsResponse = departmentsResponse_.data;
+        const rolesResponse = rolesResponse_.data;
         setDepartments(departmentsResponse.content || []);
         setRoles(rolesResponse || []);
       } catch (error) {

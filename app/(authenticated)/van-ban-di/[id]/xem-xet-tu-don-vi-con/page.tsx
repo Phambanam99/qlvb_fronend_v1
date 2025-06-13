@@ -61,9 +61,11 @@ export default function OutgoingDocumentReviewPage({
       try {
         setLoading(true);
         // Tải thông tin văn bản
-        const documentData = await outgoingDocumentsAPI.getOutgoingDocumentById(
+        const documentData_ = await outgoingDocumentsAPI.getOutgoingDocumentById(
           documentId
         );
+        
+        const documentData = documentData_.data;
         setDocument(documentData.data);
 
         // Kiểm tra xem văn bản có phải từ đơn vị con gửi lên không

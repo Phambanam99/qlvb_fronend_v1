@@ -290,7 +290,8 @@ export default function AddIncomingDocumentPage() {
 
   // Handle document type creation
   const handleAddDocumentType = async () => {
-    const updatedTypes = await createDocumentType(documentTypes);
+    const updatedTypes_ = await createDocumentType(documentTypes);
+    const updatedTypes = updatedTypes_.data;
     if (updatedTypes) {
       // The document types are managed by the useDocumentForm hook
       // We don't need to set them manually as the hook will refresh them

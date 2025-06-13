@@ -120,7 +120,8 @@ export default function AdminGuideFilesPage() {
   const fetchGuideFiles = async () => {
     try {
       setLoading(true);
-      const files = await guideFilesAPI.getAllGuideFiles();
+      const files_ = await guideFilesAPI.getAllGuideFiles();
+      const files = files_.data;
       setGuideFiles(files);
     } catch (error) {
       toast({
@@ -231,7 +232,9 @@ export default function AdminGuideFilesPage() {
 
   const handleDownload = async (file: GuideFileDTO) => {
     try {
-      const blob = await guideFilesAPI.downloadGuideFile(file.id);
+      const blob_   = await guideFilesAPI.downloadGuideFile(file.id);
+      const blob = blob_.data;
+     
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -272,7 +275,9 @@ export default function AdminGuideFilesPage() {
   const handlePDFDownload = async () => {
     if (!selectedFileForPreview) return null;
     try {
-      return await guideFilesAPI.downloadGuideFile(selectedFileForPreview.id);
+      const result_ = await guideFilesAPI.downloadGuideFile(selectedFileForPreview.id);
+      const result = result_.data;
+      return result;
     } catch (error) {
       toast({
         title: "Lỗi",

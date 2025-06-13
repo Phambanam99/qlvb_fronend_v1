@@ -70,7 +70,8 @@ export default function UserProfileForm({
     const fetchRoles = async () => {
       try {
         setLoadingRoles(true);
-        const rolesData = await rolesAPI.getAllRoles();
+        const rolesData_ = await rolesAPI.getAllRoles();
+        const rolesData = rolesData_.data;  
         setRoles(rolesData);
       } catch (error) {
         console.error("Error fetching roles:", error);

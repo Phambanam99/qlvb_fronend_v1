@@ -56,9 +56,10 @@ export default function DepartmentHeadReview({
     const fetchData = async () => {
       try {
         setLoading(true);
-        const responseData = await documentResponsesAPI.getResponseById(
+        const responseData_ = await documentResponsesAPI.getResponseById(
           responseId
         );
+        const responseData = responseData_.data;
         setResponse(responseData);
       } catch (error) {
         console.error("Error fetching response data:", error);
@@ -88,7 +89,8 @@ export default function DepartmentHeadReview({
           return;
         }
 
-        const parentDept = await workflowAPI.getParentDepartment(deptId);
+        const parentDept_ = await workflowAPI.getParentDepartment(deptId);
+        const parentDept = parentDept_.data;
         setParentDepartment(parentDept);
       } catch (error) {
         console.error("Error checking parent department:", error);

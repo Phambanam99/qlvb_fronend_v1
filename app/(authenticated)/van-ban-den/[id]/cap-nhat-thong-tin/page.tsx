@@ -47,12 +47,14 @@ export default function DocumentUpdatePage({
       try {
         setLoading(true);
         // Lấy thông tin văn bản
-        const documentData = await incomingDocumentsAPI.getIncomingDocumentById(
+        const documentData_ = await incomingDocumentsAPI.getIncomingDocumentById(
           documentId
         );
+        const documentData = documentData_.data;
         
         // Lấy trạng thái workflow
-        const workflowStatus = await workflowAPI.getDocumentStatus(documentId);
+        const workflowStatus_ = await workflowAPI.getDocumentStatus(documentId);
+        const workflowStatus = workflowStatus_.data;
         
         // Kết hợp dữ liệu
         const combinedData = {

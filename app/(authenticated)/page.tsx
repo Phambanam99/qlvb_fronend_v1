@@ -121,16 +121,17 @@ export default function DashboardPage() {
     setIsLoading(true);
     try {
       // Use the comprehensive dashboard stats API instead of multiple calls
-      const dashboardStatsResponse = await dashboardAPI.getDashboardStats();
+      const dashboardStatsResponse_ = await dashboardAPI.getDashboardStats();
 
-      console.log("Dashboard stats response:", dashboardStatsResponse);
+      const dashboardStatsResponse = dashboardStatsResponse_.data;
 
       // Fetch internal document stats separately to get detailed breakdown
       let internalStats = {};
       try {
-        const internalStatsResponse =
+        const internalStatsResponse_ =
           await dashboardAPI.getInternalDocumentStats();
-        console.log("Internal stats response:", internalStatsResponse);
+        const internalStatsResponse = internalStatsResponse_.data;
+       
 
         // Process internal stats to separate incoming and outgoing
         internalStats = {
@@ -273,7 +274,8 @@ export default function DashboardPage() {
 
       // If we still need schedule data, make a separate call
       try {
-        const scheduleResponse = await dashboardAPI.getTodayScheduleEvents();
+        const scheduleResponse_ = await dashboardAPI.getTodayScheduleEvents();
+        const scheduleResponse = scheduleResponse_.data;
         stats.todaySchedule = scheduleResponse;
       } catch (scheduleError) {
         console.warn("Could not fetch schedule data:", scheduleError);

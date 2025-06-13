@@ -127,7 +127,8 @@ export const useUniversalReadStatus = () => {
    */
   const loadBatchReadStatus = useCallback(async (documentIds: number[], documentType: DocumentType) => {
     try {
-      const response = await documentReadStatusAPI.getBatchReadStatus(documentIds, documentType);
+      const response_ = await documentReadStatusAPI.getBatchReadStatus(documentIds, documentType);
+      const response = response_.data;
       
       // Update global state
       Object.entries(response).forEach(([docId, isRead]) => {
@@ -147,7 +148,8 @@ export const useUniversalReadStatus = () => {
    */
   const loadUnreadCount = useCallback(async (documentType: DocumentType) => {
     try {
-      const response = await documentReadStatusAPI.countUnreadDocuments(documentType);
+      const response_ = await documentReadStatusAPI.countUnreadDocuments(documentType);
+      const response = response_.data;
       globalUnreadCounts[documentType] = response.unreadCount;
       notifySubscribers();
     } catch (error) {

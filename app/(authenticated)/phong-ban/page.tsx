@@ -48,7 +48,8 @@ export default function DepartmentsPage() {
   useEffect(() => {
     const loadDepartments = async () => {
       try {
-        const response = await departmentsAPI.getAllDepartments();
+        const response_ = await departmentsAPI.getAllDepartments();
+        const response = response_.data;
         console.log(response);
         if (response.content) {
           setDepartments(response.content as DepartmentDTO[]);

@@ -41,8 +41,8 @@ export function useDocumentClassifications(
       // Fetch classifications for all documents in parallel
       const promises = docIds.map(async (docId) => {
         try {
-          const classification =
-            await incomingDocumentsAPI.getDocumentClassification(docId);
+          const classification_  = await incomingDocumentsAPI.getDocumentClassification(docId);
+          const classification = classification_.data;
           return { docId, classification };
         } catch (err) {
           console.warn(

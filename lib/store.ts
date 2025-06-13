@@ -72,7 +72,8 @@ const createSchedulesStore = () => {
         if (get().loading) return;
 
         set({ loading: true, error: null });
-        const data = await schedulesAPI.getAllSchedules();
+        const data_ = await schedulesAPI.getAllSchedules();
+        const data = data_.data;
         set({ schedules: data });
       } catch (error) {
         console.error("Error fetching schedules:", error);

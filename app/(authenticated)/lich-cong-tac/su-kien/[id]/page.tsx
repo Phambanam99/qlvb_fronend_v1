@@ -77,15 +77,17 @@ export default function EventDetailPage({
         setLoading(true);
 
         // Fetch event details
-        const eventData = await schedulesAPI.getEventById(eventId);
+        const eventData_ = await schedulesAPI.getEventById(eventId);
+        const eventData = eventData_.data;
         setEvent(eventData);
 
         // Fetch related events (events on the same day)
-        const eventsData = await schedulesAPI.getScheduleEvents({
+        const eventsData_ = await schedulesAPI.getScheduleEvents({
           date: eventData.date,
           excludeId: eventId,
           departmentId: String(user?.departmentId),
         });
+        const eventsData = eventsData_.data;
         setRelatedEvents(eventsData.slice(0, 3)); // Limit to 3 related events
       } catch (error) {
         console.error("Error fetching event details:", error);

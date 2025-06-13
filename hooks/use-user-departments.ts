@@ -26,18 +26,19 @@ export function useUserDepartments() {
       try {
         setLoading(true);
         // Lấy phòng ban hiện tại của người dùng
-        const currentDepartment = await departmentsAPI.getDepartmentById(
+        const currentDepartment_ = await departmentsAPI.getDepartmentById(
           user.departmentId
         );
-
+        const currentDepartment = currentDepartment_.data;
         // Khởi tạo danh sách với phòng ban hiện tại
         const userDepartments = [currentDepartment];
 
         try {
           // Thêm các phòng ban con (nếu có)
-          const childDepartments = await departmentsAPI.getChildDepartments(
+          const childDepartments_ = await departmentsAPI.getChildDepartments(
             user.departmentId
           );
+          const childDepartments = childDepartments_.data;
           if (Array.isArray(childDepartments) && childDepartments.length > 0) {
             userDepartments.push(...childDepartments);
           }

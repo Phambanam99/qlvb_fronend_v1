@@ -25,7 +25,8 @@ export function useDepartmentUsers(
       setIsLoadingUsers((prev) => ({ ...prev, [departmentId]: true }));
 
       // Fetch users for this department from API
-      const response = await usersAPI.getUsersByDepartmentId(departmentId);
+      const response_ = await usersAPI.getUsersByDepartmentId(departmentId);
+      const response = response_.data;
 
       // Sort users by leadership roles
       const sortedUsers = sortUsersByLeadershipRole(response || []);

@@ -175,7 +175,8 @@ export default function UserGuidePage() {
     const fetchGuideFiles = async () => {
       try {
         setLoadingFiles(true);
-        const files = await guideFilesAPI.getActiveGuideFiles();
+        const files_ = await guideFilesAPI.getActiveGuideFiles();
+        const files = files_.data;
         setGuideFiles(files);
       } catch (error) {
         toast({
@@ -194,7 +195,8 @@ export default function UserGuidePage() {
   // Handle file download
   const handleDownloadFile = async (file: GuideFileDTO) => {
     try {
-      const blob = await guideFilesAPI.downloadGuideFile(file.id);
+      const blob_ = await guideFilesAPI.downloadGuideFile(file.id);
+      const blob = blob_.data;
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -222,7 +224,9 @@ export default function UserGuidePage() {
   const handlePDFDownload = async () => {
     if (!selectedFile) return null;
     try {
-      return await guideFilesAPI.downloadGuideFile(selectedFile.id);
+      const result_ = await guideFilesAPI.downloadGuideFile(selectedFile.id);
+      const result = result_.data;
+      return result;
     } catch (error) {
       toast({
         title: "Lỗi",

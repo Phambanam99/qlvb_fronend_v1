@@ -99,9 +99,10 @@ function EditOutgoingDocumentPage() {
     }
 
     try {
-      const blob = await outgoingDocumentsAPI.downloadAttachmentDocument(
+      const blob_ = await outgoingDocumentsAPI.downloadAttachmentDocument(
         Number(documentId)
       );
+      const blob = blob_.data;
 
       const url = window.URL.createObjectURL(blob);
 
@@ -192,10 +193,12 @@ function EditOutgoingDocumentPage() {
         setIsLoading(true);
 
         // Fetch document details và history cùng lúc để tránh render nhiều lần
-        const [documentData, history] = await Promise.all([
+        const [documentData_, history_] = await Promise.all([
           outgoingDocumentsAPI.getOutgoingDocumentById(documentId),
           workflowAPI.getDocumentHistory(documentId),
         ]);
+        const documentData = documentData_.data;
+        const history = history_.data;
 
         // Kiểm tra component còn mounted không trước khi cập nhật state
         if (!isMounted) return;
@@ -261,7 +264,8 @@ function EditOutgoingDocumentPage() {
         }
 
         // Fetch departments for dropdown
-        const departmentsData = await departmentsAPI.getAllDepartments();
+        const departmentsData_ = await departmentsAPI.getAllDepartments();
+        const departmentsData = departmentsData_.data;
         // Sử dụng dữ liệu phòng ban từ API
         setDepartments(departmentsData.content as any);
       } catch (error) {

@@ -16,7 +16,7 @@ import {
   openPDFInNewWindow,
   PDFViewerOptions,
 } from "@/lib/utils/pdf-viewer";
-import { toast } from "@/components/ui/use-toast";
+import { useToast } from "@/components/ui/use-toast";
 
 interface PDFViewerModalProps {
   isOpen: boolean;
@@ -42,6 +42,7 @@ export default function PDFViewerModal({
   const [pdfUrl, setPdfUrl] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>("");
+  const { toast } = useToast();
 
   const {
     width = "90vw",

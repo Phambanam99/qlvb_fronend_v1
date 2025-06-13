@@ -46,7 +46,8 @@ export function RecipientSelector({
     const fetchRecipients = async () => {
       try {
         setIsLoadingRecipients(true);
-        const senders = await senderApi.getAllSenders();
+        const senders_ = await senderApi.getAllSenders();
+        const senders = senders_.data;
         setRecipients(senders);
       } catch (error) {
         console.error("Error fetching recipients:", error);
@@ -93,7 +94,8 @@ export function RecipientSelector({
       };
 
       console.log("Creating Recipient:", senderData);
-      const createdRecipient = await senderApi.createSender(senderData);
+      const createdRecipient_ = await senderApi.createSender(senderData);
+      const createdRecipient = createdRecipient_.data;
       console.log("Created Recipient:", createdRecipient);
 
       // Add the new recipient to the list

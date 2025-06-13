@@ -86,9 +86,10 @@ export default function ReplyExternalDocumentPage() {
 
       try {
         setIsLoadingIncomingDoc(true);
-        const doc = await incomingDocumentsAPI.getIncomingDocumentById(
+        const doc_ = await incomingDocumentsAPI.getIncomingDocumentById(
           replyToId
         );
+        const doc = doc_.data;
         setIncomingDocument(doc.data);
 
         // Pre-fill some form fields
@@ -125,15 +126,15 @@ export default function ReplyExternalDocumentPage() {
         setIsLoadingApprovers(true);
 
         // Get users who can approve for the current user
-        const leaderUsers = await usersAPI.getUserForApproval(user.id);
+        const leaderUsers_ = await usersAPI.getUserForApproval(user.id);
+        const leaderUsers = leaderUsers_.data;
 
         // Get senior leaders across all departments
-        const seniorLeadersResponse =
-          await usersAPI.getUsersByRoleAndDepartment(
+        const seniorLeadersResponse_ =    await usersAPI.getUsersByRoleAndDepartment(
             ["ROLE_SENIOR_LEADER"],
             0 // 0 to get from all departments
           );
-
+        const seniorLeadersResponse = seniorLeadersResponse_.data;
         // Combine both lists
         const allApprovers = [...leaderUsers, ...seniorLeadersResponse];
 

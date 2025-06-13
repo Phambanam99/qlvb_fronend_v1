@@ -79,11 +79,11 @@ export default function ProfilePage() {
 
       // Kiểm tra mật khẩu hiện tại có đúng không bằng API
       if (user?.id) {
-        const { valid } = await usersAPI.checkCurrentPassword(
+        const data_ = await usersAPI.checkCurrentPassword(
           user.id,
           currentPassword
         );
-
+        const valid = data_.data.valid;
         if (!valid) {
           addNotification({
             title: "Mật khẩu hiện tại không đúng",

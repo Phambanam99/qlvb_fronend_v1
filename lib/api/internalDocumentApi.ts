@@ -448,7 +448,13 @@ export const replyToDocumentWithAttachments = async (
     {
       headers: { "Content-Type": "multipart/form-data" },
     }
-  );
+  ).catch((error) => {
+    console.log("error", error.response);
+    return {
+      success: false,
+      data: error.response.data,
+    };
+  });
 
   return response.data;
 };
@@ -489,15 +495,15 @@ export const downloadAttachment = async (
 // NEW: Document readers API using unified system
 export const getDocumentReaders = async (id: number) => {
   const response = await api.get(`/internal-documents/${id}/readers`);
-  return response.data;
+  return response.data.data;
 };
 
 export const getDocumentReadersOnly = async (id: number) => {
   const response = await api.get(`/internal-documents/${id}/readers/read-only`);
-  return response.data;
+  return response.data.data;
 };
 
 export const getDocumentReadStatistics = async (id: number) => {
   const response = await api.get(`/internal-documents/${id}/read-statistics`);
-  return response.data;
+  return response.data.data;
 };

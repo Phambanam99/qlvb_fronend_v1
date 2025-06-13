@@ -402,7 +402,8 @@ export default function IncomingDocumentsPage() {
         size,
       });
 
-      const response = await getReceivedDocumentsExcludingSent(page, size);
+      const response_ = await getReceivedDocumentsExcludingSent(page, size);
+      const response = response_.data;
 
       if (response && response.content) {
         console.log("Internal received documents response:", response);
@@ -465,7 +466,8 @@ export default function IncomingDocumentsPage() {
         userDepartmentId: user?.departmentId,
       });
 
-      const response = await incomingDocumentsAPI.getAllDocuments(page, size);
+      const response_ = await incomingDocumentsAPI.getAllDocuments(page, size);
+      const response = response_.data;
 
       console.log("API Response:", response);
 

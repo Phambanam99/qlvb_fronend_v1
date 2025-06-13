@@ -1,5 +1,5 @@
 import api from "./config";
-import type { DocumentAttachmentDTO, ResponseDTO } from "./types";
+import type { DocumentAttachmentDTO } from "./types";
 import { UserDTO } from "./users";
 
 // src/constants/document-status.ts
@@ -150,9 +150,11 @@ export const incomingDocumentsAPI = {
         params: { page, size },
       });
       console.log("backend ", response);
-
+      if (response.data.success === false) {
+        throw new Error(response.data.message);
+      }
       // Map backend response to frontend expected format
-      const documents = response.data.content.map(
+      const documents = response.data.data.content.map( 
         (doc: IncomingDocumentDTO) => ({
           ...doc,
           // Add empty arrays for frontend compatibility
@@ -201,102 +203,93 @@ export const incomingDocumentsAPI = {
 
       return { data: document };
     } catch (error) {
-      console.error("Error fetching incoming document by ID:", error);
+      console.error("Error fetching incoming document:", error);
       throw error;
     }
   },
 
   /**
-   * Create incoming document
+   * Create new incoming document
    * @param documentData Document data
-   * @returns Created document
+   * @returns Created document data
    */
   createIncomingDocument: async (
-    documentData: IncomingDocumentDTO
-  ): Promise<IncomingDocumentDTO> => {
+    documentData: any
+  ): Promise<{ data: IncomingDocumentDTO }> => {
     const response = await api.post("/documents/incoming", documentData);
+    const document = {
+      ...response.data,
+      number: response.data.documentNumber,
+      sender: response.data.sendingDepartmentName,
+      content: response.data.summary,
+      status: response.data.processingStatus,
+      // Add empty arrays for frontend compatibility
+      attachments: response.data.attachments || [],
+      relatedDocuments: response.data.relatedDocuments || [],
+      responses: [],
+    };
+
+    return { data: document };
+  },
+  getDepartmentDocuments: async (
+    departmentId: string | number,
+    page = 0,
+    size = 10
+  ) => {
+    const response = await api.get(
+      `/documents/incoming/department/${departmentId}`,
+      {
+        params: { page, size },
+      }
+    );
+    console.log("response", response.data.content);
+
     return response.data;
   },
-
   /**
    * Update incoming document
    * @param id Document ID
-   * @param documentData Updated document data
-   * @returns Updated document
+   * @param documentData Document data to update
+   * @returns Updated document data
    */
-  updateIncomingDocument: async (
-    id: number | string,
-    documentData: Partial<IncomingDocumentDTO>
-  ): Promise<IncomingDocumentDTO> => {
+  updateIncomingDocument: async (id: string | number, documentData: any) => {
     const response = await api.put(`/documents/incoming/${id}`, documentData);
     return response.data;
   },
-
+  getDepartmentsByDocumentId: async (id: string | number) => {
+    const response = await api.get(`/documents/incoming/${id}/departments`);
+    return response.data;
+  },
   /**
    * Delete incoming document
    * @param id Document ID
    * @returns Success message
    */
-  deleteIncomingDocument: async (id: number | string): Promise<string> => {
+  deleteIncomingDocument: async (id: string | number) => {
     const response = await api.delete(`/documents/incoming/${id}`);
     return response.data;
   },
-
   /**
-   * Search incoming documents
-   * @param searchParams Search parameters
-   * @returns Search results
+   * Get all Departments with document ID
+   * @param id Document ID
+   * @returns List of departments
    */
-  searchIncomingDocuments: async (searchParams: {
-    query?: string;
-    documentType?: string;
-    urgencyLevel?: string;
-    processingStatus?: string;
-    fromDate?: string;
-    toDate?: string;
-    page?: number;
-    size?: number;
-  }): Promise<{ content: IncomingDocumentDTO[]; page: any }> => {
-    const response = await api.get("/documents/incoming/search", {
-      params: searchParams,
-    });
-
-    return {
-      content: response.data.content,
-      page: {
-        totalPages: response.data.totalPages,
-        totalElements: response.data.totalElements,
-      },
-    };
-  },
-
-  /**
-   * Get document attachments
-   * @param documentId Document ID
-   * @returns List of attachments
-   */
-  getDocumentAttachments: async (
-    documentId: number | string
-  ): Promise<DocumentAttachmentDTO[]> => {
-    const response = await api.get(`/documents/incoming/${documentId}/attachments`);
+  getAllDepartments: async (id: string | number) => {
+    const response = await api.get(`/documents/incoming/${id}/departments`);
     return response.data;
   },
-
   /**
-   * Add attachment to document
-   * @param documentId Document ID
-   * @param file File to attach
-   * @returns Attachment info
+   * Upload document attachment
+   * @param id Document ID
+   * @param file File to upload
+   * @returns Updated document data
    */
-  addAttachment: async (
-    documentId: number | string,
-    file: File
-  ): Promise<DocumentAttachmentDTO> => {
+  uploadAttachment: async (id: string | number, file: File) => {
     const formData = new FormData();
     formData.append("file", file);
 
     const response = await api.post(
-      `/documents/incoming/${documentId}/attachments`,
+      `/documents/incoming/${id}/attachment`,
       formData,
       {
         headers: {
@@ -304,26 +297,24 @@ export const incomingDocumentsAPI = {
         },
       }
     );
+
     return response.data;
   },
 
   /**
-   * Add multiple attachments to document
-   * @param documentId Document ID
-   * @param files Files to attach
-   * @returns Attachment info list
+   * Upload multiple document attachments
+   * @param id Document ID
+   * @param files Files to upload
+   * @returns Success message
    */
-  addMultipleAttachments: async (
-    documentId: number | string,
-    files: File[]
-  ): Promise<DocumentAttachmentDTO[]> => {
+  uploadMultipleAttachments: async (id: string | number, files: File[]) => {
     const formData = new FormData();
     files.forEach((file) => {
       formData.append("files", file);
     });
 
     const response = await api.post(
-      `/documents/incoming/${documentId}/attachments/multiple`,
+      `/documents/incoming/${id}/attachments`,
       formData,
       {
         headers: {
@@ -331,213 +322,113 @@ export const incomingDocumentsAPI = {
         },
       }
     );
+
     return response.data;
   },
 
   /**
-   * Delete attachment
-   * @param documentId Document ID
-   * @param attachmentId Attachment ID
-   * @returns Success message
+   * Search incoming documents
+   * @param keyword Keyword to search for
+   * @param page Page number
+   * @param size Page size
+   * @returns Paginated list of matching documents
    */
-  deleteAttachment: async (
-    documentId: number | string,
-    attachmentId: number | string
-  ): Promise<string> => {
-    const response = await api.delete(
-      `/documents/incoming/${documentId}/attachments/${attachmentId}`
-    );
+  searchDocuments: async (keyword: string, page = 0, size = 10) => {
+    const response = await api.get("/documents/incoming/search", {
+      params: { keyword, page, size },
+    });
     return response.data;
+  },
+  /**
+   * Get document attachments
+   * @param id Document ID
+   * @returns List of document attachments
+   */
+  getDocumentAttachments: async (
+    id: number
+  ): Promise<DocumentAttachmentDTO[]> => {
+    try {
+      const response = await api.get(`/documents/incoming/${id}/attachments`);
+      return response.data || [];
+    } catch (error) {
+      console.error(`Error getting attachments for document ${id}:`, error);
+      // Return empty array if endpoint doesn't exist yet
+      return [];
+    }
   },
 
   /**
-   * Download attachment
+   * Get document classification status for current user
+   * @param documentId Document ID
+   * @returns Document classification status
+   */
+  getDocumentClassification: async (
+    documentId: number
+  ): Promise<DocumentClassificationResponse> => {
+    try {
+      const response = await api.get(
+        `/documents/classification/${documentId}`,
+        {
+          headers: {
+            Accept: "application/hal+json",
+          },
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error(
+        `Error getting document classification for document ${documentId}:`,
+        error
+      );
+      throw error;
+    }
+  },
+
+  downloadIncomingAttachment: async (id: number): Promise<Blob> => {
+    try {
+      const response = await api.get(`/documents/incoming/${id}/attachment`, {
+        responseType: "blob",
+        headers: {
+          Accept: "application/hal+json",
+        },
+      });
+      return response.data;
+    } catch (error) {
+      console.error(
+        `Error downloading attachment for incoming document ${id}:`,
+        error
+      );
+      throw error;
+    }
+  },
+
+  /**
+   * Download specific attachment by attachment ID
    * @param documentId Document ID
    * @param attachmentId Attachment ID
-   * @returns File blob
+   * @returns Blob data for download
    */
-  downloadAttachment: async (
-    documentId: number | string,
-    attachmentId: number | string
+  downloadSpecificAttachment: async (
+    documentId: number,
+    attachmentId: number
   ): Promise<Blob> => {
-    const response = await api.get(
-      `/documents/incoming/${documentId}/attachments/${attachmentId}/download`,
-      { responseType: "blob" }
-    );
-    return response.data;
-  },
-
-  /**
-   * Get document statistics
-   * @returns Document statistics
-   */
-  getDocumentStatistics: async (): Promise<any> => {
-    const response = await api.get("/documents/incoming/statistics");
-    return response.data;
-  },
-
-  /**
-   * Get documents by status
-   * @param status Document status
-   * @param page Page number
-   * @param size Page size
-   * @returns Documents with specified status
-   */
-  getDocumentsByStatus: async (
-    status: string,
-    page = 0,
-    size = 10
-  ): Promise<{ content: IncomingDocumentDTO[]; page: any }> => {
-    const response = await api.get("/documents/incoming/by-status", {
-      params: { status, page, size },
-    });
-
-    return {
-      content: response.data.content,
-      page: {
-        totalPages: response.data.totalPages,
-        totalElements: response.data.totalElements,
-      },
-    };
-  },
-
-  /**
-   * Get urgent documents
-   * @param page Page number
-   * @param size Page size
-   * @returns Urgent documents
-   */
-  getUrgentDocuments: async (
-    page = 0,
-    size = 10
-  ): Promise<{ content: IncomingDocumentDTO[]; page: any }> => {
-    const response = await api.get("/documents/incoming/urgent", {
-      params: { page, size },
-    });
-
-    return {
-      content: response.data.content,
-      page: {
-        totalPages: response.data.totalPages,
-        totalElements: response.data.totalElements,
-      },
-    };
-  },
-
-  /**
-   * Get overdue documents
-   * @param page Page number
-   * @param size Page size
-   * @returns Overdue documents
-   */
-  getOverdueDocuments: async (
-    page = 0,
-    size = 10
-  ): Promise<{ content: IncomingDocumentDTO[]; page: any }> => {
-    const response = await api.get("/documents/incoming/overdue", {
-      params: { page, size },
-    });
-
-    return {
-      content: response.data.content,
-      page: {
-        totalPages: response.data.totalPages,
-        totalElements: response.data.totalElements,
-      },
-    };
-  },
-
-  /**
-   * Get my assigned documents
-   * @param page Page number
-   * @param size Page size
-   * @returns My assigned documents
-   */
-  getMyAssignedDocuments: async (
-    page = 0,
-    size = 10
-  ): Promise<{ content: IncomingDocumentDTO[]; page: any }> => {
-    const response = await api.get("/documents/incoming/my-assigned", {
-      params: { page, size },
-    });
-
-    return {
-      content: response.data.content,
-      page: {
-        totalPages: response.data.totalPages,
-        totalElements: response.data.totalElements,
-      },
-    };
-  },
-
-  /**
-   * Get department's documents
-   * @param departmentId Department ID
-   * @param page Page number
-   * @param size Page size
-   * @returns Department's documents
-   */
-  getDepartmentDocuments: async (
-    departmentId: number | string,
-    page = 0,
-    size = 10
-  ): Promise<{ content: IncomingDocumentDTO[]; page: any }> => {
-    const response = await api.get("/documents/incoming/by-department", {
-      params: { departmentId, page, size },
-    });
-
-    return {
-      content: response.data.content,
-      page: {
-        totalPages: response.data.totalPages,
-        totalElements: response.data.totalElements,
-      },
-    };
-  },
-
-  /**
-   * Bulk update document status
-   * @param documentIds List of document IDs
-   * @param status New status
-   * @returns Success message
-   */
-  bulkUpdateStatus: async (
-    documentIds: number[],
-    status: string
-  ): Promise<string> => {
-    const response = await api.put("/documents/incoming/bulk-status", {
-      documentIds,
-      status,
-    });
-    return response.data;
-  },
-
-  /**
-   * Export documents to Excel
-   * @param filters Export filters
-   * @returns File blob
-   */
-  exportToExcel: async (filters?: any): Promise<Blob> => {
-    const response = await api.post("/documents/incoming/export", filters, {
-      responseType: "blob",
-    });
-    return response.data;
-  },
-
-  /**
-   * Import documents from Excel
-   * @param file Excel file
-   * @returns Import result
-   */
-  importFromExcel: async (file: File): Promise<any> => {
-    const formData = new FormData();
-    formData.append("file", file);
-
-    const response = await api.post("/documents/incoming/import", formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    });
-    return response.data;
+    try {
+      const response = await api.get(
+        `/documents/incoming/${documentId}/attachments/${attachmentId}`,
+        {
+          responseType: "blob",
+          headers: {
+            Accept: "application/hal+json",
+          },
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error(
+        `Error downloading specific attachment ${attachmentId} for document ${documentId}:`,
+        error
+      );
+      throw error;
+    }
   },
 };

@@ -96,9 +96,10 @@ export default function OutgoingDocumentDetailPage({
   // Fetch attachments function
   const fetchAttachments = async () => {
     try {
-      const attachmentsData = await outgoingDocumentsAPI.getDocumentAttachments(
+      const attachmentsData_ = await outgoingDocumentsAPI.getDocumentAttachments(
         documentId
       );
+      const attachmentsData = attachmentsData_.data;
       setAttachments(attachmentsData);
     } catch (error) {
       console.error("Error fetching attachments:", error);
@@ -115,10 +116,12 @@ export default function OutgoingDocumentDetailPage({
         setIsLoading(true);
 
         // Gọi các API song song để tăng hiệu suất
-        const [documentResponse, history] = await Promise.all([
+        const [documentResponse_, history_] = await Promise.all([
           outgoingDocumentsAPI.getOutgoingDocumentById(documentId),
           workflowAPI.getDocumentHistory(documentId),
         ]);
+        const documentResponse = documentResponse_.data;
+        const history = history_.data;
 
         // Fetch attachments
         await fetchAttachments();
@@ -140,9 +143,8 @@ export default function OutgoingDocumentDetailPage({
         if (documentData.relatedDocuments) {
           try {
             const relatedIds = documentData.relatedDocuments;
-            const relatedDocsData =
-              await incomingDocumentsAPI.getIncomingDocumentById(relatedIds);
-
+            const relatedDocsData_ = await incomingDocumentsAPI.getIncomingDocumentById(relatedIds);
+            const relatedDocsData = relatedDocsData_.data;
             // Kiểm tra component còn mounted không
             if (!isMounted) return;
 
@@ -203,8 +205,8 @@ export default function OutgoingDocumentDetailPage({
       if (_document) {
         setIsLoading(true);
         // Fetch document workflow history
-        const history = await workflowAPI.getDocumentHistory(documentId);
-
+        const history_ = await workflowAPI.getDocumentHistory(documentId);
+        const history = history_.data;
         // Cập nhật document với history
         setDocument((prev) => {
           if (!prev) return prev;
@@ -239,9 +241,10 @@ export default function OutgoingDocumentDetailPage({
     }
 
     try {
-      const blob = await outgoingDocumentsAPI.downloadAttachmentDocument(
+      const blob_ = await outgoingDocumentsAPI.downloadAttachmentDocument(
         documentId
       );
+      const blob = blob_.data;
       console.log("Blob:", blob);
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -293,7 +296,7 @@ export default function OutgoingDocumentDetailPage({
   // Download file for PDF viewer
   const handlePDFDownload = async () => {
     try {
-      return await outgoingDocumentsAPI.downloadAttachmentDocument(documentId);
+      return (await outgoingDocumentsAPI.downloadAttachmentDocument(documentId)).data;
     } catch (error) {
       toast({
         title: "Lỗi",
@@ -309,10 +312,11 @@ export default function OutgoingDocumentDetailPage({
     file: DocumentAttachmentDTO
   ) => {
     try {
-      const blob = await outgoingDocumentsAPI.downloadSpecificAttachment(
+      const blob_ = await outgoingDocumentsAPI.downloadSpecificAttachment(
         documentId,
         file.id
       );
+      const blob = blob_.data;
 
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -364,12 +368,14 @@ export default function OutgoingDocumentDetailPage({
       });
 
       // Refresh document data
-      const response = await outgoingDocumentsAPI.getOutgoingDocumentById(
+      const response_ = await outgoingDocumentsAPI.getOutgoingDocumentById(
         documentId
       );
+      const response = response_.data;
       setDocument(response.data);
       // Fetch document workflow history
-      const history = await workflowAPI.getDocumentHistory(documentId);
+      const history_ = await workflowAPI.getDocumentHistory(documentId);
+      const history = history_.data;
 
       // Cập nhật document với history
       setDocument((prev) => {
@@ -420,13 +426,15 @@ export default function OutgoingDocumentDetailPage({
       });
 
       // Refresh document data
-      const response = await outgoingDocumentsAPI.getOutgoingDocumentById(
+      const response_ = await outgoingDocumentsAPI.getOutgoingDocumentById(
         documentId
       );
+      const response = response_.data;
       setDocument(response.data);
 
       // Fetch document workflow history
-      const history = await workflowAPI.getDocumentHistory(documentId);
+      const history_ = await workflowAPI.getDocumentHistory(documentId);
+      const history = history_.data;
 
       // Cập nhật document với history
       setDocument((prev) => {
@@ -475,13 +483,14 @@ export default function OutgoingDocumentDetailPage({
       await workflowAPI.approveDocumentResponse(documentId, { comment: "" });
 
       // Refresh document data
-      const response = await outgoingDocumentsAPI.getOutgoingDocumentById(
+      const response_ = await outgoingDocumentsAPI.getOutgoingDocumentById(
         documentId
       );
+      const response = response_.data;
       setDocument(response.data);
       // Fetch document workflow history
-      const history = await workflowAPI.getDocumentHistory(documentId);
-
+      const history_ = await workflowAPI.getDocumentHistory(documentId);
+      const history = history_.data;
       // Cập nhật document với history
       setDocument((prev) => {
         if (!prev) return prev;
@@ -530,13 +539,15 @@ export default function OutgoingDocumentDetailPage({
       });
 
       // Refresh document data
-      const response = await outgoingDocumentsAPI.getOutgoingDocumentById(
+      const response_ = await outgoingDocumentsAPI.getOutgoingDocumentById(
         documentId
       );
+      const response = response_.data;
       setDocument(response.data);
 
       // Fetch document workflow history
-      const history = await workflowAPI.getDocumentHistory(documentId);
+      const history_ = await workflowAPI.getDocumentHistory(documentId);
+      const history = history_.data;
 
       // Cập nhật document với history
       setDocument((prev) => {
@@ -696,16 +707,18 @@ export default function OutgoingDocumentDetailPage({
                 });
 
                 // Refresh document data
-                const response =
+                const response_ =
                   await outgoingDocumentsAPI.getOutgoingDocumentById(
                     documentId
                   );
+                const response = response_.data;
                 setDocument(response.data);
 
                 // Fetch document workflow history
-                const history = await workflowAPI.getDocumentHistory(
+                const history_ = await workflowAPI.getDocumentHistory(
                   documentId
                 );
+                const history = history_.data;
 
                 // Cập nhật document với history
                 setDocument((prev) => {
@@ -792,10 +805,11 @@ export default function OutgoingDocumentDetailPage({
                 );
 
                 // Refresh document data
-                const response =
+                const response_ =
                   await outgoingDocumentsAPI.getOutgoingDocumentById(
                     documentId
                   );
+                const response = response_.data;
 
                 // Cập nhật document với dữ liệu mới
                 const updatedDocument = response.data;
@@ -811,9 +825,10 @@ export default function OutgoingDocumentDetailPage({
                 setDocument(updatedDocument);
 
                 // Fetch document workflow history
-                const history = await workflowAPI.getDocumentHistory(
+                const history_ = await workflowAPI.getDocumentHistory(
                   documentId
                 );
+                const history = history_.data;
 
                 // Cập nhật document với history
                 setDocument((prev) => {
@@ -1040,11 +1055,13 @@ export default function OutgoingDocumentDetailPage({
               await outgoingDocumentsAPI.issueDocument(Number(_document.id));
 
               // Refresh document data
-              const response =
+              const response_ =
                 await outgoingDocumentsAPI.getOutgoingDocumentById(documentId);
+              const response = response_.data;
               setDocument(response.data);
               // Fetch document workflow history
-              const history = await workflowAPI.getDocumentHistory(documentId);
+              const history_ = await workflowAPI.getDocumentHistory(documentId);
+              const history = history_.data;
 
               // Cập nhật document với history
               setDocument((prev) => {
@@ -1145,16 +1162,17 @@ export default function OutgoingDocumentDetailPage({
                       }
 
                       // Refresh document data
-                      const response =
-                        await outgoingDocumentsAPI.getOutgoingDocumentById(
+                      const response_ =  await outgoingDocumentsAPI.getOutgoingDocumentById(
                           documentId
                         );
+                      const response = response_.data;
                       setDocument(response.data);
 
                       // Fetch document workflow history
-                      const history = await workflowAPI.getDocumentHistory(
+                      const history_ = await workflowAPI.getDocumentHistory(
                         documentId
                       );
+                      const history = history_.data;
 
                       // Cập nhật document với history
                       setDocument((prev) => {
@@ -1201,15 +1219,16 @@ export default function OutgoingDocumentDetailPage({
                 await outgoingDocumentsAPI.issueDocument(Number(_document.id));
 
                 // Refresh document data
-                const response =
-                  await outgoingDocumentsAPI.getOutgoingDocumentById(
+                const response_ = await outgoingDocumentsAPI.getOutgoingDocumentById(
                     documentId
                   );
+                const response = response_.data;
                 setDocument(response.data);
                 // Fetch document workflow history
-                const history = await workflowAPI.getDocumentHistory(
-                  documentId
+                  const history_ = await workflowAPI.getDocumentHistory(
+                  documentId  
                 );
+                const history = history_.data;
 
                 // Cập nhật document với history
                 setDocument((prev) => {

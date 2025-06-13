@@ -18,7 +18,8 @@ export function useSenderManagement() {
     const fetchDepartments = async () => {
       try {
         setIsLoadingDepartments(true);
-        const senders = await senderApi.getAllSenders();
+        const senders_ = await senderApi.getAllSenders();
+        const senders = senders_.data;
         setDepartments(senders || []);
       } catch (error) {
         console.error("Lỗi khi lấy danh sách đơn vị gửi:", error);
@@ -58,7 +59,8 @@ export function useSenderManagement() {
       await senderApi.createSender({ name: newSender });
 
       // Refresh the list
-      const updatedSenders = await senderApi.getAllSenders();
+      const updatedSenders_ = await senderApi.getAllSenders();
+      const updatedSenders = updatedSenders_.data;
       setDepartments(updatedSenders || []);
 
       // Reset and close dialog

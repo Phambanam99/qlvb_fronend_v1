@@ -196,7 +196,8 @@ export default function CreateInternalOutgoingDocumentPage() {
     const fetchDocumentTypes = async () => {
       try {
         setIsLoadingDocumentTypes(true);
-        const types = await documentTypesAPI.getAllDocumentTypes();
+        const types_ = await documentTypesAPI.getAllDocumentTypes();
+        const types = types_.data;
         setDocumentTypes(types);
       } catch (error) {
         console.error("Error fetching document types:", error);
@@ -226,10 +227,11 @@ export default function CreateInternalOutgoingDocumentPage() {
       const fetchLeadershipUsers = async () => {
         try {
           setIsLoadingLeadershipUsers(true);
-          const leaders = await usersAPI.getUsersByRoleAndDepartment(
+          const leaders_ = await usersAPI.getUsersByRoleAndDepartment(
             LEADERSHIP_ROLES,
             user.departmentId!
           );
+          const leaders = leaders_.data;
           setLeadershipUsers(leaders);
         } catch (error) {
           console.error("Error fetching leadership users:", error);
@@ -413,7 +415,7 @@ export default function CreateInternalOutgoingDocumentPage() {
       // Create cancel token for upload
       const cancelTokenSource = fileUpload.createCancelToken();
 
-      const response = await createInternalDocument(
+      const response_ = await createInternalDocument(
         documentData,
         fileUpload.files.length > 0 ? fileUpload.files : undefined,
         undefined, // descriptions
@@ -425,6 +427,7 @@ export default function CreateInternalOutgoingDocumentPage() {
         },
         cancelTokenSource.token
       );
+      const response = response_.data;
 
       addNotification({
         title: "Văn bản đã được tạo",

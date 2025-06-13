@@ -1,5 +1,5 @@
 import api from "./config";
-import type { DocumentWorkflowDTO, DocumentHistoryDTO, ResponseDTO } from "./types";
+import type { DocumentWorkflowDTO, DocumentHistoryDTO } from "./types";
 
 export const workflowAPI = {
   /**
@@ -14,7 +14,6 @@ export const workflowAPI = {
     console.log("response getDocumentStatus", response.data);
     return response.data;
   },
-
   /**
    * Get document workflow details
    * @param documentId Document ID
@@ -23,25 +22,23 @@ export const workflowAPI = {
   leaderStartReviewing: async (
     documentId: number | string,
     comment: string
-  ): Promise<string> => {
+  ) => {
     const response = await api.put(
       `/workflow/${documentId}/start-reviewing`,
       comment
     );
     return response.data;
   },
-
   registerIncomingDocument: async (
     documentId: number | string,
     workflowData: DocumentWorkflowDTO
-  ): Promise<string> => {
+  ) => {
     const response = await api.put(
       `/workflow/${documentId}/register`,
       workflowData
     );
-    return response.data;
+    return response.status;
   },
-
   /**
    * Change document status
    * @param documentId Document ID
@@ -51,7 +48,7 @@ export const workflowAPI = {
   changeDocumentStatus: async (
     documentId: number | string,
     workflowData: DocumentWorkflowDTO
-  ): Promise<string> => {
+  ) => {
     const response = await api.put(
       `/workflow/${documentId}/status`,
       workflowData
@@ -68,7 +65,7 @@ export const workflowAPI = {
   assignToSpecialist: async (
     documentId: number | string,
     workflowData: DocumentWorkflowDTO & { departmentId?: number | string }
-  ): Promise<string> => {
+  ) => {
     // First check if the current department has any child departments
     try {
       if (workflowData.departmentId) {
@@ -104,7 +101,7 @@ export const workflowAPI = {
   startProcessingDocument: async (
     documentId: number | string,
     workflowData: DocumentWorkflowDTO
-  ): Promise<string> => {
+  ) => {
     const response = await api.put(
       `/workflow/${documentId}/start-processing`,
       workflowData
@@ -121,7 +118,7 @@ export const workflowAPI = {
   submitToLeadership: async (
     documentId: number | string,
     workflowData: DocumentWorkflowDTO
-  ): Promise<string> => {
+  ) => {
     const response = await api.put(
       `/workflow/${documentId}/submit`,
       workflowData
@@ -138,7 +135,7 @@ export const workflowAPI = {
   forwardToLeadership: async (
     documentId: number | string,
     workflowData: DocumentWorkflowDTO
-  ): Promise<string> => {
+  ) => {
     const response = await api.put(
       `/workflow/${documentId}/forward-to-leadership`,
       workflowData
@@ -155,10 +152,24 @@ export const workflowAPI = {
   approveDocument: async (
     documentId: number | string,
     workflowData: DocumentWorkflowDTO
-  ): Promise<string> => {
+  ) => {
+    // Sử dụng FormData thay vì gửi JSON trực tiếp
+    const formData = new FormData();
+
+    // Thêm dữ liệu workflow vào FormData
+    formData.append(
+      "data",
+      new Blob([JSON.stringify(workflowData)], { type: "application/json" })
+    );
+
     const response = await api.put(
       `/workflow/${documentId}/approve`,
-      workflowData
+      formData,
+      {
+        headers: {
+          "Content-Type": undefined, // Để browser tự động xác định boundary cho multipart/form-data
+        },
+      }
     );
     return response.data;
   },
@@ -172,7 +183,7 @@ export const workflowAPI = {
   provideDocumentFeedback: async (
     documentId: number | string,
     workflowData: DocumentWorkflowDTO
-  ): Promise<string> => {
+  ) => {
     const response = await api.put(
       `/workflow/${documentId}/provide-feedback`,
       workflowData
@@ -195,320 +206,89 @@ export const workflowAPI = {
   /**
    * Distribute document to departments
    * @param documentId Document ID
-   * @param distributionData Distribution data
-   * @returns Distribution result
+   * @param distributionData Distribution details
+   * @returns Success message
    */
   distributeDocument: async (
     documentId: number | string,
-    distributionData: {
-      primaryDepartmentId?: number;
-      collaboratingDepartmentIds?: number[];
-      comments?: string;
-    }
-  ): Promise<any> => {
+    distributionData: any
+  ) => {
     const response = await api.put(
       `/workflow/${documentId}/distribute`,
       distributionData
     );
     return response.data;
   },
-
-  /**
-   * Get document departments
-   * @param documentId Document ID
-   * @returns List of departments assigned to the document
-   */
-  getDocumentDepartments: async (
-    documentId: number | string
-  ): Promise<any[]> => {
-    const response = await api.get(`/workflow/${documentId}/departments`);
-    return response.data;
-  },
-
-  /**
-   * Start header department reviewing
-   * @param documentId Document ID
-   * @param workflowData Workflow data
-   * @returns Updated workflow status
-   */
-  startHeaderDepartmentReviewing: async (
-    documentId: number | string,
-    workflowData: DocumentWorkflowDTO
-  ): Promise<string> => {
-    const response = await api.put(
-      `/workflow/${documentId}/header-department-review`,
-      workflowData
-    );
-    return response.data;
-  },
-
-  /**
-   * Department header provides feedback
-   * @param documentId Document ID
-   * @param workflowData Workflow data
-   * @returns Updated workflow status
-   */
-  commentHeaderDepartment: async (
-    documentId: number | string,
-    workflowData: DocumentWorkflowDTO
-  ): Promise<string> => {
-    const response = await api.put(
-      `/workflow/${documentId}/header-department-comment`,
-      workflowData
-    );
-    return response.data;
-  },
-
-  /**
-   * Department header approves document
-   * @param documentId Document ID
-   * @param workflowData Workflow data
-   * @returns Updated workflow status
-   */
-  approveHeaderDepartment: async (
-    documentId: number | string,
-    workflowData: DocumentWorkflowDTO
-  ): Promise<string> => {
-    const response = await api.put(
-      `/workflow/${documentId}/header-department-approve`,
-      workflowData
-    );
-    return response.data;
-  },
-
-  /**
-   * Provide feedback with attachment
-   * @param documentId Document ID
-   * @param comments Comments
-   * @param file Attachment file
-   * @returns Updated workflow status
-   */
-  provideDocumentFeedbackWithAttachment: async (
-    documentId: number | string,
-    comments: string,
-    file: File
-  ): Promise<string> => {
+  createFullDocument: async (data: any, files: File[]) => {
     const formData = new FormData();
-    formData.append("comments", comments);
-    formData.append("file", file);
 
-    const response = await api.put(
-      `/workflow/${documentId}/provide-feedback-with-attachment`,
-      formData,
-      {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      }
-    );
-    return response.data;
-  },
-
-  /**
-   * Leader feedback with attachment
-   * @param documentId Document ID
-   * @param comments Comments
-   * @param file Attachment file (optional)
-   * @returns Updated workflow status
-   */
-  leaderFeedbackWithAttachment: async (
-    documentId: number | string,
-    comments: string,
-    file?: File
-  ): Promise<string> => {
-    const formData = new FormData();
-    formData.append("comments", comments);
-    if (file) {
-      formData.append("file", file);
-    }
-
-    const response = await api.put(
-      `/workflow/${documentId}/leader-feedback-with-attachment`,
-      formData,
-      {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      }
-    );
-    return response.data;
-  },
-
-  /**
-   * Department header feedback with attachment
-   * @param documentId Document ID
-   * @param comments Comments
-   * @param file Attachment file (optional)
-   * @returns Updated workflow status
-   */
-  headerFeedbackWithAttachment: async (
-    documentId: number | string,
-    comments: string,
-    file?: File
-  ): Promise<string> => {
-    const formData = new FormData();
-    formData.append("comments", comments);
-    if (file) {
-      formData.append("file", file);
-    }
-
-    const response = await api.put(
-      `/workflow/${documentId}/header-feedback-with-attachment`,
-      formData,
-      {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      }
-    );
-    return response.data;
-  },
-
-  /**
-   * Reject document for format correction
-   * @param documentId Document ID
-   * @param workflowData Workflow data
-   * @returns Updated workflow status
-   */
-  rejectForFormatCorrection: async (
-    documentId: number | string,
-    workflowData: DocumentWorkflowDTO
-  ): Promise<any> => {
-    const response = await api.put(
-      `/workflow/${documentId}/format-correction`,
-      workflowData
-    );
-    return response.data;
-  },
-
-  /**
-   * Reject document for format correction with attachment
-   * @param documentId Document ID
-   * @param comments Comments
-   * @param file Attachment file
-   * @returns Updated workflow status
-   */
-  rejectForFormatCorrectionWithAttachment: async (
-    documentId: number | string,
-    comments: string,
-    file: File
-  ): Promise<string> => {
-    const formData = new FormData();
-    formData.append("comments", comments);
-    formData.append("file", file);
-
-    const response = await api.put(
-      `/workflow/${documentId}/format-correction-with-attachment`,
-      formData,
-      {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      }
-    );
-    return response.data;
-  },
-
-  /**
-   * Resubmit after format correction
-   * @param documentId Document ID
-   * @param workflowData Workflow data
-   * @returns Updated workflow status
-   */
-  resubmitAfterFormatCorrection: async (
-    documentId: number | string,
-    workflowData: DocumentWorkflowDTO
-  ): Promise<any> => {
-    const response = await api.put(
-      `/workflow/${documentId}/resubmit-after-correction`,
-      workflowData
-    );
-    return response.data;
-  },
-
-  /**
-   * Publish outgoing document
-   * @param documentId Document ID
-   * @param workflowData Workflow data
-   * @returns Updated workflow status
-   */
-  publishOutgoingDocument: async (
-    documentId: number | string,
-    workflowData: DocumentWorkflowDTO
-  ): Promise<string> => {
-    const response = await api.put(
-      `/workflow/${documentId}/publish`,
-      workflowData
-    );
-    return response.data;
-  },
-
-  /**
-   * Create full incoming document with workflow
-   * @param documentData Full document data
-   * @param file Attachment file
-   * @returns Created document info
-   */
-  createFullIncomingDocument: async (
-    documentData: any,
-    file?: File
-  ): Promise<string> => {
-    const formData = new FormData();
-    formData.append("data", JSON.stringify(documentData));
-    if (file) {
-      formData.append("attachments", file);
-    }
-
-    const response = await api.post("/workflow/full", formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    });
-    return response.data;
-  },
-
-  /**
-   * Create full incoming document with multiple attachments
-   * @param documentData Full document data
-   * @param files Multiple attachment files
-   * @returns Created document info
-   */
-  createFullIncomingDocumentWithMultipleAttachments: async (
-    documentData: any,
-    files?: File[]
-  ): Promise<any> => {
-    const formData = new FormData();
-    formData.append("data", JSON.stringify(documentData));
+    // Append each file individually
     if (files && files.length > 0) {
       files.forEach((file) => {
         formData.append("attachments", file);
       });
     }
 
-    const response = await api.post("/workflow/full-multi-attachments", formData, {
+    formData.append(
+      "data",
+      new Blob([JSON.stringify(data)], { type: "application/json" })
+    );
+
+    const response = await api.post(
+      "/workflow/full-multi-attachments",
+      formData,
+      {
+        headers: {
+          "Content-Type": undefined, // Để Axios tự động xử lý với FormData
+        },
+      }
+    );
+    return response.data;
+  },
+  createOugoingAlone: async (data: any, files: File[] | null) => {
+    const formData = new FormData();
+   
+      // Append each file individually
+      if (files && files.length > 0) {
+        files.forEach((file) => {
+          formData.append("attachments", file);
+        });
+      }
+    formData.append(
+      "data",
+      new Blob([JSON.stringify(data)], { type: "application/json" })
+    );
+
+    const response = await api.post("/workflow/standalone-outgoing", formData, {
       headers: {
-        "Content-Type": "multipart/form-data",
+        "Content-Type": undefined, // Để Axios tự động xử lý với FormData
       },
     });
     return response.data;
   },
-
   /**
-   * Create response document
-   * @param incomingDocId Incoming document ID
-   * @param documentData Document data
-   * @param file Attachment file
-   * @returns Created response document
+   * Tạo văn bản đi trả lời cho văn bản đến
+   * @param incomingDocId ID của văn bản đến cần trả lời
+   * @param documentData Dữ liệu văn bản và workflow
+   * @param attachment Tệp đính kèm (nếu có)
+   * @returns Kết quả tạo văn bản đi và thông tin liên quan
    */
   createResponseDocument: async (
-    incomingDocId: number | string,
     documentData: any,
-    file?: File
-  ): Promise<any> => {
+    incomingDocId: number | string,
+    attachment?: File | null
+  ) => {
     const formData = new FormData();
-    formData.append("data", JSON.stringify(documentData));
-    if (file) {
-      formData.append("attachments", file);
+
+    // Thêm dữ liệu văn bản đi và workflow
+    formData.append(
+      "data",
+      new Blob([JSON.stringify(documentData)], { type: "application/json" })
+    );
+
+    // Thêm tệp đính kèm nếu có
+    if (attachment) {
+      formData.append("attachments", attachment);
     }
 
     const response = await api.post(
@@ -516,69 +296,140 @@ export const workflowAPI = {
       formData,
       {
         headers: {
-          "Content-Type": "multipart/form-data",
+          "Content-Type": undefined,
         },
       }
     );
+
     return response.data;
   },
-
-  /**
-   * Create response document with multiple attachments
-   * @param incomingDocId Incoming document ID
-   * @param documentData Document data
-   * @param files Multiple attachment files
-   * @returns Created response document
-   */
-  createResponseDocumentWithMultipleAttachments: async (
-    incomingDocId: number | string,
-    documentData: any,
-    files?: File[]
-  ): Promise<any> => {
-    const formData = new FormData();
-    formData.append("data", JSON.stringify(documentData));
-    if (files && files.length > 0) {
-      files.forEach((file) => {
-        formData.append("attachments", file);
-      });
-    }
-
-    const response = await api.post(
-      `/workflow/incoming/${incomingDocId}/reply-multi-attachments`,
-      formData,
-      {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      }
-    );
-    return response.data;
-  },
-
-  /**
-   * Update outgoing document workflow
-   * @param documentId Document ID
-   * @param documentData Document data
-   * @param file Attachment file
-   * @returns Updated document info
-   */
   updateOutgoingDocumentWorkflow: async (
     documentId: number | string,
     documentData: any,
-    file?: File
-  ): Promise<any> => {
+    attachment?: File | null
+  ) => {
     const formData = new FormData();
-    formData.append("data", JSON.stringify(documentData));
-    if (file) {
-      formData.append("attachment", file);
+    formData.append(
+      "data",
+      new Blob([JSON.stringify(documentData)], { type: "application/json" })
+    );
+    // Thêm tệp đính kèm nếu có
+    if (attachment) {
+      formData.append("attachments", attachment);
     }
-
     const response = await api.put(
       `/workflow/${documentId}/update-outgoing`,
       formData,
       {
         headers: {
-          "Content-Type": "multipart/form-data",
+          "Content-Type": undefined,
+        },
+      }
+    );
+    return response.data;
+  },
+  /**
+   * Lấy danh sách văn bản liên quan
+   * @param documentId ID văn bản cần lấy danh sách liên quan
+   * @returns Danh sách văn bản liên quan
+   */
+  getDocumentResponses: async (documentId: string) => {
+    const response = await api.get(`/documents/outgoing/related`, {
+      params: { relatedDocuments: documentId },
+    });
+    console.log("response getDocumentResponses", response.data);
+    return response.data;
+  },
+
+  /**
+   * Chấp nhận văn bản phản hồi
+   * @param responseId ID văn bản phản hồi cần chấp nhận
+   * @param data Dữ liệu bổ sung (nếu có)
+   * @returns Kết quả xử lý
+   */
+  approveDocumentResponse: async (
+    responseId: number,
+    data: { comment?: string }
+  ) => {
+    const response = await api.put(`/workflow/${responseId}/approve`, {
+      responseId,
+      status: "leader_approved",
+      ...data,
+    });
+    return response.data;
+  },
+
+  /**
+   * Từ chối văn bản phản hồi
+   * @param responseId ID văn bản phản hồi cần từ chối
+   * @param data Dữ liệu bổ sung (lý do từ chối)
+   * @returns Kết quả xử lý
+   */
+  // rejectDocumentResponse: async (responseId: number, comment: string ) => {
+  //   const response = await api.put(`/workflow/${responseId}/provide-feedback`, {
+  //     comments:comment
+  //   });
+  //   return response.data;
+  // },
+  headerDeparmentApprove: async (responseId: number, comment: string) => {
+    const response = await api.put(
+      `/workflow/${responseId}/header-department-approve`,
+      {
+        comments: comment,
+      }
+    );
+    return response.data;
+  },
+  headerDepartmentComment: async (
+    responseId: number,
+    comments: string,
+    file?: File | null
+  ) => {
+    const formData = new FormData();
+    formData.append(
+      "comments",
+      new Blob([JSON.stringify(comments)], { type: "application/json" })
+    );
+    // Thêm tệp đính kèm nếu có
+    if (file) {
+      formData.append("file", file);
+    }
+    console.log("formData", formData);
+
+    const response = await api.put(
+      `/workflow/${responseId}/header-feedback-with-attachment`,
+      formData,
+      {
+        headers: {
+          "Content-Type": undefined,
+        },
+      }
+    );
+    return response.data;
+  },
+  rejectDocumentResponse: async (
+    responseId: number,
+    comments: string,
+    file?: File | null
+  ) => {
+    console.log("comments", comments);
+    const formData = new FormData();
+    formData.append(
+      "comments",
+      new Blob([JSON.stringify(comments)], { type: "application/json" })
+    );
+    // Thêm tệp đính kèm nếu có
+    if (file) {
+      formData.append("file", file);
+    }
+    console.log("formData", formData);
+
+    const response = await api.put(
+      `/workflow/${responseId}/provide-feedback-with-attachment`,
+      formData,
+      {
+        headers: {
+          "Content-Type": undefined,
         },
       }
     );
@@ -586,99 +437,141 @@ export const workflowAPI = {
   },
 
   /**
-   * Create standalone outgoing document
-   * @param documentData Document data
-   * @param files Multiple attachment files
-   * @returns Created document info
+   * Văn thư trả lại văn bản cho trợ lý để chỉnh sửa theo thể thức yêu cầu của thủ trưởng
+   * @param responseId ID văn bản phản hồi cần trả lại
+   * @param comments Lý do, yêu cầu chỉnh sửa
+   * @param file File đính kèm (nếu có)
+   * @returns Kết quả xử lý
    */
-  createStandaloneOutgoingDocument: async (
+  returnDocumentToSpecialist: async (
+    responseId: number,
+    documentWorkFlow: DocumentWorkflowDTO
+  ) => {
+    const response = await api.put(
+      `/workflow/${responseId}/format-correction`,
+      documentWorkFlow
+    );
+    return response.data;
+  },
+  getChildDepartments: async (departmentId: number | string) => {
+    const response = await api.get(
+      `/workflow/departments/${departmentId}/children`
+    );
+    return response.data;
+  },
+
+  /**
+   * Get the parent department of a department
+   * @param departmentId Department ID to get parent for
+   * @returns Parent department data or null if no parent exists
+   */
+  getParentDepartment: async (departmentId: number | string) => {
+    try {
+      const response = await api.get(`/departments/${departmentId}/parent`);
+      return response.data;
+    } catch (error) {
+      console.error("Error getting parent department:", error);
+      return null;
+    }
+  },
+
+  /**
+   * Forward document to parent department for approval
+   * @param documentId Document ID
+   * @param responseId Response ID (if reviewing a response)
+   * @param parentDepartmentId Parent department ID to forward to
+   * @param workflowData Workflow data with comments and status
+   * @returns Updated workflow status
+   */
+  forwardToParentDepartment: async (
+    documentId: number | string,
+    responseId: number | null,
+    parentDepartmentId: number | string,
+    workflowData: DocumentWorkflowDTO & { targetDepartmentId?: number | string }
+  ) => {
+    // If it's a response document, we use a different endpoint
+    if (responseId) {
+      const response = await api.put(
+        `/workflow/${responseId}/forward-to-parent-department`,
+        {
+          ...workflowData,
+          targetDepartmentId: parentDepartmentId,
+        }
+      );
+      return response.data;
+    } else {
+      const response = await api.put(
+        `/workflow/${documentId}/forward-to-parent-department`,
+        {
+          ...workflowData,
+          targetDepartmentId: parentDepartmentId,
+        }
+      );
+      return response.data;
+    }
+  },
+
+  /**
+   * Tạo văn bản đi nội bộ mới
+   * @param documentData Dữ liệu văn bản và danh sách người nhận
+   * @param attachment Tệp đính kèm (nếu có)
+   * @returns Kết quả tạo văn bản đi nội bộ
+   */
+  createInternalOutgoingDocument: async (
     documentData: any,
-    files?: File[]
-  ): Promise<any> => {
+    attachment?: File | null
+  ) => {
     const formData = new FormData();
-    formData.append("data", JSON.stringify(documentData));
-    if (files && files.length > 0) {
-      files.forEach((file) => {
-        formData.append("attachments", file);
-      });
+
+    // Thêm dữ liệu văn bản
+    formData.append(
+      "data",
+      new Blob([JSON.stringify(documentData)], { type: "application/json" })
+    );
+
+    // Thêm tệp đính kèm nếu có
+    if (attachment) {
+      formData.append("attachments", attachment);
     }
 
-    const response = await api.post("/workflow/standalone-outgoing", formData, {
+    const response = await api.post("/workflow/internal-outgoing", formData, {
       headers: {
-        "Content-Type": "multipart/form-data",
+        "Content-Type": undefined,
       },
     });
+
     return response.data;
   },
 
   /**
-   * Get child departments
-   * @param departmentId Department ID
-   * @returns List of child departments
+   * Tạo văn bản trả lời nội bộ cho văn bản đến
+   * @param documentData Dữ liệu văn bản và danh sách người nhận
+   * @param attachment Tệp đính kèm (nếu có)
+   * @returns Kết quả tạo văn bản trả lời nội bộ
    */
-  getChildDepartments: async (departmentId: number | string): Promise<any[]> => {
-    const response = await api.get(`/workflow/departments/${departmentId}/children`);
-    return response.data;
-  },
+  createInternalResponseDocument: async (
+    documentData: any,
+    attachment?: File | null
+  ) => {
+    const formData = new FormData();
 
-  /**
-   * Get child departments commanders
-   * @param departmentId Department ID
-   * @returns List of commanders
-   */
-  getChildDepartmentsCommanders: async (
-    departmentId: number | string
-  ): Promise<any[]> => {
-    const response = await api.get(
-      `/workflow/departments/${departmentId}/children/commanders`
+    // Thêm dữ liệu văn bản
+    formData.append(
+      "data",
+      new Blob([JSON.stringify(documentData)], { type: "application/json" })
     );
-    return response.data;
-  },
 
-  /**
-   * Get child departments users
-   * @param departmentId Department ID
-   * @returns List of users
-   */
-  getChildDepartmentsUsers: async (
-    departmentId: number | string
-  ): Promise<any[]> => {
-    const response = await api.get(
-      `/workflow/departments/${departmentId}/children/users`
-    );
-    return response.data;
-  },
+    // Thêm tệp đính kèm nếu có
+    if (attachment) {
+      formData.append("attachments", attachment);
+    }
 
-  /**
-   * Get latest document activities by user
-   * @param userId User ID
-   * @returns Latest document activities
-   */
-  getLatestDocumentActivitiesByUser: async (
-    userId: number | string
-  ): Promise<any[]> => {
-    const response = await api.get(`/workflow/users/${userId}/latest-activities`);
-    return response.data;
-  },
-
-  /**
-   * Get my latest document activities
-   * @returns Latest document activities for current user
-   */
-  getMyLatestDocumentActivities: async (): Promise<any[]> => {
-    const response = await api.get("/workflow/my-latest-activities");
-    return response.data;
-  },
-
-  /**
-   * Download attachment from document history
-   * @param historyId History ID
-   * @returns File blob
-   */
-  downloadAttachment: async (historyId: number | string): Promise<Blob> => {
-    const response = await api.get(`/workflow/history/${historyId}/attachment`, {
-      responseType: "blob",
+    const response = await api.post("/workflow/internal-reply", formData, {
+      headers: {
+        "Content-Type": undefined,
+      },
     });
+
     return response.data;
   },
 };

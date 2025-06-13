@@ -61,9 +61,10 @@ export default function AssignDocumentPage() {
     const fetchDocument = async () => {
       try {
         setIsLoading(true);
-        const response = await incomingDocumentsAPI.getIncomingDocumentById(
+        const response_ = await incomingDocumentsAPI.getIncomingDocumentById(
           documentId
         );
+        const response = response_.data;
         setDocument(response.data);
       } catch (error) {
         console.error("Lỗi khi lấy thông tin văn bản:", error);
@@ -103,26 +104,30 @@ export default function AssignDocumentPage() {
       if (isDepartmentHead) {
         try {
           // Get child departments
-          const childDepts = await workflowAPI.getChildDepartments(
+          const childDepts_ = await workflowAPI.getChildDepartments(
             user.departmentId
           );
+          const childDepts = childDepts_.data;
           if (Array.isArray(childDepts) && childDepts.length > 0) {
             setIsParentDepartmentHead(true);
             setDepartmentList(childDepts);
           } else {
             // No child departments, fetch all departments
-            const response = await departmentsAPI.getAllDepartments();
+            const response_ = await departmentsAPI.getAllDepartments();
+            const response = response_.data;
             setDepartmentList(response.content || []);
           }
         } catch (error) {
           console.error("Lỗi khi lấy danh sách phòng ban con:", error);
           // Fallback to all departments
-          const response = await departmentsAPI.getAllDepartments();
+          const response_ = await departmentsAPI.getAllDepartments();
+          const response = response_.data;
           setDepartmentList(response.content || []);
         }
       } else {
         // User is not a department head, show all departments
-        const response = await departmentsAPI.getAllDepartments();
+        const response_ = await departmentsAPI.getAllDepartments();
+        const response = response_.data;
         setDepartmentList(response.content || []);
       }
 

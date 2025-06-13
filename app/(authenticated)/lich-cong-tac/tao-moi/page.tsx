@@ -221,7 +221,8 @@ export default function CreateSchedulePage() {
         // Kiểm tra trước khi gọi API lấy phòng ban
         if (departments.length === 0) {
           setIsLoadingDepartments(true);
-          const departmentsData = await departmentsAPI.getAllDepartments();
+          const departmentsData_ = await departmentsAPI.getAllDepartments();
+          const departmentsData = departmentsData_.data;
 
           // Kiểm tra cấu trúc dữ liệu và xử lý phù hợp
           if (departmentsData && Array.isArray(departmentsData.content)) {
@@ -246,7 +247,8 @@ export default function CreateSchedulePage() {
         // Kiểm tra trước khi gọi API lấy danh sách cán bộ
         if (staffMembers.length === 0) {
           setIsLoadingStaff(true);
-          const usersData = await usersAPI.getAllUsers();
+          const usersData_ = await usersAPI.getAllUsers();
+          const usersData = usersData_.data;
           if (Array.isArray(usersData)) {
             setStaffMembers(usersData);
           } else {
@@ -283,9 +285,10 @@ export default function CreateSchedulePage() {
       try {
         setIsLoadingStaff(true);
         // Sửa gọi API đúng - department đã là ID (string)
-        const usersData = await usersAPI.getUsersByDepartmentId(
+        const usersData_ = await usersAPI.getUsersByDepartmentId(
           Number(department)
         );
+        const usersData = usersData_.data;
         setStaffMembers(usersData);
       } catch (error) {
         console.error("Error fetching staff for department:", error);

@@ -116,9 +116,10 @@ export default function DocumentResponseList({
     const fetchResponses = async () => {
       try {
         console.log("documentId", documentId);
-        const response = await workflowAPI.getDocumentResponses(
+        const response_ = await workflowAPI.getDocumentResponses(
           String(documentId)
         );
+        const response = response_.data;
         console.log("response", response);
         const res = response.filter((item: any) =>
           ruleDoc.includes(item.status)
@@ -142,9 +143,10 @@ export default function DocumentResponseList({
     }
 
     try {
-      const blob = await outgoingDocumentsAPI.downloadAttachmentDocument(
+      const blob_ = await outgoingDocumentsAPI.downloadAttachmentDocument(
         responses.id
       );
+      const blob = blob_.data;
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -197,9 +199,10 @@ export default function DocumentResponseList({
   const handlePDFDownload = async () => {
     if (!selectedFileForPreview) return null;
     try {
-      return await outgoingDocumentsAPI.downloadAttachmentDocument(
+      const result_ = await outgoingDocumentsAPI.downloadAttachmentDocument(
         selectedFileForPreview.responseId
       );
+      return result_.data;
     } catch (error) {
       toast({
         title: "Lỗi",

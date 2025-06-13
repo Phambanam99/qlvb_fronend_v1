@@ -163,10 +163,17 @@ export default function ReplyInternalDocumentPage() {
 
       try {
         setIsLoadingIncomingDoc(true);
-        const doc = await incomingDocumentsAPI.getIncomingDocumentById(
+        const doc_ = await incomingDocumentsAPI.getIncomingDocumentById(
           replyToId
-        );
+        );  
+        const doc = doc_.data;
         setIncomingDocument(doc.data);
+
+        const seniorLeadersResponse_ =  await usersAPI.getUsersByRoleAndDepartment(
+            ["ROLE_SENIOR_LEADER"],
+            0 // 0 to get from all departments
+          );
+        const seniorLeadersResponse = seniorLeadersResponse_.data;
 
         // Pre-fill some form fields
         setFormData((prev) => ({

@@ -131,16 +131,18 @@ export default function UsersPage() {
         if (departmentFilter !== "all") {
           params.departmentId = departmentFilter;
         }
-        usersData = await usersAPI.getPaginatedUsers(params);
+        const usersData_ = await usersAPI.getPaginatedUsers(params);
+        usersData = usersData_.data;
       } else if (isDepartmentHead && userDepartmentId) {
         // Department heads see users in their department and child departments
         let departmentIds = [Number(userDepartmentId)];
 
         try {
           // Get child departments
-          const childDepartments = await departmentsAPI.getChildDepartments(
+          const childDepartments_ = await departmentsAPI.getChildDepartments(
             userDepartmentId
           );
+          const childDepartments = childDepartments_.data;
           if (Array.isArray(childDepartments) && childDepartments.length > 0) {
             const childDeptIds = childDepartments.map((dept) => dept.id);
             departmentIds.push(...childDeptIds);
@@ -156,7 +158,8 @@ export default function UsersPage() {
           departmentIds.includes(Number(departmentFilter))
         ) {
           params.departmentId = departmentFilter;
-          usersData = await usersAPI.getPaginatedUsers(params);
+          const usersData_ = await usersAPI.getPaginatedUsers(params);
+          usersData = usersData_.data;
         } else {
           // Otherwise, filter by all allowed departments
           // For API calls, we'll need to call multiple times or use a department list filter
@@ -166,7 +169,8 @@ export default function UsersPage() {
           for (const deptId of departmentIds) {
             try {
               const deptParams = { ...params, departmentId: deptId };
-              const deptUsers = await usersAPI.getPaginatedUsers(deptParams);
+              const deptUsers_ = await usersAPI.getPaginatedUsers(deptParams);
+              const deptUsers = deptUsers_.data;
               allUsersInDepartments.push(...deptUsers.content);
             } catch (error) {
               console.warn(
@@ -225,11 +229,12 @@ export default function UsersPage() {
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
-        const [rolesData, departmentsData] = await Promise.all([
+        const [rolesData_, departmentsData_] = await Promise.all([
           rolesAPI.getAllRoles(),
           departmentsAPI.getAllDepartments(),
         ]);
-
+        const rolesData = rolesData_.data;
+        const departmentsData = departmentsData_.data;
         setRoles(rolesData);
 
         // Filter departments based on user permissions
@@ -272,9 +277,10 @@ export default function UsersPage() {
 
           try {
             // Add child departments
-            const childDepartments = await departmentsAPI.getChildDepartments(
+            const childDepartments_ = await departmentsAPI.getChildDepartments(
               userDepartmentId
             );
+            const childDepartments = childDepartments_.data;
             if (
               Array.isArray(childDepartments) &&
               childDepartments.length > 0

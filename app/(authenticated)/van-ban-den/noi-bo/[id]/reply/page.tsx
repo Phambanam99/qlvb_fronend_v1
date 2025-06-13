@@ -174,11 +174,16 @@ export default function ReplyInternalDocumentPage() {
 
   // Load original document and document types
   useEffect(() => {
+    let isCancelled = false; // Cleanup flag to prevent state updates after unmount
+    
     const fetchData = async () => {
+      if (isCancelled) return; // Exit early if component unmounted
+      
       try {
         // Fetch original document
         setLoadingOriginal(true);
-        const originalDoc = await getDocumentById(Number(originalDocumentId));
+        const originalDoc_ = await getDocumentById(Number(originalDocumentId));
+        const originalDoc = originalDoc_.data;
         setOriginalDocument(originalDoc);
 
         // Map old urgency levels to new ones
@@ -206,18 +211,21 @@ export default function ReplyInternalDocumentPage() {
 
         // Fetch document types
         setIsLoadingDocumentTypes(true);
-        const types = await documentTypesAPI.getAllDocumentTypes();
+        const types_ = await documentTypesAPI.getAllDocumentTypes();
+        const types = types_.data;
         setDocumentTypes(types);
 
         // Fetch departments
         setIsLoadingDepartments(true);
-        const depts = await departmentsAPI.getAllDepartments();
+        const depts_ = await departmentsAPI.getAllDepartments();
+        const depts = depts_.data;
         setDepartments(depts.content || []);
 
         // Fetch leadership users for current user's department
         if (user?.departmentId) {
           setIsLoadingLeadershipUsers(true);
-          const users = await usersAPI.getUsersByDepartmentId(user.departmentId);
+          const users_ = await usersAPI.getUsersByDepartmentId(user.departmentId);
+          const users = users_.data;
           const leaders = users.filter(u => 
             u.roles?.some(role => LEADERSHIP_ROLES.includes(role))
           );
@@ -368,9 +376,19 @@ export default function ReplyInternalDocumentPage() {
 
       // Submit the reply
       if (files.length > 0) {
-        await replyToDocumentWithAttachments(Number(originalDocumentId), replyData, files);
+        const result_ = await replyToDocumentWithAttachments(Number(originalDocumentId), replyData, files);
+        console.log("tf", result_);
+        if (result_.success === false) {
+      toast({
+        title: "Lỗi",
+        description: result_.message,
+        variant: "destructive",
+      });
+      return;
+        }
       } else {
-        await replyToDocument(Number(originalDocumentId), replyData);
+        const result_ = await replyToDocument(Number(originalDocumentId), replyData);
+        const result = result_.data;
       }
 
       // Show success message

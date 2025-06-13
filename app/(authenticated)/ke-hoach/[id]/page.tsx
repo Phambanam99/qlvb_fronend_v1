@@ -95,7 +95,8 @@ export default function WorkPlanDetailPage({
     const fetchWorkPlan = async () => {
       try {
         setIsLoading(true);
-        const data = await workPlansAPI.getWorkPlanById(workPlanId);
+        const data_ = await workPlansAPI.getWorkPlanById(workPlanId);
+        const data = data_.data;
         setWorkPlan(data);
         setError(null);
       } catch (err: any) {
@@ -173,7 +174,8 @@ export default function WorkPlanDetailPage({
       });
 
       // Refresh data
-      const data = await workPlansAPI.getWorkPlanById(workPlanId);
+      const data_ = await workPlansAPI.getWorkPlanById(workPlanId);
+      const data = data_.data;
       setWorkPlan(data);
     } catch (err: any) {
       console.error("Error approving work plan:", err);
@@ -200,7 +202,8 @@ export default function WorkPlanDetailPage({
       });
 
       // Refresh data
-      const data = await workPlansAPI.getWorkPlanById(workPlanId);
+      const data_ = await workPlansAPI.getWorkPlanById(workPlanId);
+      const data = data_.data;
       setWorkPlan(data);
     } catch (err: any) {
       console.error("Error rejecting work plan:", err);
@@ -257,7 +260,8 @@ export default function WorkPlanDetailPage({
       });
 
       // Refresh data
-      const data = await workPlansAPI.getWorkPlanById(workPlanId);
+      const data_ = await workPlansAPI.getWorkPlanById(workPlanId);
+      const data = data_.data;
       setWorkPlan(data);
 
       // Close dialog and reset state

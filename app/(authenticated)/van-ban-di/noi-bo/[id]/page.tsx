@@ -65,7 +65,8 @@ export default function InternalDocumentDetailPage() {
     const fetchDocument = async () => {
       try {
         setLoading(true);
-        const response = await getDocumentById(Number(documentId));
+        const response_ = await getDocumentById(Number(documentId));
+        const response = response_.data;
         setDocument(response);
         console.log("Debug document:", response);
         console.log("Drafting department:", response.draftingDepartment);
@@ -158,10 +159,11 @@ export default function InternalDocumentDetailPage() {
     contentType?: string
   ) => {
     try {
-      const response = await downloadAttachment(
+      const response_ = await downloadAttachment(
         Number(documentId),
         attachmentId
       );
+      const response = response_.data;
 
       const pdfBlob = response.data;
 

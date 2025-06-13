@@ -67,14 +67,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        console.log("AuthContext: Checking authentication status...");
+        // console.log("AuthContext: Checking authentication status...");
         const token = localStorage.getItem("accessToken");
 
         if (token && !isTokenExpired(token)) {
-          console.log(
-            "AuthContext: Token found and valid, fetching current user..."
-          );
-          const userData = await authAPI.getCurrentUser();
+          // console.log(
+          //   "AuthContext: Token found and valid, fetching current user..."
+          // );
+          const userData_ = await authAPI.getCurrentUser();
+          const userData = userData_.data;
           if (userData) {
             console.log(
               "AuthContext: User data retrieved successfully:",
@@ -137,18 +138,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setDataLoading(true);
       setError(null);
       console.log("Đang thực hiện đăng nhập cho tài khoản:", username);
-      const userData = await authAPI.login(username, password);
+      const userData_ = await authAPI.login(username, password);
+      
+      if (userData_.success === false) {
+        setError(userData_.message);
+        return false;
+      }
+      const userData = userData_.data;
       const { accessToken, refreshToken, user } = userData;
 
-      // Debug logs để xác nhận token được nhận
-      console.log(
-        "Received accessToken:",
-        accessToken?.substring(0, 20) + "..."
-      );
-      console.log(
-        "Received refreshToken:",
-        refreshToken?.substring(0, 20) + "..."
-      );
 
       // Lưu token với đúng property names từ backend
       localStorage.setItem("accessToken", accessToken);
@@ -165,12 +163,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const userInfo = {
         id: String(userData.user.id),
-        name: userData.user.name,
+        name: userData.user.fullName,
         username: userData.user.username,
         email: userData.user.email,
         roles: userData.user.roles,
         departmentId: userData.user.departmentId,
-        fullName: userData.user.name || userData.user.fullName,
+        fullName:  userData.user.fullName,
       };
 
       console.log("Login successful", userInfo);
@@ -213,10 +211,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      const userData = await authAPI.getCurrentUser();
+      const userData_ = await authAPI.getCurrentUser();
+      const userData = userData_.data;
       if (userData) {
         setUser({
-          ...userData,
+          ...userData.user,
           fullName: userData.fullName || userData.name,
         });
       }

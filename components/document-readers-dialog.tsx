@@ -73,6 +73,7 @@ export function DocumentReadersDialog({
         onGetStatistics(documentId)
       ]);
       
+      
       setReaders(readersData);
       setStatistics(statsData);
     } catch (err) {

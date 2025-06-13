@@ -44,10 +44,12 @@ export default function DocumentReviewPage({ params }: { params: { id: string; r
       try {
         setLoading(true)
         // Fetch document and response data in parallel
-        const [documentData, responseData] = await Promise.all([
-          incomingDocumentsAPI.getDocumentById(params.id),
+        const [documentData_, responseData_] = await Promise.all([
+          incomingDocumentsAPI.getDepartmentsByDocumentId(params.id),
           documentResponsesAPI.getResponseById(params.responseId),
         ])
+        const documentData = documentData_.data;
+        const responseData = responseData_.data;
 
         setDocument(documentData)
         setResponse(responseData)

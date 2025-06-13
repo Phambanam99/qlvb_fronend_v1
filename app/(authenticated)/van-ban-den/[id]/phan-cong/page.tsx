@@ -28,9 +28,10 @@ export default function DocumentAssignmentPage({
     const fetchDocument = async () => {
       try {
         setLoading(true);
-        const documentData = await incomingDocumentsAPI.getIncomingDocumentById(
+        const documentData_ = await incomingDocumentsAPI.getIncomingDocumentById(
           documentId
         );
+        const documentData = documentData_.data;
         setDocument(documentData);
       } catch (error) {
         console.error("Error fetching document:", error);

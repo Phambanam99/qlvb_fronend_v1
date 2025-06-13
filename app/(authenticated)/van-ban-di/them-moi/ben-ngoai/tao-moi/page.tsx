@@ -104,12 +104,13 @@ export default function CreateExternalOutgoingDocumentPage() {
       try {
         // Fetch approvers
         setIsLoadingApprovers(true);
-        const leaderUsers = await usersAPI.getUserForApproval(user.id);
-        const seniorLeadersResponse =
-          await usersAPI.getUsersByRoleAndDepartment(
+        const leaderUsers_ = await usersAPI.getUserForApproval(user.id);
+        const leaderUsers = leaderUsers_.data;
+        const seniorLeadersResponse_ =  await usersAPI.getUsersByRoleAndDepartment(
             ["ROLE_SENIOR_LEADER"],
             0 // 0 to get from all departments
           );
+        const seniorLeadersResponse = seniorLeadersResponse_.data;
         const allApprovers = [...leaderUsers, ...seniorLeadersResponse];
         const uniqueApprovers = allApprovers.filter(
           (approver, index, self) =>
@@ -119,13 +120,14 @@ export default function CreateExternalOutgoingDocumentPage() {
 
         // Fetch recipients/senders
         setIsLoadingRecipients(true);
-        const sendersData = await senderApi.getAllSenders();
+        const sendersData_ = await senderApi.getAllSenders();
+        const sendersData = sendersData_.data;
         setRecipients(sendersData || []);
 
         // Fetch document types
         setIsLoadingDocumentTypes(true);
-        const documentTypesData =
-          await documentTypesAPI.getActiveDocumentTypes();
+        const documentTypesData_ =   await documentTypesAPI.getActiveDocumentTypes();
+        const documentTypesData = documentTypesData_.data;  
         setDocumentTypes(documentTypesData || []);
       } catch (error) {
         console.error("Error fetching data:", error);

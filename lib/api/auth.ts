@@ -1,6 +1,6 @@
 import api from "./config";
 import { UserDTO as User } from "./users";
-
+import { ResponseDTO } from "./types";
 export interface AuthRequest {
   username: string;
   password: string;
@@ -30,7 +30,7 @@ export const authAPI = {
    * @param password Password
    * @returns Authentication response with token and user info
    */
-  login: async (username: string, password: string): Promise<AuthResponse> => {
+  login: async (username: string, password: string): Promise<ResponseDTO<AuthResponse> >=> {
     try {
       const response = await api.post("/auth/login", { username, password });
       return response.data;

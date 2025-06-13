@@ -130,17 +130,20 @@ export default function DepartmentDetailPage({
         setLoading(true);
 
         // Lấy thông tin phòng ban
-        const departmentData = await departmentsAPI.getDepartmentById(
+        const departmentData_ = await departmentsAPI.getDepartmentById(
           departmentId
         );
+        const departmentData = departmentData_.data;
         setDepartment(departmentData);
 
         // Lấy danh sách loại phòng ban
-        const types = await departmentsAPI.getDepartmentTypes();
+        const types_ = await departmentsAPI.getDepartmentTypes();
+        const types = types_.data;
         setDepartmentTypes(types || []);
 
         // Lấy danh sách phòng ban cha
-        const departmentsResponse = await departmentsAPI.getAllDepartments();
+        const departmentsResponse_ = await departmentsAPI.getAllDepartments();
+        const departmentsResponse = departmentsResponse_.data;
         // Lọc bỏ phòng ban hiện tại và các phòng ban con của nó
         const filteredDepartments =
           departmentsResponse.content?.filter(
@@ -164,7 +167,8 @@ export default function DepartmentDetailPage({
         });
 
         // TODO: Lấy danh sách người dùng thuộc phòng ban
-        const users = await usersAPI.getUsersByDepartmentId(departmentId);
+        const users_ = await usersAPI.getUsersByDepartmentId(departmentId);
+        const users = users_.data;
         // Hiện tại đang sử dụng mảng giả định
         setUsers(users);
       } catch (error) {
@@ -216,9 +220,10 @@ export default function DepartmentDetailPage({
       });
 
       // Cập nhật dữ liệu phòng ban
-      const updatedDepartment = await departmentsAPI.getDepartmentById(
+      const updatedDepartment_ = await departmentsAPI.getDepartmentById(
         departmentId
       );
+      const updatedDepartment = updatedDepartment_.data;
       setDepartment(updatedDepartment);
     } catch (error) {
       console.error("Error updating department:", error);

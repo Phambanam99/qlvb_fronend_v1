@@ -68,7 +68,8 @@ export function useDocumentForm() {
     const fetchDocumentTypes = async () => {
       try {
         setIsLoadingDocumentTypes(true);
-        const response = await documentTypesAPI.getAllDocumentTypes();
+        const response_ = await documentTypesAPI.getAllDocumentTypes();
+        const response = response_.data;
         setDocumentTypes(response);
       } catch (error) {
         console.error("Lỗi khi lấy danh sách loại văn bản:", error);

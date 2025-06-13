@@ -1,5 +1,9 @@
 // Common types used across API services
-
+export interface ResponseDTO<T> {
+  success: boolean;
+  message: string;
+  data: T;
+}
 export interface Pageable {
   page: number;
   size: number;
@@ -16,21 +20,6 @@ export interface PageResponse<T> {
   last: boolean;
   empty: boolean;
   numberOfElements: number;
-}
-
-// Backend ResponseDTO format
-export interface ResponseDTO<T> {
-  success: boolean;
-  message: string;
-  data: T;
-}
-
-// Helper type for API responses
-export interface ApiResponse<T> {
-  success: boolean;
-  data?: T;
-  error?: ApiError;
-  message?: string;
 }
 
 export interface DocumentAttachmentDTO {
@@ -78,8 +67,6 @@ export interface DocumentHistoryDTO {
   actorName: string;
   assignedToId?: number;
   assignedToName?: string;
-  assignedToNames?: string[];
-  attachmentPath?: string;
 }
 
 export interface DocumentWorkflowDTO {
@@ -94,8 +81,8 @@ export interface DocumentWorkflowDTO {
   closureDeadline?: Date;
   primaryDepartmentId?: number;
   primaryDepartmentName?: string;
-  collaboratingDepartmentIds?: number[] | Set<number>;
-  collaboratingDepartmentNames?: string[] | Set<string>;
+  collaboratingDepartmentIds?: number[];
+  collaboratingDepartmentNames?: string[];
 }
 
 export interface ActivityLogDTO {
@@ -127,3 +114,10 @@ export interface ApiError {
   timestamp: string;
   path: string;
 }
+export interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  error?: ApiError;
+  message?: string;
+}
+

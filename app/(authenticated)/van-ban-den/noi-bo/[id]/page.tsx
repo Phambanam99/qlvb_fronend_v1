@@ -90,9 +90,9 @@ export default function InternalDocumentReceivedDetailPage() {
     const fetchDocument = async () => {
       try {
         setLoading(true);
-        const response = await getDocumentById(Number(documentId));
-        console.log("Debug document:", response);
-        console.log("Debug attachments:", response?.attachments);
+        const response_ = await getDocumentById(Number(documentId));
+        const response = response_.data;
+        
 
         if (response) {
           const documentWithAttachments = {
@@ -159,20 +159,23 @@ export default function InternalDocumentReceivedDetailPage() {
       try {
         // Fetch history
         setLoadingHistory(true);
-        const historyResponse = await getInternalDocumentHistory(
+        const historyResponse_ = await getInternalDocumentHistory(
           Number(documentId)
         );
-        console.log("Debug history:", historyResponse);
+        const historyResponse = historyResponse_.data;
+        // console.log("Debug history:", historyResponse);
         setDocumentHistory(historyResponse || []);
 
         // Fetch stats
         setLoadingStats(true);
-        const statsResponse = await getDocumentStats(Number(documentId));
-        console.log("Debug stats:", statsResponse);
+        const statsResponse_ = await getDocumentStats(Number(documentId));
+        const statsResponse = statsResponse_.data;
+        // console.log("Debug stats:", statsResponse);
         setDocumentStats(statsResponse);
 
         // Fetch replies
-        const repliesResponse = await getDocumentReplies(Number(documentId));
+        const repliesResponse_ = await getDocumentReplies(Number(documentId));
+        const repliesResponse = repliesResponse_.data;
         setDocumentReplies(repliesResponse || []);
       } catch (error) {
         console.error("Error fetching document history/stats:", error);
@@ -257,10 +260,11 @@ export default function InternalDocumentReceivedDetailPage() {
     contentType?: string
   ) => {
     try {
-      const response = await downloadAttachment(
+      const response_ = await downloadAttachment(
         Number(documentId),
         attachmentId
       );
+      const response = response_.data;
 
       // response.data là Blob từ API
       const fileBlob = response.data;

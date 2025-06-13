@@ -39,6 +39,7 @@ export function DocumentReadStats({
       setLoading(true);
       setError(null);
       const stats = await onGetStatistics(documentId);
+      
       setStatistics(stats);
     } catch (err) {
       console.error("Error loading statistics:", err);

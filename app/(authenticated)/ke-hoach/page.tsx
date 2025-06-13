@@ -64,10 +64,11 @@ export default function WorkPlansPage() {
       try {
         setIsLoading(true);
 
-        const data = await workPlansAPI.getAllWorkPlans({
+        const data_ = await workPlansAPI.getAllWorkPlans({
           status: statusFilter !== "all" ? statusFilter : undefined,
           search: searchQuery || undefined,
         });
+        const data = data_.data;
 
         setAllWorkPlans(data);
         filterWorkPlans(data);
