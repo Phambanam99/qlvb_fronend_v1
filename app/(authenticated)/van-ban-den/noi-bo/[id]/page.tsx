@@ -85,6 +85,10 @@ export default function InternalDocumentReceivedDetailPage() {
   // Add state for recipients visibility
   const [showAllRecipients, setShowAllRecipients] = useState(false);
   const RECIPIENTS_PREVIEW_COUNT = 5; // Show first 5 recipients by default
+  
+  // Add state for history visibility
+  const [showAllHistory, setShowAllHistory] = useState(false);
+  const HISTORY_PREVIEW_COUNT = 5; // Show first 5 history entries by default
 
   const { markAsRead: globalMarkAsRead } = useDocumentReadStatus();
 
@@ -756,13 +760,28 @@ export default function InternalDocumentReceivedDetailPage() {
           {/* Interaction History */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Clock className="h-5 w-5" />
-                Lịch sử tương tác
-                {documentStats && (
-                  <Badge variant="outline" className="ml-2">
-                    {documentStats.historyCount} hoạt động
-                  </Badge>
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-5 w-5" />
+                  Lịch sử tương tác
+                  {documentStats ? (
+                    <Badge variant="outline" className="ml-2">
+                      {documentStats.historyCount} hoạt động
+                    </Badge>
+                  ) : documentHistory.length > 0 && (
+                    <Badge variant="outline" className="ml-2">
+                      {documentHistory.length} hoạt động
+                    </Badge>
+                  )}
+                </div>
+                {documentHistory.length > HISTORY_PREVIEW_COUNT && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowAllHistory(!showAllHistory)}
+                  >
+                    {showAllHistory ? "Thu gọn" : `Xem tất cả (${documentHistory.length})`}
+                  </Button>
                 )}
               </CardTitle>
               <CardDescription>
@@ -779,7 +798,10 @@ export default function InternalDocumentReceivedDetailPage() {
                 </div>
               ) : documentHistory.length > 0 ? (
                 <div className="space-y-4">
-                  {documentHistory.map((entry, index) => (
+                  {(showAllHistory 
+                    ? documentHistory 
+                    : documentHistory.slice(0, HISTORY_PREVIEW_COUNT)
+                  ).map((entry, index) => (
                     <div
                       key={entry.id || index}
                       className="flex items-start space-x-3 border-l-2 border-gray-200 pl-4 pb-4 last:pb-0"
@@ -812,6 +834,20 @@ export default function InternalDocumentReceivedDetailPage() {
                 <div className="text-center py-8">
                   <Clock className="h-12 w-12 text-gray-300 mx-auto mb-4" />
                   <p className="text-gray-500">Chưa có lịch sử tương tác nào</p>
+                </div>
+              )}
+              
+              {/* Show hidden count when collapsed */}
+              {!showAllHistory && documentHistory.length > HISTORY_PREVIEW_COUNT && (
+                <div className="mt-4 text-center">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowAllHistory(true)}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    + {documentHistory.length - HISTORY_PREVIEW_COUNT} hoạt động khác
+                  </Button>
                 </div>
               )}
             </CardContent>
