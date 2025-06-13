@@ -150,9 +150,11 @@ export const incomingDocumentsAPI = {
         params: { page, size },
       });
       console.log("backend ", response);
-
+      if (response.data.success === false) {
+        throw new Error(response.data.message);
+      }
       // Map backend response to frontend expected format
-      const documents = response.data.content.map(
+      const documents = response.data.data.content.map( 
         (doc: IncomingDocumentDTO) => ({
           ...doc,
           // Add empty arrays for frontend compatibility

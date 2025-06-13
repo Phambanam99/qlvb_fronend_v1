@@ -31,9 +31,10 @@ export default function OutgoingDocumentTypePage() {
 
       try {
         setIsLoading(true);
-        const doc = await incomingDocumentsAPI.getIncomingDocumentById(
+        const doc_ = await incomingDocumentsAPI.getIncomingDocumentById(
           replyToId
         );
+        const doc = doc_.data;
         setIncomingDocument(doc.data);
       } catch (error) {
         console.error("Error fetching incoming document:", error);

@@ -45,12 +45,14 @@ export default function UserDetailPage() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [userData, rolesData, departmentsData] = await Promise.all([
+        const [userData_, rolesData_, departmentsData_] = await Promise.all([
           usersAPI.getUserById(userId),
           rolesAPI.getAllRoles(),
           departmentsAPI.getAllDepartments(),
         ]);
-
+        const userData = userData_.data;
+        const rolesData = rolesData_.data;
+        const departmentsData = departmentsData_.data;
         setUser(userData);
         setRoles(rolesData);
         setDepartments(departmentsData.content);
@@ -74,7 +76,8 @@ export default function UserDetailPage() {
     try {
       console.log(data);
       setSaving(true);
-      const updatedUser = await usersAPI.updateUser(userId, data);
+      const updatedUser_ = await usersAPI.updateUser(userId, data);
+      const updatedUser = updatedUser_.data;
       setUser(updatedUser);
       toast({
         title: "Thành công",
@@ -97,7 +100,8 @@ export default function UserDetailPage() {
     try {
       console.log(data);
       setSaving(true);
-      const updatedUser = await usersAPI.updateUser(userId, data);
+      const updatedUser_ = await usersAPI.updateUser(userId, data);
+      const updatedUser = updatedUser_.data;
       setUser(updatedUser);
       toast({
         title: "Thành công",
@@ -140,7 +144,8 @@ export default function UserDetailPage() {
     try {
       console.log(data);
       setSaving(true);
-      const updatedUser = await usersAPI.updateUser(userId, data);
+      const updatedUser_ = await usersAPI.updateUser(userId, data);
+      const updatedUser = updatedUser_.data;
       setUser(updatedUser);
       toast({
         title: "Thành công",

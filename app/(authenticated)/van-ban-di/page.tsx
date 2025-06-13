@@ -141,7 +141,9 @@ export default function OutgoingDocumentsPage() {
         size,
       });
 
-      const response = await getSentDocuments(page, size);
+      const response_ = await getSentDocuments(page, size);
+      const response = response_.data;
+
 
       if (response && response.content) {
         console.log("Internal documents response:", response);
@@ -218,7 +220,8 @@ export default function OutgoingDocumentsPage() {
         size,
       });
 
-      const response = await outgoingDocumentsAPI.getAllDocuments(page, size);
+      const response_ = await outgoingDocumentsAPI.getAllDocuments(page, size);
+      const response = response_.data;
 
       if (response && response.documents) {
         const formattedDocuments = response.documents.map((doc) => ({

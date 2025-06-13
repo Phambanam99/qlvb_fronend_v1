@@ -46,17 +46,18 @@ import { useToast } from "@/components/ui/use-toast";
 import {
   getDocumentById,
   downloadAttachment,
-  markDocumentAsRead,
   getInternalDocumentHistory,
   getDocumentStats,
   getDocumentReplies,
+  getDocumentReaders,
+  getDocumentReadStatistics,
 } from "@/lib/api/internalDocumentApi";
 import { useDocumentReadStatus } from "@/hooks/use-document-read-status";
 import { useAuth } from "@/lib/auth-context";
 import { downloadPdfWithWatermark, isPdfFile } from "@/lib/utils/pdf-watermark";
 import { DocumentReadersDialog } from "@/components/document-readers-dialog";
 import { DocumentReadStats } from "@/components/document-read-stats";
-import { documentReadStatusAPI } from "@/lib/api/documentReadStatus";
+import { outgoingInternalReadStatus } from "@/lib/api/documentReadStatus";
 import { InternalDocument, InternalDocumentDetail, DocumentHistory,
   DocumentStats,
 } from "@/lib/api/internalDocumentApi";
@@ -80,6 +81,14 @@ export default function InternalDocumentReceivedDetailPage() {
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [loadingStats, setLoadingStats] = useState(false);
   const [markingAsRead, setMarkingAsRead] = useState(false);
+  
+  // Add state for recipients visibility
+  const [showAllRecipients, setShowAllRecipients] = useState(false);
+  const RECIPIENTS_PREVIEW_COUNT = 5; // Show first 5 recipients by default
+  
+  // Add state for history visibility
+  const [showAllHistory, setShowAllHistory] = useState(false);
+  const HISTORY_PREVIEW_COUNT = 5; // Show first 5 history entries by default
 
   const { markAsRead: globalMarkAsRead } = useDocumentReadStatus();
 
@@ -89,9 +98,9 @@ export default function InternalDocumentReceivedDetailPage() {
     const fetchDocument = async () => {
       try {
         setLoading(true);
-        const response = await getDocumentById(Number(documentId));
-        console.log("Debug document:", response);
-        console.log("Debug attachments:", response?.attachments);
+        const response_ = await getDocumentById(Number(documentId));
+        const response = response_.data;
+        
 
         if (response) {
           const documentWithAttachments = {
@@ -103,7 +112,7 @@ export default function InternalDocumentReceivedDetailPage() {
           // Automatically mark as read if not already read
           if (!response.isRead) {
             try {
-              await markDocumentAsRead(Number(documentId));
+              await outgoingInternalReadStatus.markAsRead(Number(documentId));
               // Update local state
               documentWithAttachments.isRead = true;
               documentWithAttachments.readAt = new Date().toISOString();
@@ -158,20 +167,27 @@ export default function InternalDocumentReceivedDetailPage() {
       try {
         // Fetch history
         setLoadingHistory(true);
-        const historyResponse = await getInternalDocumentHistory(
+        const historyResponse_ = await getInternalDocumentHistory(
           Number(documentId)
         );
+        // Handle ResponseDTO format: extract data from response
+        const historyResponse = historyResponse_?.data?.data || historyResponse_?.data || [];
         console.log("Debug history:", historyResponse);
         setDocumentHistory(historyResponse || []);
 
         // Fetch stats
         setLoadingStats(true);
-        const statsResponse = await getDocumentStats(Number(documentId));
+        const statsResponse_ = await getDocumentStats(Number(documentId));
+        // Handle ResponseDTO format: extract data from response
+        const statsResponse = statsResponse_?.data?.data || statsResponse_?.data || null;
         console.log("Debug stats:", statsResponse);
         setDocumentStats(statsResponse);
 
         // Fetch replies
-        const repliesResponse = await getDocumentReplies(Number(documentId));
+        const repliesResponse_ = await getDocumentReplies(Number(documentId));
+        // Handle ResponseDTO format: extract data from response
+        const repliesResponse = repliesResponse_?.data?.data || repliesResponse_?.data || [];
+        console.log("Debug replies:", repliesResponse);
         setDocumentReplies(repliesResponse || []);
       } catch (error) {
         console.error("Error fetching document history/stats:", error);
@@ -256,10 +272,11 @@ export default function InternalDocumentReceivedDetailPage() {
     contentType?: string
   ) => {
     try {
-      const response = await downloadAttachment(
+      const response_ = await downloadAttachment(
         Number(documentId),
         attachmentId
       );
+      const response = response_.data;
 
       // response.data là Blob từ API
       const fileBlob = response.data;
@@ -320,7 +337,7 @@ export default function InternalDocumentReceivedDetailPage() {
 
     try {
       setMarkingAsRead(true);
-      await markDocumentAsRead(documentDetail.id);
+      await outgoingInternalReadStatus.markAsRead(documentDetail.id);
       setDocumentDetail({
         ...documentDetail,
         isRead: true,
@@ -451,12 +468,9 @@ export default function InternalDocumentReceivedDetailPage() {
           {/* Document Read Status */}
           <DocumentReadStats
             documentId={Number(documentId)}
-            documentType="INCOMING_INTERNAL"
+            documentType="OUTGOING_INTERNAL"
             onGetStatistics={(docId) =>
-              documentReadStatusAPI.getDocumentReadStatistics(
-                docId,
-                "INCOMING_INTERNAL"
-              )
+              getDocumentReadStatistics(docId)
             }
             variant="compact"
             className="mr-4"
@@ -465,19 +479,13 @@ export default function InternalDocumentReceivedDetailPage() {
           {/* Document Readers Dialog */}
           <DocumentReadersDialog
             documentId={Number(documentId)}
-            documentType="INCOMING_INTERNAL"
+            documentType="OUTGOING_INTERNAL"
             documentTitle={documentDetail.title}
             onGetReaders={(docId) =>
-              documentReadStatusAPI.getDocumentReaders(
-                docId,
-                "INCOMING_INTERNAL"
-              )
+              getDocumentReaders(docId)
             }
             onGetStatistics={(docId) =>
-              documentReadStatusAPI.getDocumentReadStatistics(
-                docId,
-                "INCOMING_INTERNAL"
-              )
+              getDocumentReadStatistics(docId)
             }
           />
         </div>
@@ -531,6 +539,104 @@ export default function InternalDocumentReceivedDetailPage() {
                     )}
                   </div>
                 </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">
+                    Đơn vị soạn thảo
+                  </label>
+                  <p className="font-medium">
+                    {documentDetail.draftingDepartment?.name || "Chưa xác định"}
+                  </p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">
+                    Độ mật
+                  </label>
+                  <div>
+                  <Badge
+                    variant={
+                      documentDetail.securityLevel === "SECRET"
+                        ? "destructive"
+                        : "outline"
+                    }
+                    >
+                      
+                    {documentDetail.securityLevel === "NORMAL"
+                      ? "Thường"
+                      : documentDetail.securityLevel === "CONFIDENTIAL"
+                      ? "Mật"
+                      : documentDetail.securityLevel === "SECRET"
+                      ? "Tối mật"
+                      : documentDetail.securityLevel === "TOP_SECRET"
+                      ? "Tuyệt mật"
+                      : documentDetail.securityLevel || "Thường"}
+                    </Badge>
+                    </div>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">
+                    Người ký duyệt
+                  </label>
+                  <p className="font-medium">
+                    {documentDetail.documentSigner?.fullName || "Chưa xác định"}
+                  </p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">
+                    Chuyển bằng điện mật
+                  </label>
+                 <div>
+                  <Badge variant={documentDetail.isSecureTransmission ? "default" : "outline"}>
+                    {documentDetail.isSecureTransmission ? "Có" : "Không"}
+                  </Badge>
+                 </div>
+                </div>
+                {documentDetail.processingDeadline && (
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">
+                      Hạn xử lý
+                    </label>
+                    <p className="font-medium">
+                      {formatDateOnly(documentDetail.processingDeadline)}
+                    </p>
+                  </div>
+                )}
+                {documentDetail.issuingAgency && (
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">
+                      Cơ quan ban hành
+                    </label>
+                    <p className="font-medium">{documentDetail.issuingAgency}</p>
+                  </div>
+                )}
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">
+                    Khối phân phối
+                  </label>
+                 <div> <Badge variant="outline">
+                    {documentDetail.distributionTypeDisplayName || "Chưa xác định"}
+                  </Badge>
+                    </div>
+                </div>
+                {(documentDetail.numberOfCopies || documentDetail.numberOfPages) && (
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">
+                      Số bản sao / Số trang
+                    </label>
+                    <p className="font-medium">
+                      {documentDetail.numberOfCopies || 0} bản / {documentDetail.numberOfPages || 0} trang
+                    </p>
+                  </div>
+                )}
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">
+                    Không gửi bản giấy
+                  </label>
+                  <div>
+                  <Badge variant={documentDetail.noPaperCopy ? "default" : "outline"}>
+                    {documentDetail.noPaperCopy ? "Đúng" : "Không"}
+                    </Badge>
+                    </div>
+                </div>
               </div>
 
               <Separator />
@@ -570,69 +676,32 @@ export default function InternalDocumentReceivedDetailPage() {
             </CardContent>
           </Card>
 
-          {/* Recipients Table */}
-          {documentDetail.recipients &&
-            documentDetail.recipients.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Users className="h-5 w-5" />
-                    Danh sách người nhận ({documentDetail.recipients.length})
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Đơn vị</TableHead>
-                        <TableHead>Người nhận</TableHead>
-                        <TableHead>Trạng thái</TableHead>
-                        <TableHead>Thời gian nhận</TableHead>
-                        <TableHead>Thời gian đọc</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {documentDetail.recipients.map((recipient) => (
-                        <TableRow key={recipient.id}>
-                          <TableCell className="font-medium">
-                            {recipient.departmentName}
-                          </TableCell>
-                          <TableCell>
-                            {recipient.userName || "Toàn đơn vị"}
-                          </TableCell>
-                          <TableCell>
-                            <Badge
-                              variant={recipient.isRead ? "default" : "outline"}
-                            >
-                              {recipient.isRead ? "Đã đọc" : "Chưa đọc"}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            {formatDate(recipient.receivedAt)}
-                          </TableCell>
-                          <TableCell>
-                            {recipient.readAt
-                              ? formatDate(recipient.readAt)
-                              : "-"}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            )}
 
           {/* Interaction History */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Clock className="h-5 w-5" />
-                Lịch sử tương tác
-                {documentStats && (
-                  <Badge variant="outline" className="ml-2">
-                    {documentStats.historyCount} hoạt động
-                  </Badge>
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-5 w-5" />
+                  Lịch sử tương tác
+                  {documentStats ? (
+                    <Badge variant="outline" className="ml-2">
+                      {documentStats.historyCount} hoạt động
+                    </Badge>
+                  ) : documentHistory.length > 0 && (
+                    <Badge variant="outline" className="ml-2">
+                      {documentHistory.length} hoạt động
+                    </Badge>
+                  )}
+                </div>
+                {documentHistory.length > HISTORY_PREVIEW_COUNT && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowAllHistory(!showAllHistory)}
+                  >
+                    {showAllHistory ? "Thu gọn" : `Xem tất cả (${documentHistory.length})`}
+                  </Button>
                 )}
               </CardTitle>
               <CardDescription>
@@ -649,7 +718,10 @@ export default function InternalDocumentReceivedDetailPage() {
                 </div>
               ) : documentHistory.length > 0 ? (
                 <div className="space-y-4">
-                  {documentHistory.map((entry, index) => (
+                  {(showAllHistory 
+                    ? documentHistory 
+                    : documentHistory.slice(0, HISTORY_PREVIEW_COUNT)
+                  ).map((entry, index) => (
                     <div
                       key={entry.id || index}
                       className="flex items-start space-x-3 border-l-2 border-gray-200 pl-4 pb-4 last:pb-0"
@@ -660,7 +732,7 @@ export default function InternalDocumentReceivedDetailPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
                           <p className="text-sm font-medium text-gray-900">
-                            {getActionDisplayName(entry.action)}
+                            {entry.details}
                           </p>
                           <time className="text-sm text-gray-500">
                             {formatDate(entry.performedAt)}
@@ -682,6 +754,20 @@ export default function InternalDocumentReceivedDetailPage() {
                 <div className="text-center py-8">
                   <Clock className="h-12 w-12 text-gray-300 mx-auto mb-4" />
                   <p className="text-gray-500">Chưa có lịch sử tương tác nào</p>
+                </div>
+              )}
+              
+              {/* Show hidden count when collapsed */}
+              {!showAllHistory && documentHistory.length > HISTORY_PREVIEW_COUNT && (
+                <div className="mt-4 text-center">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowAllHistory(true)}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    + {documentHistory.length - HISTORY_PREVIEW_COUNT} hoạt động khác
+                  </Button>
                 </div>
               )}
             </CardContent>
@@ -962,6 +1048,70 @@ export default function InternalDocumentReceivedDetailPage() {
               </Button>
             </CardContent>
           </Card>
+          
+          {/* Recipients Table */}
+          {documentDetail.recipients &&
+            documentDetail.recipients.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Users className="h-5 w-5" />
+                      Danh sách người nhận ({documentDetail.recipients.length})
+                    </div>
+                    {documentDetail.recipients.length > RECIPIENTS_PREVIEW_COUNT && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowAllRecipients(!showAllRecipients)}
+                      >
+                        {showAllRecipients ? "Thu gọn" : `Xem tất cả (${documentDetail.recipients.length})`}
+                      </Button>
+                    )}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Đơn vị</TableHead>
+                        <TableHead>Người nhận</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {(showAllRecipients 
+                        ? documentDetail.recipients 
+                        : documentDetail.recipients.slice(0, RECIPIENTS_PREVIEW_COUNT)
+                      ).map((recipient) => (
+                        <TableRow key={recipient.id}>
+                          <TableCell className="font-medium">
+                            {recipient.departmentName}
+                          </TableCell>
+                          <TableCell>
+                            {recipient.userName || "Toàn đơn vị"}
+                          </TableCell>
+                          
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  
+                  {/* Show hidden count when collapsed */}
+                  {!showAllRecipients && documentDetail.recipients.length > RECIPIENTS_PREVIEW_COUNT && (
+                    <div className="mt-4 text-center">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowAllRecipients(true)}
+                        className="text-muted-foreground hover:text-foreground"
+                      >
+                        + {documentDetail.recipients.length - RECIPIENTS_PREVIEW_COUNT} người nhận khác
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
         </div>
       </div>
     </div>

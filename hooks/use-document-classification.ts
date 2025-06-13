@@ -31,9 +31,10 @@ export function useDocumentClassification(
     setError(null);
 
     try {
-      const result = await incomingDocumentsAPI.getDocumentClassification(
+      const result_ = await incomingDocumentsAPI.getDocumentClassification(
         documentId
       );
+      const result = result_.data;
       setClassification(result);
       console.log("Classification fetched:", result);
     } catch (err) {
@@ -88,9 +89,10 @@ export function useMultipleDocumentClassifications(documentIds: number[]): {
     try {
       const promises = documentIds.map(async (id) => {
         try {
-          const result = await incomingDocumentsAPI.getDocumentClassification(
+          const result_ = await incomingDocumentsAPI.getDocumentClassification(
             id
           );
+          const result = result_.data;
           return { id, classification: result };
         } catch (err) {
           console.error(

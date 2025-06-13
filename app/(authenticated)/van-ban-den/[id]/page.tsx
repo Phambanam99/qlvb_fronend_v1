@@ -93,7 +93,8 @@ export default function DocumentDetailPage({
     if (!documentId) return;
 
     try {
-      const response = await incomingDocumentsAPI.getAllDepartments(documentId);
+      const response_ = await incomingDocumentsAPI.getAllDepartments(documentId);
+      const response = response_.data;
       setDepartments(response);
     } catch (error) {
       console.error("Error fetching departments:", error);
@@ -110,9 +111,10 @@ export default function DocumentDetailPage({
     if (!documentId) return;
 
     try {
-      const response = await incomingDocumentsAPI.getDocumentAttachments(
+      const response_ = await incomingDocumentsAPI.getDocumentAttachments(
         Number(documentId)
       );
+      const response = response_.data;
       setAttachments(response);
     } catch (error) {
       console.error("Error fetching attachments:", error);
@@ -161,19 +163,22 @@ export default function DocumentDetailPage({
       setIsHistoryLoading(true);
 
       // Fetch document details
-      const response = await incomingDocumentsAPI.getIncomingDocumentById(
+      const response_ = await incomingDocumentsAPI.getIncomingDocumentById(
         documentId
       );
+      const response = response_.data;
       console.log("1. Tải văn bản thành công:", response);
       setIsDocumentLoading(false);
 
       // Fetch document workflow status
-      const workflowStatus = await workflowAPI.getDocumentStatus(documentId);
+      const workflowStatus_ = await workflowAPI.getDocumentStatus(documentId);
+      const workflowStatus = workflowStatus_.data;
       console.log("2. Tải workflow status thành công:", workflowStatus);
       setIsWorkflowLoading(false);
 
       // Fetch document history
-      const history = await workflowAPI.getDocumentHistory(documentId);
+      const history_ = await workflowAPI.getDocumentHistory(documentId);
+      const history = history_.data;
       console.log("3. Tải history thành công:", history);
       setIsHistoryLoading(false);
 
@@ -238,9 +243,10 @@ export default function DocumentDetailPage({
     }
 
     try {
-      const blob = await incomingDocumentsAPI.downloadIncomingAttachment(
+      const blob_ = await incomingDocumentsAPI.downloadIncomingAttachment(
         documentId
       );
+      const blob = blob_.data;
       const filename =
         _document.attachmentFilename.split("/").pop() || "document.pdf";
 
@@ -308,23 +314,26 @@ export default function DocumentDetailPage({
       let blob: Blob;
       if (file.id) {
         try {
-          blob = await incomingDocumentsAPI.downloadSpecificAttachment(
+          const blob_ = await incomingDocumentsAPI.downloadSpecificAttachment(
             documentId,
             file.id
           );
+          blob = blob_.data;
         } catch (specificError) {
           console.log(
             "Specific attachment download failed, falling back to generic:",
             specificError
           );
-          blob = await incomingDocumentsAPI.downloadIncomingAttachment(
+          const blob_ = await incomingDocumentsAPI.downloadIncomingAttachment(
             documentId
           );
+          blob = blob_.data;
         }
       } else {
-        blob = await incomingDocumentsAPI.downloadIncomingAttachment(
+        const blob_ = await incomingDocumentsAPI.downloadIncomingAttachment(
           documentId
         );
+        blob = blob_.data;
       }
       const filename = file.originalFilename;
 
@@ -416,10 +425,11 @@ export default function DocumentDetailPage({
       if (currentFile && currentFile.id) {
         // Try to download specific attachment
         try {
-          return await incomingDocumentsAPI.downloadSpecificAttachment(
+          const result_ = await incomingDocumentsAPI.downloadSpecificAttachment(
             documentId,
             currentFile.id
           );
+          return result_.data;
         } catch (specificError) {
           console.log(
             "Specific attachment download failed for PDF viewer, falling back to generic:",
@@ -429,7 +439,8 @@ export default function DocumentDetailPage({
       }
 
       // Fallback to generic download
-      return await incomingDocumentsAPI.downloadIncomingAttachment(documentId);
+      const result_ = await incomingDocumentsAPI.downloadIncomingAttachment(documentId);
+      return result_.data;
     } catch (error) {
       toast({
         title: "Lỗi",
@@ -445,9 +456,10 @@ export default function DocumentDetailPage({
 
     try {
       // First, check if there's an existing draft related to this document that was rejected
-      const existingDraftsResponse = await workflowAPI.getDocumentResponses(
+      const existingDraftsResponse_ = await workflowAPI.getDocumentResponses(
         documentId.toString()
       );
+      const existingDraftsResponse = existingDraftsResponse_.data;
       console.log("Checking for existing drafts:", existingDraftsResponse);
 
       // Look for a draft that was rejected (has status "draft" and was previously rejected in history)
@@ -946,7 +958,19 @@ export default function DocumentDetailPage({
                 </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">
-                    Mức độ bảo mật
+                    Số thu
+                  </p>
+                  <p>{_document.receiptNumber || "Chưa có"}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Cán bộ xử lý
+                  </p>
+                  <p>{_document.processingOfficer?.fullName || "Chưa phân công"}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Độ mật
                   </p>
                   <Badge
                     variant={

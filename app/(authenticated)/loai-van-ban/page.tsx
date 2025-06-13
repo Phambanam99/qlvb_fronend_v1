@@ -73,7 +73,8 @@ export default function DocumentTypesPage() {
   const fetchDocumentTypes = async () => {
     try {
       setIsLoading(true);
-      const data = await documentTypesAPI.getAllDocumentTypes();
+      const data_ = await documentTypesAPI.getAllDocumentTypes();
+      const data = data_.data;
       setDocumentTypes(data);
     } catch (error) {
       console.error("Error fetching document types:", error);

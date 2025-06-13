@@ -91,11 +91,13 @@ export default function AddDepartmentPage() {
         setLoading(true);
 
         // Lấy danh sách loại phòng ban
-        const types = await departmentsAPI.getDepartmentTypes();
+        const types_ = await departmentsAPI.getDepartmentTypes();
+        const types = types_.data;
         setDepartmentTypes(types || []);
 
         // Lấy danh sách phòng ban cha
-        const departmentsResponse = await departmentsAPI.getAllDepartments();
+        const departmentsResponse_ = await departmentsAPI.getAllDepartments();
+        const departmentsResponse = departmentsResponse_.data;
         setParentDepartments(departmentsResponse.content || []);
       } catch (error) {
         console.error("Error fetching data:", error);

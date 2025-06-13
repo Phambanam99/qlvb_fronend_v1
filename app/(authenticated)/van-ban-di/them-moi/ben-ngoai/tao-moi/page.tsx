@@ -64,6 +64,17 @@ export default function CreateExternalOutgoingDocumentPage() {
     approver: "",
     urgencyLevel: URGENCY_LEVELS.KHAN,
     note: "",
+    // New fields for OutgoingDocument
+    draftingDepartmentEntityId: user?.departmentId || "",
+    securityLevel: "normal", // normal, confidential, secret, top_secret
+    documentSignerId: "",
+    isSecureTransmission: false,
+    processingDeadline: null as Date | null,
+    issuingAgency: "",
+    distributionType: 1, // 1=regular, 2=confidential, 3=copy_book, 5=party, 10=steering_committee
+    numberOfCopies: 1,
+    numberOfPages: 1,
+    noPaperCopy: false,
   });
 
   // State for file attachments (multiple files)
@@ -93,12 +104,13 @@ export default function CreateExternalOutgoingDocumentPage() {
       try {
         // Fetch approvers
         setIsLoadingApprovers(true);
-        const leaderUsers = await usersAPI.getUserForApproval(user.id);
-        const seniorLeadersResponse =
-          await usersAPI.getUsersByRoleAndDepartment(
+        const leaderUsers_ = await usersAPI.getUserForApproval(user.id);
+        const leaderUsers = leaderUsers_.data;
+        const seniorLeadersResponse_ =  await usersAPI.getUsersByRoleAndDepartment(
             ["ROLE_SENIOR_LEADER"],
             0 // 0 to get from all departments
           );
+        const seniorLeadersResponse = seniorLeadersResponse_.data;
         const allApprovers = [...leaderUsers, ...seniorLeadersResponse];
         const uniqueApprovers = allApprovers.filter(
           (approver, index, self) =>
@@ -108,13 +120,14 @@ export default function CreateExternalOutgoingDocumentPage() {
 
         // Fetch recipients/senders
         setIsLoadingRecipients(true);
-        const sendersData = await senderApi.getAllSenders();
+        const sendersData_ = await senderApi.getAllSenders();
+        const sendersData = sendersData_.data;
         setRecipients(sendersData || []);
 
         // Fetch document types
         setIsLoadingDocumentTypes(true);
-        const documentTypesData =
-          await documentTypesAPI.getActiveDocumentTypes();
+        const documentTypesData_ =   await documentTypesAPI.getActiveDocumentTypes();
+        const documentTypesData = documentTypesData_.data;  
         setDocumentTypes(documentTypesData || []);
       } catch (error) {
         console.error("Error fetching data:", error);
@@ -200,6 +213,17 @@ export default function CreateExternalOutgoingDocumentPage() {
         priority: formData.urgencyLevel,
         notes: formData.note,
         status: "PENDING_APPROVAL", // Set status for submission (not draft)
+        // New fields
+        draftingDepartmentEntityId: formData.draftingDepartmentEntityId,
+        securityLevel: formData.securityLevel,
+        documentSignerId: formData.documentSignerId,
+        isSecureTransmission: formData.isSecureTransmission,
+        processingDeadline: formData.processingDeadline,
+        issuingAgency: formData.issuingAgency,
+        distributionType: formData.distributionType,
+        numberOfCopies: formData.numberOfCopies,
+        numberOfPages: formData.numberOfPages,
+        noPaperCopy: formData.noPaperCopy,
       };
 
       // Call API to create outgoing document
@@ -261,6 +285,17 @@ export default function CreateExternalOutgoingDocumentPage() {
         priority: formData.urgencyLevel,
         notes: formData.note,
         status: "DRAFT", // Set status as draft
+        // New fields
+        draftingDepartmentEntityId: formData.draftingDepartmentEntityId,
+        securityLevel: formData.securityLevel,
+        documentSignerId: formData.documentSignerId,
+        isSecureTransmission: formData.isSecureTransmission,
+        processingDeadline: formData.processingDeadline,
+        issuingAgency: formData.issuingAgency,
+        distributionType: formData.distributionType,
+        numberOfCopies: formData.numberOfCopies,
+        numberOfPages: formData.numberOfPages,
+        noPaperCopy: formData.noPaperCopy,
       };
 
       // Call API to create outgoing document as draft
@@ -293,18 +328,35 @@ export default function CreateExternalOutgoingDocumentPage() {
   return (
     <div className="min-h-screen bg-gray-50/30">
       <div className="container mx-auto py-6 max-w-5xl px-4">
-        <div className="flex items-center space-x-2 mb-6">
-          <Button variant="outline" size="icon" asChild>
-            <Link href="/van-ban-di/them-moi">
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
-          </Button>
-          <h1 className="text-2xl font-bold tracking-tight text-primary">
-            Tạo văn bản đi mới - Gửi bên ngoài
-          </h1>
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center space-x-2">
+            <Button variant="outline" size="icon" asChild>
+              <Link href="/van-ban-di/them-moi">
+                <ArrowLeft className="h-4 w-4" />
+              </Link>
+            </Button>
+            <h1 className="text-2xl font-bold tracking-tight text-primary">
+              Tạo văn bản đi mới - Gửi bên ngoài
+            </h1>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button
+              type="submit"
+              form="document-form"
+              disabled={isSubmitting}
+              className="bg-primary hover:bg-primary/90"
+            >
+              {isSubmitting ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="mr-2 h-4 w-4" />
+              )}
+              Gửi phê duyệt
+            </Button>
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form id="document-form" onSubmit={handleSubmit} className="space-y-6">
           {/* Basic Document Information */}
           <Card>
             <CardContent className="pt-6">
@@ -363,6 +415,127 @@ export default function CreateExternalOutgoingDocumentPage() {
                 </div>
               </div>
 
+              {/* New fields for OutgoingDocument */}
+              <div className="grid gap-6 md:grid-cols-3 mt-6">
+                <div className="space-y-2">
+                  <Label htmlFor="securityLevel">Độ mật</Label>
+                  <Select
+                    value={formData.securityLevel}
+                    onValueChange={(value) =>
+                      handleSelectChange("securityLevel", value)
+                    }
+                  >
+                    <SelectTrigger id="securityLevel">
+                      <SelectValue placeholder="Chọn độ mật" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="normal">Bình thường</SelectItem>
+                      <SelectItem value="confidential">Mật</SelectItem>
+                      <SelectItem value="secret">Tối mật</SelectItem>
+                      <SelectItem value="top_secret">Tuyệt mật</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="distributionType">Khối phát hành</Label>
+                  <Select
+                    value={formData.distributionType.toString()}
+                    onValueChange={(value) =>
+                      setFormData(prev => ({ ...prev, distributionType: parseInt(value) }))
+                    }
+                  >
+                    <SelectTrigger id="distributionType">
+                      <SelectValue placeholder="Chọn khối phát hành" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">Đi thường</SelectItem>
+                      <SelectItem value="2">Đi mật</SelectItem>
+                      <SelectItem value="3">Sổ sao</SelectItem>
+                      <SelectItem value="5">Đi đảng</SelectItem>
+                      <SelectItem value="10">Đi ban chỉ đạo</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="issuingAgency">Cơ quan ban hành</Label>
+                  <Input
+                    id="issuingAgency"
+                    name="issuingAgency"
+                    value={formData.issuingAgency}
+                    onChange={handleInputChange}
+                    placeholder="Nhập cơ quan ban hành"
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-6 md:grid-cols-4 mt-6">
+                <div className="space-y-2">
+                  <Label htmlFor="numberOfCopies">Số bản</Label>
+                  <Input
+                    id="numberOfCopies"
+                    name="numberOfCopies"
+                    type="number"
+                    min="1"
+                    value={formData.numberOfCopies}
+                    onChange={(e) => setFormData(prev => ({ ...prev, numberOfCopies: parseInt(e.target.value) || 1 }))}
+                    placeholder="Số bản"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="numberOfPages">Số tờ</Label>
+                  <Input
+                    id="numberOfPages"
+                    name="numberOfPages"
+                    type="number"
+                    min="1"
+                    value={formData.numberOfPages}
+                    onChange={(e) => setFormData(prev => ({ ...prev, numberOfPages: parseInt(e.target.value) || 1 }))}
+                    placeholder="Số tờ"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="processingDeadline">Hạn xử lý</Label>
+                  <Input
+                    id="processingDeadline"
+                    name="processingDeadline"
+                    type="date"
+                    value={formData.processingDeadline?.toISOString().split("T")[0] || ""}
+                    onChange={(e) => setFormData(prev => ({ 
+                      ...prev, 
+                      processingDeadline: e.target.value ? new Date(e.target.value) : null 
+                    }))}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Tùy chọn khác</Label>
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="isSecureTransmission"
+                        checked={formData.isSecureTransmission}
+                        onChange={(e) => setFormData(prev => ({ ...prev, isSecureTransmission: e.target.checked }))}
+                      />
+                      <Label htmlFor="isSecureTransmission">Chuyển bằng điện mật</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        id="noPaperCopy"
+                        checked={formData.noPaperCopy}
+                        onChange={(e) => setFormData(prev => ({ ...prev, noPaperCopy: e.target.checked }))}
+                      />
+                      <Label htmlFor="noPaperCopy">Không gửi bản giấy</Label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div className="grid gap-6 md:grid-cols-2 mt-6">
                 <div className="space-y-2">
                   <Label htmlFor="title">
@@ -417,60 +590,7 @@ export default function CreateExternalOutgoingDocumentPage() {
                 </div>
               </div>
 
-              <div className="space-y-2 mt-6">
-                <Label htmlFor="file">Tệp đính kèm</Label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    id="file"
-                    type="file"
-                    multiple
-                    onChange={handleFileChange}
-                    className="hidden"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => document.getElementById("file")?.click()}
-                  >
-                    <Paperclip className="mr-2 h-4 w-4" />
-                    Chọn tệp
-                  </Button>
-                  <span className="text-sm text-muted-foreground">
-                    {files.length > 0
-                      ? `Đã chọn ${files.length} tệp`
-                      : "Chưa có tệp nào được chọn"}
-                  </span>
-                </div>
-                {files.length > 0 && (
-                  <div className="mt-2 space-y-2">
-                    {files.map((file, index) => (
-                      <div
-                        key={index}
-                        className="flex items-center justify-between p-2 bg-gray-50 rounded-md"
-                      >
-                        <div className="flex items-center space-x-2">
-                          <Paperclip className="h-4 w-4 text-gray-500" />
-                          <span className="text-sm font-medium">
-                            {file.name}
-                          </span>
-                          <span className="text-xs text-gray-500">
-                            ({(file.size / 1024).toFixed(2)} KB)
-                          </span>
-                        </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleRemoveFile(index)}
-                          className="h-6 w-6 p-0"
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+
             </CardContent>
           </Card>
 
@@ -478,30 +598,26 @@ export default function CreateExternalOutgoingDocumentPage() {
           <div className="grid gap-6 lg:grid-cols-3">
             {/* Content Card - Takes 2 columns */}
             <div className="lg:col-span-2">
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="space-y-2">
+              <Card className="h-full">
+                <CardContent className="pt-6 h-full">
+                  <div className="space-y-2 h-full flex flex-col">
                     <Label htmlFor="content">Nội dung văn bản</Label>
-                    <RichTextEditor
-                      content={formData.content}
-                      onChange={handleRichTextChange("content")}
-                      placeholder="Nhập nội dung văn bản"
-                      minHeight="400px"
-                    />
+                    <div className="flex-1">
+                      <RichTextEditor
+                        content={formData.content}
+                        onChange={handleRichTextChange("content")}
+                        placeholder="Nhập nội dung văn bản"
+                        minHeight="200px"
+                      />
+                    </div>
                   </div>
                 </CardContent>
               </Card>
             </div>
 
             {/* Approval Card - Takes 1 column */}
-            <Card className="h-fit">
-              <CardHeader className="bg-primary/5 border-b">
-                <CardTitle className="flex items-center gap-2">
-                  <User className="h-5 w-5" />
-                  Thông tin phê duyệt
-                </CardTitle>
-                <CardDescription>Người soạn thảo và phê duyệt</CardDescription>
-              </CardHeader>
+            <Card className="h-full">
+             
               <CardContent className="pt-6">
                 <div className="space-y-4">
                   <div className="space-y-2">
@@ -562,35 +678,7 @@ export default function CreateExternalOutgoingDocumentPage() {
                     required
                   />
 
-                  <div className="space-y-2 pt-4">
-                    <Button
-                      type="submit"
-                      className="w-full"
-                      disabled={isSubmitting}
-                    >
-                      {isSubmitting ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <Send className="mr-2 h-4 w-4" />
-                      )}
-                      Gửi phê duyệt
-                    </Button>
-                    {/* 
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="w-full"
-                      onClick={handleSaveDraft}
-                      disabled={isSubmitting}
-                    >
-                      {isSubmitting ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <Save className="mr-2 h-4 w-4" />
-                      )}
-                      Lưu nháp
-                    </Button> */}
-                  </div>
+
                 </div>
               </CardContent>
             </Card>
@@ -598,15 +686,7 @@ export default function CreateExternalOutgoingDocumentPage() {
 
           {/* Notes Section */}
           <Card>
-            <CardHeader className="bg-primary/5 border-b">
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                Ghi chú
-              </CardTitle>
-              <CardDescription>
-                Thêm ghi chú cho người phê duyệt (nếu có)
-              </CardDescription>
-            </CardHeader>
+          
             <CardContent className="pt-6">
               <div className="space-y-2">
                 <Label htmlFor="note">Ghi chú</Label>
@@ -616,6 +696,66 @@ export default function CreateExternalOutgoingDocumentPage() {
                   placeholder="Nhập ghi chú cho người phê duyệt (nếu có)"
                   minHeight="120px"
                 />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* File Attachments Section */}
+          <Card>
+            <CardContent className="pt-6">
+              <div className="space-y-2">
+                <Label htmlFor="file">Tệp đính kèm</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="file"
+                    type="file"
+                    multiple
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => document.getElementById("file")?.click()}
+                  >
+                    <Paperclip className="mr-2 h-4 w-4" />
+                    Chọn tệp
+                  </Button>
+                  <span className="text-sm text-muted-foreground">
+                    {files.length > 0
+                      ? `Đã chọn ${files.length} tệp`
+                      : "Chưa có tệp nào được chọn"}
+                  </span>
+                </div>
+                {files.length > 0 && (
+                  <div className="mt-2 space-y-2">
+                    {files.map((file, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between p-2 bg-gray-50 rounded-md"
+                      >
+                        <div className="flex items-center space-x-2">
+                          <Paperclip className="h-4 w-4 text-gray-500" />
+                          <span className="text-sm font-medium">
+                            {file.name}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            ({(file.size / 1024).toFixed(2)} KB)
+                          </span>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveFile(index)}
+                          className="h-6 w-6 p-0"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

@@ -121,16 +121,17 @@ export default function DashboardPage() {
     setIsLoading(true);
     try {
       // Use the comprehensive dashboard stats API instead of multiple calls
-      const dashboardStatsResponse = await dashboardAPI.getDashboardStats();
+      const dashboardStatsResponse_ = await dashboardAPI.getDashboardStats();
 
-      console.log("Dashboard stats response:", dashboardStatsResponse);
+      const dashboardStatsResponse = dashboardStatsResponse_.data;
 
       // Fetch internal document stats separately to get detailed breakdown
       let internalStats = {};
       try {
-        const internalStatsResponse =
+        const internalStatsResponse_ =
           await dashboardAPI.getInternalDocumentStats();
-        console.log("Internal stats response:", internalStatsResponse);
+        const internalStatsResponse = internalStatsResponse_.data;
+       
 
         // Process internal stats to separate incoming and outgoing
         internalStats = {
@@ -273,7 +274,8 @@ export default function DashboardPage() {
 
       // If we still need schedule data, make a separate call
       try {
-        const scheduleResponse = await dashboardAPI.getTodayScheduleEvents();
+        const scheduleResponse_ = await dashboardAPI.getTodayScheduleEvents();
+        const scheduleResponse = scheduleResponse_.data;
         stats.todaySchedule = scheduleResponse;
       } catch (scheduleError) {
         console.warn("Could not fetch schedule data:", scheduleError);
@@ -530,7 +532,7 @@ export default function DashboardPage() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-2 md:space-y-0">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-primary">
-            {getGreeting()}, {user?.fullName}! 👋
+            {getGreeting()}, Đồng chí {user?.fullName}! 👋
           </h1>
           <div className="text-muted-foreground flex items-center gap-2">
             <User className="h-4 w-4" />

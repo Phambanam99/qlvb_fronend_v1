@@ -290,7 +290,8 @@ export default function AddIncomingDocumentPage() {
 
   // Handle document type creation
   const handleAddDocumentType = async () => {
-    const updatedTypes = await createDocumentType(documentTypes);
+    const updatedTypes_ = await createDocumentType(documentTypes);
+    const updatedTypes = updatedTypes_.data;
     if (updatedTypes) {
       // The document types are managed by the useDocumentForm hook
       // We don't need to set them manually as the hook will refresh them
@@ -388,8 +389,61 @@ export default function AddIncomingDocumentPage() {
       </nav>
 
       {/* Page Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-2">
+          <Button variant="outline" size="icon" asChild>
+            <Link href="/van-ban-den">
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          </Button>
+          <h1 className="text-2xl font-bold tracking-tight text-primary">
+            Thêm văn bản đến mới
+          </h1>
+        </div>
+        <div className="flex items-center space-x-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              // Reset form
+              if (
+                confirm(
+                  "Bạn có chắc muốn đặt lại form? Tất cả dữ liệu sẽ bị mất."
+                )
+              ) {
+                window.location.reload();
+              }
+            }}
+          >
+            Đặt lại
+          </Button>
+          <Button
+            type="submit"
+            form="document-form"
+            disabled={
+              isSubmitting ||
+              (documentPurpose === "NOTIFICATION" &&
+                notificationScope === "SPECIFIC_UNITS" &&
+                secondaryDepartments.length === 0)
+            }
+            className="bg-primary hover:bg-primary/90"
+          >
+            {isSubmitting ? (
+              <>
+                <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-background border-t-transparent" />
+                Đang lưu...
+              </>
+            ) : (
+              <>
+                <Save className="mr-2 h-4 w-4" />
+                Lưu văn bản
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
 
-      <form onSubmit={handleSubmit}>
+      <form id="document-form" onSubmit={handleSubmit}>
         <div className="grid gap-6 lg:grid-cols-2">
           {/* Document Information Card */}
           <Card className="bg-card">
@@ -613,70 +667,7 @@ export default function AddIncomingDocumentPage() {
           </Card>
         </div>
 
-        <div className="mt-6 flex flex-col sm:flex-row justify-between gap-4">
-          <div className="flex gap-2">
-            <Button type="button" variant="outline" asChild>
-              <Link href="/van-ban-den">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Hủy
-              </Link>
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => {
-                // Save as draft functionality
-                toast({
-                  title: "Thông báo",
-                  description: "Chức năng lưu nháp sẽ được cập nhật sớm",
-                });
-              }}
-            >
-              Lưu nháp
-            </Button>
-          </div>
 
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                // Reset form
-                if (
-                  confirm(
-                    "Bạn có chắc muốn đặt lại form? Tất cả dữ liệu sẽ bị mất."
-                  )
-                ) {
-                  window.location.reload();
-                }
-              }}
-            >
-              Đặt lại
-            </Button>
-            <Button
-              type="submit"
-              disabled={
-                isSubmitting ||
-                (documentPurpose === "NOTIFICATION" &&
-                  notificationScope === "SPECIFIC_UNITS" &&
-                  secondaryDepartments.length === 0)
-              }
-              className="bg-primary hover:bg-primary/90"
-            >
-              {isSubmitting ? (
-                <>
-                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-background border-t-transparent" />
-                  Đang lưu...
-                </>
-              ) : (
-                <>
-                  <Save className="mr-2 h-4 w-4" />
-                  Lưu văn bản
-                </>
-              )}
-            </Button>
-          </div>
-        </div>
       </form>
     </div>
   );

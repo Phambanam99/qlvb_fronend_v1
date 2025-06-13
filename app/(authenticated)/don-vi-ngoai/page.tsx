@@ -81,7 +81,8 @@ export default function SendersPage() {
   const fetchSenders = async () => {
     try {
       setLoading(true);
-      const data = await senderApi.getAllSenders();
+      const data_ = await senderApi.getAllSenders();
+      const data = data_.data;
       setSenders(data);
     } catch (error) {
       console.error("Error fetching senders:", error);

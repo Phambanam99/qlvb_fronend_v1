@@ -53,6 +53,8 @@ export default function LoginPage() {
     try {
       // Đăng nhập và đợi cho đến khi hoàn tất
       const loginResult = await login(username, password, rememberMe);
+      
+      console.log("loginResult", loginResult);
 
       if (loginResult === true) {
         toast({

@@ -55,7 +55,8 @@ export default function ApproveSchedulePage({
         setIsLoading(true);
 
         // Fetch schedule details
-        const response = await schedulesAPI.getScheduleById(scheduleId);
+        const response_ = await schedulesAPI.getScheduleById(scheduleId);
+        const response = response_.data;
         setSchedule(response);
         setError(null);
       } catch (err: any) {

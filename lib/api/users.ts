@@ -10,6 +10,7 @@ export interface UserDTO {
   departmentName?: string;
   isActive?: boolean;
   statusDisplayName?: string;
+  email?: string;
   roles: string[];
   roleId: number;
   createdAt: string;

@@ -78,7 +78,8 @@ export default function RoleDetailPage({ params }: { params: { id: string } }) {
     const fetchRoleData = async () => {
       try {
         setLoading(true);
-        const roleData = await rolesAPI.getRoleById(roleId);
+        const roleData_ = await rolesAPI.getRoleById(roleId);
+        const roleData = roleData_.data;
         setRole(roleData);
 
         // Cập nhật form với dữ liệu vai trò

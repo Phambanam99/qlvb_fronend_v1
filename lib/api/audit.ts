@@ -25,6 +25,7 @@ export const auditAPI = {
     const response = await api.get("/audit", {
       params: { page, size },
     })
+ 
     return response.data
   },
 

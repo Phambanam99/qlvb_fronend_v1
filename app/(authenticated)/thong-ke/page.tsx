@@ -146,7 +146,8 @@ export default function DashboardPage() {
         dashboardAPI.getRecentDocuments().catch(() => [])
       );
 
-      const results = await Promise.all(promises);
+      const results_ = await Promise.all(promises);
+      const results = results_.map((result) => result.data);
 
       const stats: DashboardStats = {
         userStats: results[0],

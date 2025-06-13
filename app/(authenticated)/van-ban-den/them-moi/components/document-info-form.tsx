@@ -51,6 +51,13 @@ interface DocumentInfoFormProps {
   securityLevel: string;
   setSecurityLevel: (value: string) => void;
 
+  // New fields for IncomingDocument
+  receiptNumber?: string;
+  setReceiptNumber?: (value: string) => void;
+  processingOfficerId?: string;
+  setProcessingOfficerId?: (value: string) => void;
+  processingOfficers?: any[];
+
   // Files
   files: File[];
   handleFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -106,6 +113,11 @@ export function DocumentInfoForm({
   setUrgencyLevel,
   securityLevel,
   setSecurityLevel,
+  receiptNumber,
+  setReceiptNumber,
+  processingOfficerId,
+  setProcessingOfficerId,
+  processingOfficers = [],
   files,
   handleFileChange,
   handleRemoveFile,
@@ -197,6 +209,48 @@ export function DocumentInfoForm({
             required
           />
         </div>
+
+        {/* Số thu - Receipt Number */}
+        {setReceiptNumber && (
+          <div className="space-y-2">
+            <Label htmlFor="receiptNumber">Số thu</Label>
+            <Input
+              id="receiptNumber"
+              name="receiptNumber"
+              value={receiptNumber || ""}
+              onChange={(e) => setReceiptNumber(e.target.value)}
+              placeholder="Nhập số thu"
+            />
+          </div>
+        )}
+
+        {/* Cán bộ xử lý - Processing Officer */}
+        {setProcessingOfficerId && (
+          <div className="space-y-2">
+            <Label htmlFor="processingOfficer">Cán bộ xử lý</Label>
+            <Select
+              value={processingOfficerId || ""}
+              onValueChange={setProcessingOfficerId}
+            >
+              <SelectTrigger id="processingOfficer" name="processingOfficer">
+                <SelectValue placeholder="Chọn cán bộ xử lý" />
+              </SelectTrigger>
+              <SelectContent>
+                {processingOfficers.length === 0 ? (
+                  <SelectItem value="empty" disabled>
+                    Không có cán bộ nào
+                  </SelectItem>
+                ) : (
+                  processingOfficers.map((officer) => (
+                    <SelectItem key={officer.id} value={officer.id.toString()}>
+                      {officer.fullName || officer.name} - {officer.position || 'Chưa có chức danh'}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         {/* Sender Selection */}
         <div className="space-y-2">

@@ -66,7 +66,8 @@ export default function CreateWorkPlanPage() {
         setIsLoading(true);
 
         // Fetch departments
-        const departmentsData = await departmentsAPI.getAllDepartments();
+        const departmentsData_ = await departmentsAPI.getAllDepartments();
+        const departmentsData = departmentsData_.data;
         console.log("API departments response:", departmentsData); // Log để debug
 
         // Kiểm tra và xử lý nhiều trường hợp cấu trúc dữ liệu
@@ -82,7 +83,8 @@ export default function CreateWorkPlanPage() {
         }
 
         // Fetch users
-        const usersData = await usersAPI.getAllUsers();
+        const usersData_ = await usersAPI.getAllUsers();
+        const usersData = usersData_.data;
         console.log("API users response:", usersData); // Log để debug
 
         // Thêm log để xem cấu trúc dữ liệu người dùng
@@ -209,7 +211,9 @@ export default function CreateWorkPlanPage() {
         })),
       };
 
-      const response = await workPlansAPI.createWorkPlan(workPlanData);
+      const response_ = await workPlansAPI.createWorkPlan(workPlanData);
+      const response = response_.data;
+
 
       toast({
         title: "Thành công",

@@ -54,7 +54,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { useIncomingDocuments } from "@/lib/store";
 import { useAuth } from "@/lib/auth-context";
 import { IncomingDocumentDTO } from "@/lib/api";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useHierarchicalDepartments } from "@/hooks/use-hierarchical-departments";
 import {
   getReceivedDocumentsExcludingSent,
@@ -71,7 +71,7 @@ import { incomingExternalReadStatus } from "@/lib/api/documentReadStatus";
 import { InternalDocument, InternalDocumentDetail, DocumentHistory,
   DocumentStats,
 } from "@/lib/api/internalDocumentApi";
-
+import { documentReadStatusAPI } from "@/lib/api/documentReadStatus";
 // Role có quyền xem toàn bộ văn bản
 const FULL_ACCESS_ROLES = [
   "ROLE_ADMIN",
@@ -228,6 +228,7 @@ export default function IncomingDocumentsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [activeTab, setActiveTab] = useState("internal");
+  const searchParams = useSearchParams();
   const [processingStatusTab, setProcessingStatusTab] =
     useState("not_processed"); // Tab con cho trạng thái xử lý
   const [internalDocuments, setInternalDocuments] = useState<
@@ -280,6 +281,14 @@ export default function IncomingDocumentsPage() {
 
   // Use simplified status tabs instead of complex role-based logic
   const userProcessingStatus = SIMPLE_STATUS_TABS;
+
+  // Handle URL parameters to set initial tab
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam === 'internal' || tabParam === 'external') {
+      setActiveTab(tabParam);
+    }
+  }, [searchParams]);
 
   // Kiểm tra người dùng có quyền xem tất cả không
   const hasFullAccess = FULL_ACCESS_ROLES.some((role) => hasRole(role));
@@ -402,7 +411,8 @@ export default function IncomingDocumentsPage() {
         size,
       });
 
-      const response = await getReceivedDocumentsExcludingSent(page, size);
+      const response_ = await getReceivedDocumentsExcludingSent(page, size);
+      const response = response_.data;
 
       if (response && response.content) {
         console.log("Internal received documents response:", response);
@@ -465,7 +475,8 @@ export default function IncomingDocumentsPage() {
         userDepartmentId: user?.departmentId,
       });
 
-      const response = await incomingDocumentsAPI.getAllDocuments(page, size);
+      const response_ = await incomingDocumentsAPI.getAllDocuments(page, size);
+      const response = response_.data;
 
       console.log("API Response:", response);
 
@@ -896,7 +907,7 @@ export default function IncomingDocumentsPage() {
       if (!currentReadStatus) {
         try {
           await markDocumentAsRead(doc.id);
-
+          await documentReadStatusAPI.markAsRead(doc.id, "INCOMING_INTERNAL");
           // Update document in the local state to reflect the change
           setInternalDocuments((prevDocs) =>
             prevDocs.map((d) =>

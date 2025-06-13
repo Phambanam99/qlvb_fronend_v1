@@ -63,7 +63,8 @@ export default function SettingsPage() {
     const fetchSettings = async () => {
       try {
         setIsLoading(true);
-        const response = await settingsAPI.getSettings();
+        const response_ = await settingsAPI.getSettings();
+        const response = response_.data;
         setSettings(response);
       } catch (error) {
         console.error("Error fetching settings:", error);

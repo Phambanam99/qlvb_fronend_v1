@@ -1,5 +1,9 @@
 // Common types used across API services
-
+export interface ResponseDTO<T> {
+  success: boolean;
+  message: string;
+  data: T;
+}
 export interface Pageable {
   page: number;
   size: number;
@@ -110,10 +114,10 @@ export interface ApiError {
   timestamp: string;
   path: string;
 }
-
 export interface ApiResponse<T> {
   success: boolean;
   data?: T;
   error?: ApiError;
   message?: string;
 }
+

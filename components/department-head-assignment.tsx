@@ -83,7 +83,8 @@ export default function DepartmentHeadAssignment({
 
       try {
         setIsLoadingChildDepts(true);
-        const childDepts = await workflowAPI.getChildDepartments(departmentId);
+        const childDepts_ = await workflowAPI.getChildDepartments(departmentId);
+        const childDepts = childDepts_.data;
         setChildDepartments(Array.isArray(childDepts) ? childDepts : []);
         setHasChildDepts(Array.isArray(childDepts) && childDepts.length > 0);
       } catch (error) {
@@ -113,7 +114,8 @@ export default function DepartmentHeadAssignment({
       try {
         setIsLoadingStaff(true);
         console.log("Fetching staff for department:", departmentId);
-        const staffData = await usersAPI.getUsersByDepartmentId(departmentId);
+        const staffData_ = await usersAPI.getUsersByDepartmentId(departmentId);
+        const staffData = staffData_.data;
         console.log("Staff data received:", staffData);
         setDepartmentStaff(staffData);
       } catch (error) {

@@ -200,7 +200,8 @@ export default function OutgoingDocumentForm({
         setIsLoading(true);
 
         // 1. Lấy danh sách phòng ban
-        const departmentsData = await departmentsAPI.getAllDepartments();
+        const departmentsData_ = await departmentsAPI.getAllDepartments();
+        const departmentsData = departmentsData_.data;
         if (isMounted) {
           setDepartments(departmentsData.content || []);
         }
@@ -208,24 +209,27 @@ export default function OutgoingDocumentForm({
         // 2. Lấy danh sách người phê duyệt
         if (user?.departmentId) {
           try {
-            const department = await departmentsAPI.getDepartmentById(
+            const department_ = await departmentsAPI.getDepartmentById(
               user.departmentId
             );
+            const department = department_.data;
 
             // Lấy danh sách người dùng có vai trò lãnh đạo trong phòng ban
-            const usersResponse = await usersAPI.getUserForApproval(
+            const usersResponse_ = await usersAPI.getUserForApproval(
               user.id || 0
             );
+            const usersResponse = usersResponse_.data;
+
             console.log("check", usersResponse);
             const leaderUsers = usersResponse;
 
             // Lấy danh sách người dùng có vai trò lãnh đạo cấp cao
-            const seniorLeadersResponse =
+            const seniorLeadersResponse_ =
               await usersAPI.getUsersByRoleAndDepartment(
                 ["ROLE_SENIOR_LEADER"],
                 0 // 0 để lấy tất cả phòng ban
               );
-
+            const seniorLeadersResponse = seniorLeadersResponse_.data;
             // Kết hợp hai danh sách
             const allApprovers = [...leaderUsers, ...seniorLeadersResponse];
 
@@ -245,11 +249,12 @@ export default function OutgoingDocumentForm({
 
         // 3. Nếu là chế độ chỉnh sửa, lấy dữ liệu văn bản
         if (mode === "edit" && documentId) {
-          const [documentData, history] = await Promise.all([
+          const [documentData_, history_] = await Promise.all([
             outgoingDocumentsAPI.getOutgoingDocumentById(documentId),
             workflowAPI.getDocumentHistory(documentId),
           ]);
-
+          const documentData = documentData_.data;
+          const history = history_.data;
           if (!isMounted) return;
 
           // Tạo document mới với cả dữ liệu và history
@@ -415,10 +420,10 @@ export default function OutgoingDocumentForm({
         router.push(`/van-ban-di/${documentId}`);
       } else {
         // Gọi API tạo văn bản mới
-        const response = await outgoingDocumentsAPI.createOutgoingDocument(
+        const response_ = await outgoingDocumentsAPI.createOutgoingDocument(
           formDataToSubmit
         );
-
+        const response = response_.data;
         toast({
           title: "Thành công",
           description: "Văn bản đã được tạo và gửi phê duyệt",
@@ -513,10 +518,10 @@ export default function OutgoingDocumentForm({
         }
 
         // Gọi API tạo văn bản nháp
-        const response = await outgoingDocumentsAPI.createOutgoingDocument(
+        const response_ = await outgoingDocumentsAPI.createOutgoingDocument(
           formDataToSubmit
         );
-
+        const response = response_.data;
         toast({
           title: "Thành công",
           description: "Văn bản đã được lưu nháp",

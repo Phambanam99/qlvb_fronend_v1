@@ -39,6 +39,13 @@ import { useAuth } from "@/lib/auth-context";
 import {
   getDocumentById,
   downloadAttachment,
+  getInternalDocumentHistory,
+  getDocumentStats,
+  getDocumentReplies,
+  getDocumentReaders,
+  getDocumentReadStatistics,
+  DocumentHistory,
+  DocumentStats,
 } from "@/lib/api/internalDocumentApi";
 import { useDocumentReadStatus } from "@/hooks/use-document-read-status";
 import { downloadPdfWithWatermark, isPdfFile } from "@/lib/utils/pdf-watermark";
@@ -58,6 +65,21 @@ export default function InternalDocumentDetailPage() {
     null
   );
   const [loading, setLoading] = useState(true);
+  
+  // Add state for history, stats, and replies
+  const [documentHistory, setDocumentHistory] = useState<DocumentHistory[]>([]);
+  const [documentStats, setDocumentStats] = useState<DocumentStats | null>(null);
+  const [documentReplies, setDocumentReplies] = useState<InternalDocumentDetail[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [loadingStats, setLoadingStats] = useState(false);
+  
+  // Add state for recipients visibility
+  const [showAllRecipients, setShowAllRecipients] = useState(false);
+  const RECIPIENTS_PREVIEW_COUNT = 5; // Show first 5 recipients by default
+  
+  // Add state for history visibility
+  const [showAllHistory, setShowAllHistory] = useState(false);
+  const HISTORY_PREVIEW_COUNT = 5; // Show first 5 history entries by default
 
   const documentId = params.id as string;
 
@@ -65,9 +87,12 @@ export default function InternalDocumentDetailPage() {
     const fetchDocument = async () => {
       try {
         setLoading(true);
-        const response = await getDocumentById(Number(documentId));
+        const response_ = await getDocumentById(Number(documentId));
+        const response = response_.data;
         setDocument(response);
         console.log("Debug document:", response);
+        console.log("Drafting department:", response.draftingDepartment);
+        console.log("Sender department:", response.senderDepartment);
         if (response && response.isRead) {
           globalMarkAsRead(Number(documentId));
         }
@@ -88,19 +113,64 @@ export default function InternalDocumentDetailPage() {
     }
   }, [documentId, toast, globalMarkAsRead]);
 
-  const formatDate = (dateString: string) => {
-    try {
-      if (!dateString) return "-";
+  // Fetch history, stats, and replies data
+  useEffect(() => {
+    const fetchHistoryAndStats = async () => {
+      if (!documentId || !_document) return;
 
-      const date = new Date(dateString);
+      try {
+        // Fetch history
+        setLoadingHistory(true);
+        const historyResponse_ = await getInternalDocumentHistory(
+          Number(documentId)
+        );
+        // Handle ResponseDTO format: extract data from response
+        const historyResponse = historyResponse_?.data?.data || historyResponse_?.data || [];
+        console.log("Debug history:", historyResponse);
+        setDocumentHistory(historyResponse || []);
 
-      // Check if date is valid and not the epoch (1970-01-01)
-      if (isNaN(date.getTime()) || date.getFullYear() === 1970) {
-        return "Chưa xác định";
+        // Fetch stats
+        setLoadingStats(true);
+        const statsResponse_ = await getDocumentStats(Number(documentId));
+        // Handle ResponseDTO format: extract data from response
+        const statsResponse = statsResponse_?.data?.data || statsResponse_?.data || null;
+        console.log("Debug stats:", statsResponse);
+        setDocumentStats(statsResponse);
+
+        // Fetch replies
+        const repliesResponse_ = await getDocumentReplies(Number(documentId));
+        // Handle ResponseDTO format: extract data from response
+        const repliesResponse = repliesResponse_?.data?.data || repliesResponse_?.data || [];
+        console.log("Debug replies:", repliesResponse);
+        setDocumentReplies(repliesResponse || []);
+      } catch (error) {
+        console.error("Error fetching document history/stats:", error);
+        // Fallback to empty data if API not available
+        setDocumentHistory([]);
+        setDocumentStats(null);
+        setDocumentReplies([]);
+      } finally {
+        setLoadingHistory(false);
+        setLoadingStats(false);
       }
+    };
 
-      return date.toLocaleString("vi-VN");
-    } catch {
+         fetchHistoryAndStats();
+   }, [documentId, _document]);
+
+   const formatDate = (dateString: string) => {
+     try {
+       if (!dateString) return "-";
+
+       const date = new Date(dateString);
+
+       // Check if date is valid and not the epoch (1970-01-01)
+       if (isNaN(date.getTime()) || date.getFullYear() === 1970) {
+         return "Chưa xác định";
+       }
+
+       return date.toLocaleString("vi-VN");
+     } catch {
       return "Chưa xác định";
     }
   };
@@ -156,10 +226,11 @@ export default function InternalDocumentDetailPage() {
     contentType?: string
   ) => {
     try {
-      const response = await downloadAttachment(
+      const response_ = await downloadAttachment(
         Number(documentId),
         attachmentId
       );
+      const response = response_.data;
 
       const pdfBlob = response.data;
 
@@ -208,6 +279,37 @@ export default function InternalDocumentDetailPage() {
     }
   };
 
+  // Helper functions for action icons and display names
+  const getActionIcon = (action: string) => {
+    switch (action) {
+      case "CREATED":
+        return <FileText className="h-4 w-4 text-blue-500" />;
+      case "REPLIED":
+        return <MessageSquare className="h-4 w-4 text-green-500" />;
+      case "READ":
+        return <Eye className="h-4 w-4 text-gray-500" />;
+      case "ATTACHMENT_ADDED":
+        return <Paperclip className="h-4 w-4 text-purple-500" />;
+      default:
+        return <Clock className="h-4 w-4 text-gray-400" />;
+    }
+  };
+
+  const getActionDisplayName = (action: string) => {
+    switch (action) {
+      case "CREATED":
+        return "Tạo văn bản";
+      case "REPLIED":
+        return "Trả lời";
+      case "READ":
+        return "Đọc văn bản";
+      case "ATTACHMENT_ADDED":
+        return "Đính kèm file";
+      default:
+        return action;
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex h-[80vh] items-center justify-center">
@@ -243,28 +345,27 @@ export default function InternalDocumentDetailPage() {
     <div className="container mx-auto py-6 space-y-8">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <Button variant="outline" size="icon" asChild>
+        <div className="flex items-center gap-4">
+          <Button variant="outline" asChild>
             <Link href="/van-ban-di">
-              <ArrowLeft className="h-4 w-4" />
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Quay lại danh sách
             </Link>
           </Button>
-          <div className="space-y-1">
-            <h1 className="text-2xl font-bold tracking-tight text-primary">
-              Chi tiết văn bản nội bộ
-            </h1>
-            <p className="text-muted-foreground">
-              Thông tin chi tiết của văn bản {_document.documentNumber}
-            </p>
+
+          <div className="flex items-center space-x-4">
+            <h1 className="text-2xl font-bold">Chi tiết văn bản nội bộ</h1>
           </div>
         </div>
-
-        <div className="flex items-center space-x-2">
-          {/* Document Read Status */}
+        
+        {/* Add Document Read Stats and Readers Dialog */}
+        <div className="flex items-center gap-2">
           <DocumentReadStats
             documentId={Number(documentId)}
             documentType="OUTGOING_INTERNAL"
-            onGetStatistics={outgoingInternalReadStatus.getStatistics}
+            onGetStatistics={(docId) =>
+              getDocumentReadStatistics(docId)
+            }
             variant="compact"
             className="mr-4"
           />
@@ -273,9 +374,13 @@ export default function InternalDocumentDetailPage() {
           <DocumentReadersDialog
             documentId={Number(documentId)}
             documentType="OUTGOING_INTERNAL"
-            documentTitle={_document.title}
-            onGetReaders={outgoingInternalReadStatus.getReaders}
-            onGetStatistics={outgoingInternalReadStatus.getStatistics}
+            documentTitle={_document?.title}
+            onGetReaders={(docId) =>
+              getDocumentReaders(docId)
+            }
+            onGetStatistics={(docId) =>
+              getDocumentReadStatistics(docId)
+            }
           />
         </div>
       </div>
@@ -303,7 +408,7 @@ export default function InternalDocumentDetailPage() {
                   <label className="text-sm font-medium text-muted-foreground">
                     Loại văn bản
                   </label>
-                  <p className="font-medium">{_document.documentType}</p>
+                  <p className="font-medium">{_document.documentType || "Chưa xác định"}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">
@@ -323,6 +428,119 @@ export default function InternalDocumentDetailPage() {
                     )  : (
                       <Badge variant="outline">Chưa xác định</Badge>
                     )}
+                  </div>
+                </div>
+              </div>
+
+        
+
+              {/* Debug Info - Remove after fixing */}
+              {/* <div>
+                <h4 className="text-lg font-semibold mb-4 text-red-600">Debug Info (Remove Later)</h4>
+                <div className="bg-gray-100 p-4 rounded mb-4 text-xs">
+                  <p><strong>draftingDepartment:</strong> {JSON.stringify(_document.draftingDepartment)}</p>
+                  <p><strong>senderDepartment:</strong> {_document.senderDepartment}</p>
+                  <p><strong>securityLevel:</strong> {_document.securityLevel}</p>
+                  <p><strong>documentSigner:</strong> {JSON.stringify(_document.documentSigner)}</p>
+                </div>
+              </div> */}
+
+              {/* Additional Information Section */}
+              <div>
+               
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">
+                      Đơn vị soạn thảo
+                    </label>
+                    <p className="font-medium">
+                      {_document.draftingDepartment?.name || _document.senderDepartment || "Chưa xác định"}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">
+                      Độ mật
+                    </label>
+                    <p className="font-medium">
+                      {_document.securityLevel === 'NORMAL' && 'Thường'}
+                      {_document.securityLevel === 'CONFIDENTIAL' && 'Mật'}
+                      {_document.securityLevel === 'SECRET' && 'Tối mật'}
+                      {_document.securityLevel === 'TOP_SECRET' && 'Tuyệt mật'}
+                      {!_document.securityLevel && 'Chưa xác định'}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">
+                      Người ký duyệt
+                    </label>
+                    <p className="font-medium">{_document.documentSigner?.fullName || "Chưa xác định"}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">
+                      Hạn xử lý
+                    </label>
+                    <p className="font-medium">
+                      {_document.processingDeadline ? formatDateOnly(_document.processingDeadline) : "Chưa xác định"}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">
+                      Cơ quan ban hành
+                    </label>
+                    <p className="font-medium">{_document.issuingAgency || "Chưa xác định"}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">
+                      Khối phân phối
+                    </label>
+                    <p className="font-medium">
+                      {_document.distributionType === 'REGULAR' && 'Đi thường'}
+                      {_document.distributionType === 'CONFIDENTIAL' && 'Đi mật'}
+                      {_document.distributionType === 'COPY_BOOK' && 'Sổ sao'}
+                      {_document.distributionType === 'PARTY' && 'Đi đảng'}
+                      {_document.distributionType === 'STEERING_COMMITTEE' && 'Đi ban chỉ đạo'}
+                      {!_document.distributionType && 'Chưa xác định'}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">
+                      Số bản sao
+                    </label>
+                    <p className="font-medium">{_document.numberOfCopies || "Chưa xác định"}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">
+                      Số trang
+                    </label>
+                    <p className="font-medium">{_document.numberOfPages || "Chưa xác định"}</p>
+                  </div>
+                </div>
+
+                {/* Additional checkboxes info */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">
+                      Chuyển bằng điện mật
+                    </label>
+                    <div className="font-medium">
+                      {_document.isSecureTransmission ? (
+                        <Badge variant="default">Có</Badge>
+                      ) : (
+                        <Badge variant="outline">Không</Badge>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">
+                      Không gửi bản giấy
+                    </label>
+                    <div className="font-medium">
+                      {_document.noPaperCopy ? (
+                        <Badge variant="default">Có</Badge>
+                      ) : (
+                        <Badge variant="outline">Không</Badge>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -362,54 +580,166 @@ export default function InternalDocumentDetailPage() {
             </CardContent>
           </Card>
 
-          {/* Recipients */}
+          
+
+          {/* Interaction History */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                Danh sách người nhận ({_document.recipients.length})
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-5 w-5" />
+                  Lịch sử tương tác
+                  {documentStats ? (
+                    <Badge variant="outline" className="ml-2">
+                      {documentStats.historyCount} hoạt động
+                    </Badge>
+                  ) : documentHistory.length > 0 && (
+                    <Badge variant="outline" className="ml-2">
+                      {documentHistory.length} hoạt động
+                    </Badge>
+                  )}
+                </div>
+                {documentHistory.length > HISTORY_PREVIEW_COUNT && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowAllHistory(!showAllHistory)}
+                  >
+                    {showAllHistory ? "Thu gọn" : `Xem tất cả (${documentHistory.length})`}
+                  </Button>
+                )}
               </CardTitle>
+              <CardDescription>
+                Theo dõi các hoạt động và tương tác với văn bản
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Đơn vị</TableHead>
-                    <TableHead>Người nhận</TableHead>
-                    <TableHead>Trạng thái</TableHead>
-                    <TableHead>Thời gian nhận</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {_document.recipients.map((recipient) => (
-                    <TableRow key={recipient.id}>
-                      <TableCell className="font-medium">
-                        {recipient.departmentName}
-                      </TableCell>
-                      <TableCell>
-                        {recipient.userName || "Toàn bộ đơn vị"}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={recipient.isRead ? "default" : "outline"}
-                        >
-                          {recipient.isRead ? "Đã đọc" : "Chưa đọc"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {formatDate(recipient.receivedAt)}
-                        {recipient.readAt && (
-                          <div className="text-sm text-muted-foreground">
-                            Đọc: {formatDate(recipient.readAt)}
-                          </div>
+              {loadingHistory ? (
+                <div className="flex items-center justify-center p-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  <span className="ml-2 text-sm text-muted-foreground">
+                    Đang tải lịch sử...
+                  </span>
+                </div>
+              ) : documentHistory.length > 0 ? (
+                <div className="space-y-4">
+                  {(showAllHistory 
+                    ? documentHistory 
+                    : documentHistory.slice(0, HISTORY_PREVIEW_COUNT)
+                  ).map((entry, index) => (
+                    <div
+                      key={entry.id || index}
+                      className="flex items-start space-x-3 border-l-2 border-gray-200 pl-4 pb-4 last:pb-0"
+                    >
+                      <div className="flex-shrink-0 mt-1">
+                        {getActionIcon(entry.action)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-medium text-gray-900">
+                            {entry.details}
+                          </p>
+                          <time className="text-sm text-gray-500">
+                            {formatDate(entry.performedAt)}
+                          </time>
+                        </div>
+                        <p className="text-sm text-gray-500">
+                          Bởi: {entry.performedByName || "Hệ thống"}
+                        </p>
+                        {entry.details && (
+                          <p className="text-sm text-gray-600 mt-1">
+                            {entry.details}
+                          </p>
                         )}
-                      </TableCell>
-                    </TableRow>
+                      </div>
+                    </div>
                   ))}
-                </TableBody>
-              </Table>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <Clock className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-500">Chưa có lịch sử tương tác nào</p>
+                </div>
+              )}
+              
+              {/* Show hidden count when collapsed */}
+              {!showAllHistory && documentHistory.length > HISTORY_PREVIEW_COUNT && (
+                <div className="mt-4 text-center">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowAllHistory(true)}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    + {documentHistory.length - HISTORY_PREVIEW_COUNT} hoạt động khác
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
+
+          {/* Document Replies */}
+          {documentReplies && documentReplies.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <MessageSquare className="h-5 w-5" />
+                  Văn bản trả lời ({documentReplies.length})
+                </CardTitle>
+                <CardDescription>
+                  Danh sách các văn bản trả lời cho văn bản này
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {documentReplies.map((reply) => (
+                    <div
+                      key={reply.id}
+                      className="border rounded-lg p-4 hover:bg-gray-50"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <h4 className="font-medium text-sm">
+                              {reply.documentNumber}
+                            </h4>
+                            {reply.priority && getPriorityBadge(reply.priority)}
+                            {getStatusBadge(reply.status)}
+                          </div>
+                          <h5 className="font-semibold text-base mb-2">
+                            {reply.title}
+                          </h5>
+                          {reply.summary && (
+                            <p
+                              className="text-sm text-gray-600 mb-2 line-clamp-2"
+                              dangerouslySetInnerHTML={{
+                                __html: reply.summary,
+                              }}
+                            ></p>
+                          )}
+                          <div className="flex items-center gap-4 text-xs text-gray-500">
+                            <span>
+                              <User className="h-3 w-3 inline mr-1" />
+                              {reply.senderName}
+                            </span>
+                            <span>
+                              <Calendar className="h-3 w-3 inline mr-1" />
+                              {formatDate(reply.createdAt)}
+                            </span>
+                          </div>
+                        </div>
+                        <Button variant="outline" size="sm" asChild>
+                          <Link href={`/van-ban-di/noi-bo/${reply.id}`}>
+                            Xem chi tiết
+                          </Link>
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Attachments */}
           {_document.attachments.length > 0 && (
@@ -493,15 +823,7 @@ export default function InternalDocumentDetailPage() {
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <User className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm font-medium">Người ký</p>
-                    <p className="text-sm text-muted-foreground">
-                      {_document.signer}
-                    </p>
-                  </div>
-                </div>
+                
 
                 <div className="flex items-center gap-2">
                   <Building className="h-4 w-4 text-muted-foreground" />
@@ -576,6 +898,67 @@ export default function InternalDocumentDetailPage() {
                   Trả lời văn bản
                 </Link>
               </Button>
+            </CardContent>
+          </Card>
+          {/* Recipients */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  Danh sách người nhận ({_document.recipients.length})
+                </div>
+                {_document.recipients.length > RECIPIENTS_PREVIEW_COUNT && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowAllRecipients(!showAllRecipients)}
+                  >
+                    {showAllRecipients ? "Thu gọn" : `Xem tất cả (${_document.recipients.length})`}
+                  </Button>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Đơn vị</TableHead>
+                    <TableHead>Người nhận</TableHead>
+                   
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(showAllRecipients 
+                    ? _document.recipients 
+                    : _document.recipients.slice(0, RECIPIENTS_PREVIEW_COUNT)
+                  ).map((recipient) => (
+                    <TableRow key={recipient.id}>
+                      <TableCell className="font-medium">
+                        {recipient.departmentName}
+                      </TableCell>
+                      <TableCell>
+                        {recipient.userName || "Toàn bộ đơn vị"}
+                      </TableCell>
+                   
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              
+              {/* Show hidden count when collapsed */}
+              {!showAllRecipients && _document.recipients.length > RECIPIENTS_PREVIEW_COUNT && (
+                <div className="mt-4 text-center">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowAllRecipients(true)}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    + {_document.recipients.length - RECIPIENTS_PREVIEW_COUNT} người nhận khác
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

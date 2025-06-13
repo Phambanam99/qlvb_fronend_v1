@@ -56,10 +56,11 @@ export default function ParentDepartmentReview({
     const fetchData = async () => {
       try {
         setLoading(true);
-        const documentData = await outgoingDocumentsAPI.getOutgoingDocumentById(
+        const documentData_ = await outgoingDocumentsAPI.getOutgoingDocumentById(
           documentId
         );
-        setDocument(documentData.data);
+        const documentData = documentData_.data;
+        setDocument(documentData);
       } catch (error) {
         console.error("Error fetching document data:", error);
         toast({
@@ -88,7 +89,8 @@ export default function ParentDepartmentReview({
           return;
         }
 
-        const parentDept = await workflowAPI.getParentDepartment(deptId);
+        const parentDept_ = await workflowAPI.getParentDepartment(deptId);
+        const parentDept = parentDept_.data;
         setParentDepartment(parentDept);
       } catch (error) {
         console.error("Error checking parent department:", error);

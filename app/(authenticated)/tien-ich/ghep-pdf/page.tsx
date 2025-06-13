@@ -59,6 +59,7 @@ export default function MergePDFPage() {
         try {
           // Get page count
           const arrayBuffer = await file.arrayBuffer();
+
           const pdfDoc = await PDFDocument.load(arrayBuffer);
           const pageCount = pdfDoc.getPageCount();
 
@@ -151,6 +152,7 @@ export default function MergePDFPage() {
 
     try {
       const mergedPdf = await PDFDocument.create();
+ 
 
       for (const pdfFile of pdfFiles) {
         const arrayBuffer = await pdfFile.file.arrayBuffer();

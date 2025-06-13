@@ -38,7 +38,8 @@ export default function ScheduleDetailPage({
   const fetchRelatedSchedules = async () => {
     try {
       // Since getRelatedSchedules doesn't exist, we'll use getAllSchedules and filter
-      const allSchedules = await schedulesAPI.getAllSchedules();
+      const allSchedules_ = await schedulesAPI.getAllSchedules();
+      const allSchedules = allSchedules_.data;
       // Filter schedules that might be related (this is a workaround)
       const related = allSchedules
         .filter(
@@ -59,7 +60,8 @@ export default function ScheduleDetailPage({
     const fetchScheduleData = async () => {
       try {
         setIsLoading(true);
-        const scheduleData = await schedulesAPI.getScheduleById(scheduleId);
+        const scheduleData_ = await schedulesAPI.getScheduleById(scheduleId);
+        const scheduleData = scheduleData_.data;
         setSchedule(scheduleData);
         setIsLoading(false);
       } catch (error: any) {

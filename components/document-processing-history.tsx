@@ -30,8 +30,8 @@ export default function DocumentProcessingHistory({ documentId }: DocumentProces
         setError(null)
         
         // Gọi API để lấy lịch sử xử lý văn bản
-        const response = await workflowAPI.getDocumentHistory(documentId)
-        
+        const response_ = await workflowAPI.getDocumentHistory(documentId)
+        const response = response_.data;
         // Chuyển đổi dữ liệu API thành định dạng hiển thị
         const formattedHistory = response.map((item: any) => ({
           id: item.id,

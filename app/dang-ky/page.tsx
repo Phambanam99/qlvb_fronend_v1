@@ -66,7 +66,8 @@ export default function RegisterPage() {
         // Load departments
         try {
           console.log("Đang tải dữ liệu phòng ban...");
-          const departmentsData = await departmentsAPI.getAllDepartments();
+          const departmentsData_ = await departmentsAPI.getAllDepartments();
+          const departmentsData = departmentsData_.data;
           console.log("Dữ liệu phòng ban:", departmentsData);
 
           if (departmentsData && departmentsData.content) {
@@ -87,7 +88,8 @@ export default function RegisterPage() {
         // Load roles
         try {
           console.log("Đang tải dữ liệu vai trò...");
-          const rolesData = await rolesAPI.getAllRoles();
+          const rolesData_ = await rolesAPI.getAllRoles();
+          const rolesData = rolesData_.data;
           console.log("Dữ liệu vai trò:", rolesData);
 
           if (rolesData) {

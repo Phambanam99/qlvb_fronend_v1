@@ -68,16 +68,51 @@ export function DocumentReadersDialog({
       setLoading(true);
       setError(null);
       
+      // Debug logging
+      console.log("DocumentReadersDialog loadData called with:", {
+        documentId,
+        documentType,
+        onGetReaders: typeof onGetReaders,
+        onGetStatistics: typeof onGetStatistics
+      });
+      
+      // Validate required props
+      if (typeof onGetReaders !== 'function') {
+        throw new Error(`onGetReaders is not a function, got: ${typeof onGetReaders}`);
+      }
+      
+      if (typeof onGetStatistics !== 'function') {
+        throw new Error(`onGetStatistics is not a function, got: ${typeof onGetStatistics}`);
+      }
+      
+      if (!documentId) {
+        throw new Error(`documentId is required, got: ${documentId}`);
+      }
+      
       const [readersData, statsData] = await Promise.all([
         onGetReaders(documentId),
         onGetStatistics(documentId)
       ]);
       
-      setReaders(readersData);
-      setStatistics(statsData);
+      console.log("Document readers data:", readersData);
+      console.log("Document stats data:", statsData);
+      
+      // Handle ResponseDTO format - extract data if wrapped
+      const readers = Array.isArray(readersData) 
+        ? readersData 
+        : (readersData as any)?.data || readersData;
+        
+      const statistics = (statsData as any)?.data || statsData;
+      
+      console.log("Processed readers:", readers);
+      console.log("Processed statistics:", statistics);
+      
+      setReaders(readers);
+      setStatistics(statistics);
     } catch (err) {
       console.error("Error loading document readers:", err);
-      setError("Không thể tải danh sách người đọc");
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      setError(`Không thể tải danh sách người đọc: ${errorMessage}`);
     } finally {
       setLoading(false);
     }
@@ -119,8 +154,8 @@ export function DocumentReadersDialog({
       <DialogTrigger asChild>
         {trigger || defaultTrigger}
       </DialogTrigger>
-      <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
-        <DialogHeader>
+      <DialogContent className="max-w-4xl h-[80vh] overflow-hidden flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />
             Danh sách người đọc văn bản
@@ -132,7 +167,7 @@ export function DocumentReadersDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-hidden min-h-0">
           {loading ? (
             <div className="flex items-center justify-center h-40">
               <Loader2 className="h-8 w-8 animate-spin" />
@@ -147,7 +182,7 @@ export function DocumentReadersDialog({
             <div className="space-y-4 h-full overflow-hidden flex flex-col">
               {/* Statistics Cards */}
               {statistics && (
-                <div className="grid grid-cols-4 gap-4">
+                <div className="grid grid-cols-4 gap-4 flex-shrink-0">
                   <Card>
                     <CardHeader className="pb-2">
                       <CardTitle className="text-sm">Tổng số</CardTitle>
@@ -184,35 +219,46 @@ export function DocumentReadersDialog({
               )}
 
               {/* Tabs and Table */}
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 overflow-hidden flex flex-col">
-                <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="all">Tất cả ({readers.length})</TabsTrigger>
-                  <TabsTrigger value="read">
-                    Đã đọc ({readers.filter(r => r.isRead).length})
-                  </TabsTrigger>
-                  <TabsTrigger value="unread">
-                    Chưa đọc ({readers.filter(r => !r.isRead).length})
-                  </TabsTrigger>
-                </TabsList>
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 overflow-hidden flex flex-col min-h-0">
+                <div className="flex items-center justify-between mb-2 flex-shrink-0">
+                  <TabsList className="grid grid-cols-3">
+                    <TabsTrigger value="all">Tất cả ({readers.length})</TabsTrigger>
+                    <TabsTrigger value="read">
+                      Đã đọc ({readers.filter(r => r.isRead).length})
+                    </TabsTrigger>
+                    <TabsTrigger value="unread">
+                      Chưa đọc ({readers.filter(r => !r.isRead).length})
+                    </TabsTrigger>
+                  </TabsList>
+                  {filteredReaders.length > 10 && (
+                    <div className="text-sm text-muted-foreground flex items-center gap-1">
+                      <Users className="h-4 w-4" />
+                      Hiển thị {filteredReaders.length} người - Có thể cuộn để xem thêm
+                    </div>
+                  )}
+                </div>
 
-                <TabsContent value={activeTab} className="flex-1 overflow-hidden">
-                  <div className="border rounded-md overflow-hidden h-full flex flex-col">
-                    <div className="overflow-auto flex-1">
+                <TabsContent value={activeTab} className="flex-1 overflow-hidden min-h-0">
+                  <div className="border rounded-md h-full flex flex-col">
+                    <div 
+                      className="overflow-y-auto flex-1" 
+                      style={{ maxHeight: 'calc(80vh - 300px)' }}
+                    >
                       <Table>
-                        <TableHeader className="sticky top-0 bg-background">
+                        <TableHeader className="sticky top-0 bg-background z-10 border-b shadow-sm">
                           <TableRow>
-                            <TableHead>Người dùng</TableHead>
-                            <TableHead>Phòng ban</TableHead>
-                            <TableHead>Chức vụ</TableHead>
-                            <TableHead>Liên hệ</TableHead>
-                            <TableHead>Trạng thái</TableHead>
-                            <TableHead>Thời gian đọc</TableHead>
+                            <TableHead className="min-w-[200px]">Người dùng</TableHead>
+                            <TableHead className="min-w-[150px]">Phòng ban</TableHead>
+                            <TableHead className="min-w-[120px]">Chức vụ</TableHead>
+                            <TableHead className="min-w-[180px]">Liên hệ</TableHead>
+                            <TableHead className="min-w-[100px]">Trạng thái</TableHead>
+                            <TableHead className="min-w-[150px]">Thời gian đọc</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {filteredReaders.length > 0 ? (
                             filteredReaders.map((reader) => (
-                              <TableRow key={reader.userId}>
+                              <TableRow key={reader.userId} className="hover:bg-muted/50">
                                 <TableCell>
                                   <div className="flex items-center gap-3">
                                     <Avatar className="h-8 w-8">
@@ -220,33 +266,33 @@ export function DocumentReadersDialog({
                                         {getInitials(reader.userName)}
                                       </AvatarFallback>
                                     </Avatar>
-                                    <div>
-                                      <div className="font-medium">{reader.userName}</div>
-                                      <div className="text-sm text-muted-foreground">@{reader.username}</div>
+                                    <div className="min-w-0">
+                                      <div className="font-medium truncate">{reader.userName}</div>
+                                      <div className="text-sm text-muted-foreground truncate">@{reader.username}</div>
                                     </div>
                                   </div>
                                 </TableCell>
                                 <TableCell>
                                   <div className="flex items-center gap-2">
-                                    <Building className="h-4 w-4 text-muted-foreground" />
-                                    <span>{reader.departmentName || "Chưa xác định"}</span>
+                                    <Building className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                    <span className="truncate">{reader.departmentName || "Chưa xác định"}</span>
                                   </div>
                                 </TableCell>
                                 <TableCell>
-                                  <Badge variant="secondary">{reader.roles || "Chưa xác định"}</Badge>
+                                  <Badge variant="secondary" className="truncate">{reader.roles || "Chưa xác định"}</Badge>
                                 </TableCell>
                                 <TableCell>
                                   <div className="space-y-1">
                                     {reader.email && (
                                       <div className="flex items-center gap-1 text-sm">
-                                        <Mail className="h-3 w-3" />
-                                        <span>{reader.email}</span>
+                                        <Mail className="h-3 w-3 flex-shrink-0" />
+                                        <span className="truncate">{reader.email}</span>
                                       </div>
                                     )}
                                     {reader.phoneNumber && (
                                       <div className="flex items-center gap-1 text-sm">
-                                        <Phone className="h-3 w-3" />
-                                        <span>{reader.phoneNumber}</span>
+                                        <Phone className="h-3 w-3 flex-shrink-0" />
+                                        <span className="truncate">{reader.phoneNumber}</span>
                                       </div>
                                     )}
                                   </div>
@@ -279,7 +325,10 @@ export function DocumentReadersDialog({
                           ) : (
                             <TableRow>
                               <TableCell colSpan={6} className="text-center py-8">
-                                Không có dữ liệu
+                                <div className="text-muted-foreground">
+                                  <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                                  Không có dữ liệu
+                                </div>
                               </TableCell>
                             </TableRow>
                           )}
@@ -293,7 +342,7 @@ export function DocumentReadersDialog({
           )}
         </div>
 
-        <div className="flex justify-end pt-4">
+        <div className="flex justify-end pt-4 border-t bg-background flex-shrink-0">
           <Button onClick={loadData} disabled={loading}>
             {loading ? (
               <>

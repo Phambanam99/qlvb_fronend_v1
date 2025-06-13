@@ -85,6 +85,7 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(
       ],
       content,
       editable,
+      immediatelyRender: false, // Fix SSR hydration mismatch
       onUpdate: ({ editor }) => {
         onChange?.(editor.getHTML());
       },

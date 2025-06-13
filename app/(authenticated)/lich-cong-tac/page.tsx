@@ -69,7 +69,8 @@ export default function SchedulesPage() {
       setRefreshing(true);
       console.log("Force refreshing schedules...");
 
-      const data = await schedulesAPI.getAllSchedules();
+      const data_ = await schedulesAPI.getAllSchedules();
+      const data = data_.data;
       console.log("Fetched schedules:", data);
 
       setAllSchedules(data.content || []);
@@ -106,7 +107,8 @@ export default function SchedulesPage() {
     const fetchSchedules = async () => {
       try {
         setLoading(true);
-        const data = await schedulesAPI.getAllSchedules();
+        const data_ = await schedulesAPI.getAllSchedules();
+        const data = data_.data;
         console.log("Fetched schedules:", data);
 
         setAllSchedules(data.content || []);

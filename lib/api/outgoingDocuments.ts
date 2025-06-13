@@ -51,7 +51,7 @@ export const outgoingDocumentsAPI = {
       });
 
       // Map backend response to frontend expected format
-      const documents = response.data.content.map(
+      const documents = response.data.data.content.map(
         (doc: OutgoingDocumentDTO) => ({
           ...doc,
           number: doc.documentNumber.toString(),
