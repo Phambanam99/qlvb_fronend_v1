@@ -95,7 +95,7 @@ export default function ReplyInternalDocumentPage() {
     urgencyLevel: URGENCY_LEVELS.KHAN as UrgencyLevel,
     notes: "",
     signer: "",
-    draftingDepartmentId: undefined as number | undefined,
+    draftingDepartmentId: user?.departmentId as number | undefined,
     securityLevel: 'NORMAL' as 'NORMAL' | 'CONFIDENTIAL' | 'SECRET' | 'TOP_SECRET',
     documentSignerId: undefined as number | undefined,
     isSecureTransmission: false,
@@ -181,12 +181,27 @@ export default function ReplyInternalDocumentPage() {
         const originalDoc = await getDocumentById(Number(originalDocumentId));
         setOriginalDocument(originalDoc);
 
+        // Map old urgency levels to new ones
+        const mapOldUrgencyToNew = (oldUrgency: string): UrgencyLevel => {
+          switch (oldUrgency) {
+            case 'NORMAL':
+              return URGENCY_LEVELS.THUONG_KHAN;
+            case 'HIGH':
+              return URGENCY_LEVELS.KHAN;
+            case 'URGENT':
+              return URGENCY_LEVELS.HOA_TOC;
+            default:
+              return URGENCY_LEVELS.THUONG_KHAN;
+          }
+        };
+
         // Pre-fill reply form with related data
         setFormData((prev) => ({
           ...prev,
           title: `Trả lời: ${originalDoc.title}`,
           documentType: originalDoc.documentType,
-          urgencyLevel: originalDoc.priority.toLowerCase() as UrgencyLevel,
+          urgencyLevel: mapOldUrgencyToNew(originalDoc.priority),
+          draftingDepartmentId: user?.departmentId,
         }));
 
         // Fetch document types
@@ -197,12 +212,12 @@ export default function ReplyInternalDocumentPage() {
         // Fetch departments
         setIsLoadingDepartments(true);
         const depts = await departmentsAPI.getAllDepartments();
-        setDepartments(depts);
+        setDepartments(depts.content || []);
 
         // Fetch leadership users for current user's department
         if (user?.departmentId) {
           setIsLoadingLeadershipUsers(true);
-          const users = await usersAPI.getUsersByDepartment(user.departmentId);
+          const users = await usersAPI.getUsersByDepartmentId(user.departmentId);
           const leaders = users.filter(u => 
             u.roles?.some(role => LEADERSHIP_ROLES.includes(role))
           );
@@ -227,7 +242,7 @@ export default function ReplyInternalDocumentPage() {
     if (originalDocumentId) {
       fetchData();
     }
-  }, [originalDocumentId, toast]);
+  }, [originalDocumentId, toast, user?.departmentId]);
 
   // Input change handlers
   const handleInputChange = (
@@ -287,115 +302,97 @@ export default function ReplyInternalDocumentPage() {
   // Validation function
   const validateForm = () => {
     const errors: Record<string, string> = {};
-
-    if (!formData.documentNumber.trim()) {
-      errors.documentNumber = "Số văn bản là bắt buộc";
+    
+    if (!formData.documentNumber) {
+      errors.documentNumber = "Vui lòng nhập số văn bản";
     }
-
-    if (!formData.title.trim()) {
-      errors.title = "Tiêu đề văn bản là bắt buộc";
+    if (!formData.title) {
+      errors.title = "Vui lòng nhập tiêu đề";
     }
-
-    if (!formData.summary.trim()) {
-      errors.summary = "Nội dung trả lời là bắt buộc";
+    if (!formData.documentType) {
+      errors.documentType = "Vui lòng chọn loại văn bản";
     }
-
-    if (!formData.documentType.trim()) {
-      errors.documentType = "Loại văn bản là bắt buộc";
-    }
-
     if (!formData.documentSignerId) {
-      errors.documentSignerId = "Người ký là bắt buộc";
+      errors.documentSignerId = "Vui lòng chọn người ký";
     }
-
     if (!formData.draftingDepartmentId) {
-      errors.draftingDepartmentId = "Đơn vị soạn thảo là bắt buộc";
+      errors.draftingDepartmentId = "Không tìm thấy đơn vị soạn thảo";
     }
 
-    setValidationErrors(errors);
-    return Object.keys(errors).length === 0;
+    return errors;
   };
 
   // Form submission handlers
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    // Validate form
-    if (!validateForm()) {
+    
+    if (!user?.id || !user?.departmentId) {
       toast({
-        title: "Thiếu thông tin",
-        description: "Vui lòng điền đầy đủ thông tin bắt buộc",
+        title: "Lỗi",
+        description: "Không tìm thấy thông tin người dùng. Vui lòng đăng nhập lại.",
         variant: "destructive",
       });
       return;
     }
 
+    const userId = user.id;
+    const departmentId = user.departmentId;
+
+    // Validate form
+    const errors = validateForm();
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors);
+      return;
+    }
+
+    setIsSubmitting(true);
     try {
-      setIsSubmitting(true);
+      const formDataToSubmit = {
+        ...formData,
+        createdBy: userId,
+        draftingDepartmentId: departmentId,
+      };
 
       // Prepare reply document data
       const replyData = {
-        documentNumber: formData.documentNumber,
-        title: formData.title,
-        summary: formData.summary,
-        documentType: formData.documentType,
-        signingDate: formData.signingDate,
-        priority: formData.urgencyLevel.toUpperCase(),
-        notes: formData.notes,
-        signer: formData.signer,
-        draftingDepartmentId: formData.draftingDepartmentId,
-        securityLevel: formData.securityLevel,
-        documentSignerId: formData.documentSignerId,
-        isSecureTransmission: formData.isSecureTransmission,
-        processingDeadline: formData.processingDeadline,
-        issuingAgency: formData.issuingAgency,
-        distributionType: formData.distributionType,
-        numberOfCopies: formData.numberOfCopies,
-        numberOfPages: formData.numberOfPages,
-        noPaperCopy: formData.noPaperCopy,
+        ...formDataToSubmit,
         replyToId: Number(originalDocumentId),
         status: "SENT",
-        isInternal: true,
-        // Reply to original sender
         recipients: [
           {
-            departmentId: originalDocument?.senderDepartment ? 1 : 1, // You might need to map this properly
+            departmentId: originalDocument?.senderDepartment ? Number(originalDocument.senderDepartment) : undefined,
             userId: undefined, // Reply to department
           },
         ],
       };
-      console.log("Files to be sent:", files);
-      console.log("Files array:", files.length > 0 ? files : undefined);
-      console.log("Reply data:", replyData);
 
-      // Call API to create reply
-      await replyToDocumentWithAttachments(
-        Number(originalDocumentId),
-        replyData,
-        files.length > 0 ? files : undefined
-      );
+      // Submit the reply
+      if (files.length > 0) {
+        await replyToDocumentWithAttachments(Number(originalDocumentId), replyData, files);
+      } else {
+        await replyToDocument(Number(originalDocumentId), replyData);
+      }
 
-      // Show success notification
+      // Show success message
       toast({
         title: "Thành công",
         description: "Văn bản trả lời đã được gửi",
       });
 
+      // Add notification
       addNotification({
         title: "Văn bản trả lời mới",
-        message: `Văn bản trả lời "${formData.title}" đã được gửi`,
+        message: `Văn bản trả lời "${formDataToSubmit.title}" đã được gửi`,
         type: "success",
       });
 
-      // Redirect back to original document or documents list
-      router.push(`/van-ban-den/noi-bo/${originalDocumentId}`);
-    } catch (error: any) {
-      console.error("Error creating reply:", error);
+      // Navigate back to document list
+      router.push("/van-ban-den/noi-bo");
+    } catch (error) {
+      console.error("Error submitting form:", error);
       toast({
         title: "Lỗi",
-        description:
-          error.response?.data?.message ||
-          "Có lỗi xảy ra khi gửi văn bản trả lời",
+        description: "Không thể gửi văn bản. Vui lòng thử lại sau.",
         variant: "destructive",
       });
     } finally {
@@ -499,8 +496,8 @@ export default function ReplyInternalDocumentPage() {
     );
   }
 
-      return (
-      <div className="container mx-auto py-8 max-w-7xl px-4 sm:px-6 lg:px-8">
+  return (
+    <div className="container mx-auto py-8 max-w-7xl px-4 sm:px-6 lg:px-8">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-2">
           <Button variant="outline" size="icon" asChild>
@@ -662,55 +659,11 @@ export default function ReplyInternalDocumentPage() {
                 </div>
               </div>
 
-              {/* Document Content Section */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-primary border-b pb-2">
-                  Nội dung văn bản
-                </h3>
-                <div className="space-y-2">
-                  <Label htmlFor="title">
-                    Tiêu đề <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="title"
-                    name="title"
-                    value={formData.title}
-                    onChange={handleInputChange}
-                    placeholder="Nhập tiêu đề văn bản trả lời"
-                    required
-                    className={validationErrors.title ? "border-red-500" : ""}
-                  />
-                  {validationErrors.title && (
-                    <p className="text-sm text-red-500">
-                      {validationErrors.title}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="summary">
-                  Nội dung trả lời <span className="text-red-500">*</span>
-                </Label>
-                <RichTextEditor
-                  content={formData.summary}
-                  onChange={handleRichTextChange("summary")}
-                  placeholder="Nhập nội dung trả lời"
-                  className={validationErrors.summary ? "border-red-500" : ""}
-                  minHeight="150px"
-                />
-                {validationErrors.summary && (
-                  <p className="text-sm text-red-500">
-                    {validationErrors.summary}
-                  </p>
-                )}
-              </div>
+             
 
               {/* Document Classification Section */}
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-primary border-b pb-2">
-                  Phân loại và mức độ
-                </h3>
+              
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="documentType">
@@ -803,9 +756,7 @@ export default function ReplyInternalDocumentPage() {
 
               {/* Signer and Department Section */}
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-primary border-b pb-2">
-                  Người ký và đơn vị soạn thảo
-                </h3>
+                
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="documentSignerId">
@@ -848,11 +799,11 @@ export default function ReplyInternalDocumentPage() {
                     )}
                   </div>
 
-                  <div className="space-y-2">
+                  <div className="space-y-2 " >
                     <Label htmlFor="draftingDepartmentId">
                       Đơn vị soạn thảo <span className="text-red-500">*</span>
                     </Label>
-                    <Select
+                    <Select disabled={true} 
                       value={formData.draftingDepartmentId?.toString() || ""}
                       onValueChange={(value) =>
                         handleSelectChange("draftingDepartmentId", value)
@@ -893,9 +844,6 @@ export default function ReplyInternalDocumentPage() {
 
               {/* Processing and Distribution Section */}
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-primary border-b pb-2">
-                  Thông tin xử lý và phân phối
-                </h3>
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="processingDeadline">Hạn xử lý</Label>
@@ -906,7 +854,7 @@ export default function ReplyInternalDocumentPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="distributionType">Loại phân phối</Label>
+                    <Label htmlFor="distributionType">Khối phát hành</Label>
                     <Select
                       value={formData.distributionType}
                       onValueChange={(value) =>
@@ -914,7 +862,7 @@ export default function ReplyInternalDocumentPage() {
                       }
                     >
                       <SelectTrigger id="distributionType">
-                        <SelectValue placeholder="Chọn loại phân phối" />
+                        <SelectValue placeholder="Chọn khối phát hành" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="REGULAR">Thường</SelectItem>
@@ -960,7 +908,7 @@ export default function ReplyInternalDocumentPage() {
                       checked={formData.isSecureTransmission}
                       onCheckedChange={handleCheckboxChange("isSecureTransmission")}
                     />
-                    <Label htmlFor="isSecureTransmission">Truyền tải bảo mật</Label>
+                    <Label htmlFor="isSecureTransmission">Chuyển bằng điện mật</Label>
                   </div>
 
                   <div className="flex items-center space-x-2">
@@ -976,9 +924,6 @@ export default function ReplyInternalDocumentPage() {
 
               {/* Attachments Section */}
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-primary border-b pb-2">
-                  Tệp đính kèm
-                </h3>
                 <div className="space-y-2">
                 <Label htmlFor="files">Tệp đính kèm</Label>
                 <Input
@@ -1029,14 +974,50 @@ export default function ReplyInternalDocumentPage() {
                 )}
               </div>
 
+              
+              </div>
+               {/* Document Content Section */}
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="title">
+                    Tiêu đề <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="title"
+                    name="title"
+                    value={formData.title}
+                    onChange={handleInputChange}
+                    placeholder="Nhập tiêu đề văn bản trả lời"
+                    required
+                    className={validationErrors.title ? "border-red-500" : ""}
+                  />
+                  {validationErrors.title && (
+                    <p className="text-sm text-red-500">
+                      {validationErrors.title}
+                    </p>
+                  )}
                 </div>
               </div>
 
+              <div className="space-y-2">
+                <Label htmlFor="summary">
+                  Nội dung trả lời <span className="text-red-500">*</span>
+                </Label>
+                <RichTextEditor
+                  content={formData.summary}
+                  onChange={handleRichTextChange("summary")}
+                  placeholder="Nhập nội dung trả lời"
+                  className={validationErrors.summary ? "border-red-500" : ""}
+                  minHeight="150px"
+                />
+                {validationErrors.summary && (
+                  <p className="text-sm text-red-500">
+                    {validationErrors.summary}
+                  </p>
+                )}
+              </div>
               {/* Notes Section */}
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-primary border-b pb-2">
-                  Ghi chú
-                </h3>
                 <div className="space-y-2">
                   <Label htmlFor="notes">Ghi chú</Label>
                   <RichTextEditor
@@ -1059,6 +1040,6 @@ export default function ReplyInternalDocumentPage() {
           </p>
         </div>
       </div>
-    </div>
+    </div>  
   );
 }

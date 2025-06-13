@@ -750,14 +750,14 @@ export default function InternalDocumentReceivedDetailPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
                           <p className="text-sm font-medium text-gray-900">
-                            {getActionDisplayName(entry.action)}
+                            {entry.details}
                           </p>
                           <time className="text-sm text-gray-500">
                             {formatDate(entry.performedAt)}
                           </time>
                         </div>
                         <p className="text-sm text-gray-500">
-                          Bởi: {entry.performedBy?.fullName || entry.performedBy?.name || "Hệ thống"}
+                          Bởi: {entry.performedByName || "Hệ thống"}
                         </p>
                         {entry.details && (
                           <p className="text-sm text-gray-600 mt-1">
