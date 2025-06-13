@@ -18,6 +18,21 @@ export interface PageResponse<T> {
   numberOfElements: number;
 }
 
+// Backend ResponseDTO format
+export interface ResponseDTO<T> {
+  success: boolean;
+  message: string;
+  data: T;
+}
+
+// Helper type for API responses
+export interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  error?: ApiError;
+  message?: string;
+}
+
 export interface DocumentAttachmentDTO {
   id: number;
   originalFilename: string;
@@ -63,6 +78,8 @@ export interface DocumentHistoryDTO {
   actorName: string;
   assignedToId?: number;
   assignedToName?: string;
+  assignedToNames?: string[];
+  attachmentPath?: string;
 }
 
 export interface DocumentWorkflowDTO {
@@ -77,8 +94,8 @@ export interface DocumentWorkflowDTO {
   closureDeadline?: Date;
   primaryDepartmentId?: number;
   primaryDepartmentName?: string;
-  collaboratingDepartmentIds?: number[];
-  collaboratingDepartmentNames?: string[];
+  collaboratingDepartmentIds?: number[] | Set<number>;
+  collaboratingDepartmentNames?: string[] | Set<string>;
 }
 
 export interface ActivityLogDTO {
@@ -109,11 +126,4 @@ export interface ApiError {
   errors?: Record<string, string[]>;
   timestamp: string;
   path: string;
-}
-
-export interface ApiResponse<T> {
-  success: boolean;
-  data?: T;
-  error?: ApiError;
-  message?: string;
 }

@@ -1,4 +1,5 @@
 import axios from "axios";
+import type { ResponseDTO } from "./types";
 
 // API base URL
 export const API_URL =
@@ -11,17 +12,31 @@ const api = axios.create({
     "Content-Type": "application/json",
   },
 });
+
 // List các endpoint không cần auth
 const publicEndpoints = [
   "/auth/login",
   "/auth/register",
   "/auth/forgot-password",
 ];
+
 // Hàm kiểm tra xem request có cần token không
 function requiresAuth(url?: string): boolean {
   if (!url) return true;
   return !publicEndpoints.some((path) => url.includes(path));
 }
+
+// Helper function to check if response is in ResponseDTO format
+function isResponseDTO<T>(data: any): data is ResponseDTO<T> {
+  return (
+    data &&
+    typeof data === 'object' &&
+    typeof data.success === 'boolean' &&
+    typeof data.message === 'string' &&
+    'data' in data
+  );
+}
+
 // Add request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
@@ -53,15 +68,35 @@ api.interceptors.request.use(
   }
 );
 
-// Add response interceptor to handle common errors
+// Add response interceptor to handle ResponseDTO format and common errors
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // Check if the response data is in ResponseDTO format
+    if (isResponseDTO(response.data)) {
+      const responseDTO = response.data as ResponseDTO<any>;
+      
+      // If the backend indicates failure, throw an error with the message
+      if (!responseDTO.success) {
+        const error = new Error(responseDTO.message || 'Request failed');
+        (error as any).isResponseDTOError = true;
+        (error as any).responseDTO = responseDTO;
+        throw error;
+      }
+      
+      // Return the actual data from the ResponseDTO
+      response.data = responseDTO.data;
+    }
+    
+    return response;
+  },
   (error) => {
     // Handle common errors here
     if (error.response) {
-      // The request was made and the server responded with a status code
-      // that falls out of the range of 2xx
-      //   console.error("API Error:", error.response.status, error.response.data)
+      // Check if error response is also in ResponseDTO format
+      if (isResponseDTO(error.response.data)) {
+        const responseDTO = error.response.data as ResponseDTO<any>;
+        error.message = responseDTO.message || error.message;
+      }
 
       // Handle 401 Unauthorized - redirect to login
       if (error.response.status === 401 && typeof window !== "undefined") {
