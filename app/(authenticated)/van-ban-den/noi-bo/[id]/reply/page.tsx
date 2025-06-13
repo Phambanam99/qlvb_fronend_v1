@@ -65,6 +65,7 @@ interface OriginalDocument {
   signingDate: string;
   priority: "NORMAL" | "HIGH" | "URGENT";
   status: "DRAFT" | "SENT" | "APPROVED";
+  senderId: number;
   senderName: string;
   senderDepartment: string;
   createdAt: string;
@@ -365,7 +366,7 @@ export default function ReplyInternalDocumentPage() {
         return;
       }
 
-      if (!departmentId) {
+      if (!user?.departmentId) {
         toast({
           title: "Lỗi", 
           description: "Không tìm thấy thông tin phòng ban của người dùng",
@@ -376,8 +377,8 @@ export default function ReplyInternalDocumentPage() {
 
       const formDataToSubmit = {
         ...formData,
-        createdBy: Number(userId), // Ensure it's a number
-        draftingDepartmentId: Number(departmentId), // Ensure it's a number
+        createdBy: Number(user?.id), // Ensure it's a number
+        draftingDepartmentId: Number(user?.departmentId), // Ensure it's a number
         documentSignerId: Number(formData.documentSignerId), // Ensure it's a number
       };
 
@@ -388,8 +389,8 @@ export default function ReplyInternalDocumentPage() {
         status: "SENT",
         recipients: [
           {
-            departmentId: originalDocument?.senderDepartment ? Number(originalDocument.senderDepartment) : null,
-            userId: null, // Reply to department
+            departmentId: Number(user?.departmentId), // Use current user's department
+            userId: originalDocument?.senderId || null, // Reply to the original sender
           },
         ],
       };
@@ -489,8 +490,8 @@ export default function ReplyInternalDocumentPage() {
         isInternal: true,
         recipients: [
           {
-            departmentId: 1, // You might need to map this properly
-            userId: undefined,
+            departmentId: Number(user?.departmentId),
+            userId: originalDocument?.senderId || null,
           },
         ],
       };
