@@ -617,7 +617,7 @@ export default function OutgoingDocumentsPage() {
               onChange={(e) => setDateToFilter(e.target.value)}
             />
           </div>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
+          {/* <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-full sm:w-[180px] border-primary/20">
               <SelectValue placeholder="Trạng thái" />
             </SelectTrigger>
@@ -630,7 +630,7 @@ export default function OutgoingDocumentsPage() {
               <SelectItem value="SENT">Đã gửi</SelectItem>
               <SelectItem value="sent">Đã gửi</SelectItem>
             </SelectContent>
-          </Select>
+          </Select> */}
           <Button
             variant="outline"
             size="icon"
@@ -689,7 +689,7 @@ export default function OutgoingDocumentsPage() {
                       Người nhận
                     </TableHead>
                     <TableHead>Độ khẩn</TableHead>
-                    <TableHead>Trạng thái</TableHead>
+                    {/* <TableHead>Trạng thái</TableHead> */}
                     <TableHead>Trạng thái đọc</TableHead>
                     <TableHead className="text-right">Thao tác</TableHead>
                   </TableRow>
@@ -736,7 +736,7 @@ export default function OutgoingDocumentsPage() {
                           <TableCell>
                             {getUrgencyBadge(doc.priority)}
                           </TableCell>
-                          <TableCell>{getStatusBadge(doc.status)}</TableCell>
+                          {/* <TableCell>{getStatusBadge(doc.status)}</TableCell> */}
                           <TableCell>
                             <Button
                               variant="ghost"
@@ -802,7 +802,7 @@ export default function OutgoingDocumentsPage() {
                     <TableHead className="hidden md:table-cell">
                       Nơi nhận
                     </TableHead>
-                    <TableHead>Trạng thái</TableHead>
+                    {/* <TableHead>Trạng thái</TableHead> */}
                     <TableHead>Trạng thái đọc</TableHead>
                     {hasFullAccess && (
                       <TableHead className="hidden md:table-cell">
@@ -848,7 +848,7 @@ export default function OutgoingDocumentsPage() {
                           <TableCell className="hidden md:table-cell">
                             {doc.recipient}
                           </TableCell>
-                          <TableCell>{getStatusBadge(doc.status)}</TableCell>
+                          {/* <TableCell>{getStatusBadge(doc.status)}</TableCell> */}
                           <TableCell>
                             <Button
                               variant="ghost"

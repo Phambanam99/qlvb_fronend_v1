@@ -240,10 +240,20 @@ export const getSentDocuments = async (page = 0, size = 10) => {
   return response.data;
 };
 
+export const getAllSentDocuments = async () => {
+  const response = await api.get("/internal-documents/sent/all");
+  return response.data;
+};
+
 export const getReceivedDocuments = async (page = 0, size = 10) => {
   const response = await api.get("/internal-documents/received", {
     params: { page, size },
   });
+  return response.data;
+};
+
+export const getAllReceivedDocuments = async () => {
+  const response = await api.get("/internal-documents/received/all");
   return response.data;
 };
 
@@ -277,10 +287,39 @@ export const getReceivedDocumentsExcludingSent = async (
   return response.data;
 };
 
+export const getAllReceivedDocumentsExcludingSent = async () => {
+  const response = await api.get("/internal-documents/received/all");
+
+  // Lọc ra những văn bản không phải do chính user tạo
+  if (response.data && response.data.data) {
+    // Lấy thông tin user hiện tại từ localStorage hoặc context
+    const userStr = localStorage.getItem("user");
+    const currentUser = userStr ? JSON.parse(userStr) : null;
+
+    if (currentUser) {
+      const filteredContent = response.data.data.filter(
+        (doc: any) => doc.senderId !== currentUser.id
+      );
+
+      return {
+        ...response.data,
+        data: filteredContent,
+      };
+    }
+  }
+
+  return response.data;
+};
+
 export const getUnreadDocuments = async (page = 0, size = 10) => {
   const response = await api.get("/internal-documents/unread", {
     params: { page, size },
   });
+  return response.data;
+};
+
+export const getAllUnreadDocuments = async () => {
+  const response = await api.get("/internal-documents/unread/all");
   return response.data;
 };
 
