@@ -50,7 +50,7 @@ import { useOutgoingDocuments } from "@/lib/store";
 import { getStatusBadgeInfo } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
 import { useHierarchicalDepartments } from "@/hooks/use-hierarchical-departments";
-import { getSentDocuments } from "@/lib/api/internalDocumentApi";
+import { getSentDocuments, getAllSentDocuments } from "@/lib/api/internalDocumentApi";
 import { useDocumentReadStatus } from "@/hooks/use-document-read-status";
 import { usePageVisibility } from "@/hooks/use-page-visibility";
 import { useUniversalReadStatus } from "@/hooks/use-universal-read-status";
@@ -138,62 +138,110 @@ export default function OutgoingDocumentsPage() {
   ) => {
     try {
       setLoadingInternal(true);
-      console.log("Fetching internal documents with pagination:", {
-        page,
-        size,
-      });
+      
+      let response_;
+      let response;
+      
+      // Nếu có search query, load tất cả documents để tìm kiếm
+      if (searchQuery.trim()) {
+        console.log("Fetching all internal documents for search:", searchQuery);
+        response_ = await getAllSentDocuments();
+        response = response_.data;
+        
+        if (response && response.data) {
+          console.log("All internal documents response:", response);
 
-      const response_ = await getSentDocuments(page, size);
-      const response = response_.data;
-
-
-      if (response && response.content) {
-        console.log("Internal documents response:", response);
-
-        // Cập nhật trạng thái đọc từ global state cho văn bản đi
-        const documentsWithUpdatedReadStatus = response.content.map(
-          (doc: InternalDocument) => {
-            const globalReadStatus = getReadStatus(doc.id);
-            // Đối với văn bản đi, trạng thái đọc được tính dựa trên recipients
-            if (
-              globalReadStatus.isRead !== undefined &&
-              globalReadStatus.isRead !== doc.isRead
-            ) {
-              return {
-                ...doc,
-                isRead: globalReadStatus.isRead,
-                readAt: globalReadStatus.readAt || doc.readAt,
-              };
+          // Cập nhật trạng thái đọc từ global state cho văn bản đi
+          const documentsWithUpdatedReadStatus = response.data.map(
+            (doc: InternalDocument) => {
+              const globalReadStatus = getReadStatus(doc.id);
+              if (
+                globalReadStatus.isRead !== undefined &&
+                globalReadStatus.isRead !== doc.isRead
+              ) {
+                return {
+                  ...doc,
+                  isRead: globalReadStatus.isRead,
+                  readAt: globalReadStatus.readAt || doc.readAt,
+                };
+              }
+              return doc;
             }
-            return doc;
-          }
-        );
-
-        setInternalDocuments(documentsWithUpdatedReadStatus);
-
-        // Cập nhật global read status với data từ server
-        const readStatusUpdates = response.content.map(
-          (doc: InternalDocument) => ({
-            id: doc.id,
-            isRead: doc.isRead,
-            readAt: doc.readAt,
-          })
-        );
-        updateMultipleReadStatus(readStatusUpdates);
-
-        // Set pagination info if available
-        if (response.totalElements !== undefined) {
-          setTotalItems(
-            Math.max(response.totalElements, response.content.length)
           );
-        } else {
-          setTotalItems(response.content.length);
-        }
 
-        if (response.totalPages !== undefined) {
-          setTotalPages(Math.max(response.totalPages, 1));
-        } else {
+          setInternalDocuments(documentsWithUpdatedReadStatus);
+
+          // Cập nhật global read status với data từ server
+          const readStatusUpdates = response.data.map(
+            (doc: InternalDocument) => ({
+              id: doc.id,
+              isRead: doc.isRead,
+              readAt: doc.readAt,
+            })
+          );
+          updateMultipleReadStatus(readStatusUpdates);
+
+          // Khi search, không có pagination
+          setTotalItems(response.data.length);
           setTotalPages(1);
+        }
+      } else {
+        // Không có search query, sử dụng pagination bình thường
+        console.log("Fetching internal documents with pagination:", {
+          page,
+          size,
+        });
+
+        response_ = await getSentDocuments(page, size);
+        response = response_.data;
+
+        if (response && response.content) {
+          console.log("Internal documents response:", response);
+
+          // Cập nhật trạng thái đọc từ global state cho văn bản đi
+          const documentsWithUpdatedReadStatus = response.content.map(
+            (doc: InternalDocument) => {
+              const globalReadStatus = getReadStatus(doc.id);
+              if (
+                globalReadStatus.isRead !== undefined &&
+                globalReadStatus.isRead !== doc.isRead
+              ) {
+                return {
+                  ...doc,
+                  isRead: globalReadStatus.isRead,
+                  readAt: globalReadStatus.readAt || doc.readAt,
+                };
+              }
+              return doc;
+            }
+          );
+
+          setInternalDocuments(documentsWithUpdatedReadStatus);
+
+          // Cập nhật global read status với data từ server
+          const readStatusUpdates = response.content.map(
+            (doc: InternalDocument) => ({
+              id: doc.id,
+              isRead: doc.isRead,
+              readAt: doc.readAt,
+            })
+          );
+          updateMultipleReadStatus(readStatusUpdates);
+
+          // Set pagination info if available
+          if (response.totalElements !== undefined) {
+            setTotalItems(
+              Math.max(response.totalElements, response.content.length)
+            );
+          } else {
+            setTotalItems(response.content.length);
+          }
+
+          if (response.totalPages !== undefined) {
+            setTotalPages(Math.max(response.totalPages, 1));
+          } else {
+            setTotalPages(1);
+          }
         }
       }
     } catch (error) {
@@ -278,7 +326,7 @@ export default function OutgoingDocumentsPage() {
     setTimeout(() => {
       fetchDocuments(0, pageSize);
     }, 50);
-  }, [user?.id, statusFilter, activeTab, loadingDepartments, dateFromFilter, dateToFilter]);
+  }, [user?.id, statusFilter, activeTab, loadingDepartments, dateFromFilter, dateToFilter, searchQuery]);
 
   useEffect(() => {
     if (user && (currentPage > 0 || pageSize !== 10)) {
