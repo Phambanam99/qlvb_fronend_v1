@@ -58,6 +58,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useHierarchicalDepartments } from "@/hooks/use-hierarchical-departments";
 import {
   getReceivedDocumentsExcludingSent,
+  getAllReceivedDocumentsExcludingSent,
   markDocumentAsRead,
   getInternalDocumentHistory,
   getDocumentStats,
@@ -406,44 +407,76 @@ export default function IncomingDocumentsPage() {
   ) => {
     try {
       setLoadingInternal(true);
-      console.log("Fetching internal received documents with pagination:", {
-        page,
-        size,
-      });
+      
+      let response_;
+      let response;
+      
+      // Nếu có search query, load tất cả documents để tìm kiếm
+      if (searchQuery.trim()) {
+        console.log("Fetching all internal received documents for search:", searchQuery);
+        response_ = await getAllReceivedDocumentsExcludingSent();
+        response = response_.data;
+        
+        if (response && response.data) {
+          console.log("All internal received documents response:", response);
 
-      const response_ = await getReceivedDocumentsExcludingSent(page, size);
-      const response = response_.data;
+          // Sử dụng trực tiếp data từ backend thay vì tính toán lại
+          setInternalDocuments(response.data);
 
-      if (response && response.content) {
-        console.log("Internal received documents response:", response);
-
-        // Sử dụng trực tiếp data từ backend thay vì tính toán lại
-        // Backend đã trả về isRead: true/false dựa trên user hiện tại
-        setInternalDocuments(response.content);
-
-        // Cập nhật global read status với data từ server
-        const readStatusUpdates = response.content.map(
-          (doc: InternalDocument) => ({
-            id: doc.id,
-            isRead: doc.isRead, // Sử dụng trực tiếp từ backend
-            readAt: doc.readAt,
-          })
-        );
-        updateMultipleReadStatus(readStatusUpdates);
-
-        // Set pagination info if available
-        if (response.totalElements !== undefined) {
-          setTotalItems(
-            Math.max(response.totalElements, response.content.length)
+          // Cập nhật global read status với data từ server
+          const readStatusUpdates = response.data.map(
+            (doc: InternalDocument) => ({
+              id: doc.id,
+              isRead: doc.isRead, // Sử dụng trực tiếp từ backend
+              readAt: doc.readAt,
+            })
           );
-        } else {
-          setTotalItems(response.content.length);
-        }
+          updateMultipleReadStatus(readStatusUpdates);
 
-        if (response.totalPages !== undefined) {
-          setTotalPages(Math.max(response.totalPages, 1));
-        } else {
+          // Khi search, không có pagination
+          setTotalItems(response.data.length);
           setTotalPages(1);
+        }
+      } else {
+        // Không có search query, sử dụng pagination bình thường
+        console.log("Fetching internal received documents with pagination:", {
+          page,
+          size,
+        });
+
+        response_ = await getReceivedDocumentsExcludingSent(page, size);
+        response = response_.data;
+
+        if (response && response.content) {
+          console.log("Internal received documents response:", response);
+
+          // Sử dụng trực tiếp data từ backend thay vì tính toán lại
+          setInternalDocuments(response.content);
+
+          // Cập nhật global read status với data từ server
+          const readStatusUpdates = response.content.map(
+            (doc: InternalDocument) => ({
+              id: doc.id,
+              isRead: doc.isRead, // Sử dụng trực tiếp từ backend
+              readAt: doc.readAt,
+            })
+          );
+          updateMultipleReadStatus(readStatusUpdates);
+
+          // Set pagination info if available
+          if (response.totalElements !== undefined) {
+            setTotalItems(
+              Math.max(response.totalElements, response.content.length)
+            );
+          } else {
+            setTotalItems(response.content.length);
+          }
+
+          if (response.totalPages !== undefined) {
+            setTotalPages(Math.max(response.totalPages, 1));
+          } else {
+            setTotalPages(1);
+          }
         }
       }
     } catch (error) {
@@ -536,6 +569,7 @@ export default function IncomingDocumentsPage() {
     documentSource,
     departmentFilter,
     loadingDepartments,
+    searchQuery,
   ]);
 
   // Lấy danh sách các phòng ban con của phòng ban được chọn

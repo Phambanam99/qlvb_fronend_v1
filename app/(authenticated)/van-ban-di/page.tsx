@@ -145,10 +145,10 @@ export default function OutgoingDocumentsPage() {
       // Nếu có search query, load tất cả documents để tìm kiếm
       if (searchQuery.trim()) {
         console.log("Fetching all internal documents for search:", searchQuery);
-        response_ = await getAllSentDocuments();
-        response = response_.data;
-        
-        if (response && response.data) {
+        response = await getAllSentDocuments();
+        // response = response_.data;
+        //  console.log("Fetching all internal documents for search:", response);
+        if (response) {
           console.log("All internal documents response:", response);
 
           // Cập nhật trạng thái đọc từ global state cho văn bản đi
