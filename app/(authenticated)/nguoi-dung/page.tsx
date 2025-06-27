@@ -72,8 +72,8 @@ export default function UsersPage() {
   const { toast } = useToast();
   const { user, hasRole } = useAuth();
 
-  // Function to fetch users with pagination
-  const fetchUsers = async (page: number, size: number, filters: any = {}) => {
+  // Function to fetch users with pagination and filters
+  const fetchUsers = async (page: number = currentPage, size: number = itemsPerPage) => {
     setLoading(true);
 
     try {
@@ -105,7 +105,6 @@ export default function UsersPage() {
       const params: any = {
         page,
         size,
-        ...filters,
       };
 
       // Apply role filter if selected
@@ -123,84 +122,52 @@ export default function UsersPage() {
         params.keyword = searchTerm.trim();
       }
 
+      // Apply department filter if selected
+      if (departmentFilter !== "all") {
+        params.departmentId = departmentFilter;
+      }
+
       let usersData;
 
       if (isAdmin || isLeadership) {
         // Admin and leadership see all users with pagination
-        // Apply department filter if selected
-        if (departmentFilter !== "all") {
-          params.departmentId = departmentFilter;
-        }
-        const usersData_ = await usersAPI.getPaginatedUsers(params);
-        usersData = usersData_.data;
+        usersData = await usersAPI.getPaginatedUsers(params);
       } else if (isDepartmentHead && userDepartmentId) {
         // Department heads see users in their department and child departments
-        let departmentIds = [Number(userDepartmentId)];
-
-        try {
-          // Get child departments
-          const childDepartments_ = await departmentsAPI.getChildDepartments(
-            userDepartmentId
-          );
-          const childDepartments = childDepartments_.data;
-          if (Array.isArray(childDepartments) && childDepartments.length > 0) {
-            const childDeptIds = childDepartments.map((dept) => dept.id);
-            departmentIds.push(...childDeptIds);
-          }
-        } catch (error) {
-          console.warn("Could not fetch child departments:", error);
-          // Continue with just the current department
-        }
-
-        // If department filter is selected and it's within allowed departments, use it
-        if (
-          departmentFilter !== "all" &&
-          departmentIds.includes(Number(departmentFilter))
-        ) {
-          params.departmentId = departmentFilter;
-          const usersData_ = await usersAPI.getPaginatedUsers(params);
-          usersData = usersData_.data;
-        } else {
-          // Otherwise, filter by all allowed departments
-          // For API calls, we'll need to call multiple times or use a department list filter
-          // For now, let's get all users and filter client-side
-          const allUsersInDepartments = [];
-
-          for (const deptId of departmentIds) {
-            try {
-              const deptParams = { ...params, departmentId: deptId };
-              const deptUsers_ = await usersAPI.getPaginatedUsers(deptParams);
-              const deptUsers = deptUsers_.data;
-              allUsersInDepartments.push(...deptUsers.content);
-            } catch (error) {
-              console.warn(
-                `Error fetching users for department ${deptId}:`,
-                error
-              );
+        // If department filter is selected, use it (if it's within allowed departments)
+        if (departmentFilter !== "all") {
+          // Check if the selected department is allowed for this user
+          let allowedDepartmentIds = [Number(userDepartmentId)];
+          
+                    try {
+             const childDepartments = await departmentsAPI.getChildDepartments(userDepartmentId);
+            if (Array.isArray(childDepartments) && childDepartments.length > 0) {
+              const childDeptIds = childDepartments.map((dept) => dept.id);
+              allowedDepartmentIds.push(...childDeptIds);
             }
+          } catch (error) {
+            console.warn("Could not fetch child departments:", error);
           }
 
-          // Remove duplicates based on user ID
-          const uniqueUsers = allUsersInDepartments.filter(
-            (user, index, array) =>
-              array.findIndex((u) => u.id === user.id) === index
-          );
-
-          // Apply pagination manually
-          const startIndex = page * size;
-          const endIndex = startIndex + size;
-          const paginatedUsers = uniqueUsers.slice(startIndex, endIndex);
-
-          usersData = {
-            content: paginatedUsers,
-            totalElements: uniqueUsers.length,
-            totalPages: Math.ceil(uniqueUsers.length / size),
-            size,
-            number: page,
-          };
+                     if (allowedDepartmentIds.includes(Number(departmentFilter))) {
+             usersData = await usersAPI.getPaginatedUsers(params);
+          } else {
+            // Selected department is not allowed, show empty results
+            usersData = {
+              content: [],
+              totalElements: 0,
+              totalPages: 0,
+              size,
+              number: page,
+            };
+          }
+                 } else {
+           // No department filter selected, get users from current department
+           params.departmentId = userDepartmentId;
+           usersData = await usersAPI.getPaginatedUsers(params);
         }
       } else {
-        // Regular users can only see themselves - no need for pagination here
+        // Regular users can only see themselves
         usersData = {
           content: user ? [user as UserDTO] : [],
           totalElements: user ? 1 : 0,
@@ -229,12 +196,10 @@ export default function UsersPage() {
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
-        const [rolesData_, departmentsData_] = await Promise.all([
+        const [rolesData, departmentsData] = await Promise.all([
           rolesAPI.getAllRoles(),
           departmentsAPI.getAllDepartments(),
         ]);
-        const rolesData = rolesData_.data;
-        const departmentsData = departmentsData_.data;
         setRoles(rolesData);
 
         // Filter departments based on user permissions
@@ -277,10 +242,9 @@ export default function UsersPage() {
 
           try {
             // Add child departments
-            const childDepartments_ = await departmentsAPI.getChildDepartments(
+            const childDepartments = await departmentsAPI.getChildDepartments(
               userDepartmentId
             );
-            const childDepartments = childDepartments_.data;
             if (
               Array.isArray(childDepartments) &&
               childDepartments.length > 0
@@ -297,9 +261,6 @@ export default function UsersPage() {
             content: allowedDepartments,
             totalElements: allowedDepartments.length,
           });
-
-          // Don't pre-select department filter for department heads anymore
-          // Let them choose from their allowed departments
         } else {
           // Regular users see no department filter options (they can only see themselves)
           setDepartments({
@@ -308,9 +269,6 @@ export default function UsersPage() {
             totalElements: 0,
           });
         }
-
-        // Initial fetch of users
-        fetchUsers(currentPage, itemsPerPage);
       } catch (error) {
         console.error("Error fetching initial data:", error);
         toast({
@@ -323,25 +281,18 @@ export default function UsersPage() {
     };
 
     fetchInitialData();
-  }, []);
+  }, [user]);
 
-  // Refetch users when filters or pagination changes
+  // Fetch users when filters or pagination changes
   useEffect(() => {
-    const filters = {
-      roleId: roleFilter !== "all" ? roleFilter : undefined,
-      departmentId: departmentFilter !== "all" ? departmentFilter : undefined,
-      status:
-        statusFilter !== "all"
-          ? statusFilter === "active"
-            ? 1
-            : 0
-          : undefined,
-      keyword: searchTerm.trim() || undefined,
-    };
+    // Skip initial fetch if user data or roles/departments haven't loaded yet
+    if (!user || !roles.length) {
+      return;
+    }
 
     // Use debounce for search term to prevent too many API calls
     const timer = setTimeout(() => {
-      fetchUsers(currentPage, itemsPerPage, filters);
+      fetchUsers(currentPage, itemsPerPage);
     }, 300);
 
     return () => clearTimeout(timer);
@@ -352,13 +303,9 @@ export default function UsersPage() {
     departmentFilter,
     statusFilter,
     searchTerm,
+    user,
+    roles,
   ]);
-
-  // Apply filters and reset to first page
-  const applyFilters = () => {
-    // Reset to first page when filters change
-    setCurrentPage(0);
-  };
 
   // Page change handler
   const handlePageChange = (page: number) => {
@@ -373,6 +320,27 @@ export default function UsersPage() {
     setCurrentPage(0); // Reset to first page when changing items per page
   };
 
+  // Filter change handlers - reset to first page when filters change
+  const handleRoleFilterChange = (value: string) => {
+    setRoleFilter(value);
+    setCurrentPage(0);
+  };
+
+  const handleDepartmentFilterChange = (value: string) => {
+    setDepartmentFilter(value);
+    setCurrentPage(0);
+  };
+
+  const handleStatusFilterChange = (value: string) => {
+    setStatusFilter(value);
+    setCurrentPage(0);
+  };
+
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+    setCurrentPage(0);
+  };
+
   const getRoleName = (roleId: string) => {
     const role = roles.find((r) => r.id === roleId);
     return role ? role.name : "Không xác định";
@@ -385,7 +353,7 @@ export default function UsersPage() {
     return department ? department.name : "Không xác định";
   };
 
-  if (loading && currentPage === 0) {
+  if (loading && currentPage === 0 && !users.length) {
     return (
       <div className="flex h-[calc(100vh-4rem)] w-full items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -429,11 +397,7 @@ export default function UsersPage() {
                   placeholder="Tìm theo tên, email..."
                   className="pl-8"
                   value={searchTerm}
-                  onChange={(e) => {
-                    setSearchTerm(e.target.value);
-                    // Reset to first page when search changes
-                    setCurrentPage(0);
-                  }}
+                  onChange={(e) => handleSearchChange(e.target.value)}
                 />
               </div>
             </div>
@@ -442,10 +406,7 @@ export default function UsersPage() {
               <label className="text-sm font-medium">Vai trò</label>
               <Select
                 value={roleFilter}
-                onValueChange={(value) => {
-                  setRoleFilter(value);
-                  applyFilters();
-                }}
+                onValueChange={handleRoleFilterChange}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Chọn vai trò" />
@@ -465,10 +426,7 @@ export default function UsersPage() {
               <label className="text-sm font-medium">Phòng ban</label>
               <Select
                 value={departmentFilter}
-                onValueChange={(value) => {
-                  setDepartmentFilter(value);
-                  applyFilters();
-                }}
+                onValueChange={handleDepartmentFilterChange}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Chọn phòng ban" />
@@ -491,10 +449,7 @@ export default function UsersPage() {
               <label className="text-sm font-medium">Trạng thái</label>
               <Select
                 value={statusFilter}
-                onValueChange={(value) => {
-                  setStatusFilter(value);
-                  applyFilters();
-                }}
+                onValueChange={handleStatusFilterChange}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Chọn trạng thái" />
