@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -73,7 +73,7 @@ export default function UsersPage() {
   const { user, hasRole } = useAuth();
 
   // Function to fetch users with pagination
-  const fetchUsers = async (page: number, size: number) => {
+  const fetchUsers = useCallback(async (page: number, size: number) => {
     setLoading(true);
 
     try {
@@ -230,7 +230,7 @@ export default function UsersPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, roleFilter, statusFilter, searchTerm, departmentFilter, toast]);
 
   // Fetch initial data: roles and departments
   useEffect(() => {
@@ -327,7 +327,7 @@ export default function UsersPage() {
     if (user) {
       fetchInitialData();
     }
-  }, [user]);
+  }, [user, toast]);
 
   // Refetch users when filters or pagination changes
   useEffect(() => {
@@ -345,20 +345,11 @@ export default function UsersPage() {
   }, [
     currentPage,
     itemsPerPage,
-    roleFilter,
-    departmentFilter,
-    statusFilter,
-    searchTerm,
+    fetchUsers,
     user,
     roles,
     departments,
   ]);
-
-  // Apply filters and reset to first page
-  const applyFilters = () => {
-    // Reset to first page when filters change
-    setCurrentPage(0);
-  };
 
   // Page change handler
   const handlePageChange = (page: number) => {
@@ -373,6 +364,27 @@ export default function UsersPage() {
     setCurrentPage(0); // Reset to first page when changing items per page
   };
 
+  // Filter change handlers - reset to first page when filters change
+  const handleRoleFilterChange = (value: string) => {
+    setRoleFilter(value);
+    setCurrentPage(0);
+  };
+
+  const handleDepartmentFilterChange = (value: string) => {
+    setDepartmentFilter(value);
+    setCurrentPage(0);
+  };
+
+  const handleStatusFilterChange = (value: string) => {
+    setStatusFilter(value);
+    setCurrentPage(0);
+  };
+
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+    setCurrentPage(0);
+  };
+
   const getRoleName = (roleId: string) => {
     const role = roles.find((r) => r.id === roleId);
     return role ? role.name : "Không xác định";
@@ -385,7 +397,7 @@ export default function UsersPage() {
     return department ? department.name : "Không xác định";
   };
 
-  if (loading && currentPage === 0) {
+  if (loading && currentPage === 0 && !users.length) {
     return (
       <div className="flex h-[calc(100vh-4rem)] w-full items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -394,7 +406,7 @@ export default function UsersPage() {
   }
 
   return (
-    <div className="container py-6">
+    <div className="container mx-auto max-w-full px-4 py-6">
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold">Quản lý người dùng</h1>
 
@@ -420,7 +432,7 @@ export default function UsersPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">Tìm kiếm</label>
               <div className="relative">
@@ -429,11 +441,7 @@ export default function UsersPage() {
                   placeholder="Tìm theo tên, email..."
                   className="pl-8"
                   value={searchTerm}
-                  onChange={(e) => {
-                    setSearchTerm(e.target.value);
-                    // Reset to first page when search changes
-                    setCurrentPage(0);
-                  }}
+                  onChange={(e) => handleSearchChange(e.target.value)}
                 />
               </div>
             </div>
@@ -442,10 +450,7 @@ export default function UsersPage() {
               <label className="text-sm font-medium">Vai trò</label>
               <Select
                 value={roleFilter}
-                onValueChange={(value) => {
-                  setRoleFilter(value);
-                  applyFilters();
-                }}
+                onValueChange={handleRoleFilterChange}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Chọn vai trò" />
@@ -465,10 +470,7 @@ export default function UsersPage() {
               <label className="text-sm font-medium">Phòng ban</label>
               <Select
                 value={departmentFilter}
-                onValueChange={(value) => {
-                  setDepartmentFilter(value);
-                  applyFilters();
-                }}
+                onValueChange={handleDepartmentFilterChange}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Chọn phòng ban" />
@@ -491,10 +493,7 @@ export default function UsersPage() {
               <label className="text-sm font-medium">Trạng thái</label>
               <Select
                 value={statusFilter}
-                onValueChange={(value) => {
-                  setStatusFilter(value);
-                  applyFilters();
-                }}
+                onValueChange={handleStatusFilterChange}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Chọn trạng thái" />
@@ -517,22 +516,22 @@ export default function UsersPage() {
             Hiển thị {users.length} / {totalUsers} người dùng
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="rounded-md border">
+        <CardContent className="px-0">
+          <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Họ tên</TableHead>
-                  <TableHead>Vai trò</TableHead>
-                  <TableHead>Phòng ban</TableHead>
-                  <TableHead>Trạng thái</TableHead>
-                  <TableHead className="text-right">Thao tác</TableHead>
+                  <TableHead className="px-6">Họ tên</TableHead>
+                  <TableHead className="px-6">Vai trò</TableHead>
+                  <TableHead className="px-6">Phòng ban</TableHead>
+                  <TableHead className="px-6">Trạng thái</TableHead>
+                  <TableHead className="px-6 text-right">Thao tác</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center">
+                    <TableCell colSpan={5} className="h-24 text-center px-6">
                       <div className="flex justify-center items-center">
                         <Loader2 className="h-6 w-6 animate-spin text-primary mr-2" />
                         Đang tải dữ liệu...
@@ -541,23 +540,23 @@ export default function UsersPage() {
                   </TableRow>
                 ) : users.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center">
+                    <TableCell colSpan={5} className="h-24 text-center px-6">
                       Không tìm thấy người dùng nào
                     </TableCell>
                   </TableRow>
                 ) : (
                   users.map((user) => (
                     <TableRow key={user.id}>
-                      <TableCell className="font-medium">
+                      <TableCell className="font-medium px-6">
                         {user.fullName}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="px-6">
                         {user.roleDisplayNames?.[0] || "Không xác định"}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="px-6">
                         {getDepartmentName(user.departmentId)}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="px-6">
                         {user.status === 1 ? (
                           <Badge
                             variant="outline"
@@ -574,7 +573,7 @@ export default function UsersPage() {
                           </Badge>
                         )}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="px-6 text-right">
                         <Link href={`/nguoi-dung/${user.id}`}>
                           <Button variant="ghost" size="icon">
                             <UserCog className="h-4 w-4" />
