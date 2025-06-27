@@ -658,17 +658,6 @@ export default function CreateInternalOutgoingDocumentPage() {
                     </SelectContent>
                   </Select>
                 </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="signer">Người ký</Label>
-                  <Input
-                    id="signer"
-                    name="signer"
-                    value={formData.signer}
-                    onChange={handleInputChange}
-                    placeholder="Nhập người ký"
-                  />
-                </div>
               </div>
 
               {/* Additional Information - Merged */}
@@ -1039,7 +1028,7 @@ export default function CreateInternalOutgoingDocumentPage() {
             <p className="text-sm text-amber-800">
               <span className="font-medium">Lưu ý:</span> Văn bản nội bộ sẽ được
               gửi đến tất cả phòng ban và cá nhân được chọn. Văn bản được gửi
-              đến phòng ban sẽ được chuyển đến trưởng phòng của phòng ban đó.
+              đến phòng ban sẽ được chuyển đến tất cả ngiwpo phòng ban đó.
             </p>
           </div>
         </form>

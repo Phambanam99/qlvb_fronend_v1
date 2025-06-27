@@ -8,675 +8,1124 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import {
-  ArrowRight,
-  FileText,
-  Calendar,
-  ClipboardList,
-  Send,
-  Loader2,
-  AlertCircle,
-} from "lucide-react";
-import Link from "next/link";
-import { dashboardAPI } from "@/lib/api";
-import { incomingDocumentsAPI } from "@/lib/api";
-import { schedulesAPI } from "@/lib/api";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/use-toast";
-import { useDashboard } from "@/lib/store";
 import { useAuth } from "@/lib/auth-context";
-import { da } from "date-fns/locale";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  LineChart,
+  Line,
+  Area,
+  AreaChart,
+} from "recharts";
+import {
+  dashboardAPI,
+  DashboardDTO,
+  DocumentSummaryDTO,
+  WorkPlanSummaryDTO,
+} from "@/lib/api/dashboard";
+import {
+  FileText,
+  Clock,
+  Users,
+  TrendingUp,
+  TrendingDown,
+  AlertTriangle,
+  CheckCircle,
+  Calendar,
+  Building,
+  User,
+  Settings,
+  BarChart3,
+  PieChart as PieChartIcon,
+  Activity,
+  Target,
+  RefreshCw,
+} from "lucide-react";
 
-// Danh sách vai trò có quyền xem bảng điều khiển đầy đủ
-const FULL_ACCESS_ROLES = [
-  "ROLE_ADMIN",
-  "ROLE_VAN_THU",
-  "ROLE_CUC_TRUONG",
-  "ROLE_CUC_PHO",
-  "ROLE_CHINH_UY",
-  "ROLE_PHO_CHINH_UY",
+const COLORS = [
+  "#0088FE",
+  "#00C49F",
+  "#FFBB28",
+  "#FF8042",
+  "#8884d8",
+  "#82ca9d",
+  "#ff7300",
 ];
 
-// Danh sách vai trò có quyền xem dữ liệu phòng ban
-const DEPARTMENT_ACCESS_ROLES = [
-  "ROLE_TRUONG_PHONG",
-  "ROLE_PHO_PHONG",
-  "ROLE_TRUONG_BAN",
-  "ROLE_PHO_BAN",
-];
+interface DashboardStats {
+  systemStats?: Record<string, any>;
+  userStats?: DashboardDTO;
+  quickMetrics?: Record<string, any>;
+  statusBreakdown?: Record<string, any>;
+  incomingStats?: Record<string, any>;
+  outgoingStats?: Record<string, any>;
+  internalStats?: Record<string, any>;
+  recentDocuments?: any[];
+  todaySchedule?: any[];
+}
 
-// Danh sách vai trò có quyền xem dữ liệu cá nhân
-const PERSONAL_ACCESS_ROLES = ["ROLE_NHAN_VIEN", "ROLE_TRO_LY"];
-
-export default function Home() {
+export default function DashboardPage() {
   const { toast } = useToast();
-  const { user, hasRole, setDataLoaded } = useAuth();
-  const {
-    stats,
-    recentDocuments,
-    todayEvents,
-    loading,
-    error,
-    setStats,
-    setRecentDocuments,
-    setTodayEvents,
-    setLoading,
-    setError,
-  } = useDashboard();
+  const { user, hasRole } = useAuth();
+  const [isLoading, setIsLoading] = useState(true);
+  const [dashboardStats, setDashboardStats] = useState<DashboardStats>({});
+  const [activeTab, setActiveTab] = useState("overview");
+  const [refreshing, setRefreshing] = useState(false);
 
-  // State để theo dõi trạng thái loading chi tiết
-  const [isStatsLoading, setIsStatsLoading] = useState(true);
-  const [isDocumentsLoading, setIsDocumentsLoading] = useState(true);
-  const [isEventsLoading, setIsEventsLoading] = useState(true);
-  const [isUserLoaded, setIsUserLoaded] = useState(false);
-
-  // Xác định quyền truy cập của người dùng
-  const hasFullAccess = FULL_ACCESS_ROLES.some((role) => hasRole(role));
-  const hasDepartmentAccess = DEPARTMENT_ACCESS_ROLES.some((role) =>
-    hasRole(role)
-  );
-  const hasPersonalAccess = PERSONAL_ACCESS_ROLES.some((role) => hasRole(role));
-
-  // Xác định xem người dùng có quyền xem bảng điều khiển không
-  const canViewDashboard =
-    hasFullAccess || hasDepartmentAccess || hasPersonalAccess;
-
-  // Cập nhật trạng thái user loaded sau khi user được fetch
-  useEffect(() => {
-    if (user) {
-      console.log("👤 Thông tin người dùng đã tải xong:", {
-        id: user.id,
-        name: user.fullName,
-        roles: user.roles,
-        department: user.departmentId,
-      });
-
-      // Đảm bảo ở useEffect tiếp theo isUserLoaded đã thay đổi
-      // bằng cách dùng setTimeout để đẩy vào cuối event loop
-      setTimeout(() => {
-        setIsUserLoaded(true);
-      }, 0);
-    }
-  }, [user]);
-
-  // Cập nhật trạng thái loading tổng thể
-  useEffect(() => {
-    // Chỉ đặt loading = false khi tất cả dữ liệu đã tải xong
-    const isFullyLoaded =
-      isUserLoaded &&
-      !isStatsLoading &&
-      !isDocumentsLoading &&
-      !isEventsLoading;
-
-    console.log("Trạng thái loading của dashboard:", {
-      isUserLoaded,
-      isStatsLoading,
-      isDocumentsLoading,
-      isEventsLoading,
-      isFullyLoaded,
-    });
-
-    setLoading(!isFullyLoaded);
-
-    // Thông báo cho AuthContext khi dữ liệu đã tải xong
-    if (isFullyLoaded) {
-      // Đánh dấu dữ liệu đã tải xong trong AuthContext
-      setDataLoaded();
-    }
-  }, [
-    isStatsLoading,
-    isDocumentsLoading,
-    isEventsLoading,
-    isUserLoaded,
-    setLoading,
-    setDataLoaded,
+  // Determine user role category
+  const isAdmin = hasRole([
+    "ROLE_ADMIN",
+    "ROLE_VAN_THU",
+    "ROLE_CUC_TRUONG",
+    "ROLE_CUC_PHO",
+    "ROLE_CHINH_UY",
+    "ROLE_PHO_CHINH_UY",
   ]);
 
-  // Theo dõi các thay đổi quan trọng để biết khi nào nên tải lại dữ liệu
+  const isLeadership = hasRole([
+    "ROLE_TRUONG_PHONG",
+    "ROLE_PHO_PHONG",
+    "ROLE_TRUONG_BAN",
+    "ROLE_PHO_BAN",
+    "ROLE_TRUONG_BAN",
+    "ROLE_TRAM_TRUONG",
+    "ROLE_PHO_TRAM_TRUONG",
+    "ROLE_CUM_TRUONG",
+    "ROLE_PHO_CUM_TRUONG",
+    "ROLE_CHINH_TRI_VIEN_TRAM",
+  ]);
+
+  const isStaff = hasRole(["ROLE_NHAN_VIEN", "ROLE_TRO_LY"]);
+
   useEffect(() => {
-    // Không làm gì nếu user chưa tải xong
-    if (!user) {
-      console.log("Dashboard: Chưa có thông tin user, đợi tải...");
-      return;
-    }
-
-    console.log("Dashboard: User đã được tải, bắt đầu tải dữ liệu", {
-      userId: user.id,
-      name: user.fullName || user.name,
-      roles: user.roles,
-      isUserLoaded,
-      canViewDashboard,
-    });
-
-    // Gọi hàm fetch data khi có user
     fetchDashboardData();
-
-    // Không cần thiết phải monitor trạng thái loading vì chúng ta đã có user
-    return () => {
-      console.log("Dashboard: Cleanup data fetching");
-    };
-  }, [user?.id]); // Chỉ phụ thuộc vào user.id để tránh re-render không cần thiết
+  }, [user]);
 
   const fetchDashboardData = async () => {
+    if (!user) return;
+
+    setIsLoading(true);
     try {
-      // Nếu người dùng không có quyền xem bảng điều khiển, không tải dữ liệu
-      if (!canViewDashboard) {
-        console.log("User does not have permission to view dashboard");
-        setIsStatsLoading(false);
-        setIsDocumentsLoading(false);
-        setIsEventsLoading(false);
-        setError("Bạn không có quyền xem bảng điều khiển");
-        return;
-      }
+      // Use the comprehensive dashboard stats API instead of multiple calls
+      const dashboardStatsResponse_ = await dashboardAPI.getDashboardStats();
 
-      if (!user) {
-        console.log("Đang đợi thông tin người dùng...");
-        return; // Chờ cho đến khi user được tải xong
-      }
+      const dashboardStatsResponse = dashboardStatsResponse_.data;
 
-      console.log("Bắt đầu tải dữ liệu dashboard:", new Date().toISOString());
-      // Đặt tất cả các thành phần thành trạng thái loading và xóa lỗi
-      setIsStatsLoading(true);
-      setIsDocumentsLoading(true);
-      setIsEventsLoading(true);
-      setError(null);
-
-      // PHẦN 1: TẢI THỐNG KÊ BẢNG ĐIỀU KHIỂN
-      console.log("1️⃣ Đang tải thống kê bảng điều khiển...");
+      // Fetch internal document stats separately to get detailed breakdown
+      let internalStats = {};
       try {
-        let dashboardStats;
+        const internalStatsResponse_ =
+          await dashboardAPI.getInternalDocumentStats();
+        const internalStatsResponse = internalStatsResponse_.data;
+       
 
-        if (hasFullAccess) {
-          // Admin, văn thư, cục trưởng: xem tất cả dữ liệu
-          console.log("Tải thống kê đầy đủ cho admin/cục trưởng");
-          dashboardStats = await dashboardAPI.getDashboardStatistics();
-          console.log("dash: ", dashboardStats);
-        } else if (hasDepartmentAccess && user?.departmentId) {
-          // Trưởng phòng, phó phòng: chỉ xem dữ liệu của phòng ban
-          console.log("Tải thống kê cho phòng ban:", user.departmentId);
-          // Sử dụng API mới để lấy thống kê theo phòng ban
-          dashboardStats = await dashboardAPI.getDepartmentDashboardStatistics(
-            user.departmentId
-          );
-          console.log("dash p: ", dashboardStats.outgoingDocumentCount);
-        } else if (hasPersonalAccess && user?.id) {
-          // Nhân viên, trợ lý: chỉ xem dữ liệu cá nhân
-          console.log("Tải thống kê cho nhân viên ID:", user.id);
-          // Sử dụng API mới để lấy thống kê theo người dùng
-          dashboardStats = await dashboardAPI.getUserDashboardStatistics(
-            user.id
-          );
-        } else {
-          // Fallback - trả về dữ liệu rỗng
-          dashboardStats = {
-            incomingDocuments: 0,
-            outgoingDocuments: 0,
-            pendingDocuments: [],
-            activeWorkPlans: [],
-          };
-        }
+        // Process internal stats to separate incoming and outgoing
+        internalStats = {
+          // Incoming internal documents (received)
+          incomingTotal: internalStatsResponse.receivedTotal || 0,
+          incomingRead: internalStatsResponse.receivedRead || 0,
+          incomingUnread: internalStatsResponse.receivedUnread || 0,
 
-        if (dashboardStats) {
-          console.log("✅ Hoàn tất tải thống kê:", dashboardStats);
+          // Outgoing internal documents (sent)
+          outgoingTotal: internalStatsResponse.sentTotal || 0,
+          outgoingSent: internalStatsResponse.sentSent || 0,
+          outgoingDraft: internalStatsResponse.sentDraft || 0,
 
-          // Tính toán số văn bản đang chờ xử lý
-          const pendingCount = Array.isArray(dashboardStats.pendingDocuments)
-            ? dashboardStats.pendingDocuments.length
-            : 0;
-
-          // Tính toán số kế hoạch đang hoạt động
-          const activeWorkPlansCount = Array.isArray(
-            dashboardStats.activeWorkPlans
-          )
-            ? dashboardStats.activeWorkPlans.length
-            : 0;
-
-          // Cập nhật thống kê dựa trên dữ liệu mới
-          setStats({
-            incomingDocuments: {
-              total:
-                dashboardStats.incomingDocuments ||
-                dashboardStats.incomingDocumentCount ||
-                0,
-              pending: pendingCount,
-            },
-            outgoingDocuments: {
-              total:
-                dashboardStats.outgoingDocuments ||
-                dashboardStats.outgoingDocumentCount ||
-                0,
-              pending: pendingCount,
-            },
-            workPlans: {
-              total: activeWorkPlansCount || dashboardStats.workCaseCount || 0,
-              active:
-                activeWorkPlansCount ||
-                (dashboardStats.workCaseCount
-                  ? Math.floor(dashboardStats.workCaseCount * 0.7)
-                  : 0),
-            },
-            schedules: {
-              total: dashboardStats.scheduleCount || 0,
-              today: dashboardStats.todayScheduleCount || 0,
-            },
-          });
-        } else {
-          console.error(
-            "Nhận được dữ liệu thống kê không hợp lệ:",
-            dashboardStats
-          );
-          setStats({
-            incomingDocuments: { total: 0, pending: 0 },
-            outgoingDocuments: { total: 0, pending: 0 },
-            workPlans: { total: 0, active: 0 },
-            schedules: { total: 0, today: 0 },
-          });
-        }
-      } catch (statsError) {
-        console.error("❌ Lỗi khi tải thống kê bảng điều khiển:", statsError);
-        setStats({
-          incomingDocuments: { total: 0, pending: 0 },
-          outgoingDocuments: { total: 0, pending: 0 },
-          workPlans: { total: 0, active: 0 },
-          schedules: { total: 0, today: 0 },
-        });
-      } finally {
-        // Đánh dấu thống kê đã tải xong dù có lỗi hay không
-        setIsStatsLoading(false);
+          // Legacy fields for backward compatibility
+          total:
+            (internalStatsResponse.receivedTotal || 0) +
+            (internalStatsResponse.sentTotal || 0),
+          read: internalStatsResponse.receivedRead || 0,
+          unread: internalStatsResponse.receivedUnread || 0,
+        };
+      } catch (internalError) {
+        console.warn("Could not fetch internal document stats:", internalError);
+        // Fallback to default values
+        internalStats = {
+          incomingTotal: 0,
+          incomingRead: 0,
+          incomingUnread: 0,
+          outgoingTotal: 0,
+          outgoingSent: 0,
+          outgoingDraft: 0,
+          total: 0,
+          read: 0,
+          unread: 0,
+        };
       }
 
-      // PHẦN 2: TẢI DANH SÁCH VĂN BẢN GẦN ĐÂY
-      console.log("2️⃣ Đang tải danh sách văn bản...");
+      // Map the comprehensive API response to our dashboard stats structure
+      const stats: DashboardStats = {
+        userStats: {
+          // Map from the comprehensive API response
+          incomingDocumentCount:
+            dashboardStatsResponse.incomingDocuments?.total || 0,
+          outgoingDocumentCount:
+            dashboardStatsResponse.outgoingDocuments?.total || 0,
+          pendingDocumentCount:
+            dashboardStatsResponse.incomingDocuments?.inProcess || 0,
+          unreadNotifications:
+            dashboardStatsResponse.overallStats?.totalUnread || 0,
+          pendingDocuments: [], // Will need to get from recentDocuments if needed
+          activeWorkPlans: [], // May need separate API call if not in stats
+          upcomingDeadlines: [], // May need separate API call if not in stats
+        },
+        quickMetrics: {
+          incomingCount: dashboardStatsResponse.incomingDocuments?.total || 0,
+          outgoingCount: dashboardStatsResponse.outgoingDocuments?.total || 0,
+          pendingCount:
+            dashboardStatsResponse.incomingDocuments?.inProcess || 0,
+          notificationCount:
+            dashboardStatsResponse.overallStats?.totalUnread || 0,
+        },
+        // Updated internal stats with detailed breakdown
+        internalStats: internalStats,
+        // System stats for admin/leadership
+        systemStats:
+          isAdmin || isLeadership
+            ? {
+                totalDocuments:
+                  dashboardStatsResponse.overallStats?.totalDocuments || 0,
+                incomingDocumentCount:
+                  dashboardStatsResponse.incomingDocuments?.total || 0,
+                outgoingDocumentCount:
+                  dashboardStatsResponse.outgoingDocuments?.total || 0,
+                overdueDocumentCount:
+                  dashboardStatsResponse.overallStats?.totalUrgent || 0,
+                performanceMetrics: {
+                  "Hoàn thành đúng hạn":
+                    ((dashboardStatsResponse.incomingDocuments?.processed ||
+                      0) /
+                      Math.max(
+                        dashboardStatsResponse.incomingDocuments?.total || 1,
+                        1
+                      )) *
+                    100,
+                  "Văn bản đang xử lý":
+                    ((dashboardStatsResponse.incomingDocuments?.inProcess ||
+                      0) /
+                      Math.max(
+                        dashboardStatsResponse.incomingDocuments?.total || 1,
+                        1
+                      )) *
+                    100,
+                  "Tăng trưởng tuần":
+                    dashboardStatsResponse.periodStats?.weekGrowthPercent || 0,
+                  "Tăng trưởng tháng":
+                    dashboardStatsResponse.periodStats?.monthGrowthPercent || 0,
+                },
+                documentsByMonth: {
+                  "Tuần này":
+                    dashboardStatsResponse.periodStats?.thisWeekCount || 0,
+                  "Tuần trước":
+                    dashboardStatsResponse.periodStats?.lastWeekCount || 0,
+                  "Tháng này":
+                    dashboardStatsResponse.periodStats?.thisMonthCount || 0,
+                  "Tháng trước":
+                    dashboardStatsResponse.periodStats?.lastMonthCount || 0,
+                },
+              }
+            : undefined,
+        statusBreakdown:
+          isAdmin || isLeadership
+            ? {
+                "Đã xử lý":
+                  dashboardStatsResponse.incomingDocuments?.processed || 0,
+                "Đang xử lý":
+                  dashboardStatsResponse.incomingDocuments?.inProcess || 0,
+                "Chưa xử lý":
+                  dashboardStatsResponse.incomingDocuments?.notProcessed || 0,
+                "Khẩn cấp":
+                  dashboardStatsResponse.overallStats?.totalUrgent || 0,
+              }
+            : undefined,
+        incomingStats: {
+          total: dashboardStatsResponse.incomingDocuments?.total || 0,
+          unread: dashboardStatsResponse.overallStats?.totalUnread || 0,
+          processed: dashboardStatsResponse.incomingDocuments?.processed || 0,
+          external: dashboardStatsResponse.incomingDocuments?.external || 0,
+          internal: dashboardStatsResponse.incomingDocuments?.internal || 0,
+        },
+        outgoingStats: {
+          total: dashboardStatsResponse.outgoingDocuments?.total || 0,
+          sent: dashboardStatsResponse.outgoingDocuments?.published || 0,
+          draft: dashboardStatsResponse.outgoingDocuments?.draft || 0,
+          pending: dashboardStatsResponse.outgoingDocuments?.pending || 0,
+          external: dashboardStatsResponse.outgoingDocuments?.external || 0,
+          internal: dashboardStatsResponse.outgoingDocuments?.internal || 0,
+        },
+        recentDocuments: dashboardStatsResponse.recentDocuments || [],
+        todaySchedule: [], // May need separate API call if schedule is not included
+      };
+
+      // If we still need schedule data, make a separate call
       try {
-        let incomingDocs;
-
-        if (hasFullAccess) {
-          incomingDocs = await incomingDocumentsAPI.getAllDocuments(0, 5);
-          console.log("Đã tải văn bản với quyền admin:", incomingDocs);
-        } else if (hasDepartmentAccess && user?.departmentId) {
-          incomingDocs = await incomingDocumentsAPI.getDepartmentDocuments(
-            user.departmentId,
-            0,
-            5
-          );
-          console.log("Đã tải văn bản với quyền phòng/ban:", incomingDocs);
-        } else if (hasPersonalAccess && user?.id) {
-          // Lấy danh sách văn bản được phân công cho nhân viên
-          if (user.departmentId) {
-            incomingDocs = await incomingDocumentsAPI.getDepartmentDocuments(
-              user.departmentId,
-              0,
-              10
-            );
-            console.log(
-              "Đã tải văn bản phòng/ban để lọc theo người dùng:",
-              incomingDocs
-            );
-
-            // Lọc chỉ văn bản được phân công cho user
-            if (incomingDocs && incomingDocs.content) {
-              incomingDocs.content = incomingDocs.content.filter(
-                (doc: any) =>
-                  doc.assignedToIds &&
-                  Array.isArray(doc.assignedToIds) &&
-                  doc.assignedToIds.includes(user.id)
-              );
-            }
-          } else {
-            // Nếu không có departmentId, trả về danh sách rỗng
-            incomingDocs = { content: [] };
-          }
-        } else {
-          incomingDocs = { content: [] };
-        }
-
-        // Kiểm tra và xử lý kết quả
-        if (incomingDocs && Array.isArray(incomingDocs.content)) {
-          console.log("✅ Hoàn tất tải văn bản mới:", {
-            total: incomingDocs.content.length,
-            data: incomingDocs.content.slice(0, 3),
-          });
-
-          // Cập nhật danh sách văn bản gần đây, tối đa 3 văn bản
-          setRecentDocuments(
-            incomingDocs.content.slice(0, 3).map((doc: any) => ({
-              id: doc.id,
-              number: doc.documentNumber || "Chưa có số",
-              title: doc.title || "Không có tiêu đề",
-              status: doc.processingStatus || "new",
-            }))
-          );
-        } else {
-          console.error("Dữ liệu văn bản không hợp lệ:", incomingDocs);
-          setRecentDocuments([]);
-        }
-      } catch (docsError) {
-        console.error("❌ Lỗi khi tải danh sách văn bản:", docsError);
-        setRecentDocuments([]);
-      } finally {
-        // Đánh dấu văn bản đã tải xong dù có lỗi hay không
-        setIsDocumentsLoading(false);
+        const scheduleResponse_ = await dashboardAPI.getTodayScheduleEvents();
+        const scheduleResponse = scheduleResponse_.data;
+        stats.todaySchedule = scheduleResponse;
+      } catch (scheduleError) {
+        console.warn("Could not fetch schedule data:", scheduleError);
+        stats.todaySchedule = [];
       }
 
-      // PHẦN 3: TẢI SỰ KIỆN TRONG NGÀY
-      console.log("3️⃣ Đang tải sự kiện trong ngày...");
-      try {
-        // Sử dụng API mới để lấy lịch công tác trong ngày
-        let events = await dashboardAPI.getTodayScheduleEvents();
-
-        if (Array.isArray(events) && events.length > 0) {
-          console.log("✅ Đã tải sự kiện trong ngày:", events.length);
-          setTodayEvents(
-            events.slice(0, 2).map((event: any) => ({
-              id: event.id,
-              title: event.title || "Không có tiêu đề",
-              time: event.startTime || "00:00",
-              location: event.location || "Không có địa điểm",
-            }))
-          );
-        } else {
-          console.log("Không có sự kiện nào trong ngày");
-          setTodayEvents([]);
-        }
-      } catch (eventError) {
-        console.error("❌ Lỗi khi tải sự kiện:", eventError);
-        setTodayEvents([]);
-      } finally {
-        // Đánh dấu sự kiện đã tải xong dù có lỗi hay không
-        setIsEventsLoading(false);
-      }
-
-      console.log(
-        "✅ Đã tải xong tất cả dữ liệu dashboard",
-        new Date().toISOString()
-      );
-    } catch (generalError) {
-      console.error("❌ Lỗi tổng thể khi tải dữ liệu dashboard:", generalError);
-      setError("Không thể tải dữ liệu bảng điều khiển. Vui lòng thử lại sau.");
+      setDashboardStats(stats);
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error);
       toast({
         title: "Lỗi",
-        description:
-          "Không thể tải dữ liệu bảng điều khiển. Vui lòng thử lại sau.",
+        description: "Không thể tải dữ liệu dashboard. Vui lòng thử lại sau.",
         variant: "destructive",
       });
     } finally {
-      // Đảm bảo tất cả đều được đánh dấu là đã hoàn thành, kể cả khi có lỗi
-      setIsStatsLoading(false);
-      setIsDocumentsLoading(false);
-      setIsEventsLoading(false);
+      setIsLoading(false);
     }
   };
 
-  // Cập nhật điều kiện hiển thị loading thay vì phụ thuộc vào loading state trong useDashboard
-  const showLoading =
-    isStatsLoading || isDocumentsLoading || isEventsLoading || !user;
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchDashboardData();
+    setRefreshing(false);
+    toast({
+      title: "Thành công",
+      description: "Dữ liệu đã được cập nhật.",
+    });
+  };
 
-  // Xử lý trường hợp không có dữ liệu hiển thị rõ ràng
-  if (
-    !showLoading &&
-    stats.incomingDocuments.total === 0 &&
-    stats.outgoingDocuments.total === 0
-  ) {
-    return (
-      <div className="space-y-8">
-        <div className="flex flex-col space-y-2">
-          <h1 className="text-3xl font-bold">Bảng điều khiển</h1>
-          <p className="text-muted-foreground">
-            Quản lý văn bản và công tác của đơn vị
+  const formatNumber = (num: number | undefined) => {
+    if (!num) return "0";
+    return new Intl.NumberFormat("vi-VN").format(num);
+  };
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Chào buổi sáng";
+    if (hour < 18) return "Chào buổi chiều";
+    return "Chào buổi tối";
+  };
+
+  const getUserRoleDisplay = () => {
+    if (isAdmin) return "Quản trị viên";
+    if (isLeadership) return "Lãnh đạo";
+    if (isStaff) return "Nhân viên";
+    return "Người dùng";
+  };
+
+  const QuickStatsCard = ({
+    title,
+    value,
+    icon: Icon,
+    trend,
+    trendValue,
+    color = "blue",
+  }: {
+    title: string;
+    value: string | number;
+    icon: any;
+    trend?: "up" | "down";
+    trendValue?: string;
+    color?: string;
+  }) => (
+    <Card className="relative overflow-hidden">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium text-muted-foreground">
+          {title}
+        </CardTitle>
+        <Icon className={`h-4 w-4 text-${color}-500`} />
+      </CardHeader>
+      <CardContent>
+        <div className="text-2xl font-bold">{formatNumber(Number(value))}</div>
+        {trend && trendValue && (
+          <p
+            className={`text-xs flex items-center mt-1 ${
+              trend === "up" ? "text-green-600" : "text-red-600"
+            }`}
+          >
+            {trend === "up" ? (
+              <TrendingUp className="h-3 w-3 mr-1" />
+            ) : (
+              <TrendingDown className="h-3 w-3 mr-1" />
+            )}
+            {trendValue}
           </p>
-        </div>
+        )}
+      </CardContent>
+    </Card>
+  );
 
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          <Card className="card-hover">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Văn bản đến</CardTitle>
-              <FileText className="h-4 w-4 text-primary" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">0</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                0 văn bản chưa xử lý
+  const PendingDocumentsCard = ({
+    documents,
+  }: {
+    documents: DocumentSummaryDTO[];
+  }) => (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <AlertTriangle className="h-5 w-5 text-amber-500" />
+          Văn bản cần xử lý khẩn
+        </CardTitle>
+        <CardDescription>
+          {documents?.length || 0} văn bản đang chờ xử lý
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {documents?.slice(0, 5).map((doc, index) => (
+          <div
+            key={doc.id}
+            className="flex items-center justify-between p-3 bg-amber-50 rounded-lg"
+          >
+            <div className="flex-1">
+              <p className="font-medium text-sm">{doc.title}</p>
+              <p className="text-xs text-muted-foreground">
+                Số: {doc.documentNumber} • Loại: {doc.documentType}
               </p>
-            </CardContent>
-          </Card>
-          <Card className="card-hover">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Văn bản đi</CardTitle>
-              <Send className="h-4 w-4 text-primary" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">0</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                0 văn bản chờ duyệt
-              </p>
-            </CardContent>
-          </Card>
-          <Card className="card-hover">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Kế hoạch</CardTitle>
-              <ClipboardList className="h-4 w-4 text-primary" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">0</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                0 kế hoạch đang thực hiện
-              </p>
-            </CardContent>
-          </Card>
-          <Card className="card-hover">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Lịch công tác
-              </CardTitle>
-              <Calendar className="h-4 w-4 text-primary" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">0</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                0 lịch công tác hôm nay
-              </p>
-            </CardContent>
-          </Card>
-        </div>
+              {doc.deadline && (
+                <p className="text-xs text-amber-600 flex items-center mt-1">
+                  <Clock className="h-3 w-3 mr-1" />
+                  Hạn: {new Date(doc.deadline).toLocaleDateString("vi-VN")}
+                </p>
+              )}
+            </div>
+            <Badge variant="secondary" className="ml-2">
+              {doc.status}
+            </Badge>
+          </div>
+        ))}
+        {documents?.length === 0 && (
+          <div className="text-center py-6 text-muted-foreground">
+            <CheckCircle className="h-12 w-12 mx-auto mb-2 text-green-500" />
+            <p>Tuyệt vời! Không có văn bản nào cần xử lý khẩn.</p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Thông báo</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-              <div className="flex items-center space-x-4">
-                <AlertCircle className="h-6 w-6 text-amber-600" />
-                <div>
-                  <p className="font-medium text-amber-900">
-                    Chưa có dữ liệu văn bản
-                  </p>
-                  <p className="text-sm text-amber-800 mt-1">
-                    Hiện chưa có văn bản nào trong hệ thống. Các chức năng vẫn
-                    đang hoạt động bình thường.
-                  </p>
-                </div>
+  const WorkPlansCard = ({
+    workPlans,
+  }: {
+    workPlans: WorkPlanSummaryDTO[];
+  }) => (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Target className="h-5 w-5 text-blue-500" />
+          Kế hoạch công việc
+        </CardTitle>
+        <CardDescription>
+          {workPlans?.length || 0} kế hoạch đang thực hiện
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {workPlans?.slice(0, 3).map((plan, index) => (
+          <div key={plan.id} className="p-3 border rounded-lg">
+            <div className="flex items-center justify-between mb-2">
+              <p className="font-medium text-sm">{plan.title}</p>
+              <Badge
+                variant={plan.status === "ACTIVE" ? "default" : "secondary"}
+              >
+                {plan.status}
+              </Badge>
+            </div>
+            <p className="text-xs text-muted-foreground mb-2">
+              {plan.department} • {plan.period}
+            </p>
+            <div className="flex items-center justify-between">
+              <div className="text-xs text-muted-foreground">
+                Tiến độ: {plan.completedTasks}/{plan.totalTasks} công việc
+              </div>
+              <div className="text-xs font-medium text-blue-600">
+                {plan.progress}
               </div>
             </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  // Điều kiện hiển thị loading
-  if (showLoading) {
-    return (
-      <div className="flex h-[80vh] items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
-          <p className="mt-2 text-sm text-muted-foreground">
-            Đang tải dữ liệu...
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex h-[80vh] items-center justify-center">
-        <div className="text-center">
-          <div className="rounded-full bg-red-100 p-3 mx-auto w-16 h-16 flex items-center justify-center">
-            <AlertCircle className="h-8 w-8 text-red-500" />
           </div>
-          <h2 className="mt-4 text-xl font-semibold">Đã xảy ra lỗi</h2>
-          <p className="mt-2 text-sm text-muted-foreground">{error}</p>
-          <Button onClick={() => window.location.reload()} className="mt-4">
-            Thử lại
-          </Button>
+        ))}
+        {workPlans?.length === 0 && (
+          <div className="text-center py-6 text-muted-foreground">
+            <Calendar className="h-12 w-12 mx-auto mb-2" />
+            <p>Chưa có kế hoạch công việc nào.</p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+
+  const TodayScheduleCard = ({ schedule }: { schedule: any[] }) => (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Calendar className="h-5 w-5 text-green-500" />
+          Lịch hôm nay
+        </CardTitle>
+        <CardDescription>
+          {schedule?.length || 0} sự kiện trong ngày
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {schedule?.slice(0, 5).map((event, index) => (
+          <div
+            key={index}
+            className="flex items-center gap-3 p-3 bg-green-50 rounded-lg"
+          >
+            <div className="h-2 w-2 bg-green-500 rounded-full"></div>
+            <div className="flex-1">
+              <p className="font-medium text-sm">{event.title}</p>
+              <p className="text-xs text-muted-foreground">
+                {event.startTime} - {event.endTime}
+              </p>
+              {event.location && (
+                <p className="text-xs text-green-600">{event.location}</p>
+              )}
+            </div>
+          </div>
+        ))}
+        {schedule?.length === 0 && (
+          <div className="text-center py-6 text-muted-foreground">
+            <Calendar className="h-12 w-12 mx-auto mb-2" />
+            <p>Không có sự kiện nào trong ngày hôm nay.</p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col space-y-2">
+          <Skeleton className="h-8 w-64" />
+          <Skeleton className="h-4 w-96" />
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i}>
+              <CardHeader>
+                <Skeleton className="h-4 w-32" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-8 w-20" />
+                <Skeleton className="h-3 w-24 mt-2" />
+              </CardContent>
+            </Card>
+          ))}
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col space-y-2">
-        <h1 className="text-3xl font-bold">Bảng điều khiển</h1>
-        <p className="text-muted-foreground">
-          Quản lý văn bản và công tác của đơn vị
-        </p>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-2 md:space-y-0">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold text-primary">
+            {getGreeting()}, Đồng chí {user?.fullName}! 👋
+          </h1>
+          <div className="text-muted-foreground flex items-center gap-2">
+            <User className="h-4 w-4" />
+            {getUserRoleDisplay()} • {user?.departmentName}
+            <Badge variant="outline" className="ml-2">
+              {user?.roles?.[0]?.replace("ROLE_", "")}
+            </Badge>
+          </div>
+        </div>
+        <Button
+          onClick={handleRefresh}
+          disabled={refreshing}
+          className="w-full md:w-auto"
+        >
+          <RefreshCw
+            className={`h-4 w-4 mr-2 ${refreshing ? "animate-spin" : ""}`}
+          />
+          Làm mới
+        </Button>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="card-hover">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Văn bản đến</CardTitle>
-            <FileText className="h-4 w-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {stats.incomingDocuments.total}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {stats.incomingDocuments.pending} văn bản chưa xử lý
-            </p>
-          </CardContent>
-        </Card>
-        <Card className="card-hover">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Văn bản đi</CardTitle>
-            <Send className="h-4 w-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {stats.outgoingDocuments.total}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {stats.outgoingDocuments.pending} văn bản chờ duyệt
-            </p>
-          </CardContent>
-        </Card>
-        <Card className="card-hover">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Kế hoạch</CardTitle>
-            <ClipboardList className="h-4 w-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.workPlans.total}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {stats.workPlans.active} kế hoạch đang thực hiện
-            </p>
-          </CardContent>
-        </Card>
-        <Card className="card-hover">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Lịch công tác</CardTitle>
-            <Calendar className="h-4 w-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.schedules.total}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {stats.schedules.today} lịch công tác hôm nay
-            </p>
-          </CardContent>
-        </Card>
+      {/* Quick Stats */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <QuickStatsCard
+          title="Văn bản đến"
+          value={
+            dashboardStats.userStats?.incomingDocumentCount ||
+            dashboardStats.quickMetrics?.incomingCount ||
+            0
+          }
+          icon={FileText}
+          trend={
+            dashboardStats.systemStats?.performanceMetrics?.[
+              "Tăng trưởng tuần"
+            ] &&
+            dashboardStats.systemStats.performanceMetrics["Tăng trưởng tuần"] >=
+              0
+              ? "up"
+              : "down"
+          }
+          trendValue={
+            dashboardStats.systemStats?.performanceMetrics?.["Tăng trưởng tuần"]
+              ? `${Math.abs(
+                  dashboardStats.systemStats.performanceMetrics[
+                    "Tăng trưởng tuần"
+                  ]
+                ).toFixed(1)}% tuần này`
+              : undefined
+          }
+          color="blue"
+        />
+        <QuickStatsCard
+          title="Văn bản đi"
+          value={
+            dashboardStats.userStats?.outgoingDocumentCount ||
+            dashboardStats.quickMetrics?.outgoingCount ||
+            0
+          }
+          icon={FileText}
+          trend={
+            dashboardStats.systemStats?.performanceMetrics?.[
+              "Tăng trưởng tháng"
+            ] &&
+            dashboardStats.systemStats.performanceMetrics[
+              "Tăng trưởng tháng"
+            ] >= 0
+              ? "up"
+              : "down"
+          }
+          trendValue={
+            dashboardStats.systemStats?.performanceMetrics?.[
+              "Tăng trưởng tháng"
+            ]
+              ? `${Math.abs(
+                  dashboardStats.systemStats.performanceMetrics[
+                    "Tăng trưởng tháng"
+                  ]
+                ).toFixed(1)}% tháng này`
+              : undefined
+          }
+          color="green"
+        />
+        <QuickStatsCard
+          title="Cần xử lý"
+          value={
+            dashboardStats.userStats?.pendingDocumentCount ||
+            dashboardStats.quickMetrics?.pendingCount ||
+            0
+          }
+          icon={Clock}
+          trend={
+            dashboardStats.systemStats?.performanceMetrics?.[
+              "Văn bản đang xử lý"
+            ] &&
+            dashboardStats.systemStats.performanceMetrics[
+              "Văn bản đang xử lý"
+            ] <= 50
+              ? "up"
+              : "down"
+          }
+          trendValue={
+            dashboardStats.systemStats?.performanceMetrics?.[
+              "Văn bản đang xử lý"
+            ]
+              ? `${dashboardStats.systemStats.performanceMetrics[
+                  "Văn bản đang xử lý"
+                ].toFixed(1)}% đang xử lý`
+              : undefined
+          }
+          color="amber"
+        />
+        <QuickStatsCard
+          title="Thông báo"
+          value={
+            dashboardStats.userStats?.unreadNotifications ||
+            dashboardStats.quickMetrics?.notificationCount ||
+            0
+          }
+          icon={Activity}
+          color="red"
+        />
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <Card className="col-span-1 md:col-span-2">
-          <CardHeader>
-            <CardTitle>Văn bản cần xử lý</CardTitle>
-            <CardDescription>
-              Danh sách văn bản đến cần được xử lý
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {recentDocuments.length > 0 ? (
-              <div className="space-y-6">
-                {recentDocuments.map((doc) => (
-                  <div
-                    key={doc.id}
-                    className="flex items-center justify-between border-b pb-4"
-                  >
-                    <div>
-                      <p className="font-medium">{doc.number}</p>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {doc.title}
-                      </p>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="rounded-full"
-                      asChild
+      {/* Main Content Tabs */}
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="space-y-4"
+      >
+        <TabsList className="grid w-full grid-cols-3 lg:grid-cols-4">
+          <TabsTrigger value="overview" className="flex items-center gap-2">
+            <BarChart3 className="h-4 w-4" />
+            Tổng quan
+          </TabsTrigger>
+          <TabsTrigger value="documents" className="flex items-center gap-2">
+            <FileText className="h-4 w-4" />
+            Văn bản
+          </TabsTrigger>
+          <TabsTrigger value="schedule" className="flex items-center gap-2">
+            <Calendar className="h-4 w-4" />
+            Lịch trình
+          </TabsTrigger>
+          {(isAdmin || isLeadership) && (
+            <TabsTrigger value="analytics" className="flex items-center gap-2">
+              <PieChartIcon className="h-4 w-4" />
+              Phân tích
+            </TabsTrigger>
+          )}
+        </TabsList>
+
+        <TabsContent value="overview" className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            <PendingDocumentsCard
+              documents={dashboardStats.userStats?.pendingDocuments || []}
+            />
+            <WorkPlansCard
+              workPlans={dashboardStats.userStats?.activeWorkPlans || []}
+            />
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <TodayScheduleCard schedule={dashboardStats.todaySchedule || []} />
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5 text-blue-500" />
+                  Văn bản gần đây
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {dashboardStats.recentDocuments
+                  ?.slice(0, 5)
+                  .map((doc: any, index: number) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-3 border rounded-lg"
                     >
-                      <Link href={`/van-ban-den/${doc.id}`}>
-                        <ArrowRight className="h-4 w-4" />
-                      </Link>
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                Không có văn bản nào cần xử lý
-              </p>
-            )}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Lịch công tác hôm nay</CardTitle>
-            <CardDescription>Các sự kiện trong ngày</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {todayEvents.length > 0 ? (
-              <div className="space-y-6">
-                {todayEvents.map((event) => (
-                  <div
-                    key={event.id}
-                    className="flex items-start space-x-4 border-b pb-4"
-                  >
-                    <div className="flex flex-col items-center">
-                      <div className="text-sm font-medium bg-accent rounded-full w-12 h-12 flex items-center justify-center">
-                        {event.time}
+                      <div className="flex-1">
+                        <p className="font-medium text-sm">
+                          {doc.title || doc.documentNumber}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {doc.documentType} •{" "}
+                          {new Date(
+                            doc.createdDate || doc.receivedDate
+                          ).toLocaleDateString("vi-VN")}
+                        </p>
                       </div>
-                      <div className="h-full w-px bg-border mt-1"></div>
+                      <Badge variant="outline">{doc.status}</Badge>
                     </div>
-                    <div>
-                      <p className="font-medium">{event.title}</p>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {event.location}
-                      </p>
+                  ))}
+                {(!dashboardStats.recentDocuments ||
+                  dashboardStats.recentDocuments.length === 0) && (
+                  <div className="text-center py-6 text-muted-foreground">
+                    <FileText className="h-12 w-12 mx-auto mb-2" />
+                    <p>Chưa có văn bản gần đây.</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="documents" className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Văn bản đến</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">
+                      Tổng số:
+                    </span>
+                    <span className="font-medium">
+                      {formatNumber(dashboardStats.incomingStats?.total || 0)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">
+                      Chưa đọc:
+                    </span>
+                    <span className="font-medium text-amber-600">
+                      {formatNumber(dashboardStats.incomingStats?.unread || 0)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">
+                      Đã xử lý:
+                    </span>
+                    <span className="font-medium text-green-600">
+                      {formatNumber(
+                        dashboardStats.incomingStats?.processed || 0
+                      )}
+                    </span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Văn bản đi</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">
+                      Tổng số:
+                    </span>
+                    <span className="font-medium">
+                      {formatNumber(dashboardStats.outgoingStats?.total || 0)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">
+                      Đã gửi:
+                    </span>
+                    <span className="font-medium text-blue-600">
+                      {formatNumber(dashboardStats.outgoingStats?.sent || 0)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">
+                      Bản nháp:
+                    </span>
+                    <span className="font-medium text-gray-600">
+                      {formatNumber(dashboardStats.outgoingStats?.draft || 0)}
+                    </span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Văn bản nội bộ đến</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">
+                      Tổng số:
+                    </span>
+                    <span className="font-medium">
+                      {formatNumber(
+                        dashboardStats.internalStats?.incomingTotal || 0
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">
+                      Đã đọc:
+                    </span>
+                    <span className="font-medium text-green-600">
+                      {formatNumber(
+                        dashboardStats.internalStats?.incomingRead || 0
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">
+                      Chưa đọc:
+                    </span>
+                    <span className="font-medium text-amber-600">
+                      {formatNumber(
+                        dashboardStats.internalStats?.incomingUnread || 0
+                      )}
+                    </span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Văn bản nội bộ đi</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">
+                      Tổng số:
+                    </span>
+                    <span className="font-medium">
+                      {formatNumber(
+                        dashboardStats.internalStats?.outgoingTotal || 0
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">
+                      Đã gửi:
+                    </span>
+                    <span className="font-medium text-blue-600">
+                      {formatNumber(
+                        dashboardStats.internalStats?.outgoingSent || 0
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">
+                      Bản nháp:
+                    </span>
+                    <span className="font-medium text-gray-600">
+                      {formatNumber(
+                        dashboardStats.internalStats?.outgoingDraft || 0
+                      )}
+                    </span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Document Trends Chart */}
+          {(isAdmin || isLeadership) &&
+            dashboardStats.systemStats?.documentsByMonth && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Xu hướng văn bản theo tháng</CardTitle>
+                  <CardDescription>
+                    Thống kê số lượng văn bản đến và đi theo từng tháng
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <AreaChart
+                      data={Object.entries(
+                        dashboardStats.systemStats.documentsByMonth
+                      ).map(([month, count]) => ({
+                        month,
+                        count,
+                      }))}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="month" />
+                      <YAxis />
+                      <Tooltip />
+                      <Area
+                        type="monotone"
+                        dataKey="count"
+                        stroke="#8884d8"
+                        fill="#8884d8"
+                        fillOpacity={0.6}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            )}
+        </TabsContent>
+
+        <TabsContent value="schedule" className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            <TodayScheduleCard schedule={dashboardStats.todaySchedule || []} />
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Clock className="h-5 w-5 text-blue-500" />
+                  Sắp đến hạn
+                </CardTitle>
+                <CardDescription>
+                  Văn bản và công việc sắp đến hạn xử lý
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {dashboardStats.userStats?.upcomingDeadlines
+                  ?.slice(0, 5)
+                  .map((item, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-3 bg-red-50 rounded-lg"
+                    >
+                      <div className="flex-1">
+                        <p className="font-medium text-sm">{item.title}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {item.documentNumber} • {item.documentType}
+                        </p>
+                        <p className="text-xs text-red-600 flex items-center mt-1">
+                          <AlertTriangle className="h-3 w-3 mr-1" />
+                          Hạn:{" "}
+                          {item.deadline
+                            ? new Date(item.deadline).toLocaleDateString(
+                                "vi-VN"
+                              )
+                            : "Chưa có"}
+                        </p>
+                      </div>
+                      <Badge variant="destructive">Khẩn</Badge>
+                    </div>
+                  ))}
+                {(!dashboardStats.userStats?.upcomingDeadlines ||
+                  dashboardStats.userStats.upcomingDeadlines.length === 0) && (
+                  <div className="text-center py-6 text-muted-foreground">
+                    <CheckCircle className="h-12 w-12 mx-auto mb-2 text-green-500" />
+                    <p>Không có công việc nào sắp đến hạn.</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {(isAdmin || isLeadership) && (
+          <TabsContent value="analytics" className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              {/* Status Breakdown Pie Chart */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Phân bố trạng thái</CardTitle>
+                  <CardDescription>
+                    Phân bố văn bản theo trạng thái xử lý
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie
+                        data={
+                          dashboardStats.statusBreakdown
+                            ? Object.entries(
+                                dashboardStats.statusBreakdown
+                              ).map(([status, count]) => ({
+                                name: status,
+                                value: count,
+                              }))
+                            : []
+                        }
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={({ name, percent }) =>
+                          `${name}: ${(percent * 100).toFixed(0)}%`
+                        }
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="value"
+                      >
+                        {dashboardStats.statusBreakdown &&
+                          Object.entries(dashboardStats.statusBreakdown).map(
+                            (entry, index) => (
+                              <Cell
+                                key={`cell-${index}`}
+                                fill={COLORS[index % COLORS.length]}
+                              />
+                            )
+                          )}
+                      </Pie>
+                      <Tooltip />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+
+              {/* Performance Metrics */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Hiệu suất xử lý</CardTitle>
+                  <CardDescription>
+                    Chỉ số hiệu suất của hệ thống
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {dashboardStats.systemStats?.performanceMetrics &&
+                    Object.entries(
+                      dashboardStats.systemStats.performanceMetrics
+                    ).map(([metric, value]) => (
+                      <div
+                        key={metric}
+                        className="flex items-center justify-between"
+                      >
+                        <span className="text-sm font-medium">{metric}</span>
+                        <div className="flex items-center gap-2">
+                          <div className="w-24 bg-gray-200 rounded-full h-2">
+                            <div
+                              className="bg-blue-600 h-2 rounded-full"
+                              style={{
+                                width: `${Math.min(Number(value) || 0, 100)}%`,
+                              }}
+                            ></div>
+                          </div>
+                          <span className="text-sm text-muted-foreground">
+                            {typeof value === "number"
+                              ? value.toFixed(1)
+                              : String(value)}
+                            %
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* System Overview */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Tổng quan hệ thống</CardTitle>
+                <CardDescription>
+                  Thống kê tổng thể về hoạt động của hệ thống
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4 md:grid-cols-4">
+                  <div className="text-center p-4 bg-blue-50 rounded-lg">
+                    <div className="text-2xl font-bold text-blue-600">
+                      {formatNumber(
+                        dashboardStats.systemStats?.totalDocuments || 0
+                      )}
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      Tổng văn bản
                     </div>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                Không có sự kiện nào hôm nay
-              </p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+                  <div className="text-center p-4 bg-green-50 rounded-lg">
+                    <div className="text-2xl font-bold text-green-600">
+                      {formatNumber(
+                        dashboardStats.systemStats?.incomingDocumentCount || 0
+                      )}
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      Văn bản đến
+                    </div>
+                  </div>
+                  <div className="text-center p-4 bg-amber-50 rounded-lg">
+                    <div className="text-2xl font-bold text-amber-600">
+                      {formatNumber(
+                        dashboardStats.systemStats?.outgoingDocumentCount || 0
+                      )}
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      Văn bản đi
+                    </div>
+                  </div>
+                  <div className="text-center p-4 bg-red-50 rounded-lg">
+                    <div className="text-2xl font-bold text-red-600">
+                      {formatNumber(
+                        dashboardStats.systemStats?.overdueDocumentCount || 0
+                      )}
+                    </div>
+                    <div className="text-sm text-muted-foreground">Quá hạn</div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
+      </Tabs>
     </div>
   );
 }

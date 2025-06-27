@@ -1150,8 +1150,7 @@ export default function IncomingDocumentsPage() {
 
         <TabsContent value="internal" className="mt-6">
           {/* Chỉ hiển thị table khi có dữ liệu để tránh trùng lặp với empty state */}
-          {(activeTab === "internal" ? internalDocuments : incomingDocuments)
-            .length > 0 && (
+          {activeTab === "internal" && currentDocuments.length > 0 && (
             <Card className="border-primary/10 shadow-sm">
               <CardContent className="p-0">
                 <Table>
@@ -1174,8 +1173,8 @@ export default function IncomingDocumentsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredInternalDocuments.length > 0 ? (
-                      filteredInternalDocuments.map((doc) => {
+                    {currentDocuments.length > 0 ? (
+                      currentDocuments.map((doc) => {
                         // Sử dụng trực tiếp trạng thái đọc từ backend
                         // Backend đã trả về isRead: true/false cho từng document dựa trên người dùng hiện tại
                         const currentReadStatus = doc.isRead;
@@ -1225,7 +1224,7 @@ export default function IncomingDocumentsPage() {
                     ) : (
                       <TableRow>
                         <TableCell colSpan={8} className="h-24 text-center">
-                          {getEmptyStateMessage(true, true)}
+                          {getEmptyStateMessage(true, searchQuery !== "" || statusFilter !== "all" || startDate !== "" || endDate !== "")}
                         </TableCell>
                       </TableRow>
                     )}
@@ -1238,8 +1237,7 @@ export default function IncomingDocumentsPage() {
 
         <TabsContent value="external" className="mt-6">
           {/* Chỉ hiển thị table khi có dữ liệu để tránh trùng lặp với empty state */}
-          {(activeTab === "external" ? incomingDocuments : internalDocuments)
-            .length > 0 && (
+          {activeTab === "external" && currentDocuments.length > 0 && (
             <Card className="border-primary/10 shadow-sm">
               {/* Compact Processing Status Tabs */}
               <div className="px-4 py-2 border-b bg-gray-50/50">
@@ -1285,8 +1283,8 @@ export default function IncomingDocumentsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredExternalDocuments.length > 0 ? (
-                      filteredExternalDocuments.map((doc) => {
+                    {currentDocuments.length > 0 ? (
+                      currentDocuments.map((doc) => {
                         const isRead = universalReadStatus.getReadStatus(
                           doc.id!,
                           "INCOMING_EXTERNAL"
@@ -1389,7 +1387,7 @@ export default function IncomingDocumentsPage() {
                           }
                           className="h-24 text-center"
                         >
-                          {getEmptyStateMessage(false, true)}
+                          {getEmptyStateMessage(false, searchQuery !== "" || statusFilter !== "all" || departmentFilter !== "all" || startDate !== "" || endDate !== "" || issuingAuthorityFilter !== "all")}
                         </TableCell>
                       </TableRow>
                     )}
@@ -1465,6 +1463,16 @@ export default function IncomingDocumentsPage() {
       {currentDocuments.length === 0 && !isLoading && (
         <div className="flex h-[40vh] items-center justify-center">
           <div className="text-center">
+            <div className="rounded-full bg-amber-100 p-3 mx-auto w-16 h-16 flex items-center justify-center">
+              <AlertCircle className="h-8 w-8 text-amber-500" />
+            </div>
+            <h2 className="mt-4 text-xl font-semibold">Không có văn bản nào</h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {getEmptyStateMessage(
+                activeTab === "internal",
+                searchQuery !== "" || statusFilter !== "all" || departmentFilter !== "all" || startDate !== "" || endDate !== "" || issuingAuthorityFilter !== "all"
+              )}
+            </p>
             {hasRole("ROLE_VAN_THU") && activeTab === "external" && (
               <Button
                 onClick={handleAddDocument}

@@ -78,7 +78,8 @@ export default function DocumentTypesPage() {
   const fetchDocumentTypes = async () => {
     try {
       setIsLoading(true);
-      const data = await documentTypesAPI.getAllDocumentTypes();
+      const data_ = await documentTypesAPI.getAllDocumentTypes();
+      const data = data_.data;
       setDocumentTypes(data);
     } catch (error) {
       console.error("Error fetching document types:", error);
@@ -196,7 +197,9 @@ export default function DocumentTypesPage() {
   // Handle button click
   const handleAddButtonClick = () => {
     console.log("➕ Add Document Type button clicked");
+    console.log("🔍 Current dialog state before:", isDialogOpen);
     setIsDialogOpen(true);
+    console.log("🔍 Setting dialog state to: true");
   };
 
   if (!canManage) {
@@ -240,13 +243,12 @@ export default function DocumentTypesPage() {
             Làm mới
           </Button>
 
+          <Button onClick={handleAddButtonClick}>
+            <Plus className="h-4 w-4 mr-2" />
+            Thêm loại văn bản
+          </Button>
+
           <Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
-            <DialogTrigger asChild>
-              <Button onClick={handleAddButtonClick}>
-                <Plus className="h-4 w-4 mr-2" />
-                Thêm loại văn bản
-              </Button>
-            </DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
                 <DialogTitle>
