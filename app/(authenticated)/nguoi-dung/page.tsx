@@ -81,6 +81,17 @@ export default function UsersPage() {
 
   // Function to fetch users with pagination
   const fetchUsers = useCallback(async (page: number, size: number) => {
+    console.log('📡 fetchUsers called with:', {
+      page,
+      size,
+      appliedFilters: {
+        appliedSearchTerm,
+        appliedRoleFilter,
+        appliedDepartmentFilter,
+        appliedStatusFilter
+      }
+    });
+    
     setLoading(true);
 
     try {
@@ -128,6 +139,8 @@ export default function UsersPage() {
       if (appliedSearchTerm.trim()) {
         params.keyword = appliedSearchTerm.trim();
       }
+
+      console.log('🌐 API params:', params);
 
       let usersData;
 
@@ -336,20 +349,21 @@ export default function UsersPage() {
     }
   }, [user, toast]);
 
-  // Initial data fetch after roles and departments are loaded
-  useEffect(() => {
-    if (user && roles.length > 0 && departments) {
-      // Trigger initial fetch with default (empty) filters
-      fetchUsers(0, itemsPerPage);
-    }
-  }, [user, roles, departments, fetchUsers, itemsPerPage]);
-
   // Refetch users when applied filters or pagination changes
   useEffect(() => {
     // Skip if user data or roles/departments haven't loaded yet
     if (!user || !roles.length || !departments) {
       return;
     }
+
+    console.log('🔍 Applied filters changed:', {
+      appliedSearchTerm,
+      appliedRoleFilter,
+      appliedDepartmentFilter,
+      appliedStatusFilter,
+      currentPage,
+      itemsPerPage
+    });
 
     fetchUsers(currentPage, itemsPerPage);
   }, [
@@ -380,6 +394,16 @@ export default function UsersPage() {
 
   // Apply filters function
   const applyFilters = () => {
+    console.log('🚀 Apply filters clicked:', {
+      from: { searchTerm, roleFilter, departmentFilter, statusFilter },
+      to: { 
+        appliedSearchTerm: searchTerm, 
+        appliedRoleFilter: roleFilter, 
+        appliedDepartmentFilter: departmentFilter, 
+        appliedStatusFilter: statusFilter 
+      }
+    });
+    
     setAppliedSearchTerm(searchTerm);
     setAppliedRoleFilter(roleFilter);
     setAppliedDepartmentFilter(departmentFilter);
@@ -389,6 +413,8 @@ export default function UsersPage() {
 
   // Reset filters function
   const resetFilters = () => {
+    console.log('🔄 Reset filters clicked');
+    
     setSearchTerm("");
     setRoleFilter("all");
     setDepartmentFilter("all");
