@@ -76,6 +76,8 @@ export default function OutgoingDocumentsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [departmentFilter, setDepartmentFilter] = useState("all");
+  const [dateFromFilter, setDateFromFilter] = useState("");
+  const [dateToFilter, setDateToFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
   const [totalItems, setTotalItems] = useState(0);
@@ -276,7 +278,7 @@ export default function OutgoingDocumentsPage() {
     setTimeout(() => {
       fetchDocuments(0, pageSize);
     }, 50);
-  }, [user?.id, statusFilter, activeTab, loadingDepartments]);
+  }, [user?.id, statusFilter, activeTab, loadingDepartments, dateFromFilter, dateToFilter]);
 
   useEffect(() => {
     if (user && (currentPage > 0 || pageSize !== 10)) {
@@ -378,6 +380,36 @@ export default function OutgoingDocumentsPage() {
     }
   };
 
+  const isDateInRange = (dateString: string) => {
+    if (!dateFromFilter && !dateToFilter) return true;
+    if (!dateString) return false;
+
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime()) || date.getFullYear() === 1970) {
+        return false;
+      }
+
+      const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      
+      if (dateFromFilter) {
+        const fromDate = new Date(dateFromFilter);
+        const fromDateOnly = new Date(fromDate.getFullYear(), fromDate.getMonth(), fromDate.getDate());
+        if (dateOnly < fromDateOnly) return false;
+      }
+
+      if (dateToFilter) {
+        const toDate = new Date(dateToFilter);
+        const toDateOnly = new Date(toDate.getFullYear(), toDate.getMonth(), toDate.getDate());
+        if (dateOnly > toDateOnly) return false;
+      }
+
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   const getRecipientSummary = (recipients: InternalDocument["recipients"]) => {
     if (!recipients || recipients.length === 0) return "Chưa có người nhận";
 
@@ -403,6 +435,8 @@ export default function OutgoingDocumentsPage() {
 
     const matchesStatus = statusFilter === "all" || doc.status === statusFilter;
 
+    const matchesDateRange = isDateInRange(doc.sentDate);
+
     let matchesDepartment = true;
     if (departmentFilter !== "all") {
       const departmentIds = getChildDepartmentIds(departmentFilter);
@@ -417,7 +451,7 @@ export default function OutgoingDocumentsPage() {
           : userDepartmentIds.length === 0;
     }
 
-    return matchesSearch && matchesStatus && matchesDepartment;
+    return matchesSearch && matchesStatus && matchesDateRange && matchesDepartment;
   });
 
   const filteredInternalDocuments = internalDocuments.filter((doc) => {
@@ -432,7 +466,9 @@ export default function OutgoingDocumentsPage() {
 
     const matchesStatus = statusFilter === "all" || doc.status === statusFilter;
 
-    return matchesSearch && matchesStatus;
+    const matchesDateRange = isDateInRange(doc.signingDate);
+
+    return matchesSearch && matchesStatus && matchesDateRange;
   });
 
   // Handle click on internal document to mark as read and navigate
@@ -527,8 +563,8 @@ export default function OutgoingDocumentsPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-        <div className="flex w-full sm:w-auto items-center space-x-2">
+      <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+        <div className="flex w-full lg:w-auto items-center space-x-2 flex-wrap gap-y-2">
           <div className="relative w-full sm:w-[300px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -562,7 +598,25 @@ export default function OutgoingDocumentsPage() {
           )}
         </div>
 
-        <div className="flex w-full sm:w-auto items-center space-x-3">
+        <div className="flex w-full sm:w-auto items-center space-x-3 flex-wrap gap-y-2">
+          <div className="flex items-center space-x-2">
+            <span className="text-sm font-medium whitespace-nowrap">Từ ngày:</span>
+            <Input
+              type="date"
+              className="w-[150px] border-primary/20 focus:border-primary"
+              value={dateFromFilter}
+              onChange={(e) => setDateFromFilter(e.target.value)}
+            />
+          </div>
+          <div className="flex items-center space-x-2">
+            <span className="text-sm font-medium whitespace-nowrap">Đến ngày:</span>
+            <Input
+              type="date"
+              className="w-[150px] border-primary/20 focus:border-primary"
+              value={dateToFilter}
+              onChange={(e) => setDateToFilter(e.target.value)}
+            />
+          </div>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-full sm:w-[180px] border-primary/20">
               <SelectValue placeholder="Trạng thái" />
@@ -581,6 +635,14 @@ export default function OutgoingDocumentsPage() {
             variant="outline"
             size="icon"
             className="rounded-full border-primary/20 hover:bg-primary/10 hover:text-primary"
+            onClick={() => {
+              setDateFromFilter("");
+              setDateToFilter("");
+              setStatusFilter("all");
+              setDepartmentFilter("all");
+              setSearchQuery("");
+            }}
+            title="Xóa bộ lọc"
           >
             <Filter className="h-4 w-4" />
           </Button>
