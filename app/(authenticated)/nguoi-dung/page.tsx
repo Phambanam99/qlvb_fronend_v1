@@ -140,8 +140,6 @@ export default function UsersPage() {
         params.keyword = appliedSearchTerm.trim();
       }
 
-      console.log('🌐 API params:', params);
-
       console.log('👤 User permissions:', {
         userRoles: user?.roles,
         userDepartmentId: user?.departmentId,
@@ -160,6 +158,8 @@ export default function UsersPage() {
           params.departmentId = appliedDepartmentFilter;
           console.log('✅ Added departmentId to params:', appliedDepartmentFilter);
         }
+        
+        console.log('🌐 Final API params for Admin/Leadership:', params);
         const usersData_ = await usersAPI.getPaginatedUsers(params);
         usersData = usersData_.data;
       } else if (isDepartmentHead && userDepartmentId) {
@@ -192,6 +192,7 @@ export default function UsersPage() {
         ) {
           console.log('✅ Department filter applied');
           params.departmentId = appliedDepartmentFilter;
+          console.log('🌐 Final API params for Department Head (filtered):', params);
           const usersData_ = await usersAPI.getPaginatedUsers(params);
           usersData = usersData_.data;
         } else if (appliedDepartmentFilter === "all") {
@@ -203,6 +204,7 @@ export default function UsersPage() {
           for (const deptId of departmentIds) {
             try {
               const deptParams = { ...params, departmentId: deptId };
+              console.log('🌐 API params for dept', deptId, ':', deptParams);
               const deptUsers_ = await usersAPI.getPaginatedUsers(deptParams);
               const deptUsers = deptUsers_.data;
               allUsersInDepartments.push(...deptUsers.content);
@@ -245,6 +247,7 @@ export default function UsersPage() {
         }
       } else {
         console.log('👥 Regular User branch - can only see self');
+        console.log('🌐 No API call needed for regular users');
         // Regular users can only see themselves - no need for pagination here
         usersData = {
           content: user ? [user as UserDTO] : [],
