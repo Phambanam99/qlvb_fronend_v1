@@ -37,6 +37,7 @@ import {
   Plus,
   Search,
   UserCog,
+  RotateCcw,
 } from "lucide-react";
 import { UserDTO, usersAPI } from "@/lib/api/users";
 import { rolesAPI } from "@/lib/api/roles";
@@ -58,11 +59,17 @@ export default function UsersPage() {
   const [departments, setDepartments] = useState<PageResponse<DepartmentDTO>>();
   const [loading, setLoading] = useState(true);
 
-  // Filter states
+  // Filter states (form values - not yet applied)
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [departmentFilter, setDepartmentFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+
+  // Applied filter states (actually used for API calls)
+  const [appliedSearchTerm, setAppliedSearchTerm] = useState("");
+  const [appliedRoleFilter, setAppliedRoleFilter] = useState("all");
+  const [appliedDepartmentFilter, setAppliedDepartmentFilter] = useState("all");
+  const [appliedStatusFilter, setAppliedStatusFilter] = useState("all");
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(0);
@@ -101,25 +108,25 @@ export default function UsersPage() {
         "ROLE_TRAM_TRUONG",
       ]);
 
-      // Prepare filter parameters
+      // Prepare filter parameters using applied filters
       const params: any = {
         page,
         size,
       };
 
       // Apply role filter if selected
-      if (roleFilter !== "all") {
-        params.roleId = roleFilter;
+      if (appliedRoleFilter !== "all") {
+        params.roleId = appliedRoleFilter;
       }
 
       // Apply status filter if selected
-      if (statusFilter !== "all") {
-        params.status = statusFilter === "active" ? 1 : 0;
+      if (appliedStatusFilter !== "all") {
+        params.status = appliedStatusFilter === "active" ? 1 : 0;
       }
 
       // Apply search term if provided
-      if (searchTerm.trim()) {
-        params.keyword = searchTerm.trim();
+      if (appliedSearchTerm.trim()) {
+        params.keyword = appliedSearchTerm.trim();
       }
 
       let usersData;
@@ -127,8 +134,8 @@ export default function UsersPage() {
       if (isAdmin || isLeadership) {
         // Admin and leadership see all users with pagination
         // Apply department filter if selected
-        if (departmentFilter !== "all") {
-          params.departmentId = departmentFilter;
+        if (appliedDepartmentFilter !== "all") {
+          params.departmentId = appliedDepartmentFilter;
         }
         const usersData_ = await usersAPI.getPaginatedUsers(params);
         usersData = usersData_.data;
@@ -153,13 +160,13 @@ export default function UsersPage() {
 
         // If department filter is selected and it's within allowed departments, use it
         if (
-          departmentFilter !== "all" &&
-          departmentIds.includes(Number(departmentFilter))
+          appliedDepartmentFilter !== "all" &&
+          departmentIds.includes(Number(appliedDepartmentFilter))
         ) {
-          params.departmentId = departmentFilter;
+          params.departmentId = appliedDepartmentFilter;
           const usersData_ = await usersAPI.getPaginatedUsers(params);
           usersData = usersData_.data;
-        } else if (departmentFilter === "all") {
+        } else if (appliedDepartmentFilter === "all") {
           // No specific department filter, get all users from allowed departments
           // Since API doesn't support multiple department IDs, we'll call for each department
           const allUsersInDepartments = [];
@@ -230,7 +237,7 @@ export default function UsersPage() {
     } finally {
       setLoading(false);
     }
-  }, [user, roleFilter, statusFilter, searchTerm, departmentFilter, toast]);
+  }, [user, appliedRoleFilter, appliedStatusFilter, appliedSearchTerm, appliedDepartmentFilter, toast]);
 
   // Fetch initial data: roles and departments
   useEffect(() => {
@@ -329,19 +336,22 @@ export default function UsersPage() {
     }
   }, [user, toast]);
 
-  // Refetch users when filters or pagination changes
+  // Initial data fetch after roles and departments are loaded
+  useEffect(() => {
+    if (user && roles.length > 0 && departments) {
+      // Trigger initial fetch with default (empty) filters
+      fetchUsers(0, itemsPerPage);
+    }
+  }, [user, roles, departments, fetchUsers, itemsPerPage]);
+
+  // Refetch users when applied filters or pagination changes
   useEffect(() => {
     // Skip if user data or roles/departments haven't loaded yet
     if (!user || !roles.length || !departments) {
       return;
     }
 
-    // Use debounce for search term to prevent too many API calls
-    const timer = setTimeout(() => {
-      fetchUsers(currentPage, itemsPerPage);
-    }, 300);
-
-    return () => clearTimeout(timer);
+    fetchUsers(currentPage, itemsPerPage);
   }, [
     currentPage,
     itemsPerPage,
@@ -349,6 +359,10 @@ export default function UsersPage() {
     user,
     roles,
     departments,
+    appliedSearchTerm,
+    appliedRoleFilter,
+    appliedDepartmentFilter,
+    appliedStatusFilter,
   ]);
 
   // Page change handler
@@ -364,24 +378,25 @@ export default function UsersPage() {
     setCurrentPage(0); // Reset to first page when changing items per page
   };
 
-  // Filter change handlers - reset to first page when filters change
-  const handleRoleFilterChange = (value: string) => {
-    setRoleFilter(value);
-    setCurrentPage(0);
+  // Apply filters function
+  const applyFilters = () => {
+    setAppliedSearchTerm(searchTerm);
+    setAppliedRoleFilter(roleFilter);
+    setAppliedDepartmentFilter(departmentFilter);
+    setAppliedStatusFilter(statusFilter);
+    setCurrentPage(0); // Reset to first page when applying filters
   };
 
-  const handleDepartmentFilterChange = (value: string) => {
-    setDepartmentFilter(value);
-    setCurrentPage(0);
-  };
-
-  const handleStatusFilterChange = (value: string) => {
-    setStatusFilter(value);
-    setCurrentPage(0);
-  };
-
-  const handleSearchChange = (value: string) => {
-    setSearchTerm(value);
+  // Reset filters function
+  const resetFilters = () => {
+    setSearchTerm("");
+    setRoleFilter("all");
+    setDepartmentFilter("all");
+    setStatusFilter("all");
+    setAppliedSearchTerm("");
+    setAppliedRoleFilter("all");
+    setAppliedDepartmentFilter("all");
+    setAppliedStatusFilter("all");
     setCurrentPage(0);
   };
 
@@ -441,7 +456,7 @@ export default function UsersPage() {
                   placeholder="Tìm theo tên, email..."
                   className="pl-8"
                   value={searchTerm}
-                  onChange={(e) => handleSearchChange(e.target.value)}
+                  onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
             </div>
@@ -450,7 +465,7 @@ export default function UsersPage() {
               <label className="text-sm font-medium">Vai trò</label>
               <Select
                 value={roleFilter}
-                onValueChange={handleRoleFilterChange}
+                onValueChange={setRoleFilter}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Chọn vai trò" />
@@ -470,7 +485,7 @@ export default function UsersPage() {
               <label className="text-sm font-medium">Phòng ban</label>
               <Select
                 value={departmentFilter}
-                onValueChange={handleDepartmentFilterChange}
+                onValueChange={setDepartmentFilter}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Chọn phòng ban" />
@@ -493,7 +508,7 @@ export default function UsersPage() {
               <label className="text-sm font-medium">Trạng thái</label>
               <Select
                 value={statusFilter}
-                onValueChange={handleStatusFilterChange}
+                onValueChange={setStatusFilter}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Chọn trạng thái" />
@@ -505,6 +520,25 @@ export default function UsersPage() {
                 </SelectContent>
               </Select>
             </div>
+          </div>
+          
+          {/* Filter action buttons */}
+          <div className="flex gap-2 mt-4 justify-end">
+            <Button
+              variant="outline"
+              onClick={resetFilters}
+              disabled={loading}
+            >
+              <RotateCcw className="mr-2 h-4 w-4" />
+              Đặt lại
+            </Button>
+            <Button
+              onClick={applyFilters}
+              disabled={loading}
+            >
+              <Search className="mr-2 h-4 w-4" />
+              Tìm kiếm
+            </Button>
           </div>
         </CardContent>
       </Card>
