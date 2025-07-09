@@ -49,7 +49,7 @@ export {
 } from "./table";
 export { Tabs, TabsList, TabsTrigger, TabsContent } from "./tabs";
 export { ScrollArea, ScrollBar } from "./scroll-area";
-export { useToast, toast } from "./use-toast";
+export { useToast } from "./use-toast";
 export { Toaster } from "./toaster";
 export { Toast, ToastProvider, ToastViewport } from "./toast";
 export { DatePicker } from "./date-picker";
