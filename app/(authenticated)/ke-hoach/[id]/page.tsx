@@ -247,11 +247,11 @@ export default function WorkPlanDetailPage({
     try {
       setIsUpdatingProgress(true);
 
-      // Use our new API function for updating task progress
-      await workPlansAPI.updateTaskProgress(workPlanId, selectedTask.id, {
+      // Use the correct API function for updating task status and progress
+      await workPlansAPI.updateTaskStatus(workPlanId, selectedTask.id, {
         progress: newProgress,
         status: newStatus,
-        comment: progressComment,
+        comments: progressComment,
       });
 
       toast({
