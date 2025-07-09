@@ -110,11 +110,32 @@ export default function WorkPlansPage() {
     fetchWorkPlans();
   }, [toast, loadingDepartments]);
 
+  // Helper function to calculate overall progress from tasks
+  const calculateOverallProgress = (tasks: WorkPlanTaskDTO[] | undefined) => {
+    if (!tasks || tasks.length === 0) return 0;
+    const totalProgress = tasks.reduce((sum, task) => sum + task.progress, 0);
+    return Math.round(totalProgress / tasks.length);
+  };
+
   const filterWorkPlans = (plans = allWorkPlans) => {
     let filteredPlans = [...plans];
 
-    // Helper function to map status to simplified status
-    const getSimplifiedStatus = (status: string) => {
+    // Helper function to map status to simplified status based on both status and actual progress
+    const getSimplifiedStatus = (workPlan: WorkPlanDTO) => {
+      const progress = calculateOverallProgress(workPlan.tasks);
+      
+      // If progress is 100%, it should be "completed" regardless of backend status
+      if (progress >= 100) {
+        return "da_thuc_hien";
+      }
+      
+      // If progress > 0, it should be "in progress" regardless of backend status (unless completed)
+      if (progress > 0 && progress < 100) {
+        return "dang_thuc_hien";
+      }
+
+      // Otherwise, use the backend status for classification
+      const status = workPlan.status;
       if (["draft", "pending", "approved", "rejected", "chua_dien_ra"].includes(status)) {
         return "chua_dien_ra";
       } else if (["in_progress", "dang_thuc_hien"].includes(status)) {
@@ -128,13 +149,13 @@ export default function WorkPlansPage() {
     // Filter by active tab first
     if (activeTab !== "all") {
       filteredPlans = filteredPlans.filter(
-        (plan) => getSimplifiedStatus(plan.status) === activeTab
+        (plan) => getSimplifiedStatus(plan) === activeTab
       );
     }
 
     if (statusFilter !== "all") {
       filteredPlans = filteredPlans.filter(
-        (plan) => getSimplifiedStatus(plan.status) === statusFilter
+        (plan) => getSimplifiedStatus(plan) === statusFilter
       );
     }
 
@@ -184,26 +205,21 @@ export default function WorkPlansPage() {
     }
   }, [searchQuery, statusFilter, departmentFilter, loadingDepartments, activeTab]);
 
-  const getStatusBadge = (status: string) => {
-    // Map các status cũ sang status mới để hiển thị
-    let displayStatus = status;
+  const getStatusBadge = (workPlan: WorkPlanDTO) => {
+    const progress = calculateOverallProgress(workPlan.tasks);
     let badgeVariant: any = "outline";
     let badgeText = "";
 
-    // Mapping sang trạng thái đơn giản
-    if (["draft", "pending", "approved", "rejected", "chua_dien_ra"].includes(status)) {
-      displayStatus = "chua_dien_ra";
-      badgeVariant = "secondary";
-      badgeText = "Chưa diễn ra";
-    } else if (["in_progress", "dang_thuc_hien"].includes(status)) {
-      displayStatus = "dang_thuc_hien";
-      badgeVariant = "default";
-      badgeText = "Đang thực hiện";
-    } else if (["completed", "da_thuc_hien"].includes(status)) {
-      displayStatus = "da_thuc_hien";
-      badgeVariant = "destructive";
+    // Use actual progress to determine display status
+    if (progress >= 100) {
       badgeText = "Đã thực hiện";
       return <Badge className="bg-green-500 hover:bg-green-600 text-white">{badgeText}</Badge>;
+    } else if (progress > 0) {
+      badgeVariant = "default";
+      badgeText = "Đang thực hiện";
+    } else {
+      badgeVariant = "secondary";
+      badgeText = "Chưa diễn ra";
     }
 
     return <Badge variant={badgeVariant}>{badgeText}</Badge>;
@@ -272,19 +288,8 @@ export default function WorkPlansPage() {
   const getActionButtons = (workPlan: WorkPlanDTO) => {
     const buttons = [];
     
-    // Helper function to get simplified status
-    const getSimplifiedStatus = (status: string) => {
-      if (["draft", "pending", "approved", "rejected", "chua_dien_ra"].includes(status)) {
-        return "chua_dien_ra";
-      } else if (["in_progress", "dang_thuc_hien"].includes(status)) {
-        return "dang_thuc_hien";
-      } else if (["completed", "da_thuc_hien"].includes(status)) {
-        return "da_thuc_hien";
-      }
-      return "chua_dien_ra";
-    };
-
-    const simplifiedStatus = getSimplifiedStatus(workPlan.status);
+    // Get simplified status based on actual progress
+    const simplifiedStatus = getSimplifiedStatus(workPlan);
     
     // Xem chi tiết button luôn có
     buttons.push(
@@ -340,7 +345,7 @@ export default function WorkPlansPage() {
             </CardTitle>
             <CardDescription>{workPlan.department}</CardDescription>
           </div>
-          {getStatusBadge(workPlan.status)}
+          {getStatusBadge(workPlan)}
         </div>
       </CardHeader>
       <CardContent className="p-4 pt-0">
