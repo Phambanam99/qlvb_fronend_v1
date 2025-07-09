@@ -68,7 +68,7 @@ export default function CreateWorkPlanPage() {
         // Fetch departments
         const departmentsData_ = await departmentsAPI.getAllDepartments();
         const departmentsData = departmentsData_.data;
-        console.log("API departments response:", departmentsData); // Log để debug
+        // console.log("API departments response:", departmentsData); // Log để debug
 
         // Kiểm tra và xử lý nhiều trường hợp cấu trúc dữ liệu
         if (Array.isArray(departmentsData)) {
@@ -85,10 +85,10 @@ export default function CreateWorkPlanPage() {
         // Fetch users
         const usersData_ = await usersAPI.getAllUsers();
         const usersData = usersData_.data;
-        console.log("API users response:", usersData); // Log để debug
+        // console.log("API users response:", usersData); // Log để debug
 
         // Thêm log để xem cấu trúc dữ liệu người dùng
-        console.log("Sample user:", usersData[0]);
+        // console.log("Sample user:", usersData[0]);
 
         // Đảm bảo dữ liệu người dùng có cả id và name
         const formattedUsers = Array.isArray(usersData)
@@ -420,7 +420,7 @@ export default function CreateWorkPlanPage() {
                           <Select
                             value={task.assignee}
                             onValueChange={(value) => {
-                              console.log("Selected user ID:", value);
+                              // console.log("Selected user ID:", value);
                               updateTask(task.id, "assignee", value);
                             }}
                             required

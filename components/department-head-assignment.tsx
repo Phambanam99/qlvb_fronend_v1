@@ -113,10 +113,10 @@ export default function DepartmentHeadAssignment({
 
       try {
         setIsLoadingStaff(true);
-        console.log("Fetching staff for department:", departmentId);
+        // console.log("Fetching staff for department:", departmentId);
         const staffData_ = await usersAPI.getUsersByDepartmentId(departmentId);
         const staffData = staffData_.data;
-        console.log("Staff data received:", staffData);
+        // console.log("Staff data received:", staffData);
         setDepartmentStaff(staffData);
       } catch (error) {
         console.error("Error fetching department staff:", error);

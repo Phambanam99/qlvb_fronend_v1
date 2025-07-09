@@ -54,7 +54,7 @@ export default function LoginPage() {
       // Đăng nhập và đợi cho đến khi hoàn tất
       const loginResult = await login(username, password, rememberMe);
       
-      console.log("loginResult", loginResult);
+      // console.log("loginResult", loginResult);
 
       if (loginResult === true) {
         toast({
@@ -65,7 +65,7 @@ export default function LoginPage() {
         // Đợi một chút để đảm bảo token được lưu trữ đúng cách
         // và các state trong AuthContext được cập nhật
         setTimeout(() => {
-          console.log("🚀 Đang chuyển hướng sau khi đăng nhập thành công...");
+          // console.log("🚀 Đang chuyển hướng sau khi đăng nhập thành công...");
           router.push(callbackUrl);
         }, 100);
       } else {
@@ -75,7 +75,7 @@ export default function LoginPage() {
         );
       }
     } catch (error: any) {
-      console.error("Login error:", error);
+      // console.error("Login error:", error);
       setError(
         error.response?.data?.message ||
           "Đăng nhập thất bại. Vui lòng kiểm tra lại tên đăng nhập và mật khẩu."

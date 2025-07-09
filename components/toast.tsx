@@ -124,7 +124,7 @@ export function toast({
   duration?: number
 }) {
   // Simple implementation for now
-  console.log(`Toast: ${title} - ${description}`)
+  // console.log(`Toast: ${title} - ${description}`)
 
   // You can implement a more sophisticated toast system here
   // For now, we'll just log to console

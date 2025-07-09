@@ -33,10 +33,10 @@ api.interceptors.request.use(
         if (token && token !== "undefined" && token !== "null") {
           config.headers.Authorization = `Bearer ${token}`;
           // Debug log để verify
-          console.log(
-            "API Request: Added Authorization header:",
-            config.headers.Authorization.substring(0, 20) + "..."
-          );
+          // console.log(
+          //   "API Request: Added Authorization header:",
+          //   config.headers.Authorization.substring(0, 20) + "..."
+          // );
         } else {
           console.warn(
             "API Request: No valid token available for:",

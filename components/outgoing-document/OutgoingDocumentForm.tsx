@@ -205,7 +205,7 @@ export default function OutgoingDocumentForm({
         if (isMounted) {
           setDepartments(departmentsData.content || []);
         }
-        console.log("oke");
+        // console.log("oke");
         // 2. Lấy danh sách người phê duyệt
         if (user?.departmentId) {
           try {
@@ -220,7 +220,7 @@ export default function OutgoingDocumentForm({
             );
             const usersResponse = usersResponse_.data;
 
-            console.log("check", usersResponse);
+            // console.log("check", usersResponse);
             const leaderUsers = usersResponse;
 
             // Lấy danh sách người dùng có vai trò lãnh đạo cấp cao

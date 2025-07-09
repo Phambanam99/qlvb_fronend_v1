@@ -81,16 +81,16 @@ export default function UsersPage() {
 
   // Function to fetch users with pagination
   const fetchUsers = useCallback(async (page: number, size: number) => {
-    console.log('📡 fetchUsers called with:', {
-      page,
-      size,
-      appliedFilters: {
-        appliedSearchTerm,
-        appliedRoleFilter,
-        appliedDepartmentFilter,
-        appliedStatusFilter
-      }
-    });
+    // console.log('📡 fetchUsers called with:', {
+    //   page,
+    //   size,
+    //   appliedFilters: {
+    //     appliedSearchTerm,
+    //     appliedRoleFilter,
+    //     appliedDepartmentFilter,
+    //     appliedStatusFilter
+    //   }
+    // });
     
     setLoading(true);
 
@@ -140,30 +140,30 @@ export default function UsersPage() {
         params.keyword = appliedSearchTerm.trim();
       }
 
-      console.log('👤 User permissions:', {
-        userRoles: user?.roles,
-        userDepartmentId: user?.departmentId,
-        isAdmin,
-        isLeadership,
-        isDepartmentHead
-      });
+      // console.log('👤 User permissions:', {
+      //   userRoles: user?.roles,
+      //   userDepartmentId: user?.departmentId,
+      //   isAdmin,
+      //   isLeadership,
+      //   isDepartmentHead
+      // });
 
       let usersData;
 
       if (isAdmin || isLeadership) {
-        console.log('🔑 Admin/Leadership branch');
+        // console.log('🔑 Admin/Leadership branch');
         // Admin and leadership see all users with pagination
         // Apply department filter if selected
         if (appliedDepartmentFilter !== "all") {
           params.departmentId = appliedDepartmentFilter;
-          console.log('✅ Added departmentId to params:', appliedDepartmentFilter);
+          // console.log('✅ Added departmentId to params:', appliedDepartmentFilter);
         }
         
-        console.log('🌐 Final API params for Admin/Leadership:', params);
+        // console.log('🌐 Final API params for Admin/Leadership:', params);
         const usersData_ = await usersAPI.getPaginatedUsers(params);
         usersData = usersData_.data;
       } else if (isDepartmentHead && userDepartmentId) {
-        console.log('🏢 Department Head branch');
+        // console.log('🏢 Department Head branch');
         // Department heads see users in their department and child departments
         let departmentIds = [Number(userDepartmentId)];
 
@@ -182,21 +182,21 @@ export default function UsersPage() {
           // Continue with just the current department
         }
 
-        console.log('🏢 Allowed department IDs:', departmentIds);
-        console.log('🎯 Applied department filter:', appliedDepartmentFilter);
+        // console.log('🏢 Allowed department IDs:', departmentIds);
+        // console.log('🎯 Applied department filter:', appliedDepartmentFilter);
 
         // If department filter is selected and it's within allowed departments, use it
         if (
           appliedDepartmentFilter !== "all" &&
           departmentIds.includes(Number(appliedDepartmentFilter))
         ) {
-          console.log('✅ Department filter applied');
+          // console.log('✅ Department filter applied');
           params.departmentId = appliedDepartmentFilter;
-          console.log('🌐 Final API params for Department Head (filtered):', params);
+          // console.log('🌐 Final API params for Department Head (filtered):', params);
           const usersData_ = await usersAPI.getPaginatedUsers(params);
           usersData = usersData_.data;
         } else if (appliedDepartmentFilter === "all") {
-          console.log('🔄 Fetching from all allowed departments');
+          // console.log('🔄 Fetching from all allowed departments');
           // No specific department filter, get all users from allowed departments
           // Since API doesn't support multiple department IDs, we'll call for each department
           const allUsersInDepartments = [];
@@ -204,7 +204,7 @@ export default function UsersPage() {
           for (const deptId of departmentIds) {
             try {
               const deptParams = { ...params, departmentId: deptId };
-              console.log('🌐 API params for dept', deptId, ':', deptParams);
+              // console.log('🌐 API params for dept', deptId, ':', deptParams);
               const deptUsers_ = await usersAPI.getPaginatedUsers(deptParams);
               const deptUsers = deptUsers_.data;
               allUsersInDepartments.push(...deptUsers.content);
@@ -235,7 +235,7 @@ export default function UsersPage() {
             number: page,
           };
         } else {
-          console.log('❌ Department filter not allowed for this user');
+          // console.log('❌ Department filter not allowed for this user');
           // Department filter selected but not allowed for this user
           usersData = {
             content: [],
@@ -246,8 +246,7 @@ export default function UsersPage() {
           };
         }
       } else {
-        console.log('👥 Regular User branch - can only see self');
-        console.log('🌐 No API call needed for regular users');
+          //
         // Regular users can only see themselves - no need for pagination here
         usersData = {
           content: user ? [user as UserDTO] : [],
@@ -377,14 +376,14 @@ export default function UsersPage() {
       return;
     }
 
-    console.log('🔍 Applied filters changed:', {
-      appliedSearchTerm,
-      appliedRoleFilter,
-      appliedDepartmentFilter,
-      appliedStatusFilter,
-      currentPage,
-      itemsPerPage
-    });
+    // console.log('🔍 Applied filters changed:', {
+    //   appliedSearchTerm,
+    //   appliedRoleFilter,
+    //   appliedDepartmentFilter,
+    //   appliedStatusFilter,
+    //   currentPage,
+    //   itemsPerPage
+    // });
 
     fetchUsers(currentPage, itemsPerPage);
   }, [
@@ -434,7 +433,7 @@ export default function UsersPage() {
 
   // Reset filters function
   const resetFilters = () => {
-    console.log('🔄 Reset filters clicked');
+    // console.log('🔄 Reset filters clicked');
     
     setSearchTerm("");
     setRoleFilter("all");

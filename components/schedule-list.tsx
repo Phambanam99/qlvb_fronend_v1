@@ -24,8 +24,8 @@ export default function ScheduleList({
 
   // Prepare events based on provided schedules
   useEffect(() => {
-    console.log("List View Schedules:", schedules); // Debug log
-    console.log("Department filter:", department); // Debug log để kiểm tra giá trị department
+    // console.log("List View Schedules:", schedules); // Debug log
+    // console.log("Department filter:", department); // Debug log để kiểm tra giá trị department
 
     // Skip if no schedules provided
     if (!schedules || schedules.length === 0) {
@@ -107,7 +107,7 @@ export default function ScheduleList({
     });
 
     setEvents(transformedEvents);
-    console.log("Transformed List Events:", transformedEvents); // Debug log
+    // console.log("Transformed List Events:", transformedEvents); // Debug log
   }, [schedules, date, department, type]);
 
   const getEventTypeBadge = (type: string) => {

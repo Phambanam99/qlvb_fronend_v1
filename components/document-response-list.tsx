@@ -115,12 +115,12 @@ export default function DocumentResponseList({
   useEffect(() => {
     const fetchResponses = async () => {
       try {
-        console.log("documentId", documentId);
+        // console.log("documentId", documentId);
         const response_ = await workflowAPI.getDocumentResponses(
           String(documentId)
         );
         const response = response_.data;
-        console.log("response", response);
+        // console.log("response", response);
         const res = response.filter((item: any) =>
           ruleDoc.includes(item.status)
         );

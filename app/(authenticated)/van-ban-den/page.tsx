@@ -311,23 +311,23 @@ export default function IncomingDocumentsPage() {
     if (user) {
       // Nếu là trưởng phòng/phó phòng, đặt mặc định là văn bản của phòng ban
       if (hasDepartmentAccess) {
-        console.log(
-          "Setting default document source to 'department' based on user role"
-        );
+        // console.log(
+        //   "Setting default document source to 'department' based on user role"
+        // );
         setDocumentSource("department");
       }
       // Nếu là nhân viên/trợ lý, đặt mặc định là văn bản được giao
       else if (hasRole("ROLE_NHAN_VIEN") || hasRole("ROLE_TRO_LY")) {
-        console.log(
-          "Setting default document source to 'assigned' based on user role"
-        );
+        // console.log(
+        //   "Setting default document source to 'assigned' based on user role"
+        // );
         setDocumentSource("assigned");
       }
       // Người dùng có quyền xem tất cả, giữ mặc định là 'all'
       else if (hasFullAccess) {
-        console.log(
-          "Setting default document source to 'all' based on admin role"
-        );
+          // console.log(
+          //   "Setting default document source to 'all' based on admin role"
+          // );
         setDocumentSource("all");
       }
     }
@@ -413,12 +413,12 @@ export default function IncomingDocumentsPage() {
       
       // Nếu có search query, load tất cả documents để tìm kiếm
       if (searchQuery.trim()) {
-        console.log("Fetching all internal received documents for search:", searchQuery);
-        response_ = await getAllReceivedDocumentsExcludingSent();
-        response = response_.data;
+        // console.log("Fetching all internal received documents for search:", searchQuery);
+        response = await getAllReceivedDocumentsExcludingSent();
+        // response = response_.data;
         
-        if (response && response.data) {
-          console.log("All internal received documents response:", response);
+        if (response) {
+          // console.log("All internal received documents response:", response);
 
           // Sử dụng trực tiếp data từ backend thay vì tính toán lại
           setInternalDocuments(response.data);
@@ -439,16 +439,16 @@ export default function IncomingDocumentsPage() {
         }
       } else {
         // Không có search query, sử dụng pagination bình thường
-        console.log("Fetching internal received documents with pagination:", {
-          page,
-          size,
-        });
+        // console.log("Fetching internal received documents with pagination:", {
+        //   page,
+        //   size,
+        // });
 
         response_ = await getReceivedDocumentsExcludingSent(page, size);
         response = response_.data;
 
         if (response && response.content) {
-          console.log("Internal received documents response:", response);
+          // console.log("Internal received documents response:", response);
 
           // Sử dụng trực tiếp data từ backend thay vì tính toán lại
           setInternalDocuments(response.content);
@@ -501,17 +501,17 @@ export default function IncomingDocumentsPage() {
     try {
       setLoading(true);
 
-      console.log("Fetching external documents with pagination:", {
-        page,
-        size,
-        userId: user?.id,
-        userDepartmentId: user?.departmentId,
-      });
+      // console.log("Fetching external documents with pagination:", {
+      //   page,
+      //   size,
+      //   userId: user?.id,
+      //   userDepartmentId: user?.departmentId,
+      // });
 
       const response_ = await incomingDocumentsAPI.getAllDocuments(page, size);
       const response = response_.data;
 
-      console.log("API Response:", response);
+      // console.log("API Response:", response);
 
       if (response && response.content) {
         setIncomingDocuments(response.content);
@@ -552,9 +552,9 @@ export default function IncomingDocumentsPage() {
   // Update useEffect to handle tab changes
   useEffect(() => {
     if (!user || loadingDepartments) {
-      console.log(
-        "Chưa có thông tin người dùng hoặc đang tải phòng ban, chờ tải..."
-      );
+      // console.log(
+      //   "Chưa có thông tin người dùng hoặc đang tải phòng ban, chờ tải..."
+      // );
       return;
     }
 
@@ -660,7 +660,7 @@ export default function IncomingDocumentsPage() {
       // Temporary simple mapping based on common status patterns
       const status = doc.trackingStatus?.toUpperCase() || "";
       let docTabCode = "pending"; // default
-      console.log("hihi" + status);
+      // console.log("hihi" + status);
       if (status === "NOT_PROCESSED") {
         docTabCode = "not_processed";
       } else if (status === "PROCESSED") {
@@ -668,11 +668,11 @@ export default function IncomingDocumentsPage() {
       } else {
         docTabCode = "pending"; // processing, reviewing, etc.
       }
-      console.log("docTabCode" + docTabCode);
+      // console.log("docTabCode" + docTabCode);
 
       matchesProcessingStatus = docTabCode === processingStatusTab;
 
-      console.log("matches ", matchesProcessingStatus);
+      // console.log("matches ", matchesProcessingStatus);
     }
 
     // Lọc theo phòng ban - chỉ sử dụng primaryProcessDepartmentId
@@ -833,7 +833,7 @@ export default function IncomingDocumentsPage() {
 
   // Add a force refresh function
   const forceRefreshDocuments = useCallback(async () => {
-    console.log("Force refreshing documents...");
+    // console.log("Force refreshing documents...");
     await fetchDocuments(currentPage, pageSize);
     toast({
       title: "Đã cập nhật",
@@ -862,7 +862,7 @@ export default function IncomingDocumentsPage() {
   // Refresh data when page becomes visible again (user comes back from detail page)
   useEffect(() => {
     if (isPageVisible && user && !loadingDepartments) {
-      console.log("Page became visible, refreshing documents...");
+      // console.log("Page became visible, refreshing documents...");
       // Small delay to ensure any pending state updates are complete
       setTimeout(() => {
         fetchDocuments(currentPage, pageSize);
@@ -873,7 +873,7 @@ export default function IncomingDocumentsPage() {
   // Refresh data when processing status tab changes
   useEffect(() => {
     if (user && !loadingDepartments && activeTab === "external") {
-      console.log("Processing status tab changed, refreshing documents...");
+      // console.log("Processing status tab changed, refreshing documents...");
       fetchDocuments(currentPage, pageSize);
     }
   }, [
@@ -889,7 +889,7 @@ export default function IncomingDocumentsPage() {
   useEffect(() => {
     const handleRouterFocus = () => {
       if (user && !loadingDepartments) {
-        console.log("Router focus detected, refreshing documents...");
+        // console.log("Router focus detected, refreshing documents...");
         setTimeout(() => {
           fetchDocuments(currentPage, pageSize);
         }, 100);
@@ -898,7 +898,7 @@ export default function IncomingDocumentsPage() {
 
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === "documentReadStatusUpdate" && user && !loadingDepartments) {
-        console.log("Storage change detected, refreshing documents...");
+        // console.log("Storage change detected, refreshing documents...");
         setTimeout(() => {
           fetchDocuments(currentPage, pageSize);
         }, 100);
@@ -956,7 +956,7 @@ export default function IncomingDocumentsPage() {
             { id: doc.id, isRead: true, readAt: new Date().toISOString() },
           ]);
 
-          console.log("Document marked as read successfully:", doc.id);
+          // console.log("Document marked as read successfully:", doc.id);
         } catch (markError) {
           console.error("Error marking document as read:", markError);
           toast({
@@ -989,7 +989,7 @@ export default function IncomingDocumentsPage() {
       if (!currentReadStatus) {
         try {
           await universalReadStatus.markAsRead(doc.id!, "INCOMING_EXTERNAL");
-          console.log("External document marked as read successfully:", doc.id);
+          // console.log("External document marked as read successfully:", doc.id);
         } catch (markError) {
           console.error("Error marking external document as read:", markError);
           toast({

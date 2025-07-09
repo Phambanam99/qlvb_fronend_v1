@@ -69,10 +69,10 @@ export default function DocumentTypesPage() {
   // Check permissions
   const canManage = hasPermission("ROLE_ADMIN");
   
-  console.log("🔐 Document Types Page - Permission check:", {
-    canManage,
-    hasPermission: typeof hasPermission,
-  });
+  // console.log("🔐 Document Types Page - Permission check:", {
+  //   canManage,
+  //   hasPermission: typeof hasPermission,
+  // });
 
   // Fetch document types
   const fetchDocumentTypes = async () => {
@@ -196,10 +196,10 @@ export default function DocumentTypesPage() {
 
   // Handle button click
   const handleAddButtonClick = () => {
-    console.log("➕ Add Document Type button clicked");
-    console.log("🔍 Current dialog state before:", isDialogOpen);
+    // console.log("➕ Add Document Type button clicked");
+    // console.log("🔍 Current dialog state before:", isDialogOpen);
     setIsDialogOpen(true);
-    console.log("🔍 Setting dialog state to: true");
+    // console.log("🔍 Setting dialog state to: true");
   };
 
   if (!canManage) {

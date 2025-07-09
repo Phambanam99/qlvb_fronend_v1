@@ -67,11 +67,11 @@ export default function SchedulesPage() {
     try {
       setLoading(true);
       setRefreshing(true);
-      console.log("Force refreshing schedules...");
+      // console.log("Force refreshing schedules...");
 
       const data_ = await schedulesAPI.getAllSchedules();
       const data = data_.data;
-      console.log("Fetched schedules:", data);
+      // console.log("Fetched schedules:", data);
 
       setAllSchedules(data.content || []);
       filterSchedules(data.content || []);
@@ -109,7 +109,7 @@ export default function SchedulesPage() {
         setLoading(true);
         const data_ = await schedulesAPI.getAllSchedules();
         const data = data_.data;
-        console.log("Fetched schedules:", data);
+        // console.log("Fetched schedules:", data);
 
         setAllSchedules(data.content || []);
         filterSchedules(data.content || []);
@@ -133,7 +133,7 @@ export default function SchedulesPage() {
   // Auto-refresh when page becomes visible (user returns from create page)
   useEffect(() => {
     if (isPageVisible && hasFetchedSchedulesRef.current) {
-      console.log("Page became visible, refreshing schedules...");
+      // console.log("Page became visible, refreshing schedules...");
       // Small delay to ensure any pending operations are complete
       setTimeout(() => {
         forceRefreshSchedules();
@@ -145,7 +145,7 @@ export default function SchedulesPage() {
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === "scheduleDataUpdate") {
-        console.log("Schedule data update detected, refreshing...");
+        // console.log("Schedule data update detected, refreshing...");
         setTimeout(() => {
           forceRefreshSchedules();
         }, 100);

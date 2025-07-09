@@ -124,7 +124,7 @@ export default function OutgoingDocumentsPage() {
   // Refresh data when page becomes visible again
   useEffect(() => {
     if (isPageVisible && user && !loadingDepartments) {
-      console.log("Page became visible, refreshing documents...");
+         // console.log("Page became visible, refreshing documents...");
       setTimeout(() => {
         fetchDocuments(currentPage, pageSize);
       }, 100);
@@ -144,12 +144,12 @@ export default function OutgoingDocumentsPage() {
       
       // Nếu có search query, load tất cả documents để tìm kiếm
       if (searchQuery.trim()) {
-        console.log("Fetching all internal documents for search:", searchQuery);
+        // console.log("Fetching all internal documents for search:", searchQuery);
         response = await getAllSentDocuments();
         // response = response_.data;
         //  console.log("Fetching all internal documents for search:", response);
         if (response) {
-          console.log("All internal documents response:", response);
+          // console.log("All internal documents response:", response);
 
           // Cập nhật trạng thái đọc từ global state cho văn bản đi
           const documentsWithUpdatedReadStatus = response.data.map(
@@ -187,16 +187,16 @@ export default function OutgoingDocumentsPage() {
         }
       } else {
         // Không có search query, sử dụng pagination bình thường
-        console.log("Fetching internal documents with pagination:", {
-          page,
-          size,
-        });
+        // console.log("Fetching internal documents with pagination:", {
+        //   page,
+        //   size,
+        // });
 
         response_ = await getSentDocuments(page, size);
         response = response_.data;
 
         if (response && response.content) {
-          console.log("Internal documents response:", response);
+          // console.log("Internal documents response:", response);
 
           // Cập nhật trạng thái đọc từ global state cho văn bản đi
           const documentsWithUpdatedReadStatus = response.content.map(
@@ -265,10 +265,10 @@ export default function OutgoingDocumentsPage() {
   ) => {
     try {
       setLoading(true);
-      console.log("Fetching external documents with pagination:", {
-        page,
-        size,
-      });
+      // console.log("Fetching external documents with pagination:", {
+      //   page,
+      //   size,
+      // });
 
       const response_ = await outgoingDocumentsAPI.getAllDocuments(page, size);
       const response = response_.data;
@@ -316,9 +316,9 @@ export default function OutgoingDocumentsPage() {
 
   useEffect(() => {
     if (!user || loadingDepartments) {
-      console.log(
-        "Chưa có thông tin người dùng hoặc đang tải phòng ban, chờ tải..."
-      );
+      // console.log(
+      //   "Chưa có thông tin người dùng hoặc đang tải phòng ban, chờ tải..."
+      // );
       return;
     }
 
@@ -532,10 +532,10 @@ export default function OutgoingDocumentsPage() {
       if (!currentReadStatus) {
         try {
           await universalReadStatus.markAsRead(doc.id, "OUTGOING_INTERNAL");
-          console.log(
-            "Internal outgoing document marked as read successfully:",
-            doc.id
-          );
+          // console.log(
+          //   "Internal outgoing document marked as read successfully:",
+          //   doc.id
+          // );
         } catch (markError) {
           console.error(
             "Error marking internal outgoing document as read:",
@@ -569,10 +569,10 @@ export default function OutgoingDocumentsPage() {
             Number(doc.id),
             "OUTGOING_EXTERNAL"
           );
-          console.log(
-            "External outgoing document marked as read successfully:",
-            doc.id
-          );
+          // console.log(
+          //   "External outgoing document marked as read successfully:",
+          //   doc.id
+          // );
         } catch (markError) {
           console.error(
             "Error marking external outgoing document as read:",

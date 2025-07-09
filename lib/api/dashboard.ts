@@ -90,8 +90,8 @@ export const dashboardAPI = {
     departmentId: number
   ): Promise<DashboardDTO> => {
     const response = await api.get(`/dashboard/department/${departmentId}`);
-    console.log("response", departmentId);
-    console.log("response heehe ", response.data);
+  // console.log  ("response", departmentId);
+  //   console.log("response heehe ", response.data);
     return response.data;
   },
 

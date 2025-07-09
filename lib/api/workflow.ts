@@ -11,7 +11,7 @@ export const workflowAPI = {
     documentId: number | string
   ): Promise<DocumentWorkflowDTO> => {
     const response = await api.get(`/workflow/${documentId}/status`);
-    console.log("response getDocumentStatus", response.data);
+    // console.log("response getDocumentStatus", response.data);
     return response.data;
   },
   /**
@@ -337,7 +337,7 @@ export const workflowAPI = {
     const response = await api.get(`/documents/outgoing/related`, {
       params: { relatedDocuments: documentId },
     });
-    console.log("response getDocumentResponses", response.data);
+    // console.log("response getDocumentResponses", response.data);
     return response.data;
   },
 
@@ -394,7 +394,7 @@ export const workflowAPI = {
     if (file) {
       formData.append("file", file);
     }
-    console.log("formData", formData);
+    // console.log("formData", formData);
 
     const response = await api.put(
       `/workflow/${responseId}/header-feedback-with-attachment`,
@@ -412,7 +412,7 @@ export const workflowAPI = {
     comments: string,
     file?: File | null
   ) => {
-    console.log("comments", comments);
+    // console.log("comments", comments);
     const formData = new FormData();
     formData.append(
       "comments",
@@ -422,7 +422,7 @@ export const workflowAPI = {
     if (file) {
       formData.append("file", file);
     }
-    console.log("formData", formData);
+    // console.log("formData", formData);
 
     const response = await api.put(
       `/workflow/${responseId}/provide-feedback-with-attachment`,

@@ -77,10 +77,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const userData_ = await authAPI.getCurrentUser();
           const userData = userData_.data;
           if (userData) {
-            console.log(
-              "AuthContext: User data retrieved successfully:",
-              userData
-            );
+            // console.log(
+            //   "AuthContext: User data retrieved successfully:",
+            //   userData
+            // );
             setUser({
               ...userData,
               fullName: userData.fullName || userData.name,
@@ -92,9 +92,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         } else {
           if (token) {
-            console.log("AuthContext: Token found but expired");
+            // console.log("AuthContext: Token found but expired");
           } else {
-            console.log("AuthContext: No token found");
+            // console.log("AuthContext: No token found");
           }
           localStorage.removeItem("accessToken");
           localStorage.removeItem("refreshToken");
@@ -137,7 +137,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(true);
       setDataLoading(true);
       setError(null);
-      console.log("Đang thực hiện đăng nhập cho tài khoản:", username);
+      // console.log("Đang thực hiện đăng nhập cho tài khoản:", username);
       const userData_ = await authAPI.login(username, password);
       
       if (userData_.success === false) {
@@ -171,7 +171,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         fullName:  userData.user.fullName,
       };
 
-      console.log("Login successful", userInfo);
+      // console.log("Login successful", userInfo);
       setUser(userInfo);
       setIsAuthenticated(true);
 

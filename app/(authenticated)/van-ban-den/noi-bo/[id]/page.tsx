@@ -133,7 +133,7 @@ export default function InternalDocumentReceivedDetailPage() {
                 }, 100);
               }
 
-              console.log("Document automatically marked as read");
+              // console.log("Document automatically marked as read");
             } catch (markError) {
               console.error("Error auto-marking document as read:", markError);
               // Continue without marking as read
@@ -172,7 +172,7 @@ export default function InternalDocumentReceivedDetailPage() {
         );
         // Handle ResponseDTO format: extract data from response
         const historyResponse = historyResponse_?.data?.data || historyResponse_?.data || [];
-        console.log("Debug history:", historyResponse);
+        // console.log("Debug history:", historyResponse);
         setDocumentHistory(historyResponse || []);
 
         // Fetch stats
@@ -180,14 +180,14 @@ export default function InternalDocumentReceivedDetailPage() {
         const statsResponse_ = await getDocumentStats(Number(documentId));
         // Handle ResponseDTO format: extract data from response
         const statsResponse = statsResponse_?.data?.data || statsResponse_?.data || null;
-        console.log("Debug stats:", statsResponse);
+        // console.log("Debug stats:", statsResponse);
         setDocumentStats(statsResponse);
 
         // Fetch replies
         const repliesResponse_ = await getDocumentReplies(Number(documentId));
         // Handle ResponseDTO format: extract data from response
         const repliesResponse = repliesResponse_?.data?.data || repliesResponse_?.data || [];
-        console.log("Debug replies:", repliesResponse);
+        // console.log("Debug replies:", repliesResponse);
         setDocumentReplies(repliesResponse || []);
       } catch (error) {
         console.error("Error fetching document history/stats:", error);

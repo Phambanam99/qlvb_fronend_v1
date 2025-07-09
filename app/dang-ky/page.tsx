@@ -61,14 +61,14 @@ export default function RegisterPage() {
     const loadData = async () => {
       setDataLoading(true);
       try {
-        console.log("Đang tải dữ liệu phòng ban và vai trò...");
+        // console.log("Đang tải dữ liệu phòng ban và vai trò...");
 
         // Load departments
         try {
-          console.log("Đang tải dữ liệu phòng ban...");
+          // console.log("Đang tải dữ liệu phòng ban...");
           const departmentsData_ = await departmentsAPI.getAllDepartments();
           const departmentsData = departmentsData_.data;
-          console.log("Dữ liệu phòng ban:", departmentsData);
+          // console.log("Dữ liệu phòng ban:", departmentsData);
 
           if (departmentsData && departmentsData.content) {
             setDepartments(
@@ -77,20 +77,20 @@ export default function RegisterPage() {
                 name: dept.name,
               }))
             );
-            console.log("Đã tải dữ liệu phòng ban thành công");
+            // console.log("Đã tải dữ liệu phòng ban thành công");
           } else {
-            console.error("Dữ liệu phòng ban không hợp lệ:", departmentsData);
+            // console.error("Dữ liệu phòng ban không hợp lệ:", departmentsData);
           }
         } catch (deptError) {
-          console.error("Lỗi khi tải dữ liệu phòng ban:", deptError);
+          // console.error("Lỗi khi tải dữ liệu phòng ban:", deptError);
         }
 
         // Load roles
         try {
-          console.log("Đang tải dữ liệu vai trò...");
+          // console.log("Đang tải dữ liệu vai trò...");
           const rolesData_ = await rolesAPI.getAllRoles();
           const rolesData = rolesData_.data;
-          console.log("Dữ liệu vai trò:", rolesData);
+          // console.log("Dữ liệu vai trò:", rolesData);
 
           if (rolesData) {
             setRoles(
@@ -99,15 +99,15 @@ export default function RegisterPage() {
                 displayName: role.displayName || role.name,
               }))
             );
-            console.log("Đã tải dữ liệu vai trò thành công");
+            // console.log("Đã tải dữ liệu vai trò thành công");
           } else {
-            console.error("Dữ liệu vai trò không hợp lệ:", rolesData);
+            // console.error("Dữ liệu vai trò không hợp lệ:", rolesData);
           }
         } catch (roleError) {
-          console.error("Lỗi khi tải dữ liệu vai trò:", roleError);
+          // console.error("Lỗi khi tải dữ liệu vai trò:", roleError);
         }
       } catch (error) {
-        console.error("Lỗi khi tải dữ liệu:", error);
+        // console.error("Lỗi khi tải dữ liệu:", error);
         setError("Không thể tải dữ liệu phòng ban và vai trò");
       } finally {
         setDataLoading(false);
@@ -164,7 +164,7 @@ export default function RegisterPage() {
         roles: [role],
       };
 
-      console.log("Đang gửi dữ liệu đăng ký:", userData);
+      // console.log("Đang gửi dữ liệu đăng ký:", userData);
       await authAPI.register(userData);
 
       toast({
@@ -177,7 +177,7 @@ export default function RegisterPage() {
         router.push("/dang-nhap");
       }, 1500);
     } catch (error: any) {
-      console.error("Registration error:", error);
+      // console.error("Registration error:", error);
       setError(
         error.response?.data ||
           "Đăng ký thất bại. Vui lòng thử lại sau."

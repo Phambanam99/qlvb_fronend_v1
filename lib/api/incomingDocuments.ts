@@ -149,7 +149,7 @@ export const incomingDocumentsAPI = {
       const response = await api.get("/documents/incoming", {
         params: { page, size },
       });
-      console.log("backend ", response);
+      // console.log("backend ", response);
       if (response.data.success === false) {
         throw new Error(response.data.message);
       }
@@ -187,7 +187,7 @@ export const incomingDocumentsAPI = {
   ): Promise<{ data: IncomingDocumentDTO }> => {
     try {
       const response = await api.get(`/documents/incoming/${id}`);
-      console.log("response cc", response.data);
+      // console.log("response cc", response.data);
       // Map backend response to frontend expected format
       const document = {
         ...response.data,
@@ -242,7 +242,7 @@ export const incomingDocumentsAPI = {
         params: { page, size },
       }
     );
-    console.log("response", response.data.content);
+    // console.log("response", response.data.content);
 
     return response.data;
   },

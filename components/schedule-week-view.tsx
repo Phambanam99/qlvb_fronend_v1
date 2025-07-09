@@ -55,8 +55,8 @@ export default function ScheduleWeekView({
 
   // Prepare events based on provided schedules
   useEffect(() => {
-    console.log("Week View Schedules:", schedules); // Debug log
-    console.log("Department filter (Week View):", department); // Debug log để kiểm tra giá trị department
+    // console.log("Week View Schedules:", schedules); // Debug log
+    // console.log("Department filter (Week View):", department); // Debug log để kiểm tra giá trị department
 
     // Skip if no schedules provided
     if (!schedules || schedules.length === 0) {
@@ -87,7 +87,7 @@ export default function ScheduleWeekView({
           );
           return;
         }
-        console.log("Event Date:", event.date); // Debug log
+        // console.log("Event Date:", event.date); // Debug log
         // Convert event date to Date object
         const eventDate = new Date(event.date);
 
@@ -138,7 +138,7 @@ export default function ScheduleWeekView({
     }
 
     setEvents(transformedEvents);
-    console.log("Transformed Week Events:", transformedEvents); // Debug log
+    // console.log("Transformed Week Events:", transformedEvents); // Debug log
   }, [schedules, date, department, type, weekDays]);
 
   const getEventTypeBadge = (type: string) => {

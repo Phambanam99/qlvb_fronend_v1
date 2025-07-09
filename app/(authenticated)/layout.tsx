@@ -28,7 +28,7 @@ export default function AuthenticatedLayout({
   useEffect(() => {
     // Chỉ hiển thị nội dung khi đã xác thực và tải xong dữ liệu
     if (isAuthenticated && !loading && !dataLoading) {
-      console.log("✅ Tất cả dữ liệu đã tải xong - sẵn sàng hiển thị nội dung");
+      // console.log("✅ Tất cả dữ liệu đã tải xong - sẵn sàng hiển thị nội dung");
       setRenderContent(true);
     } else {
       setRenderContent(false);
@@ -40,19 +40,19 @@ export default function AuthenticatedLayout({
     const loadInitialData = async () => {
       if (isAuthenticated && user && dataLoading) {
         try {
-          console.log("🔄 Đang tải dữ liệu ứng dụng...", {
-            userId: user.id,
-            isAuthenticated,
-            dataLoading,
-          });
+          // console.log("🔄 Đang tải dữ liệu ứng dụng...", {
+          //   userId: user.id,
+          //   isAuthenticated,
+          //   dataLoading,
+          // });
 
           // Tăng thời gian timeout lên để đảm bảo API có đủ thời gian phản hồi
           // Dashboards và các components khác sẽ gọi setDataLoaded khi hoàn tất
           // nhưng chúng ta cần một safety net trong trường hợp có lỗi
           const timeoutId = setTimeout(() => {
-            console.log(
-              "⚠️ Thời gian tải dữ liệu vượt quá giới hạn - đánh dấu đã tải xong"
-            );
+            // console.log(
+            //   "⚠️ Thời gian tải dữ liệu vượt quá giới hạn - đánh dấu đã tải xong"
+            // );
             // Đánh dấu dữ liệu đã tải xong
             setDataLoaded();
 

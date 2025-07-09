@@ -50,7 +50,7 @@ export default function DepartmentsPage() {
       try {
         const response_ = await departmentsAPI.getAllDepartments();
         const response = response_.data;
-        console.log(response);
+        // console.log(response);
         if (response.content) {
           setDepartments(response.content as DepartmentDTO[]);
         } else {

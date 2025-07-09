@@ -10,6 +10,7 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  output: 'standalone', // ✅ Thêm dòng này để tối ưu build cho Docker
   async rewrites() {
     return [
       {
