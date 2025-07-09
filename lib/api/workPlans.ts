@@ -122,6 +122,15 @@ export const workPlansAPI = {
   },
 
   /**
+   * Force update all work plan statuses (admin only)
+   * @returns Success message
+   */
+  forceUpdateAllStatuses: async (): Promise<{ message: string }> => {
+    const response = await api.post("/work-plans/force-update-statuses");
+    return response.data;
+  },
+
+  /**
    * Update task status and progress
    * @param workPlanId Work plan ID
    * @param taskId Task ID

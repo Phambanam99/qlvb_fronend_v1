@@ -27,10 +27,28 @@ import { Skeleton } from "@/components/ui/skeleton";
 import type { WorkPlanDTO } from "@/lib/api/workPlans";
 import { useAuth } from "@/lib/auth-context";
 import { useHierarchicalDepartments } from "@/hooks/use-hierarchical-departments";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  FileText,
+  Plus,
+  Search,
+  Filter,
+  Play,
+  CheckCircle,
+  MoreVertical,
+  RefreshCw,
+} from "lucide-react";
 
 export default function WorkPlansPage() {
   const { toast } = useToast();
+  const { hasRole } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
+  const [isForceUpdating, setIsForceUpdating] = useState(false);
   const [workPlans, setWorkPlans] = useState<WorkPlanDTO[]>([]);
   const [allWorkPlans, setAllWorkPlans] = useState<WorkPlanDTO[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -218,6 +236,28 @@ export default function WorkPlansPage() {
     }
   };
 
+  const handleForceUpdateStatuses = async () => {
+    try {
+      setIsForceUpdating(true);
+      await workPlansAPI.forceUpdateAllStatuses();
+      toast({
+        title: "Thành công",
+        description: "Đã cập nhật trạng thái kế hoạch thành công.",
+      });
+      // Refresh data
+      hasFetchedWorkPlansRef.current = false;
+      setAllWorkPlans([]);
+    } catch (error) {
+      toast({
+        title: "Lỗi",
+        description: "Không thể cập nhật trạng thái kế hoạch.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsForceUpdating(false);
+    }
+  };
+
   const getActionButtons = (workPlan: WorkPlanDTO) => {
     const buttons = [];
     
@@ -308,12 +348,24 @@ export default function WorkPlansPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight">Kế hoạch công tác</h1>
-        <Button asChild>
-          <Link href="/ke-hoach/tao-moi">
-            <Plus className="mr-2 h-4 w-4" />
-            Tạo kế hoạch mới
-          </Link>
-        </Button>
+        <div className="flex gap-2">
+          {hasRole(["admin"]) && (
+            <Button
+              variant="outline"
+              onClick={handleForceUpdateStatuses}
+              disabled={isForceUpdating}
+            >
+              <RefreshCw className={`mr-2 h-4 w-4 ${isForceUpdating ? 'animate-spin' : ''}`} />
+              {isForceUpdating ? 'Đang cập nhật...' : 'Cập nhật trạng thái'}
+            </Button>
+          )}
+          <Button asChild>
+            <Link href="/ke-hoach/tao-moi">
+              <Plus className="mr-2 h-4 w-4" />
+              Tạo kế hoạch mới
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-4">
