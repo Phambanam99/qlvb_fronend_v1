@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, Play, CheckCircle } from "lucide-react";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import {
@@ -36,6 +36,7 @@ export default function WorkPlansPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [departmentFilter, setDepartmentFilter] = useState("all");
+  const [activeTab, setActiveTab] = useState("all");
   const hasFetchedWorkPlansRef = useRef(false);
 
   const {
@@ -95,6 +96,13 @@ export default function WorkPlansPage() {
   const filterWorkPlans = (plans = allWorkPlans) => {
     let filteredPlans = [...plans];
 
+    // Filter by active tab first
+    if (activeTab !== "all") {
+      filteredPlans = filteredPlans.filter(
+        (plan) => plan.status === activeTab
+      );
+    }
+
     if (statusFilter !== "all") {
       filteredPlans = filteredPlans.filter(
         (plan) => plan.status === statusFilter
@@ -145,7 +153,7 @@ export default function WorkPlansPage() {
     if (!loadingDepartments && allWorkPlans.length > 0) {
       filterWorkPlans();
     }
-  }, [searchQuery, statusFilter, departmentFilter, loadingDepartments]);
+  }, [searchQuery, statusFilter, departmentFilter, loadingDepartments, activeTab]);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -171,6 +179,130 @@ export default function WorkPlansPage() {
         return <Badge variant="outline">Khác</Badge>;
     }
   };
+
+  const handleStartWorkPlan = async (id: number) => {
+    try {
+      await workPlansAPI.startWorkPlan(id);
+      toast({
+        title: "Thành công",
+        description: "Đã bắt đầu thực hiện kế hoạch",
+      });
+      // Refresh data
+      hasFetchedWorkPlansRef.current = false;
+      setAllWorkPlans([]);
+    } catch (error) {
+      toast({
+        title: "Lỗi",
+        description: "Không thể bắt đầu kế hoạch",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCompleteWorkPlan = async (id: number) => {
+    try {
+      await workPlansAPI.completeWorkPlan(id);
+      toast({
+        title: "Thành công",
+        description: "Đã hoàn thành kế hoạch",
+      });
+      // Refresh data
+      hasFetchedWorkPlansRef.current = false;
+      setAllWorkPlans([]);
+    } catch (error) {
+      toast({
+        title: "Lỗi",
+        description: "Không thể hoàn thành kế hoạch",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const getActionButtons = (workPlan: WorkPlanDTO) => {
+    const buttons = [];
+    
+    // Xem chi tiết button luôn có
+    buttons.push(
+      <Button key="view" variant="ghost" size="sm" asChild>
+        <Link href={`/ke-hoach/${workPlan.id}`}>
+          Xem chi tiết
+        </Link>
+      </Button>
+    );
+
+    // Start button cho approved plans
+    if (workPlan.status === "approved") {
+      buttons.push(
+        <Button
+          key="start"
+          variant="outline"
+          size="sm"
+          onClick={() => handleStartWorkPlan(workPlan.id)}
+          className="ml-2"
+        >
+          <Play className="w-4 h-4 mr-1" />
+          Bắt đầu
+        </Button>
+      );
+    }
+
+    // Complete button cho in_progress plans
+    if (workPlan.status === "in_progress") {
+      buttons.push(
+        <Button
+          key="complete"
+          variant="outline"
+          size="sm"
+          onClick={() => handleCompleteWorkPlan(workPlan.id)}
+          className="ml-2"
+        >
+          <CheckCircle className="w-4 h-4 mr-1" />
+          Hoàn thành
+        </Button>
+      );
+    }
+
+    return buttons;
+  };
+
+  const renderWorkPlanCard = (workPlan: WorkPlanDTO) => (
+    <Card key={workPlan.id} className="overflow-hidden">
+      <CardHeader className="p-4">
+        <div className="flex items-start justify-between">
+          <div>
+            <CardTitle className="line-clamp-1">
+              {workPlan.title}
+            </CardTitle>
+            <CardDescription>{workPlan.department}</CardDescription>
+          </div>
+          {getStatusBadge(workPlan.status)}
+        </div>
+      </CardHeader>
+      <CardContent className="p-4 pt-0">
+        <div className="grid grid-cols-2 gap-2 text-sm">
+          <div>
+            <p className="text-muted-foreground">Bắt đầu</p>
+            <p>
+              {new Date(workPlan.startDate).toLocaleDateString(
+                "vi-VN"
+              )}
+            </p>
+          </div>
+          <div>
+            <p className="text-muted-foreground">Kết thúc</p>
+            <p>
+              {new Date(workPlan.endDate).toLocaleDateString(
+                "vi-VN"
+              )}
+            </p>
+          </div>
+        </div>
+        <div className="mt-4 flex justify-end">
+          {getActionButtons(workPlan)}
+        </div>
+      </CardContent>
+    </Card>
+  );
 
   return (
     <div className="space-y-6">
@@ -228,61 +360,22 @@ export default function WorkPlansPage() {
         </Select>
       </div>
 
-      <Tabs defaultValue="all">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="all">Tất cả</TabsTrigger>
           <TabsTrigger value="draft">Dự thảo</TabsTrigger>
           <TabsTrigger value="pending">Chờ duyệt</TabsTrigger>
           <TabsTrigger value="approved">Đã duyệt</TabsTrigger>
+          <TabsTrigger value="in_progress">Đang thực hiện</TabsTrigger>
           <TabsTrigger value="completed">Hoàn thành</TabsTrigger>
         </TabsList>
-        <TabsContent value="all" className="mt-4">
+        
+        <TabsContent value={activeTab} className="mt-4">
           {isLoading || loadingDepartments ? (
             <WorkPlansSkeleton />
           ) : workPlans.length > 0 ? (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {workPlans.map((workPlan) => (
-                <Card key={workPlan.id} className="overflow-hidden">
-                  <CardHeader className="p-4">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <CardTitle className="line-clamp-1">
-                          {workPlan.title}
-                        </CardTitle>
-                        <CardDescription>{workPlan.department}</CardDescription>
-                      </div>
-                      {getStatusBadge(workPlan.status)}
-                    </div>
-                  </CardHeader>
-                  <CardContent className="p-4 pt-0">
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div>
-                        <p className="text-muted-foreground">Bắt đầu</p>
-                        <p>
-                          {new Date(workPlan.startDate).toLocaleDateString(
-                            "vi-VN"
-                          )}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Kết thúc</p>
-                        <p>
-                          {new Date(workPlan.endDate).toLocaleDateString(
-                            "vi-VN"
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="mt-4 flex justify-end">
-                      <Button variant="ghost" size="sm" asChild>
-                        <Link href={`/ke-hoach/${workPlan.id}`}>
-                          Xem chi tiết
-                        </Link>
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+              {workPlans.map(renderWorkPlanCard)}
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center py-12">
@@ -295,60 +388,6 @@ export default function WorkPlansPage() {
                   Tạo kế hoạch mới
                 </Link>
               </Button>
-            </div>
-          )}
-        </TabsContent>
-        <TabsContent value="draft" className="mt-4">
-          {isLoading || loadingDepartments ? (
-            <WorkPlansSkeleton />
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {workPlans
-                .filter((workPlan) => workPlan.status === "draft")
-                .map((workPlan) => (
-                  <Card key={workPlan.id} className="overflow-hidden">
-                    <CardHeader className="p-4">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <CardTitle className="line-clamp-1">
-                            {workPlan.title}
-                          </CardTitle>
-                          <CardDescription>
-                            {workPlan.department}
-                          </CardDescription>
-                        </div>
-                        {getStatusBadge(workPlan.status)}
-                      </div>
-                    </CardHeader>
-                    <CardContent className="p-4 pt-0">
-                      <div className="grid grid-cols-2 gap-2 text-sm">
-                        <div>
-                          <p className="text-muted-foreground">Bắt đầu</p>
-                          <p>
-                            {new Date(workPlan.startDate).toLocaleDateString(
-                              "vi-VN"
-                            )}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground">Kết thúc</p>
-                          <p>
-                            {new Date(workPlan.endDate).toLocaleDateString(
-                              "vi-VN"
-                            )}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="mt-4 flex justify-end">
-                        <Button variant="ghost" size="sm" asChild>
-                          <Link href={`/ke-hoach/${workPlan.id}`}>
-                            Xem chi tiết
-                          </Link>
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
             </div>
           )}
         </TabsContent>

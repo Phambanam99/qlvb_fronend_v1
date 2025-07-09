@@ -1,18 +1,18 @@
-import api from "./config";
+import { api } from "./config";
 
 export interface WorkPlanTaskDTO {
-  id: number;
+  id?: number;
   title: string;
   description: string;
-  assignee: string;
   assigneeId?: number;
+  assigneeName?: string;
   startDate: string;
   endDate: string;
   status: string;
   progress: number;
-  workPlanId: number;
-  createdAt: string;
-  updatedAt: string;
+  comments?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface WorkPlanDTO {
@@ -78,52 +78,75 @@ export const workPlansAPI = {
   },
 
   /**
+   * Submit work plan for approval
+   * @param id Work plan ID
+   * @returns Updated work plan data
+   */
+  submitWorkPlan: async (id: string | number): Promise<WorkPlanDTO> => {
+    const response = await api.patch(`/work-plans/${id}/submit`);
+    return response.data;
+  },
+
+  /**
+   * Approve or reject work plan
+   * @param id Work plan ID
+   * @param data Approval data with approved flag and comments
+   * @returns Updated work plan data
+   */
+  approveWorkPlan: async (
+    id: number | string,
+    data: { approved: boolean; comments?: string }
+  ): Promise<WorkPlanDTO> => {
+    const response = await api.patch(`/work-plans/${id}/approve`, data);
+    return response.data;
+  },
+
+  /**
+   * Start work plan execution (move from approved to in_progress)
+   * @param id Work plan ID
+   * @returns Updated work plan data
+   */
+  startWorkPlan: async (id: number | string): Promise<WorkPlanDTO> => {
+    const response = await api.patch(`/work-plans/${id}/start`);
+    return response.data;
+  },
+
+  /**
+   * Complete work plan (move from in_progress to completed)
+   * @param id Work plan ID
+   * @returns Updated work plan data
+   */
+  completeWorkPlan: async (id: number | string): Promise<WorkPlanDTO> => {
+    const response = await api.patch(`/work-plans/${id}/complete`);
+    return response.data;
+  },
+
+  /**
+   * Update task status and progress
+   * @param workPlanId Work plan ID
+   * @param taskId Task ID
+   * @param data Status update data
+   * @returns Updated task data
+   */
+  updateTaskStatus: async (
+    workPlanId: string | number,
+    taskId: string | number,
+    data: { status?: string; progress?: number; comments?: string }
+  ): Promise<WorkPlanTaskDTO> => {
+    const response = await api.patch(
+      `/work-plans/${workPlanId}/tasks/${taskId}/status`,
+      data
+    );
+    return response.data;
+  },
+
+  /**
    * Delete work plan
    * @param id Work plan ID
    * @returns Success message
    */
   deleteWorkPlan: async (id: string | number): Promise<{ message: string }> => {
     const response = await api.delete(`/work-plans/${id}`);
-    return response.data;
-  },
-
-  // Thêm các phương thức mới để tương thích với code hiện tại
-  approveWorkPlan: async (
-    id: number | string,
-    data: { comments?: string }
-  ): Promise<WorkPlanDTO> => {
-    const response = await api.post(`/work-plans/${id}/approve`, data);
-    return response.data;
-  },
-
-  rejectWorkPlan: async (
-    id: number | string,
-    data: { comments?: string }
-  ): Promise<WorkPlanDTO> => {
-    const response = await api.post(`/work-plans/${id}/reject`, data);
-    return response.data;
-  },
-
-  /**
-   * Update task progress
-   * @param workPlanId Work plan ID
-   * @param taskId Task ID
-   * @param data Task progress data
-   * @returns Updated task data
-   */
-  updateTaskProgress: async (
-    workPlanId: number | string,
-    taskId: number | string,
-    data: {
-      progress: number;
-      status: string;
-      comment?: string;
-    }
-  ): Promise<WorkPlanTaskDTO> => {
-    const response = await api.put(
-      `/work-plans/${workPlanId}/tasks/${taskId}/status`,
-      data
-    );
     return response.data;
   },
 };
