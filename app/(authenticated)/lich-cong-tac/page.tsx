@@ -45,6 +45,18 @@ export default function SchedulesPage() {
   const [refreshing, setRefreshing] = useState(false);
   const { hasRole } = useAuth();
 
+  // Helper function to get simplified status
+  const getSimplifiedStatus = (status: string) => {
+    if (["draft", "pending", "submitted", "rejected", "chua_dien_ra"].includes(status)) {
+      return "chua_dien_ra";
+    } else if (["approved", "dang_thuc_hien"].includes(status)) {
+      return "dang_thuc_hien";
+    } else if (["completed", "da_thuc_hien"].includes(status)) {
+      return "da_thuc_hien";
+    }
+    return "chua_dien_ra"; // default
+  };
+
   const {
     visibleDepartments,
     userDepartmentIds,
@@ -173,7 +185,7 @@ export default function SchedulesPage() {
 
     if (statusFilter !== "all") {
       filteredSchedules = filteredSchedules.filter(
-        (schedule) => schedule.status === statusFilter
+        (schedule) => getSimplifiedStatus(schedule.status) === statusFilter
       );
     }
 
@@ -219,18 +231,28 @@ export default function SchedulesPage() {
   }, [searchQuery, statusFilter, departmentFilter, loadingDepartments]);
 
   const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "draft":
-        return <Badge variant="outline">Dự thảo</Badge>;
-      case "pending":
-        return <Badge variant="secondary">Chờ duyệt</Badge>;
-      case "approved":
-        return <Badge variant="default">Đã duyệt</Badge>;
-      case "rejected":
-        return <Badge variant="destructive">Từ chối</Badge>;
-      default:
-        return <Badge variant="outline">Khác</Badge>;
+    // Map các status sang trạng thái đơn giản 
+    let displayStatus = status;
+    let badgeVariant: any = "outline";
+    let badgeText = "";
+
+    // Mapping sang trạng thái đơn giản
+    if (["draft", "pending", "submitted", "rejected", "chua_dien_ra"].includes(status)) {
+      displayStatus = "chua_dien_ra";
+      badgeVariant = "secondary";
+      badgeText = "Chưa diễn ra";
+    } else if (["approved", "dang_thuc_hien"].includes(status)) {
+      displayStatus = "dang_thuc_hien";
+      badgeVariant = "default";
+      badgeText = "Đang thực hiện";
+    } else if (["completed", "da_thuc_hien"].includes(status)) {
+      displayStatus = "da_thuc_hien";
+      badgeVariant = "destructive";
+      badgeText = "Đã thực hiện";
+      return <Badge className="bg-green-500 hover:bg-green-600 text-white">{badgeText}</Badge>;
     }
+
+    return <Badge variant={badgeVariant}>{badgeText}</Badge>;
   };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -281,10 +303,9 @@ export default function SchedulesPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Tất cả trạng thái</SelectItem>
-            <SelectItem value="draft">Dự thảo</SelectItem>
-            <SelectItem value="pending">Chờ duyệt</SelectItem>
-            <SelectItem value="approved">Đã duyệt</SelectItem>
-            <SelectItem value="rejected">Từ chối</SelectItem>
+            <SelectItem value="chua_dien_ra">Chưa diễn ra</SelectItem>
+            <SelectItem value="dang_thuc_hien">Đang thực hiện</SelectItem>
+            <SelectItem value="da_thuc_hien">Đã thực hiện</SelectItem>
           </SelectContent>
         </Select>
 
@@ -337,9 +358,9 @@ export default function SchedulesPage() {
       <Tabs defaultValue="all">
         <TabsList>
           <TabsTrigger value="all">Tất cả</TabsTrigger>
-          <TabsTrigger value="draft">Dự thảo</TabsTrigger>
-          <TabsTrigger value="pending">Chờ duyệt</TabsTrigger>
-          <TabsTrigger value="approved">Đã duyệt</TabsTrigger>
+          <TabsTrigger value="chua_dien_ra">Chưa diễn ra</TabsTrigger>
+          <TabsTrigger value="dang_thuc_hien">Đang thực hiện</TabsTrigger>
+          <TabsTrigger value="da_thuc_hien">Đã thực hiện</TabsTrigger>
         </TabsList>
         <TabsContent value="all" className="mt-4">
           {loading || loadingDepartments ? (
@@ -387,7 +408,7 @@ export default function SchedulesPage() {
             </div>
           )}
         </TabsContent>
-        <TabsContent value="draft" className="mt-4">
+        <TabsContent value="chua_dien_ra" className="mt-4">
           {loading || loadingDepartments ? (
             <ScheduleSkeleton viewMode={viewMode} />
           ) : (
@@ -398,7 +419,7 @@ export default function SchedulesPage() {
                     date={new Date()}
                     department={departmentFilter}
                     type="all"
-                    schedules={schedules.filter((s) => s.status === "draft")}
+                    schedules={schedules.filter((s) => getSimplifiedStatus(s.status) === "chua_dien_ra")}
                   />
                 )}
                 {viewMode === "month" && (
@@ -406,7 +427,7 @@ export default function SchedulesPage() {
                     date={new Date()}
                     department={departmentFilter}
                     type="all"
-                    schedules={schedules.filter((s) => s.status === "draft")}
+                    schedules={schedules.filter((s) => getSimplifiedStatus(s.status) === "chua_dien_ra")}
                   />
                 )}
                 {viewMode === "list" && (
@@ -414,14 +435,81 @@ export default function SchedulesPage() {
                     date={new Date()}
                     department={departmentFilter}
                     type="all"
-                    schedules={schedules.filter((s) => s.status === "draft")}
+                    schedules={schedules.filter((s) => getSimplifiedStatus(s.status) === "chua_dien_ra")}
                   />
                 )}
               </CardContent>
             </Card>
           )}
         </TabsContent>
-        {/* Các tab khác tương tự */}
+        <TabsContent value="dang_thuc_hien" className="mt-4">
+          {loading || loadingDepartments ? (
+            <ScheduleSkeleton viewMode={viewMode} />
+          ) : (
+            <Card>
+              <CardContent className="p-0">
+                {viewMode === "week" && (
+                  <ScheduleWeekView
+                    date={new Date()}
+                    department={departmentFilter}
+                    type="all"
+                    schedules={schedules.filter((s) => getSimplifiedStatus(s.status) === "dang_thuc_hien")}
+                  />
+                )}
+                {viewMode === "month" && (
+                  <ScheduleMonthView
+                    date={new Date()}
+                    department={departmentFilter}
+                    type="all"
+                    schedules={schedules.filter((s) => getSimplifiedStatus(s.status) === "dang_thuc_hien")}
+                  />
+                )}
+                {viewMode === "list" && (
+                  <ScheduleList
+                    date={new Date()}
+                    department={departmentFilter}
+                    type="all"
+                    schedules={schedules.filter((s) => getSimplifiedStatus(s.status) === "dang_thuc_hien")}
+                  />
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+        <TabsContent value="da_thuc_hien" className="mt-4">
+          {loading || loadingDepartments ? (
+            <ScheduleSkeleton viewMode={viewMode} />
+          ) : (
+            <Card>
+              <CardContent className="p-0">
+                {viewMode === "week" && (
+                  <ScheduleWeekView
+                    date={new Date()}
+                    department={departmentFilter}
+                    type="all"
+                    schedules={schedules.filter((s) => getSimplifiedStatus(s.status) === "da_thuc_hien")}
+                  />
+                )}
+                {viewMode === "month" && (
+                  <ScheduleMonthView
+                    date={new Date()}
+                    department={departmentFilter}
+                    type="all"
+                    schedules={schedules.filter((s) => getSimplifiedStatus(s.status) === "da_thuc_hien")}
+                  />
+                )}
+                {viewMode === "list" && (
+                  <ScheduleList
+                    date={new Date()}
+                    department={departmentFilter}
+                    type="all"
+                    schedules={schedules.filter((s) => getSimplifiedStatus(s.status) === "da_thuc_hien")}
+                  />
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
       </Tabs>
     </div>
   );

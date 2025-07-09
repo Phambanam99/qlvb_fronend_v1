@@ -114,16 +114,28 @@ export default function WorkPlansPage() {
   const filterWorkPlans = (plans = allWorkPlans) => {
     let filteredPlans = [...plans];
 
+    // Helper function to map status to simplified status
+    const getSimplifiedStatus = (status: string) => {
+      if (["draft", "pending", "approved", "rejected", "chua_dien_ra"].includes(status)) {
+        return "chua_dien_ra";
+      } else if (["in_progress", "dang_thuc_hien"].includes(status)) {
+        return "dang_thuc_hien";
+      } else if (["completed", "da_thuc_hien"].includes(status)) {
+        return "da_thuc_hien";
+      }
+      return "chua_dien_ra"; // default
+    };
+
     // Filter by active tab first
     if (activeTab !== "all") {
       filteredPlans = filteredPlans.filter(
-        (plan) => plan.status === activeTab
+        (plan) => getSimplifiedStatus(plan.status) === activeTab
       );
     }
 
     if (statusFilter !== "all") {
       filteredPlans = filteredPlans.filter(
-        (plan) => plan.status === statusFilter
+        (plan) => getSimplifiedStatus(plan.status) === statusFilter
       );
     }
 
@@ -174,28 +186,28 @@ export default function WorkPlansPage() {
   }, [searchQuery, statusFilter, departmentFilter, loadingDepartments, activeTab]);
 
   const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "draft":
-        return <Badge variant="outline">Dự thảo</Badge>;
-      case "pending":
-        return <Badge variant="secondary">Chờ duyệt</Badge>;
-      case "approved":
-        return <Badge variant="default">Đã duyệt</Badge>;
-      case "rejected":
-        return <Badge variant="destructive">Từ chối</Badge>;
-      case "completed":
-        return (
-          <Badge className="bg-green-500 hover:bg-green-600">Hoàn thành</Badge>
-        );
-      case "in_progress":
-        return (
-          <Badge variant="secondary" className="bg-primary/10 text-primary">
-            Đang thực hiện
-          </Badge>
-        );
-      default:
-        return <Badge variant="outline">Khác</Badge>;
+    // Map các status cũ sang status mới để hiển thị
+    let displayStatus = status;
+    let badgeVariant: any = "outline";
+    let badgeText = "";
+
+    // Mapping sang trạng thái đơn giản
+    if (["draft", "pending", "approved", "rejected", "chua_dien_ra"].includes(status)) {
+      displayStatus = "chua_dien_ra";
+      badgeVariant = "secondary";
+      badgeText = "Chưa diễn ra";
+    } else if (["in_progress", "dang_thuc_hien"].includes(status)) {
+      displayStatus = "dang_thuc_hien";
+      badgeVariant = "default";
+      badgeText = "Đang thực hiện";
+    } else if (["completed", "da_thuc_hien"].includes(status)) {
+      displayStatus = "da_thuc_hien";
+      badgeVariant = "destructive";
+      badgeText = "Đã thực hiện";
+      return <Badge className="bg-green-500 hover:bg-green-600 text-white">{badgeText}</Badge>;
     }
+
+    return <Badge variant={badgeVariant}>{badgeText}</Badge>;
   };
 
   const handleStartWorkPlan = async (id: number) => {
@@ -261,6 +273,20 @@ export default function WorkPlansPage() {
   const getActionButtons = (workPlan: WorkPlanDTO) => {
     const buttons = [];
     
+    // Helper function to get simplified status
+    const getSimplifiedStatus = (status: string) => {
+      if (["draft", "pending", "approved", "rejected", "chua_dien_ra"].includes(status)) {
+        return "chua_dien_ra";
+      } else if (["in_progress", "dang_thuc_hien"].includes(status)) {
+        return "dang_thuc_hien";
+      } else if (["completed", "da_thuc_hien"].includes(status)) {
+        return "da_thuc_hien";
+      }
+      return "chua_dien_ra";
+    };
+
+    const simplifiedStatus = getSimplifiedStatus(workPlan.status);
+    
     // Xem chi tiết button luôn có
     buttons.push(
       <Button key="view" variant="ghost" size="sm" asChild>
@@ -270,8 +296,8 @@ export default function WorkPlansPage() {
       </Button>
     );
 
-    // Start button cho approved plans
-    if (workPlan.status === "approved") {
+    // Start button cho plans chưa diễn ra (và đã được duyệt)
+    if (simplifiedStatus === "chua_dien_ra" && workPlan.status === "approved") {
       buttons.push(
         <Button
           key="start"
@@ -286,8 +312,8 @@ export default function WorkPlansPage() {
       );
     }
 
-    // Complete button cho in_progress plans
-    if (workPlan.status === "in_progress") {
+    // Complete button cho plans đang thực hiện
+    if (simplifiedStatus === "dang_thuc_hien") {
       buttons.push(
         <Button
           key="complete"
@@ -385,12 +411,9 @@ export default function WorkPlansPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Tất cả trạng thái</SelectItem>
-            <SelectItem value="draft">Dự thảo</SelectItem>
-            <SelectItem value="pending">Chờ duyệt</SelectItem>
-            <SelectItem value="approved">Đã duyệt</SelectItem>
-            <SelectItem value="in_progress">Đang thực hiện</SelectItem>
-            <SelectItem value="completed">Hoàn thành</SelectItem>
-            <SelectItem value="rejected">Từ chối</SelectItem>
+            <SelectItem value="chua_dien_ra">Chưa diễn ra</SelectItem>
+            <SelectItem value="dang_thuc_hien">Đang thực hiện</SelectItem>
+            <SelectItem value="da_thuc_hien">Đã thực hiện</SelectItem>
           </SelectContent>
         </Select>
         <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
@@ -415,11 +438,9 @@ export default function WorkPlansPage() {
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="all">Tất cả</TabsTrigger>
-          <TabsTrigger value="draft">Dự thảo</TabsTrigger>
-          <TabsTrigger value="pending">Chờ duyệt</TabsTrigger>
-          <TabsTrigger value="approved">Đã duyệt</TabsTrigger>
-          <TabsTrigger value="in_progress">Đang thực hiện</TabsTrigger>
-          <TabsTrigger value="completed">Hoàn thành</TabsTrigger>
+          <TabsTrigger value="chua_dien_ra">Chưa diễn ra</TabsTrigger>
+          <TabsTrigger value="dang_thuc_hien">Đang thực hiện</TabsTrigger>
+          <TabsTrigger value="da_thuc_hien">Đã thực hiện</TabsTrigger>
         </TabsList>
         
         <TabsContent value={activeTab} className="mt-4">
