@@ -117,34 +117,34 @@ export default function WorkPlansPage() {
     return Math.round(totalProgress / tasks.length);
   };
 
+  // Helper function to map status to simplified status based on both status and actual progress
+  const getSimplifiedStatus = (workPlan: WorkPlanDTO) => {
+    const progress = calculateOverallProgress(workPlan.tasks);
+    
+    // If progress is 100%, it should be "completed" regardless of backend status
+    if (progress >= 100) {
+      return "da_thuc_hien";
+    }
+    
+    // If progress > 0, it should be "in progress" regardless of backend status (unless completed)
+    if (progress > 0 && progress < 100) {
+      return "dang_thuc_hien";
+    }
+
+    // Otherwise, use the backend status for classification
+    const status = workPlan.status;
+    if (["draft", "pending", "approved", "rejected", "chua_dien_ra"].includes(status)) {
+      return "chua_dien_ra";
+    } else if (["in_progress", "dang_thuc_hien"].includes(status)) {
+      return "dang_thuc_hien";
+    } else if (["completed", "da_thuc_hien"].includes(status)) {
+      return "da_thuc_hien";
+    }
+    return "chua_dien_ra"; // default
+  };
+
   const filterWorkPlans = (plans = allWorkPlans) => {
     let filteredPlans = [...plans];
-
-    // Helper function to map status to simplified status based on both status and actual progress
-    const getSimplifiedStatus = (workPlan: WorkPlanDTO) => {
-      const progress = calculateOverallProgress(workPlan.tasks);
-      
-      // If progress is 100%, it should be "completed" regardless of backend status
-      if (progress >= 100) {
-        return "da_thuc_hien";
-      }
-      
-      // If progress > 0, it should be "in progress" regardless of backend status (unless completed)
-      if (progress > 0 && progress < 100) {
-        return "dang_thuc_hien";
-      }
-
-      // Otherwise, use the backend status for classification
-      const status = workPlan.status;
-      if (["draft", "pending", "approved", "rejected", "chua_dien_ra"].includes(status)) {
-        return "chua_dien_ra";
-      } else if (["in_progress", "dang_thuc_hien"].includes(status)) {
-        return "dang_thuc_hien";
-      } else if (["completed", "da_thuc_hien"].includes(status)) {
-        return "da_thuc_hien";
-      }
-      return "chua_dien_ra"; // default
-    };
 
     // Filter by active tab first
     if (activeTab !== "all") {
