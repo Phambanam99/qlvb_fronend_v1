@@ -33,7 +33,7 @@ import {
 } from "recharts";
 import {
   dashboardAPI,
-  DashboardDTO,
+  ComprehensiveDashboardStats,
   DocumentSummaryDTO,
   WorkPlanSummaryDTO,
 } from "@/lib/api/dashboard";
@@ -66,27 +66,16 @@ const COLORS = [
   "#ff7300",
 ];
 
-interface DashboardStats {
-  systemStats?: Record<string, any>;
-  userStats?: DashboardDTO;
-  quickMetrics?: Record<string, any>;
-  statusBreakdown?: Record<string, any>;
-  incomingStats?: Record<string, any>;
-  outgoingStats?: Record<string, any>;
-  internalStats?: Record<string, any>;
-  recentDocuments?: any[];
-  todaySchedule?: any[];
-}
-
 export default function DashboardPage() {
   const { toast } = useToast();
   const { user, hasRole } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
-  const [dashboardStats, setDashboardStats] = useState<DashboardStats>({});
+  const [dashboardStats, setDashboardStats] = useState<ComprehensiveDashboardStats | null>(null);
+  const [todaySchedule, setTodaySchedule] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState("overview");
   const [refreshing, setRefreshing] = useState(false);
 
-  // Determine user role category
+  // Determine user role category for better UX
   const isAdmin = hasRole([
     "ROLE_ADMIN",
     "ROLE_VAN_THU",
@@ -101,7 +90,6 @@ export default function DashboardPage() {
     "ROLE_PHO_PHONG",
     "ROLE_TRUONG_BAN",
     "ROLE_PHO_BAN",
-    "ROLE_TRUONG_BAN",
     "ROLE_TRAM_TRUONG",
     "ROLE_PHO_TRAM_TRUONG",
     "ROLE_CUM_TRUONG",
@@ -112,7 +100,9 @@ export default function DashboardPage() {
   const isStaff = hasRole(["ROLE_NHAN_VIEN", "ROLE_TRO_LY"]);
 
   useEffect(() => {
-    fetchDashboardData();
+    if (user) {
+      fetchDashboardData();
+    }
   }, [user]);
 
   const fetchDashboardData = async () => {
@@ -120,169 +110,19 @@ export default function DashboardPage() {
 
     setIsLoading(true);
     try {
-      // Use the comprehensive dashboard stats API instead of multiple calls
-      const dashboardStatsResponse_ = await dashboardAPI.getDashboardStats();
+      // Use the main comprehensive dashboard API - single call instead of multiple
+      const stats = await dashboardAPI.getDashboardStats();
+      setDashboardStats(stats);
 
-      const dashboardStatsResponse = dashboardStatsResponse_.data;
-
-      // Fetch internal document stats separately to get detailed breakdown
-      let internalStats = {};
+      // Fetch schedule data separately since it might not be included in main stats
       try {
-        const internalStatsResponse_ =
-          await dashboardAPI.getInternalDocumentStats();
-        const internalStatsResponse = internalStatsResponse_.data;
-       
-
-        // Process internal stats to separate incoming and outgoing
-        internalStats = {
-          // Incoming internal documents (received)
-          incomingTotal: internalStatsResponse.receivedTotal || 0,
-          incomingRead: internalStatsResponse.receivedRead || 0,
-          incomingUnread: internalStatsResponse.receivedUnread || 0,
-
-          // Outgoing internal documents (sent)
-          outgoingTotal: internalStatsResponse.sentTotal || 0,
-          outgoingSent: internalStatsResponse.sentSent || 0,
-          outgoingDraft: internalStatsResponse.sentDraft || 0,
-
-          // Legacy fields for backward compatibility
-          total:
-            (internalStatsResponse.receivedTotal || 0) +
-            (internalStatsResponse.sentTotal || 0),
-          read: internalStatsResponse.receivedRead || 0,
-          unread: internalStatsResponse.receivedUnread || 0,
-        };
-      } catch (internalError) {
-        console.warn("Could not fetch internal document stats:", internalError);
-        // Fallback to default values
-        internalStats = {
-          incomingTotal: 0,
-          incomingRead: 0,
-          incomingUnread: 0,
-          outgoingTotal: 0,
-          outgoingSent: 0,
-          outgoingDraft: 0,
-          total: 0,
-          read: 0,
-          unread: 0,
-        };
-      }
-
-      // Map the comprehensive API response to our dashboard stats structure
-      const stats: DashboardStats = {
-        userStats: {
-          // Map from the comprehensive API response
-          incomingDocumentCount:
-            dashboardStatsResponse.incomingDocuments?.total || 0,
-          outgoingDocumentCount:
-            dashboardStatsResponse.outgoingDocuments?.total || 0,
-          pendingDocumentCount:
-            dashboardStatsResponse.incomingDocuments?.inProcess || 0,
-          unreadNotifications:
-            dashboardStatsResponse.overallStats?.totalUnread || 0,
-          pendingDocuments: [], // Will need to get from recentDocuments if needed
-          activeWorkPlans: [], // May need separate API call if not in stats
-          upcomingDeadlines: [], // May need separate API call if not in stats
-        },
-        quickMetrics: {
-          incomingCount: dashboardStatsResponse.incomingDocuments?.total || 0,
-          outgoingCount: dashboardStatsResponse.outgoingDocuments?.total || 0,
-          pendingCount:
-            dashboardStatsResponse.incomingDocuments?.inProcess || 0,
-          notificationCount:
-            dashboardStatsResponse.overallStats?.totalUnread || 0,
-        },
-        // Updated internal stats with detailed breakdown
-        internalStats: internalStats,
-        // System stats for admin/leadership
-        systemStats:
-          isAdmin || isLeadership
-            ? {
-                totalDocuments:
-                  dashboardStatsResponse.overallStats?.totalDocuments || 0,
-                incomingDocumentCount:
-                  dashboardStatsResponse.incomingDocuments?.total || 0,
-                outgoingDocumentCount:
-                  dashboardStatsResponse.outgoingDocuments?.total || 0,
-                overdueDocumentCount:
-                  dashboardStatsResponse.overallStats?.totalUrgent || 0,
-                performanceMetrics: {
-                  "Hoàn thành đúng hạn":
-                    ((dashboardStatsResponse.incomingDocuments?.processed ||
-                      0) /
-                      Math.max(
-                        dashboardStatsResponse.incomingDocuments?.total || 1,
-                        1
-                      )) *
-                    100,
-                  "Văn bản đang xử lý":
-                    ((dashboardStatsResponse.incomingDocuments?.inProcess ||
-                      0) /
-                      Math.max(
-                        dashboardStatsResponse.incomingDocuments?.total || 1,
-                        1
-                      )) *
-                    100,
-                  "Tăng trưởng tuần":
-                    dashboardStatsResponse.periodStats?.weekGrowthPercent || 0,
-                  "Tăng trưởng tháng":
-                    dashboardStatsResponse.periodStats?.monthGrowthPercent || 0,
-                },
-                documentsByMonth: {
-                  "Tuần này":
-                    dashboardStatsResponse.periodStats?.thisWeekCount || 0,
-                  "Tuần trước":
-                    dashboardStatsResponse.periodStats?.lastWeekCount || 0,
-                  "Tháng này":
-                    dashboardStatsResponse.periodStats?.thisMonthCount || 0,
-                  "Tháng trước":
-                    dashboardStatsResponse.periodStats?.lastMonthCount || 0,
-                },
-              }
-            : undefined,
-        statusBreakdown:
-          isAdmin || isLeadership
-            ? {
-                "Đã xử lý":
-                  dashboardStatsResponse.incomingDocuments?.processed || 0,
-                "Đang xử lý":
-                  dashboardStatsResponse.incomingDocuments?.inProcess || 0,
-                "Chưa xử lý":
-                  dashboardStatsResponse.incomingDocuments?.notProcessed || 0,
-                "Khẩn cấp":
-                  dashboardStatsResponse.overallStats?.totalUrgent || 0,
-              }
-            : undefined,
-        incomingStats: {
-          total: dashboardStatsResponse.incomingDocuments?.total || 0,
-          unread: dashboardStatsResponse.overallStats?.totalUnread || 0,
-          processed: dashboardStatsResponse.incomingDocuments?.processed || 0,
-          external: dashboardStatsResponse.incomingDocuments?.external || 0,
-          internal: dashboardStatsResponse.incomingDocuments?.internal || 0,
-        },
-        outgoingStats: {
-          total: dashboardStatsResponse.outgoingDocuments?.total || 0,
-          sent: dashboardStatsResponse.outgoingDocuments?.published || 0,
-          draft: dashboardStatsResponse.outgoingDocuments?.draft || 0,
-          pending: dashboardStatsResponse.outgoingDocuments?.pending || 0,
-          external: dashboardStatsResponse.outgoingDocuments?.external || 0,
-          internal: dashboardStatsResponse.outgoingDocuments?.internal || 0,
-        },
-        recentDocuments: dashboardStatsResponse.recentDocuments || [],
-        todaySchedule: [], // May need separate API call if schedule is not included
-      };
-
-      // If we still need schedule data, make a separate call
-      try {
-        const scheduleResponse_ = await dashboardAPI.getTodayScheduleEvents();
-        const scheduleResponse = scheduleResponse_.data;
-        stats.todaySchedule = scheduleResponse;
+        const schedule = await dashboardAPI.getTodayScheduleEvents();
+        setTodaySchedule(schedule);
       } catch (scheduleError) {
         console.warn("Could not fetch schedule data:", scheduleError);
-        stats.todaySchedule = [];
+        setTodaySchedule([]);
       }
 
-      setDashboardStats(stats);
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
       toast({
@@ -322,6 +162,12 @@ export default function DashboardPage() {
     if (isLeadership) return "Lãnh đạo";
     if (isStaff) return "Nhân viên";
     return "Người dùng";
+  };
+
+  const getRoleAccessMessage = () => {
+    if (isAdmin) return "Dữ liệu toàn hệ thống";
+    if (isLeadership) return "Dữ liệu phòng ban";
+    return "Dữ liệu cá nhân";
   };
 
   const QuickStatsCard = ({
@@ -526,9 +372,31 @@ export default function DashboardPage() {
     );
   }
 
+  if (!dashboardStats) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardContent className="flex items-center justify-center py-10">
+            <div className="text-center">
+              <AlertTriangle className="h-12 w-12 mx-auto mb-4 text-amber-500" />
+              <h3 className="text-lg font-medium">Không thể tải dữ liệu</h3>
+              <p className="text-muted-foreground mb-4">
+                Đã xảy ra lỗi khi tải thông tin dashboard
+              </p>
+              <Button onClick={fetchDashboardData}>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Thử lại
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Header with role-based info */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-2 md:space-y-0">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-primary">
@@ -536,9 +404,9 @@ export default function DashboardPage() {
           </h1>
           <div className="text-muted-foreground flex items-center gap-2">
             <User className="h-4 w-4" />
-            {getUserRoleDisplay()} • {user?.departmentName}
+            {getUserRoleDisplay()} • {dashboardStats.departmentName || user?.departmentName}
             <Badge variant="outline" className="ml-2">
-              {user?.roles?.[0]?.replace("ROLE_", "")}
+              {getRoleAccessMessage()}
             </Badge>
           </div>
         </div>
@@ -554,63 +422,38 @@ export default function DashboardPage() {
         </Button>
       </div>
 
-      {/* Quick Stats */}
+      {/* Quick Stats - Improved with better data mapping */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <QuickStatsCard
           title="Văn bản đến"
-          value={
-            dashboardStats.userStats?.incomingDocumentCount ||
-            dashboardStats.quickMetrics?.incomingCount ||
-            0
-          }
+          value={dashboardStats.incomingDocuments?.total || 0}
           icon={FileText}
           trend={
-            dashboardStats.systemStats?.performanceMetrics?.[
-              "Tăng trưởng tuần"
-            ] &&
-            dashboardStats.systemStats.performanceMetrics["Tăng trưởng tuần"] >=
-              0
+            dashboardStats.periodStats?.weekGrowthPercent &&
+            dashboardStats.periodStats.weekGrowthPercent >= 0
               ? "up"
               : "down"
           }
           trendValue={
-            dashboardStats.systemStats?.performanceMetrics?.["Tăng trưởng tuần"]
-              ? `${Math.abs(
-                  dashboardStats.systemStats.performanceMetrics[
-                    "Tăng trưởng tuần"
-                  ]
-                ).toFixed(1)}% tuần này`
+            dashboardStats.periodStats?.weekGrowthPercent !== undefined
+              ? `${Math.abs(dashboardStats.periodStats.weekGrowthPercent).toFixed(1)}% tuần này`
               : undefined
           }
           color="blue"
         />
         <QuickStatsCard
           title="Văn bản đi"
-          value={
-            dashboardStats.userStats?.outgoingDocumentCount ||
-            dashboardStats.quickMetrics?.outgoingCount ||
-            0
-          }
+          value={dashboardStats.outgoingDocuments?.total || 0}
           icon={FileText}
           trend={
-            dashboardStats.systemStats?.performanceMetrics?.[
-              "Tăng trưởng tháng"
-            ] &&
-            dashboardStats.systemStats.performanceMetrics[
-              "Tăng trưởng tháng"
-            ] >= 0
+            dashboardStats.periodStats?.monthGrowthPercent &&
+            dashboardStats.periodStats.monthGrowthPercent >= 0
               ? "up"
               : "down"
           }
           trendValue={
-            dashboardStats.systemStats?.performanceMetrics?.[
-              "Tăng trưởng tháng"
-            ]
-              ? `${Math.abs(
-                  dashboardStats.systemStats.performanceMetrics[
-                    "Tăng trưởng tháng"
-                  ]
-                ).toFixed(1)}% tháng này`
+            dashboardStats.periodStats?.monthGrowthPercent !== undefined
+              ? `${Math.abs(dashboardStats.periodStats.monthGrowthPercent).toFixed(1)}% tháng này`
               : undefined
           }
           color="green"
@@ -618,38 +461,34 @@ export default function DashboardPage() {
         <QuickStatsCard
           title="Cần xử lý"
           value={
-            dashboardStats.userStats?.pendingDocumentCount ||
-            dashboardStats.quickMetrics?.pendingCount ||
-            0
+            (dashboardStats.incomingDocuments?.inProcess || 0) +
+            (dashboardStats.outgoingDocuments?.pending || 0)
           }
           icon={Clock}
           trend={
-            dashboardStats.systemStats?.performanceMetrics?.[
-              "Văn bản đang xử lý"
-            ] &&
-            dashboardStats.systemStats.performanceMetrics[
-              "Văn bản đang xử lý"
-            ] <= 50
+            ((dashboardStats.incomingDocuments?.inProcess || 0) + 
+             (dashboardStats.outgoingDocuments?.pending || 0)) <= 
+            ((dashboardStats.incomingDocuments?.total || 0) * 0.3)
               ? "up"
               : "down"
           }
           trendValue={
-            dashboardStats.systemStats?.performanceMetrics?.[
-              "Văn bản đang xử lý"
-            ]
-              ? `${dashboardStats.systemStats.performanceMetrics[
-                  "Văn bản đang xử lý"
-                ].toFixed(1)}% đang xử lý`
+            dashboardStats.incomingDocuments?.total
+              ? `${(
+                  (((dashboardStats.incomingDocuments.inProcess || 0) + 
+                    (dashboardStats.outgoingDocuments?.pending || 0)) /
+                   Math.max(dashboardStats.incomingDocuments.total, 1)) *
+                  100
+                ).toFixed(1)}% tổng số`
               : undefined
           }
           color="amber"
         />
         <QuickStatsCard
-          title="Thông báo"
+          title="Chưa đọc"
           value={
-            dashboardStats.userStats?.unreadNotifications ||
-            dashboardStats.quickMetrics?.notificationCount ||
-            0
+            (dashboardStats.overallStats?.totalUnread || 0) +
+            (dashboardStats.internalDocuments?.unread || 0)
           }
           icon={Activity}
           color="red"
@@ -686,15 +525,15 @@ export default function DashboardPage() {
         <TabsContent value="overview" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
             <PendingDocumentsCard
-              documents={dashboardStats.userStats?.pendingDocuments || []}
+              documents={[]} // This would need to be populated from backend
             />
             <WorkPlansCard
-              workPlans={dashboardStats.userStats?.activeWorkPlans || []}
+              workPlans={[]} // This would need to be populated from backend  
             />
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
-            <TodayScheduleCard schedule={dashboardStats.todaySchedule || []} />
+            <TodayScheduleCard schedule={todaySchedule} />
 
             <Card>
               <CardHeader>
@@ -750,15 +589,31 @@ export default function DashboardPage() {
                       Tổng số:
                     </span>
                     <span className="font-medium">
-                      {formatNumber(dashboardStats.incomingStats?.total || 0)}
+                      {formatNumber(dashboardStats.incomingDocuments?.total || 0)}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">
-                      Chưa đọc:
+                      Bên ngoài:
+                    </span>
+                    <span className="font-medium text-blue-600">
+                      {formatNumber(dashboardStats.incomingDocuments?.external || 0)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">
+                      Nội bộ:
+                    </span>
+                    <span className="font-medium text-green-600">
+                      {formatNumber(dashboardStats.incomingDocuments?.internal || 0)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">
+                      Chưa xử lý:
                     </span>
                     <span className="font-medium text-amber-600">
-                      {formatNumber(dashboardStats.incomingStats?.unread || 0)}
+                      {formatNumber(dashboardStats.incomingDocuments?.notProcessed || 0)}
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -766,9 +621,7 @@ export default function DashboardPage() {
                       Đã xử lý:
                     </span>
                     <span className="font-medium text-green-600">
-                      {formatNumber(
-                        dashboardStats.incomingStats?.processed || 0
-                      )}
+                      {formatNumber(dashboardStats.incomingDocuments?.processed || 0)}
                     </span>
                   </div>
                 </div>
@@ -786,15 +639,31 @@ export default function DashboardPage() {
                       Tổng số:
                     </span>
                     <span className="font-medium">
-                      {formatNumber(dashboardStats.outgoingStats?.total || 0)}
+                      {formatNumber(dashboardStats.outgoingDocuments?.total || 0)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">
+                      Bên ngoài:
+                    </span>
+                    <span className="font-medium text-blue-600">
+                      {formatNumber(dashboardStats.outgoingDocuments?.external || 0)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">
+                      Nội bộ:
+                    </span>
+                    <span className="font-medium text-green-600">
+                      {formatNumber(dashboardStats.outgoingDocuments?.internal || 0)}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">
                       Đã gửi:
                     </span>
-                    <span className="font-medium text-blue-600">
-                      {formatNumber(dashboardStats.outgoingStats?.sent || 0)}
+                    <span className="font-medium text-green-600">
+                      {formatNumber(dashboardStats.outgoingDocuments?.published || 0)}
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -802,7 +671,7 @@ export default function DashboardPage() {
                       Bản nháp:
                     </span>
                     <span className="font-medium text-gray-600">
-                      {formatNumber(dashboardStats.outgoingStats?.draft || 0)}
+                      {formatNumber(dashboardStats.outgoingDocuments?.draft || 0)}
                     </span>
                   </div>
                 </div>
@@ -821,7 +690,8 @@ export default function DashboardPage() {
                     </span>
                     <span className="font-medium">
                       {formatNumber(
-                        dashboardStats.internalStats?.incomingTotal || 0
+                        dashboardStats.internalDocuments?.receivedTotal || 
+                        dashboardStats.internalDocuments?.received || 0
                       )}
                     </span>
                   </div>
@@ -831,7 +701,9 @@ export default function DashboardPage() {
                     </span>
                     <span className="font-medium text-green-600">
                       {formatNumber(
-                        dashboardStats.internalStats?.incomingRead || 0
+                        dashboardStats.internalDocuments?.receivedRead || 
+                        ((dashboardStats.internalDocuments?.received || 0) - 
+                         (dashboardStats.internalDocuments?.unread || 0))
                       )}
                     </span>
                   </div>
@@ -841,7 +713,8 @@ export default function DashboardPage() {
                     </span>
                     <span className="font-medium text-amber-600">
                       {formatNumber(
-                        dashboardStats.internalStats?.incomingUnread || 0
+                        dashboardStats.internalDocuments?.receivedUnread || 
+                        dashboardStats.internalDocuments?.unread || 0
                       )}
                     </span>
                   </div>
@@ -861,7 +734,8 @@ export default function DashboardPage() {
                     </span>
                     <span className="font-medium">
                       {formatNumber(
-                        dashboardStats.internalStats?.outgoingTotal || 0
+                        dashboardStats.internalDocuments?.sentTotal || 
+                        dashboardStats.internalDocuments?.sent || 0
                       )}
                     </span>
                   </div>
@@ -871,7 +745,8 @@ export default function DashboardPage() {
                     </span>
                     <span className="font-medium text-blue-600">
                       {formatNumber(
-                        dashboardStats.internalStats?.outgoingSent || 0
+                        dashboardStats.internalDocuments?.sentSent || 
+                        dashboardStats.internalDocuments?.sent || 0
                       )}
                     </span>
                   </div>
@@ -881,7 +756,7 @@ export default function DashboardPage() {
                     </span>
                     <span className="font-medium text-gray-600">
                       {formatNumber(
-                        dashboardStats.internalStats?.outgoingDraft || 0
+                        dashboardStats.internalDocuments?.sentDraft || 0
                       )}
                     </span>
                   </div>
@@ -890,89 +765,96 @@ export default function DashboardPage() {
             </Card>
           </div>
 
-          {/* Document Trends Chart */}
-          {(isAdmin || isLeadership) &&
-            dashboardStats.systemStats?.documentsByMonth && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Xu hướng văn bản theo tháng</CardTitle>
-                  <CardDescription>
-                    Thống kê số lượng văn bản đến và đi theo từng tháng
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <AreaChart
-                      data={Object.entries(
-                        dashboardStats.systemStats.documentsByMonth
-                      ).map(([month, count]) => ({
-                        month,
-                        count,
-                      }))}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="month" />
-                      <YAxis />
-                      <Tooltip />
-                      <Area
-                        type="monotone"
-                        dataKey="count"
-                        stroke="#8884d8"
-                        fill="#8884d8"
-                        fillOpacity={0.6}
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-            )}
+          {/* Document Trends Chart for Admin/Leadership */}
+          {(isAdmin || isLeadership) && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Xu hướng văn bản theo thời gian</CardTitle>
+                <CardDescription>
+                  Thống kê số lượng văn bản theo từng khoảng thời gian
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <AreaChart
+                    data={[
+                      {
+                        period: "Hôm qua",
+                        count: dashboardStats.periodStats?.yesterdayCount || 0,
+                      },
+                      {
+                        period: "Hôm nay",
+                        count: dashboardStats.periodStats?.todayCount || 0,
+                      },
+                      {
+                        period: "Tuần trước",
+                        count: dashboardStats.periodStats?.lastWeekCount || 0,
+                      },
+                      {
+                        period: "Tuần này",
+                        count: dashboardStats.periodStats?.thisWeekCount || 0,
+                      },
+                      {
+                        period: "Tháng trước",
+                        count: dashboardStats.periodStats?.lastMonthCount || 0,
+                      },
+                      {
+                        period: "Tháng này",
+                        count: dashboardStats.periodStats?.thisMonthCount || 0,
+                      },
+                    ]}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="period" />
+                    <YAxis />
+                    <Tooltip />
+                    <Area
+                      type="monotone"
+                      dataKey="count"
+                      stroke="#8884d8"
+                      fill="#8884d8"
+                      fillOpacity={0.6}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         <TabsContent value="schedule" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
-            <TodayScheduleCard schedule={dashboardStats.todaySchedule || []} />
+            <TodayScheduleCard schedule={todaySchedule} />
 
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Clock className="h-5 w-5 text-blue-500" />
-                  Sắp đến hạn
+                  Thông tin khẩn cấp
                 </CardTitle>
                 <CardDescription>
-                  Văn bản và công việc sắp đến hạn xử lý
+                  Văn bản và công việc cần chú ý
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
-                {dashboardStats.userStats?.upcomingDeadlines
-                  ?.slice(0, 5)
-                  .map((item, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between p-3 bg-red-50 rounded-lg"
-                    >
-                      <div className="flex-1">
-                        <p className="font-medium text-sm">{item.title}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {item.documentNumber} • {item.documentType}
+                {dashboardStats.overallStats?.totalUrgent && dashboardStats.overallStats.totalUrgent > 0 ? (
+                  <div className="p-3 bg-red-50 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="h-5 w-5 text-red-500" />
+                      <div>
+                        <p className="font-medium text-sm text-red-800">
+                          {dashboardStats.overallStats.totalUrgent} văn bản khẩn cấp
                         </p>
-                        <p className="text-xs text-red-600 flex items-center mt-1">
-                          <AlertTriangle className="h-3 w-3 mr-1" />
-                          Hạn:{" "}
-                          {item.deadline
-                            ? new Date(item.deadline).toLocaleDateString(
-                                "vi-VN"
-                              )
-                            : "Chưa có"}
+                        <p className="text-xs text-red-600">
+                          Cần xử lý ngay lập tức
                         </p>
                       </div>
-                      <Badge variant="destructive">Khẩn</Badge>
                     </div>
-                  ))}
-                {(!dashboardStats.userStats?.upcomingDeadlines ||
-                  dashboardStats.userStats.upcomingDeadlines.length === 0) && (
+                  </div>
+                ) : (
                   <div className="text-center py-6 text-muted-foreground">
                     <CheckCircle className="h-12 w-12 mx-auto mb-2 text-green-500" />
-                    <p>Không có công việc nào sắp đến hạn.</p>
+                    <p>Không có văn bản khẩn cấp nào.</p>
                   </div>
                 )}
               </CardContent>
@@ -986,25 +868,29 @@ export default function DashboardPage() {
               {/* Status Breakdown Pie Chart */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Phân bố trạng thái</CardTitle>
+                  <CardTitle>Phân bố trạng thái văn bản đến</CardTitle>
                   <CardDescription>
-                    Phân bố văn bản theo trạng thái xử lý
+                    Phân bố văn bản đến theo trạng thái xử lý
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={300}>
                     <PieChart>
                       <Pie
-                        data={
-                          dashboardStats.statusBreakdown
-                            ? Object.entries(
-                                dashboardStats.statusBreakdown
-                              ).map(([status, count]) => ({
-                                name: status,
-                                value: count,
-                              }))
-                            : []
-                        }
+                        data={[
+                          {
+                            name: "Chưa xử lý",
+                            value: dashboardStats.incomingDocuments?.notProcessed || 0,
+                          },
+                          {
+                            name: "Đang xử lý",
+                            value: dashboardStats.incomingDocuments?.inProcess || 0,
+                          },
+                          {
+                            name: "Đã xử lý",
+                            value: dashboardStats.incomingDocuments?.processed || 0,
+                          },
+                        ]}
                         cx="50%"
                         cy="50%"
                         labelLine={false}
@@ -1015,15 +901,16 @@ export default function DashboardPage() {
                         fill="#8884d8"
                         dataKey="value"
                       >
-                        {dashboardStats.statusBreakdown &&
-                          Object.entries(dashboardStats.statusBreakdown).map(
-                            (entry, index) => (
-                              <Cell
-                                key={`cell-${index}`}
-                                fill={COLORS[index % COLORS.length]}
-                              />
-                            )
-                          )}
+                        {[
+                          { name: "Chưa xử lý", value: dashboardStats.incomingDocuments?.notProcessed || 0 },
+                          { name: "Đang xử lý", value: dashboardStats.incomingDocuments?.inProcess || 0 },
+                          { name: "Đã xử lý", value: dashboardStats.incomingDocuments?.processed || 0 },
+                        ].map((entry, index) => (
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={COLORS[index % COLORS.length]}
+                          />
+                        ))}
                       </Pie>
                       <Tooltip />
                       <Legend />
@@ -1037,37 +924,73 @@ export default function DashboardPage() {
                 <CardHeader>
                   <CardTitle>Hiệu suất xử lý</CardTitle>
                   <CardDescription>
-                    Chỉ số hiệu suất của hệ thống
+                    Chỉ số hiệu suất dựa trên dữ liệu thực tế
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {dashboardStats.systemStats?.performanceMetrics &&
-                    Object.entries(
-                      dashboardStats.systemStats.performanceMetrics
-                    ).map(([metric, value]) => (
-                      <div
-                        key={metric}
-                        className="flex items-center justify-between"
-                      >
-                        <span className="text-sm font-medium">{metric}</span>
-                        <div className="flex items-center gap-2">
-                          <div className="w-24 bg-gray-200 rounded-full h-2">
-                            <div
-                              className="bg-blue-600 h-2 rounded-full"
-                              style={{
-                                width: `${Math.min(Number(value) || 0, 100)}%`,
-                              }}
-                            ></div>
-                          </div>
-                          <span className="text-sm text-muted-foreground">
-                            {typeof value === "number"
-                              ? value.toFixed(1)
-                              : String(value)}
-                            %
-                          </span>
-                        </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Tỷ lệ xử lý hoàn tất</span>
+                    <div className="flex items-center gap-2">
+                      <div className="w-24 bg-gray-200 rounded-full h-2">
+                        <div
+                          className="bg-green-600 h-2 rounded-full"
+                          style={{
+                            width: `${Math.min(
+                              ((dashboardStats.incomingDocuments?.processed || 0) /
+                                Math.max(dashboardStats.incomingDocuments?.total || 1, 1)) *
+                                100,
+                              100
+                            )}%`,
+                          }}
+                        ></div>
                       </div>
-                    ))}
+                      <span className="text-sm text-muted-foreground">
+                        {(
+                          ((dashboardStats.incomingDocuments?.processed || 0) /
+                            Math.max(dashboardStats.incomingDocuments?.total || 1, 1)) *
+                          100
+                        ).toFixed(1)}%
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Tăng trưởng tuần</span>
+                    <div className="flex items-center gap-2">
+                      <div className="w-24 bg-gray-200 rounded-full h-2">
+                        <div
+                          className="bg-blue-600 h-2 rounded-full"
+                          style={{
+                            width: `${Math.min(
+                              Math.abs(dashboardStats.periodStats?.weekGrowthPercent || 0),
+                              100
+                            )}%`,
+                          }}
+                        ></div>
+                      </div>
+                      <span className="text-sm text-muted-foreground">
+                        {(dashboardStats.periodStats?.weekGrowthPercent || 0).toFixed(1)}%
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Tăng trưởng tháng</span>
+                    <div className="flex items-center gap-2">
+                      <div className="w-24 bg-gray-200 rounded-full h-2">
+                        <div
+                          className="bg-purple-600 h-2 rounded-full"
+                          style={{
+                            width: `${Math.min(
+                              Math.abs(dashboardStats.periodStats?.monthGrowthPercent || 0),
+                              100
+                            )}%`,
+                          }}
+                        ></div>
+                      </div>
+                      <span className="text-sm text-muted-foreground">
+                        {(dashboardStats.periodStats?.monthGrowthPercent || 0).toFixed(1)}%
+                      </span>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             </div>
@@ -1077,16 +1000,14 @@ export default function DashboardPage() {
               <CardHeader>
                 <CardTitle>Tổng quan hệ thống</CardTitle>
                 <CardDescription>
-                  Thống kê tổng thể về hoạt động của hệ thống
+                  Thống kê tổng thể về hoạt động của hệ thống dựa trên quyền truy cập
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="grid gap-4 md:grid-cols-4">
                   <div className="text-center p-4 bg-blue-50 rounded-lg">
                     <div className="text-2xl font-bold text-blue-600">
-                      {formatNumber(
-                        dashboardStats.systemStats?.totalDocuments || 0
-                      )}
+                      {formatNumber(dashboardStats.overallStats?.totalDocuments || 0)}
                     </div>
                     <div className="text-sm text-muted-foreground">
                       Tổng văn bản
@@ -1094,9 +1015,7 @@ export default function DashboardPage() {
                   </div>
                   <div className="text-center p-4 bg-green-50 rounded-lg">
                     <div className="text-2xl font-bold text-green-600">
-                      {formatNumber(
-                        dashboardStats.systemStats?.incomingDocumentCount || 0
-                      )}
+                      {formatNumber(dashboardStats.incomingDocuments?.total || 0)}
                     </div>
                     <div className="text-sm text-muted-foreground">
                       Văn bản đến
@@ -1104,9 +1023,7 @@ export default function DashboardPage() {
                   </div>
                   <div className="text-center p-4 bg-amber-50 rounded-lg">
                     <div className="text-2xl font-bold text-amber-600">
-                      {formatNumber(
-                        dashboardStats.systemStats?.outgoingDocumentCount || 0
-                      )}
+                      {formatNumber(dashboardStats.outgoingDocuments?.total || 0)}
                     </div>
                     <div className="text-sm text-muted-foreground">
                       Văn bản đi
@@ -1114,11 +1031,9 @@ export default function DashboardPage() {
                   </div>
                   <div className="text-center p-4 bg-red-50 rounded-lg">
                     <div className="text-2xl font-bold text-red-600">
-                      {formatNumber(
-                        dashboardStats.systemStats?.overdueDocumentCount || 0
-                      )}
+                      {formatNumber(dashboardStats.overallStats?.totalUrgent || 0)}
                     </div>
-                    <div className="text-sm text-muted-foreground">Quá hạn</div>
+                    <div className="text-sm text-muted-foreground">Khẩn cấp</div>
                   </div>
                 </div>
               </CardContent>
