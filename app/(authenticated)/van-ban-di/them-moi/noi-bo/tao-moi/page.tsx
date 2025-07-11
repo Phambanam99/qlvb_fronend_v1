@@ -37,6 +37,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SearchableSelect, SearchableSelectItem } from "@/components/ui/searchable-select";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -196,8 +197,7 @@ export default function CreateInternalOutgoingDocumentPage() {
     const fetchDocumentTypes = async () => {
       try {
         setIsLoadingDocumentTypes(true);
-        const types_ = await documentTypesAPI.getAllDocumentTypes();
-        const types = types_.data;
+        const types = await documentTypesAPI.getAllDocumentTypes();
         setDocumentTypes(types);
       } catch (error) {
         console.error("Error fetching document types:", error);
@@ -582,33 +582,22 @@ export default function CreateInternalOutgoingDocumentPage() {
 
                 <div className="space-y-2">
                   <Label htmlFor="documentType">Loại văn bản</Label>
-                  <Select
+                  <SearchableSelect
+                    items={documentTypes.map((type): SearchableSelectItem => ({
+                      value: type.name,
+                      label: type.name,
+                    }))}
                     value={formData.documentType}
                     onValueChange={(value) =>
                       handleSelectChange("documentType", value)
                     }
-                  >
-                    <SelectTrigger id="documentType">
-                      <SelectValue placeholder="Chọn loại văn bản" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {isLoadingDocumentTypes ? (
-                        <SelectItem value="loading" disabled>
-                          Đang tải danh sách loại văn bản...
-                        </SelectItem>
-                      ) : documentTypes.length === 0 ? (
-                        <SelectItem value="empty" disabled>
-                          Chưa có loại văn bản nào
-                        </SelectItem>
-                      ) : (
-                        documentTypes.map((type) => (
-                          <SelectItem key={type.id} value={type.name}>
-                            {type.name}
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
+                    placeholder="Chọn loại văn bản"
+                    searchPlaceholder="Tìm kiếm loại văn bản..."
+                    emptyMessage="Không tìm thấy loại văn bản phù hợp"
+                    loading={isLoadingDocumentTypes}
+                    loadingMessage="Đang tải danh sách loại văn bản..."
+                    disabled={isLoadingDocumentTypes}
+                  />
                 </div>
               </div>
 

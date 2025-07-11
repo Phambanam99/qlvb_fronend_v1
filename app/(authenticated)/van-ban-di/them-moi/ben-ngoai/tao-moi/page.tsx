@@ -38,6 +38,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SearchableSelect, SearchableSelectItem } from "@/components/ui/searchable-select";
 import {
   workflowAPI,
   usersAPI,
@@ -385,33 +386,22 @@ export default function CreateExternalOutgoingDocumentPage() {
 
                 <div className="space-y-2">
                   <Label htmlFor="documentType">Loại văn bản</Label>
-                  <Select
+                  <SearchableSelect
+                    items={documentTypes.map((docType): SearchableSelectItem => ({
+                      value: docType.name,
+                      label: docType.name,
+                    }))}
                     value={formData.documentType}
                     onValueChange={(value) =>
                       handleSelectChange("documentType", value)
                     }
-                  >
-                    <SelectTrigger id="documentType">
-                      <SelectValue placeholder="Chọn loại văn bản" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {isLoadingDocumentTypes ? (
-                        <SelectItem value="loading" disabled>
-                          Đang tải danh sách...
-                        </SelectItem>
-                      ) : documentTypes.length === 0 ? (
-                        <SelectItem value="empty" disabled>
-                          Chưa có loại văn bản nào
-                        </SelectItem>
-                      ) : (
-                        documentTypes.map((docType) => (
-                          <SelectItem key={docType.id} value={docType.name}>
-                            {docType.name}
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
+                    placeholder="Chọn loại văn bản"
+                    searchPlaceholder="Tìm kiếm loại văn bản..."
+                    emptyMessage="Không tìm thấy loại văn bản phù hợp"
+                    loading={isLoadingDocumentTypes}
+                    loadingMessage="Đang tải danh sách..."
+                    disabled={isLoadingDocumentTypes}
+                  />
                 </div>
               </div>
 
