@@ -36,6 +36,7 @@ import {
   HelpCircle,
   Database,
   FileType,
+  Wrench,
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
@@ -75,6 +76,12 @@ export const Header = () => {
       title: "Lịch công tác",
       href: "/lich-cong-tac",
       icon: Calendar,
+      permission: null, // Tất cả người dùng đều có thể xem
+    },
+      {
+      title: "Tiện ích",
+      href: "/tien-ich",
+      icon: Wrench,
       permission: null, // Tất cả người dùng đều có thể xem
     },
     {

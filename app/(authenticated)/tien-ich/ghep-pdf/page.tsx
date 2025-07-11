@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,6 +36,7 @@ export default function MergePDFPage() {
     useState<string>("");
   const [mergedPdfBlob, setMergedPdfBlob] = useState<Blob | null>(null);
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Handle file upload
   const handleFileUpload = useCallback(
@@ -104,6 +105,11 @@ export default function MergePDFPage() {
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
   }, []);
+
+  // Trigger file input
+  const triggerFileInput = () => {
+    fileInputRef.current?.click();
+  };
 
   // Remove file
   const removeFile = (id: string) => {
@@ -251,6 +257,7 @@ export default function MergePDFPage() {
             <p className="text-lg mb-2">Kéo thả file PDF vào đây</p>
             <p className="text-sm text-muted-foreground mb-4">hoặc</p>
             <Input
+              ref={fileInputRef}
               type="file"
               accept=".pdf"
               multiple
@@ -258,11 +265,14 @@ export default function MergePDFPage() {
               className="hidden"
               id="pdf-upload"
             />
-            <Label htmlFor="pdf-upload">
-              <Button variant="outline" className="cursor-pointer">
-                Chọn file PDF
-              </Button>
-            </Label>
+            <Button 
+              variant="outline" 
+              className="cursor-pointer"
+              onClick={triggerFileInput}
+              type="button"
+            >
+              Chọn file PDF
+            </Button>
           </div>
         </CardContent>
       </Card>

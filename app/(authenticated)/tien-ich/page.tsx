@@ -83,24 +83,6 @@ export default function UtilitiesPage() {
         </div>
       )}
 
-      <div className="mt-12">
-        <Card>
-          <CardHeader>
-            <CardTitle>Thông tin</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2 text-sm text-muted-foreground">
-              <p>
-                • Tất cả các tiện ích đều hoạt động offline trên trình duyệt của
-                bạn
-              </p>
-              <p>• Dữ liệu không được gửi lên server, đảm bảo tính bảo mật</p>
-              <p>• Hỗ trợ xử lý file PDF với kích thước lớn</p>
-              <p>• Tương thích với tất cả các trình duyệt hiện đại</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
     </div>
   );
 }
