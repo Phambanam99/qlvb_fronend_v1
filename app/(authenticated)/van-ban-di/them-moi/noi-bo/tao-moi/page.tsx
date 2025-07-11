@@ -227,11 +227,10 @@ export default function CreateInternalOutgoingDocumentPage() {
       const fetchLeadershipUsers = async () => {
         try {
           setIsLoadingLeadershipUsers(true);
-          const leaders_ = await usersAPI.getUsersByRoleAndDepartment(
+          const leaders = await usersAPI.getUsersByRoleAndDepartment(
             LEADERSHIP_ROLES,
             user.departmentId!
           );
-          const leaders = leaders_.data;
           setLeadershipUsers(leaders);
         } catch (error) {
           console.error("Error fetching leadership users:", error);
@@ -743,7 +742,7 @@ export default function CreateInternalOutgoingDocumentPage() {
                         </SelectItem>
                       ))}
                       {leadershipUsers.length === 0 && !isLoadingLeadershipUsers && (
-                        <SelectItem value="" disabled>
+                        <SelectItem value="no-leaders" disabled>
                           Không có lãnh đạo trong đơn vị
                         </SelectItem>
                       )}
