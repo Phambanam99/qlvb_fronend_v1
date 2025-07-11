@@ -197,7 +197,8 @@ export default function CreateInternalOutgoingDocumentPage() {
     const fetchDocumentTypes = async () => {
       try {
         setIsLoadingDocumentTypes(true);
-        const types = await documentTypesAPI.getAllDocumentTypes();
+        const types_ = await documentTypesAPI.getAllDocumentTypes();
+        const types = types_.data;
         setDocumentTypes(types);
       } catch (error) {
         console.error("Error fetching document types:", error);
@@ -583,7 +584,7 @@ export default function CreateInternalOutgoingDocumentPage() {
                 <div className="space-y-2">
                   <Label htmlFor="documentType">Loại văn bản</Label>
                   <SearchableSelect
-                    items={documentTypes.map((type): SearchableSelectItem => ({
+                    items={(documentTypes || []).map((type): SearchableSelectItem => ({
                       value: type.name,
                       label: type.name,
                     }))}
@@ -738,9 +739,7 @@ export default function CreateInternalOutgoingDocumentPage() {
                       )}
                     </SelectContent>
                   </Select>
-                  <p className="text-sm text-gray-500">
-                    Chỉ hiển thị lãnh đạo đơn vị của bạn
-                  </p>
+                 
                 </div>
               </div>
 
@@ -1012,14 +1011,7 @@ export default function CreateInternalOutgoingDocumentPage() {
             </CardContent>
           </Card>
 
-          {/* Info Note */}
-          <div className="rounded-md bg-amber-50 border border-amber-200 p-4">
-            <p className="text-sm text-amber-800">
-              <span className="font-medium">Lưu ý:</span> Văn bản nội bộ sẽ được
-              gửi đến tất cả phòng ban và cá nhân được chọn. Văn bản được gửi
-              đến phòng ban sẽ được chuyển đến tất cả ngiwpo phòng ban đó.
-            </p>
-          </div>
+        
         </form>
       </div>
     </div>

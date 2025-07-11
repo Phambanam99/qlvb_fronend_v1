@@ -529,6 +529,7 @@ export const downloadAttachment = async (
       responseType: "blob", // Important for file downloads
     }
   );
+  console.log("response", response);
   return response;
 };
 

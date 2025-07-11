@@ -279,8 +279,8 @@ export default function InternalDocumentReceivedDetailPage() {
       const response = response_.data;
 
       // response.data là Blob từ API
-      const fileBlob = response.data;
-
+      const fileBlob = response;
+      console.log("fileBlob", response);
       // Kiểm tra nếu là file PDF thì thêm watermark
       if (isPdfFile(filename, contentType) && user?.fullName) {
         try {

@@ -1084,13 +1084,6 @@ export default function ReplyInternalDocumentPage() {
             </CardContent>
           </Card>
         </form>
-
-        <div className="rounded-md bg-amber-50 border border-amber-200 p-3">
-          <p className="text-sm text-amber-800">
-            <span className="font-medium">Lưu ý:</span> Văn bản trả lời sẽ được
-            gửi trực tiếp đến người gửi văn bản gốc và đơn vị liên quan.
-          </p>
-        </div>
       </div>
     </div>  
   );

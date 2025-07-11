@@ -11,7 +11,7 @@ const nextConfig = {
     unoptimized: true,
   },
   output: 'standalone', // ✅ Thêm dòng này để tối ưu build cho Docker
-  
+  devIndicators: false,
   // Cấu hình cho phép truy cập từ các IP trong mạng LAN
   experimental: {
     allowedDevOrigins: [

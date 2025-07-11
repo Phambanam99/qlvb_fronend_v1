@@ -396,32 +396,6 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header with role-based info */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-2 md:space-y-0">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-primary">
-            {getGreeting()}, Đồng chí {user?.fullName}! 👋
-          </h1>
-          <div className="text-muted-foreground flex items-center gap-2">
-            <User className="h-4 w-4" />
-            {getUserRoleDisplay()} • {dashboardStats.departmentName || user?.departmentName}
-            <Badge variant="outline" className="ml-2">
-              {getRoleAccessMessage()}
-            </Badge>
-          </div>
-        </div>
-        <Button
-          onClick={handleRefresh}
-          disabled={refreshing}
-          className="w-full md:w-auto"
-        >
-          <RefreshCw
-            className={`h-4 w-4 mr-2 ${refreshing ? "animate-spin" : ""}`}
-          />
-          Làm mới
-        </Button>
-      </div>
-
       {/* Quick Stats - Improved with better data mapping */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <QuickStatsCard
