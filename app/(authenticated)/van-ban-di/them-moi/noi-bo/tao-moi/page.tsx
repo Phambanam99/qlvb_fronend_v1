@@ -227,10 +227,11 @@ export default function CreateInternalOutgoingDocumentPage() {
       const fetchLeadershipUsers = async () => {
         try {
           setIsLoadingLeadershipUsers(true);
-          const leaders = await usersAPI.getUsersByRoleAndDepartment(
+          const leaders_ = await usersAPI.getUsersByRoleAndDepartment(
             LEADERSHIP_ROLES,
             user.departmentId!
           );
+          const leaders = leaders_.data;
           setLeadershipUsers(leaders);
         } catch (error) {
           console.error("Error fetching leadership users:", error);
