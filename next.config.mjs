@@ -29,6 +29,10 @@ const nextConfig = {
         source: '/ajax.php',
         destination: '/api/ajax-fallback',
       },
+      {
+        source: '/api/:path*',
+        destination: 'http://localhost:8080/api/:path*', // Proxy to Backend
+      },
     ]
   },
 }

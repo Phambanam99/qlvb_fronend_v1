@@ -53,9 +53,9 @@ export default function UtilitiesPage() {
         {utilities.map((utility) => (
           <Card
             key={utility.href}
-            className="hover:shadow-lg transition-shadow"
+            className="hover:shadow-lg transition-shadow flex flex-col"
           >
-            <CardHeader>
+            <CardHeader className="flex-grow">
               <div className="flex items-center gap-3">
                 <div className={`p-2 rounded-lg ${utility.color}`}>
                   <utility.icon className="h-6 w-6" />

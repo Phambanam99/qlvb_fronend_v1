@@ -149,7 +149,7 @@ export const incomingDocumentsAPI = {
       const response = await api.get("/documents/incoming", {
         params: { page, size },
       });
-      // console.log("backend ", response);
+      console.log("backend ", response);
       if (response.data.success === false) {
         throw new Error(response.data.message);
       }
@@ -163,12 +163,12 @@ export const incomingDocumentsAPI = {
           responses: [],
         })
       );
-
+     console.log("totalPages", response.data.data.totalPages)
       return {
         content: documents,
         page: {
-          totalPages: response.data.totalPages,
-          totalElements: response.data.totalElements,
+          totalPages: response.data.data.totalPages,
+          totalElements: response.data.data.totalElements,
         },
       };
     } catch (error) {
