@@ -74,7 +74,7 @@ export default function UserDetailPage() {
 
   const handleUpdateProfile = async (data: any) => {
     try {
-      console.log(data);
+      // console.log(data);
       setSaving(true);
       const updatedUser_ = await usersAPI.updateUser(userId, data);
       const updatedUser = updatedUser_.data;
@@ -98,7 +98,7 @@ export default function UserDetailPage() {
 
   const handleUpdateRole = async (data: any) => {
     try {
-      console.log(data);
+      // console.log(data);
       setSaving(true);
       const updatedUser_ = await usersAPI.updateUser(userId, data);
       const updatedUser = updatedUser_.data;
@@ -142,7 +142,7 @@ export default function UserDetailPage() {
 
   const handleUpdateStatus = async (data: any) => {
     try {
-      console.log(data);
+      // console.log(data);
       setSaving(true);
       const updatedUser_ = await usersAPI.updateUser(userId, data);
       const updatedUser = updatedUser_.data;

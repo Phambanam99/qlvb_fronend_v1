@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useState, useCallback } from "react";
+import { use, useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -58,6 +58,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useHierarchicalDepartments } from "@/hooks/use-hierarchical-departments";
 import {
   getReceivedDocumentsExcludingSent,
+  getAllReceivedDocumentsExcludingSent,
   markDocumentAsRead,
   getInternalDocumentHistory,
   getDocumentStats,
@@ -230,7 +231,7 @@ export default function IncomingDocumentsPage() {
   const [activeTab, setActiveTab] = useState("internal");
   const searchParams = useSearchParams();
   const [processingStatusTab, setProcessingStatusTab] =
-    useState("not_processed"); // Tab con cho trạng thái xử lý
+    useState("pending"); // Tab con cho trạng thái xử lý
   const [internalDocuments, setInternalDocuments] = useState<
     InternalDocument[]
   >([]);
@@ -240,7 +241,6 @@ export default function IncomingDocumentsPage() {
     useIncomingDocuments();
   const statuses = getAllStatuses();
   const { user, hasRole } = useAuth();
-  const [documentSource, setDocumentSource] = useState<string>("all"); // all, department, assigned
   const [departmentFilter, setDepartmentFilter] = useState("all"); // Thêm state cho bộ lọc phòng ban
   const [isAddLoading, setIsAddLoading] = useState(false);
 
@@ -282,6 +282,8 @@ export default function IncomingDocumentsPage() {
   // Use simplified status tabs instead of complex role-based logic
   const userProcessingStatus = SIMPLE_STATUS_TABS;
 
+  const initialLoadComplete = useRef(false);
+
   // Handle URL parameters to set initial tab
   useEffect(() => {
     const tabParam = searchParams.get('tab');
@@ -305,31 +307,22 @@ export default function IncomingDocumentsPage() {
     hasRole("ROLE_PHO_TRAM_TRUONG") ||
     hasRole("ROLE_TRAM_TRUONG");
 
-  // Cập nhật documentSource mặc định dựa trên vai trò người dùng khi thông tin user thay đổi
-  useEffect(() => {
+  const documentSource = useMemo(() => {
     if (user) {
-      // Nếu là trưởng phòng/phó phòng, đặt mặc định là văn bản của phòng ban
       if (hasDepartmentAccess) {
-        console.log(
-          "Setting default document source to 'department' based on user role"
-        );
-        setDocumentSource("department");
+        return "department";
       }
       // Nếu là nhân viên/trợ lý, đặt mặc định là văn bản được giao
       else if (hasRole("ROLE_NHAN_VIEN") || hasRole("ROLE_TRO_LY")) {
-        console.log(
-          "Setting default document source to 'assigned' based on user role"
-        );
-        setDocumentSource("assigned");
+        return "assigned";
       }
       // Người dùng có quyền xem tất cả, giữ mặc định là 'all'
       else if (hasFullAccess) {
-        console.log(
-          "Setting default document source to 'all' based on admin role"
-        );
-        setDocumentSource("all");
+        return "all";
       }
     }
+    // Default
+    return "all";
   }, [user, hasRole, hasFullAccess, hasDepartmentAccess]);
 
   // Thêm source filter cho các role có quyền cao
@@ -406,44 +399,76 @@ export default function IncomingDocumentsPage() {
   ) => {
     try {
       setLoadingInternal(true);
-      console.log("Fetching internal received documents with pagination:", {
-        page,
-        size,
-      });
+      
+      let response_;
+      let response;
+      
+      // Nếu có search query, load tất cả documents để tìm kiếm
+      if (searchQuery.trim()) {
+        // console.log("Fetching all internal received documents for search:", searchQuery);
+        response = await getAllReceivedDocumentsExcludingSent();
+        // response = response_.data;
+        
+        if (response) {
+          // console.log("All internal received documents response:", response);
 
-      const response_ = await getReceivedDocumentsExcludingSent(page, size);
-      const response = response_.data;
+          // Sử dụng trực tiếp data từ backend thay vì tính toán lại
+          setInternalDocuments(response.data);
 
-      if (response && response.content) {
-        console.log("Internal received documents response:", response);
-
-        // Sử dụng trực tiếp data từ backend thay vì tính toán lại
-        // Backend đã trả về isRead: true/false dựa trên user hiện tại
-        setInternalDocuments(response.content);
-
-        // Cập nhật global read status với data từ server
-        const readStatusUpdates = response.content.map(
-          (doc: InternalDocument) => ({
-            id: doc.id,
-            isRead: doc.isRead, // Sử dụng trực tiếp từ backend
-            readAt: doc.readAt,
-          })
-        );
-        updateMultipleReadStatus(readStatusUpdates);
-
-        // Set pagination info if available
-        if (response.totalElements !== undefined) {
-          setTotalItems(
-            Math.max(response.totalElements, response.content.length)
+          // Cập nhật global read status với data từ server
+          const readStatusUpdates = response.data.map(
+            (doc: InternalDocument) => ({
+              id: doc.id,
+              isRead: doc.isRead, // Sử dụng trực tiếp từ backend
+              readAt: doc.readAt,
+            })
           );
-        } else {
-          setTotalItems(response.content.length);
-        }
+          updateMultipleReadStatus(readStatusUpdates);
 
-        if (response.totalPages !== undefined) {
-          setTotalPages(Math.max(response.totalPages, 1));
-        } else {
+          // Khi search, không có pagination
+          setTotalItems(response.data.length);
           setTotalPages(1);
+        }
+      } else {
+        // Không có search query, sử dụng pagination bình thường
+        // console.log("Fetching internal received documents with pagination:", {
+        //   page,
+        //   size,
+        // });
+
+        response_ = await getReceivedDocumentsExcludingSent(page, size);
+        response = response_.data;
+
+        if (response && response.content) {
+          // console.log("Internal received documents response:", response);
+
+          // Sử dụng trực tiếp data từ backend thay vì tính toán lại
+          setInternalDocuments(response.content);
+
+          // Cập nhật global read status với data từ server
+          const readStatusUpdates = response.content.map(
+            (doc: InternalDocument) => ({
+              id: doc.id,
+              isRead: doc.isRead, // Sử dụng trực tiếp từ backend
+              readAt: doc.readAt,
+            })
+          );
+          updateMultipleReadStatus(readStatusUpdates);
+
+          // Set pagination info if available
+          if (response.totalElements !== undefined) {
+            setTotalItems(
+              Math.max(response.totalElements, response.content.length)
+            );
+          } else {
+            setTotalItems(response.content.length);
+          }
+
+          if (response.totalPages !== undefined) {
+            setTotalPages(Math.max(response.totalPages, 1));
+          } else {
+            setTotalPages(1);
+          }
         }
       }
     } catch (error) {
@@ -460,32 +485,34 @@ export default function IncomingDocumentsPage() {
     }
   };
 
-  // Fetch external documents (original function)
+  // Fetch external documents (rewritten function)
   const fetchExternalDocuments = async (
     page = currentPage,
     size = pageSize
   ) => {
     try {
       setLoading(true);
+      const response = await incomingDocumentsAPI.getAllDocuments(page, size);
 
-      console.log("Fetching external documents with pagination:", {
-        page,
-        size,
-        userId: user?.id,
-        userDepartmentId: user?.departmentId,
-      });
-
-      const response_ = await incomingDocumentsAPI.getAllDocuments(page, size);
-      const response = response_.data;
-
-      console.log("API Response:", response);
 
       if (response && response.content) {
+        console.log("API Response:", response.content);
         setIncomingDocuments(response.content);
 
         // External documents don't have detailed pagination info in the current API
-        setTotalItems(response.page.totalElements);
-        setTotalPages(response.page.totalPages);
+        if (response.page.totalElements !== undefined) {
+          setTotalItems(
+            Math.max(response.page.totalElements, response.content.length)
+          );
+        } else {
+          setTotalItems(response.content.length);
+        }
+
+        if (response.page.totalPages !== undefined) {
+          setTotalPages(Math.max(response.page.totalPages, 1));
+        } else {
+          setTotalPages(response.content.length > 0 ? 1 : 0);
+        }
       } else {
         console.warn("Unexpected response structure:", response);
         setIncomingDocuments([]);
@@ -519,15 +546,19 @@ export default function IncomingDocumentsPage() {
   // Update useEffect to handle tab changes
   useEffect(() => {
     if (!user || loadingDepartments) {
-      console.log(
-        "Chưa có thông tin người dùng hoặc đang tải phòng ban, chờ tải..."
-      );
+      // console.log(
+      //   "Chưa có thông tin người dùng hoặc đang tải phòng ban, chờ tải..."
+      // );
       return;
     }
 
     setCurrentPage(0);
     setTimeout(() => {
-      fetchDocuments(0, pageSize);
+      fetchDocuments(0, pageSize).finally(() => {
+        if (!initialLoadComplete.current) {
+          initialLoadComplete.current = true;
+        }
+      });
     }, 50);
   }, [
     user?.id,
@@ -536,6 +567,8 @@ export default function IncomingDocumentsPage() {
     documentSource,
     departmentFilter,
     loadingDepartments,
+    searchQuery,
+    processingStatusTab,
   ]);
 
   // Lấy danh sách các phòng ban con của phòng ban được chọn
@@ -625,20 +658,20 @@ export default function IncomingDocumentsPage() {
     if (processingStatusTab !== "all") {
       // Temporary simple mapping based on common status patterns
       const status = doc.trackingStatus?.toUpperCase() || "";
-      let docTabCode = "pending"; // default
-      console.log("hihi" + status);
-      if (status === "NOT_PROCESSED") {
-        docTabCode = "not_processed";
-      } else if (status === "PROCESSED") {
+      let docTabCode: string;
+
+      if (status === "PROCESSED") {
         docTabCode = "completed";
+      } else if (status === "NOT_PROCESSED" || status === "") {
+        docTabCode = "not_processed";
       } else {
         docTabCode = "pending"; // processing, reviewing, etc.
       }
-      console.log("docTabCode" + docTabCode);
 
       matchesProcessingStatus = docTabCode === processingStatusTab;
-
-      console.log("matches ", matchesProcessingStatus);
+      
+      // Debug logging
+      console.log(`Document ${doc.id}: trackingStatus="${doc.trackingStatus}", docTabCode="${docTabCode}", processingStatusTab="${processingStatusTab}", matches=${matchesProcessingStatus}`);
     }
 
     // Lọc theo phòng ban - chỉ sử dụng primaryProcessDepartmentId
@@ -681,15 +714,20 @@ export default function IncomingDocumentsPage() {
     if (issuingAuthorityFilter !== "all") {
       matchesIssuingAuthority = doc.issuingAuthority === issuingAuthorityFilter;
     }
-    //casdcascd
-    return (
-      matchesSearch &&
+
+    const finalResult = matchesSearch &&
       matchesProcessingStatus &&
       matchesDepartment &&
       matchesDateRange &&
-      matchesIssuingAuthority
-    );
+      matchesIssuingAuthority;
+      
+    // Debug final result
+    console.log(`Document ${doc.id} final result: ${finalResult} (search:${matchesSearch}, status:${matchesProcessingStatus}, dept:${matchesDepartment}, date:${matchesDateRange}, authority:${matchesIssuingAuthority})`);
+    
+    return finalResult;
   });
+
+  console.log(`Total documents: ${incomingDocuments.length}, Filtered: ${filteredExternalDocuments.length}, Processing tab: ${processingStatusTab}`);
 
   const filteredInternalDocuments = internalDocuments.filter((doc) => {
     const docNumber = (doc.documentNumber || "").toLowerCase();
@@ -741,11 +779,11 @@ export default function IncomingDocumentsPage() {
     return incomingDocuments.filter((doc) => {
       // Use same logic as filtering
       const status = doc.trackingStatus?.toUpperCase() || "";
-      let docTabCode = "pending"; // default
+      let docTabCode: string;
 
       if (status === "PROCESSED") {
         docTabCode = "completed";
-      } else if (status === "NOT_PROCESSED") {
+      } else if (status === "NOT_PROCESSED" || status === "") {
         docTabCode = "not_processed";
       } else {
         docTabCode = "pending"; // processing, reviewing, etc.
@@ -799,7 +837,7 @@ export default function IncomingDocumentsPage() {
 
   // Add a force refresh function
   const forceRefreshDocuments = useCallback(async () => {
-    console.log("Force refreshing documents...");
+    // console.log("Force refreshing documents...");
     await fetchDocuments(currentPage, pageSize);
     toast({
       title: "Đã cập nhật",
@@ -827,8 +865,8 @@ export default function IncomingDocumentsPage() {
 
   // Refresh data when page becomes visible again (user comes back from detail page)
   useEffect(() => {
-    if (isPageVisible && user && !loadingDepartments) {
-      console.log("Page became visible, refreshing documents...");
+    if (isPageVisible && user && !loadingDepartments && initialLoadComplete.current) {
+      // console.log("Page became visible, refreshing documents...");
       // Small delay to ensure any pending state updates are complete
       setTimeout(() => {
         fetchDocuments(currentPage, pageSize);
@@ -839,7 +877,7 @@ export default function IncomingDocumentsPage() {
   // Refresh data when processing status tab changes
   useEffect(() => {
     if (user && !loadingDepartments && activeTab === "external") {
-      console.log("Processing status tab changed, refreshing documents...");
+      // console.log("Processing status tab changed, refreshing documents...");
       fetchDocuments(currentPage, pageSize);
     }
   }, [
@@ -854,17 +892,18 @@ export default function IncomingDocumentsPage() {
   // Add router focus event handling for better detection of return from detail pages
   useEffect(() => {
     const handleRouterFocus = () => {
-      if (user && !loadingDepartments) {
-        console.log("Router focus detected, refreshing documents...");
-        setTimeout(() => {
-          fetchDocuments(currentPage, pageSize);
-        }, 100);
+      if (!initialLoadComplete.current || !user || !loadingDepartments) {
+        return;
       }
+      // console.log("Router focus detected, refreshing documents...");
+      setTimeout(() => {
+        fetchDocuments(currentPage, pageSize);
+      }, 100);
     };
 
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === "documentReadStatusUpdate" && user && !loadingDepartments) {
-        console.log("Storage change detected, refreshing documents...");
+        // console.log("Storage change detected, refreshing documents...");
         setTimeout(() => {
           fetchDocuments(currentPage, pageSize);
         }, 100);
@@ -922,7 +961,7 @@ export default function IncomingDocumentsPage() {
             { id: doc.id, isRead: true, readAt: new Date().toISOString() },
           ]);
 
-          console.log("Document marked as read successfully:", doc.id);
+          // console.log("Document marked as read successfully:", doc.id);
         } catch (markError) {
           console.error("Error marking document as read:", markError);
           toast({
@@ -955,7 +994,7 @@ export default function IncomingDocumentsPage() {
       if (!currentReadStatus) {
         try {
           await universalReadStatus.markAsRead(doc.id!, "INCOMING_EXTERNAL");
-          console.log("External document marked as read successfully:", doc.id);
+          // console.log("External document marked as read successfully:", doc.id);
         } catch (markError) {
           console.error("Error marking external document as read:", markError);
           toast({
@@ -1149,255 +1188,247 @@ export default function IncomingDocumentsPage() {
         </TabsList>
 
         <TabsContent value="internal" className="mt-6">
-          {/* Chỉ hiển thị table khi có dữ liệu để tránh trùng lặp với empty state */}
-          {(activeTab === "internal" ? internalDocuments : incomingDocuments)
-            .length > 0 && (
-            <Card className="border-primary/10 shadow-sm">
-              <CardContent className="p-0">
-                <Table>
-                  <TableHeader className="bg-accent/50">
-                    <TableRow>
-                      <TableHead>Số văn bản</TableHead>
-                      <TableHead className="hidden md:table-cell">
-                        Ngày ký
-                      </TableHead>
-                      <TableHead>Tiêu đề</TableHead>
-                      <TableHead className="hidden lg:table-cell">
-                        Loại
-                      </TableHead>
-                      <TableHead className="hidden md:table-cell">
-                        Người gửi
-                      </TableHead>
-                      <TableHead>Độ khẩn</TableHead>
-                      <TableHead>Trạng thái đọc</TableHead>
-                      <TableHead className="text-right">Thao tác</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredInternalDocuments.length > 0 ? (
-                      filteredInternalDocuments.map((doc) => {
-                        // Sử dụng trực tiếp trạng thái đọc từ backend
-                        // Backend đã trả về isRead: true/false cho từng document dựa trên người dùng hiện tại
-                        const currentReadStatus = doc.isRead;
+          <Card className="border-primary/10 shadow-sm">
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader className="bg-accent/50">
+                  <TableRow>
+                    <TableHead>Số văn bản</TableHead>
+                    <TableHead className="hidden md:table-cell">
+                      Ngày ký
+                    </TableHead>
+                    <TableHead>Tiêu đề</TableHead>
+                    <TableHead className="hidden lg:table-cell">
+                      Loại
+                    </TableHead>
+                    <TableHead className="hidden md:table-cell">
+                      Người gửi
+                    </TableHead>
+                    <TableHead>Độ khẩn</TableHead>
+                    <TableHead>Trạng thái đọc</TableHead>
+                    <TableHead className="text-right">Thao tác</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredInternalDocuments.length > 0 ? (
+                    filteredInternalDocuments.map((doc) => {
+                      // Sử dụng trực tiếp trạng thái đọc từ backend
+                      // Backend đã trả về isRead: true/false cho từng document dựa trên người dùng hiện tại
+                      const currentReadStatus = doc.isRead;
 
-                        return (
-                          <TableRow key={doc.id} className="hover:bg-accent/30">
-                            <TableCell className="font-medium">
-                              {doc.documentNumber}
-                            </TableCell>
-                            <TableCell className="hidden md:table-cell">
-                              {formatDate(doc.signingDate)}
-                            </TableCell>
-                            <TableCell className="max-w-[300px] truncate">
-                              {doc.title}
-                            </TableCell>
-                            <TableCell className="hidden lg:table-cell">
-                              {doc.documentType}
-                            </TableCell>
-                            <TableCell className="hidden md:table-cell">
-                              {doc.senderName}
-                            </TableCell>
-                            <TableCell>
-                              {getUrgencyBadge(doc.priority)}
-                            </TableCell>
-                            <TableCell>
-                              <Badge
-                                variant={
-                                  currentReadStatus ? "default" : "outline"
-                                }
-                              >
-                                {currentReadStatus ? "Đã đọc" : "Chưa đọc"}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="hover:bg-primary/10 hover:text-primary"
-                                onClick={() => handleInternalDocumentClick(doc)}
-                              >
-                                Chi tiết
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={8} className="h-24 text-center">
-                          {getEmptyStateMessage(true, true)}
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          )}
+                      return (
+                        <TableRow key={doc.id} className="hover:bg-accent/30">
+                          <TableCell className="font-medium">
+                            {doc.documentNumber}
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell">
+                            {formatDate(doc.signingDate)}
+                          </TableCell>
+                          <TableCell className="max-w-[300px] truncate">
+                            {doc.title}
+                          </TableCell>
+                          <TableCell className="hidden lg:table-cell">
+                            {doc.documentType}
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell">
+                            {doc.senderName}
+                          </TableCell>
+                          <TableCell>
+                            {getUrgencyBadge(doc.priority || "NORMAL")}
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={
+                                currentReadStatus ? "default" : "outline"
+                              }
+                            >
+                              {currentReadStatus ? "Đã đọc" : "Chưa đọc"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="hover:bg-primary/10 hover:text-primary"
+                              onClick={() => handleInternalDocumentClick(doc)}
+                            >
+                              Chi tiết
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={8} className="h-24 text-center">
+                        {getEmptyStateMessage(true, searchQuery !== "" || statusFilter !== "all" || startDate !== "" || endDate !== "")}
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="external" className="mt-6">
-          {/* Chỉ hiển thị table khi có dữ liệu để tránh trùng lặp với empty state */}
-          {(activeTab === "external" ? incomingDocuments : internalDocuments)
-            .length > 0 && (
-            <Card className="border-primary/10 shadow-sm">
-              {/* Compact Processing Status Tabs */}
-              <div className="px-4 py-2 border-b bg-gray-50/50">
-                <div className="flex gap-2">
-                  {Object.entries(userProcessingStatus).map(([key, status]) => {
-                    const count = getDocumentCountByStatus(key);
-                    const isActive = processingStatusTab === key;
-                    return (
-                      <button
-                        key={key}
-                        onClick={() => setProcessingStatusTab(key)}
-                        className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                          isActive
-                            ? "bg-primary text-white"
-                            : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
-                        }`}
-                      >
-                        {status.displayName} ({count})
-                      </button>
-                    );
-                  })}
-                </div>
+          <Card className="border-primary/10 shadow-sm">
+            {/* Compact Processing Status Tabs */}
+            <div className="px-4 py-2 border-b bg-gray-50/50">
+              <div className="flex gap-2">
+                {Object.entries(userProcessingStatus).map(([key, status]) => {
+                  const count = getDocumentCountByStatus(key);
+                  const isActive = processingStatusTab === key;
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => setProcessingStatusTab(key)}
+                      className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                        isActive
+                          ? "bg-primary text-white"
+                          : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
+                      }`}
+                    >
+                      {status.displayName} ({count})
+                    </button>
+                  );
+                })}
               </div>
-              <CardContent className="p-0">
-                <Table>
-                  <TableHeader className="bg-accent/50">
-                    <TableRow>
-                      <TableHead>Số văn bản</TableHead>
-                      <TableHead className="hidden md:table-cell">
-                        Ngày nhận
-                      </TableHead>
-                      <TableHead>Trích yếu</TableHead>
-                      <TableHead className="hidden md:table-cell">
-                        Đơn vị gửi
-                      </TableHead>
-                      <TableHead>Trạng thái</TableHead>
-                      <TableHead>Trạng thái đọc</TableHead>
-                      {/* Hiển thị vai trò khi xem văn bản đơn vị hoặc được giao */}
-                      {(documentSource !== "all" || !hasFullAccess) && (
-                        <TableHead>Vai trò</TableHead>
-                      )}
-                      <TableHead className="text-right">Thao tác</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredExternalDocuments.length > 0 ? (
-                      filteredExternalDocuments.map((doc) => {
-                        const isRead = universalReadStatus.getReadStatus(
-                          doc.id!,
-                          "INCOMING_EXTERNAL"
-                        );
-                        return (
-                          <TableRow
-                            key={doc.id}
-                            className={`hover:bg-accent/30 cursor-pointer ${
-                              !isRead
-                                ? "bg-blue-50/50 border-l-4 border-l-blue-500"
-                                : ""
-                            }`}
-                            onClick={() => handleExternalDocumentClick(doc)}
-                          >
-                            <TableCell className="font-medium">
-                              {doc.documentNumber}
-                            </TableCell>
-                            <TableCell className="hidden md:table-cell">
-                              {doc.receivedDate
-                                ? typeof doc.receivedDate === "object" &&
-                                  doc.receivedDate instanceof Date
-                                  ? doc.receivedDate.toLocaleDateString("vi-VN")
-                                  : String(doc.receivedDate)
-                                : "-"}
-                            </TableCell>
-                            <TableCell className="max-w-[300px] truncate">
-                              <div className="flex items-center gap-2">
-                                {!isRead && (
-                                  <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />
-                                )}
-                                <span
-                                  className={!isRead ? "font-semibold" : ""}
-                                >
-                                  {doc.title}
-                                </span>
-                              </div>
-                            </TableCell>
-                            <TableCell className="hidden md:table-cell">
-                              {doc.issuingAuthority}
-                            </TableCell>
-                            <TableCell>
-                              <DocumentStatusBadge
-                                documentId={doc.id!}
-                                fallbackStatus={doc.processingStatus}
-                                fallbackDisplayStatus={
-                                  getStatusByCode(doc.processingStatus)
-                                    ?.displayName
-                                }
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className={`${
-                                  isRead
-                                    ? "text-green-600 hover:text-green-700"
-                                    : "text-blue-600 hover:text-blue-700"
-                                }`}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  universalReadStatus.toggleReadStatus(
-                                    doc.id!,
-                                    "INCOMING_EXTERNAL"
-                                  );
-                                }}
-                              >
-                                {isRead ? "Đã đọc" : "Chưa đọc"}
-                              </Button>
-                            </TableCell>
-                            {/* Hiển thị vai trò (xử lý chính/phối hợp) khi cần */}
-                            {(documentSource !== "all" || !hasFullAccess) && (
-                              <TableCell>
-                                {getAssignmentBadge(
-                                  String(doc.primaryProcessDepartmentId)
-                                )}
-                              </TableCell>
-                            )}
-                            <TableCell className="text-right">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="hover:bg-primary/10 hover:text-primary"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleExternalDocumentClick(doc);
-                                }}
-                              >
-                                Chi tiết
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })
-                    ) : (
-                      <TableRow>
-                        <TableCell
-                          colSpan={
-                            documentSource !== "all" || !hasFullAccess ? 8 : 7
-                          }
-                          className="h-24 text-center"
-                        >
-                          {getEmptyStateMessage(false, true)}
-                        </TableCell>
-                      </TableRow>
+            </div>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader className="bg-accent/50">
+                  <TableRow>
+                    <TableHead>Số văn bản</TableHead>
+                    <TableHead className="hidden md:table-cell">
+                      Ngày nhận
+                    </TableHead>
+                    <TableHead>Trích yếu</TableHead>
+                    <TableHead className="hidden md:table-cell">
+                      Đơn vị gửi
+                    </TableHead>
+                    <TableHead>Trạng thái</TableHead>
+                    <TableHead>Trạng thái đọc</TableHead>
+                    {/* Hiển thị vai trò khi xem văn bản đơn vị hoặc được giao */}
+                    {(documentSource !== "all" || !hasFullAccess) && (
+                      <TableHead>Vai trò</TableHead>
                     )}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          )}
+                    <TableHead className="text-right">Thao tác</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredExternalDocuments.length > 0 ? (
+                    filteredExternalDocuments.map((doc) => {
+                      const isRead = universalReadStatus.getReadStatus(
+                        doc.id!,
+                        "INCOMING_EXTERNAL"
+                      );
+                      return (
+                        <TableRow
+                          key={doc.id}
+                          className={`hover:bg-accent/30 cursor-pointer ${
+                            !isRead
+                              ? "bg-blue-50/50 border-l-4 border-l-blue-500"
+                              : ""
+                          }`}
+                          onClick={() => handleExternalDocumentClick(doc)}
+                        >
+                          <TableCell className="font-medium">
+                            {doc.documentNumber}
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell">
+                            {doc.receivedDate
+                              ? typeof doc.receivedDate === "object" &&
+                                doc.receivedDate instanceof Date
+                                ? doc.receivedDate.toLocaleDateString("vi-VN")
+                                : String(doc.receivedDate)
+                              : "-"}
+                          </TableCell>
+                          <TableCell className="max-w-[300px] truncate">
+                            <div className="flex items-center gap-2">
+                              {!isRead && (
+                                <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />
+                              )}
+                              <span
+                                className={!isRead ? "font-semibold" : ""}
+                              >
+                                {doc.title}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell">
+                            {doc.issuingAuthority}
+                          </TableCell>
+                          <TableCell>
+                            <DocumentStatusBadge
+                              documentId={doc.id!}
+                              fallbackStatus={doc.processingStatus}
+                              fallbackDisplayStatus={
+                                getStatusByCode(doc.processingStatus)
+                                  ?.displayName
+                              }
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className={`${
+                                isRead
+                                  ? "text-green-600 hover:text-green-700"
+                                  : "text-blue-600 hover:text-blue-700"
+                              }`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                universalReadStatus.toggleReadStatus(
+                                  doc.id!,
+                                  "INCOMING_EXTERNAL"
+                                );
+                              }}
+                            >
+                              {isRead ? "Đã đọc" : "Chưa đọc"}
+                            </Button>
+                          </TableCell>
+                          {/* Hiển thị vai trò (xử lý chính/phối hợp) khi cần */}
+                          {(documentSource !== "all" || !hasFullAccess) && (
+                            <TableCell>
+                              {getAssignmentBadge(
+                                String(doc.primaryProcessDepartmentId)
+                              )}
+                            </TableCell>
+                          )}
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="hover:bg-primary/10 hover:text-primary"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleExternalDocumentClick(doc);
+                              }}
+                            >
+                              Chi tiết
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  ) : (
+                    <TableRow>
+                      <TableCell
+                        colSpan={
+                          documentSource !== "all" || !hasFullAccess ? 8 : 7
+                        }
+                        className="h-24 text-center"
+                      >
+                        {getEmptyStateMessage(false, true)}
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
 
@@ -1461,31 +1492,6 @@ export default function IncomingDocumentsPage() {
         </div>
       )}
 
-      {/* Empty state */}
-      {currentDocuments.length === 0 && !isLoading && (
-        <div className="flex h-[40vh] items-center justify-center">
-          <div className="text-center">
-            {hasRole("ROLE_VAN_THU") && activeTab === "external" && (
-              <Button
-                onClick={handleAddDocument}
-                disabled={isAddLoading}
-                className="mt-4"
-              >
-                {isAddLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Đang
-                    tải...
-                  </>
-                ) : (
-                  <>
-                    <Plus className="mr-2 h-4 w-4" /> Thêm mới
-                  </>
-                )}
-              </Button>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

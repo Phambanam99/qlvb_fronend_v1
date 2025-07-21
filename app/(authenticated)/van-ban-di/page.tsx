@@ -50,7 +50,7 @@ import { useOutgoingDocuments } from "@/lib/store";
 import { getStatusBadgeInfo } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
 import { useHierarchicalDepartments } from "@/hooks/use-hierarchical-departments";
-import { getSentDocuments } from "@/lib/api/internalDocumentApi";
+import { getSentDocuments, getAllSentDocuments } from "@/lib/api/internalDocumentApi";
 import { useDocumentReadStatus } from "@/hooks/use-document-read-status";
 import { usePageVisibility } from "@/hooks/use-page-visibility";
 import { useUniversalReadStatus } from "@/hooks/use-universal-read-status";
@@ -76,6 +76,8 @@ export default function OutgoingDocumentsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [departmentFilter, setDepartmentFilter] = useState("all");
+  const [dateFromFilter, setDateFromFilter] = useState("");
+  const [dateToFilter, setDateToFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
   const [totalItems, setTotalItems] = useState(0);
@@ -122,7 +124,7 @@ export default function OutgoingDocumentsPage() {
   // Refresh data when page becomes visible again
   useEffect(() => {
     if (isPageVisible && user && !loadingDepartments) {
-      console.log("Page became visible, refreshing documents...");
+         // console.log("Page became visible, refreshing documents...");
       setTimeout(() => {
         fetchDocuments(currentPage, pageSize);
       }, 100);
@@ -136,62 +138,110 @@ export default function OutgoingDocumentsPage() {
   ) => {
     try {
       setLoadingInternal(true);
-      console.log("Fetching internal documents with pagination:", {
-        page,
-        size,
-      });
+      
+      let response_;
+      let response;
+      
+      // Nếu có search query, load tất cả documents để tìm kiếm
+      if (searchQuery.trim()) {
+        // console.log("Fetching all internal documents for search:", searchQuery);
+        response = await getAllSentDocuments();
+        // response = response_.data;
+        //  console.log("Fetching all internal documents for search:", response);
+        if (response) {
+          // console.log("All internal documents response:", response);
 
-      const response_ = await getSentDocuments(page, size);
-      const response = response_.data;
-
-
-      if (response && response.content) {
-        console.log("Internal documents response:", response);
-
-        // Cập nhật trạng thái đọc từ global state cho văn bản đi
-        const documentsWithUpdatedReadStatus = response.content.map(
-          (doc: InternalDocument) => {
-            const globalReadStatus = getReadStatus(doc.id);
-            // Đối với văn bản đi, trạng thái đọc được tính dựa trên recipients
-            if (
-              globalReadStatus.isRead !== undefined &&
-              globalReadStatus.isRead !== doc.isRead
-            ) {
-              return {
-                ...doc,
-                isRead: globalReadStatus.isRead,
-                readAt: globalReadStatus.readAt || doc.readAt,
-              };
+          // Cập nhật trạng thái đọc từ global state cho văn bản đi
+          const documentsWithUpdatedReadStatus = response.data.map(
+            (doc: InternalDocument) => {
+              const globalReadStatus = getReadStatus(doc.id);
+              if (
+                globalReadStatus.isRead !== undefined &&
+                globalReadStatus.isRead !== doc.isRead
+              ) {
+                return {
+                  ...doc,
+                  isRead: globalReadStatus.isRead,
+                  readAt: globalReadStatus.readAt || doc.readAt,
+                };
+              }
+              return doc;
             }
-            return doc;
-          }
-        );
-
-        setInternalDocuments(documentsWithUpdatedReadStatus);
-
-        // Cập nhật global read status với data từ server
-        const readStatusUpdates = response.content.map(
-          (doc: InternalDocument) => ({
-            id: doc.id,
-            isRead: doc.isRead,
-            readAt: doc.readAt,
-          })
-        );
-        updateMultipleReadStatus(readStatusUpdates);
-
-        // Set pagination info if available
-        if (response.totalElements !== undefined) {
-          setTotalItems(
-            Math.max(response.totalElements, response.content.length)
           );
-        } else {
-          setTotalItems(response.content.length);
-        }
 
-        if (response.totalPages !== undefined) {
-          setTotalPages(Math.max(response.totalPages, 1));
-        } else {
+          setInternalDocuments(documentsWithUpdatedReadStatus);
+
+          // Cập nhật global read status với data từ server
+          const readStatusUpdates = response.data.map(
+            (doc: InternalDocument) => ({
+              id: doc.id,
+              isRead: doc.isRead,
+              readAt: doc.readAt,
+            })
+          );
+          updateMultipleReadStatus(readStatusUpdates);
+
+          // Khi search, không có pagination
+          setTotalItems(response.data.length);
           setTotalPages(1);
+        }
+      } else {
+        // Không có search query, sử dụng pagination bình thường
+        // console.log("Fetching internal documents with pagination:", {
+        //   page,
+        //   size,
+        // });
+
+        response_ = await getSentDocuments(page, size);
+        response = response_.data;
+
+        if (response && response.content) {
+          // console.log("Internal documents response:", response);
+
+          // Cập nhật trạng thái đọc từ global state cho văn bản đi
+          const documentsWithUpdatedReadStatus = response.content.map(
+            (doc: InternalDocument) => {
+              const globalReadStatus = getReadStatus(doc.id);
+              if (
+                globalReadStatus.isRead !== undefined &&
+                globalReadStatus.isRead !== doc.isRead
+              ) {
+                return {
+                  ...doc,
+                  isRead: globalReadStatus.isRead,
+                  readAt: globalReadStatus.readAt || doc.readAt,
+                };
+              }
+              return doc;
+            }
+          );
+
+          setInternalDocuments(documentsWithUpdatedReadStatus);
+
+          // Cập nhật global read status với data từ server
+          const readStatusUpdates = response.content.map(
+            (doc: InternalDocument) => ({
+              id: doc.id,
+              isRead: doc.isRead,
+              readAt: doc.readAt,
+            })
+          );
+          updateMultipleReadStatus(readStatusUpdates);
+
+          // Set pagination info if available
+          if (response.totalElements !== undefined) {
+            setTotalItems(
+              Math.max(response.totalElements, response.content.length)
+            );
+          } else {
+            setTotalItems(response.content.length);
+          }
+
+          if (response.totalPages !== undefined) {
+            setTotalPages(Math.max(response.totalPages, 1));
+          } else {
+            setTotalPages(1);
+          }
         }
       }
     } catch (error) {
@@ -215,10 +265,10 @@ export default function OutgoingDocumentsPage() {
   ) => {
     try {
       setLoading(true);
-      console.log("Fetching external documents with pagination:", {
-        page,
-        size,
-      });
+      // console.log("Fetching external documents with pagination:", {
+      //   page,
+      //   size,
+      // });
 
       const response_ = await outgoingDocumentsAPI.getAllDocuments(page, size);
       const response = response_.data;
@@ -266,9 +316,9 @@ export default function OutgoingDocumentsPage() {
 
   useEffect(() => {
     if (!user || loadingDepartments) {
-      console.log(
-        "Chưa có thông tin người dùng hoặc đang tải phòng ban, chờ tải..."
-      );
+      // console.log(
+      //   "Chưa có thông tin người dùng hoặc đang tải phòng ban, chờ tải..."
+      // );
       return;
     }
 
@@ -276,7 +326,7 @@ export default function OutgoingDocumentsPage() {
     setTimeout(() => {
       fetchDocuments(0, pageSize);
     }, 50);
-  }, [user?.id, statusFilter, activeTab, loadingDepartments]);
+  }, [user?.id, statusFilter, activeTab, loadingDepartments, dateFromFilter, dateToFilter, searchQuery]);
 
   useEffect(() => {
     if (user && (currentPage > 0 || pageSize !== 10)) {
@@ -378,6 +428,36 @@ export default function OutgoingDocumentsPage() {
     }
   };
 
+  const isDateInRange = (dateString: string) => {
+    if (!dateFromFilter && !dateToFilter) return true;
+    if (!dateString) return false;
+
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime()) || date.getFullYear() === 1970) {
+        return false;
+      }
+
+      const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      
+      if (dateFromFilter) {
+        const fromDate = new Date(dateFromFilter);
+        const fromDateOnly = new Date(fromDate.getFullYear(), fromDate.getMonth(), fromDate.getDate());
+        if (dateOnly < fromDateOnly) return false;
+      }
+
+      if (dateToFilter) {
+        const toDate = new Date(dateToFilter);
+        const toDateOnly = new Date(toDate.getFullYear(), toDate.getMonth(), toDate.getDate());
+        if (dateOnly > toDateOnly) return false;
+      }
+
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   const getRecipientSummary = (recipients: InternalDocument["recipients"]) => {
     if (!recipients || recipients.length === 0) return "Chưa có người nhận";
 
@@ -403,6 +483,8 @@ export default function OutgoingDocumentsPage() {
 
     const matchesStatus = statusFilter === "all" || doc.status === statusFilter;
 
+    const matchesDateRange = isDateInRange(doc.sentDate);
+
     let matchesDepartment = true;
     if (departmentFilter !== "all") {
       const departmentIds = getChildDepartmentIds(departmentFilter);
@@ -417,7 +499,7 @@ export default function OutgoingDocumentsPage() {
           : userDepartmentIds.length === 0;
     }
 
-    return matchesSearch && matchesStatus && matchesDepartment;
+    return matchesSearch && matchesStatus && matchesDateRange && matchesDepartment;
   });
 
   const filteredInternalDocuments = internalDocuments.filter((doc) => {
@@ -432,7 +514,9 @@ export default function OutgoingDocumentsPage() {
 
     const matchesStatus = statusFilter === "all" || doc.status === statusFilter;
 
-    return matchesSearch && matchesStatus;
+    const matchesDateRange = isDateInRange(doc.signingDate);
+
+    return matchesSearch && matchesStatus && matchesDateRange;
   });
 
   // Handle click on internal document to mark as read and navigate
@@ -448,10 +532,10 @@ export default function OutgoingDocumentsPage() {
       if (!currentReadStatus) {
         try {
           await universalReadStatus.markAsRead(doc.id, "OUTGOING_INTERNAL");
-          console.log(
-            "Internal outgoing document marked as read successfully:",
-            doc.id
-          );
+          // console.log(
+          //   "Internal outgoing document marked as read successfully:",
+          //   doc.id
+          // );
         } catch (markError) {
           console.error(
             "Error marking internal outgoing document as read:",
@@ -485,10 +569,10 @@ export default function OutgoingDocumentsPage() {
             Number(doc.id),
             "OUTGOING_EXTERNAL"
           );
-          console.log(
-            "External outgoing document marked as read successfully:",
-            doc.id
-          );
+          // console.log(
+          //   "External outgoing document marked as read successfully:",
+          //   doc.id
+          // );
         } catch (markError) {
           console.error(
             "Error marking external outgoing document as read:",
@@ -527,8 +611,8 @@ export default function OutgoingDocumentsPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-        <div className="flex w-full sm:w-auto items-center space-x-2">
+      <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+        <div className="flex w-full lg:w-auto items-center space-x-2 flex-wrap gap-y-2">
           <div className="relative w-full sm:w-[300px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -562,8 +646,26 @@ export default function OutgoingDocumentsPage() {
           )}
         </div>
 
-        <div className="flex w-full sm:w-auto items-center space-x-3">
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
+        <div className="flex w-full sm:w-auto items-center space-x-3 flex-wrap gap-y-2">
+          <div className="flex items-center space-x-2">
+            <span className="text-sm font-medium whitespace-nowrap">Từ ngày:</span>
+            <Input
+              type="date"
+              className="w-[150px] border-primary/20 focus:border-primary"
+              value={dateFromFilter}
+              onChange={(e) => setDateFromFilter(e.target.value)}
+            />
+          </div>
+          <div className="flex items-center space-x-2">
+            <span className="text-sm font-medium whitespace-nowrap">Đến ngày:</span>
+            <Input
+              type="date"
+              className="w-[150px] border-primary/20 focus:border-primary"
+              value={dateToFilter}
+              onChange={(e) => setDateToFilter(e.target.value)}
+            />
+          </div>
+          {/* <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-full sm:w-[180px] border-primary/20">
               <SelectValue placeholder="Trạng thái" />
             </SelectTrigger>
@@ -576,11 +678,19 @@ export default function OutgoingDocumentsPage() {
               <SelectItem value="SENT">Đã gửi</SelectItem>
               <SelectItem value="sent">Đã gửi</SelectItem>
             </SelectContent>
-          </Select>
+          </Select> */}
           <Button
             variant="outline"
             size="icon"
             className="rounded-full border-primary/20 hover:bg-primary/10 hover:text-primary"
+            onClick={() => {
+              setDateFromFilter("");
+              setDateToFilter("");
+              setStatusFilter("all");
+              setDepartmentFilter("all");
+              setSearchQuery("");
+            }}
+            title="Xóa bộ lọc"
           >
             <Filter className="h-4 w-4" />
           </Button>
@@ -627,7 +737,7 @@ export default function OutgoingDocumentsPage() {
                       Người nhận
                     </TableHead>
                     <TableHead>Độ khẩn</TableHead>
-                    <TableHead>Trạng thái</TableHead>
+                    {/* <TableHead>Trạng thái</TableHead> */}
                     <TableHead>Trạng thái đọc</TableHead>
                     <TableHead className="text-right">Thao tác</TableHead>
                   </TableRow>
@@ -674,7 +784,7 @@ export default function OutgoingDocumentsPage() {
                           <TableCell>
                             {getUrgencyBadge(doc.priority)}
                           </TableCell>
-                          <TableCell>{getStatusBadge(doc.status)}</TableCell>
+                          {/* <TableCell>{getStatusBadge(doc.status)}</TableCell> */}
                           <TableCell>
                             <Button
                               variant="ghost"
@@ -740,7 +850,7 @@ export default function OutgoingDocumentsPage() {
                     <TableHead className="hidden md:table-cell">
                       Nơi nhận
                     </TableHead>
-                    <TableHead>Trạng thái</TableHead>
+                    {/* <TableHead>Trạng thái</TableHead> */}
                     <TableHead>Trạng thái đọc</TableHead>
                     {hasFullAccess && (
                       <TableHead className="hidden md:table-cell">
@@ -786,7 +896,7 @@ export default function OutgoingDocumentsPage() {
                           <TableCell className="hidden md:table-cell">
                             {doc.recipient}
                           </TableCell>
-                          <TableCell>{getStatusBadge(doc.status)}</TableCell>
+                          {/* <TableCell>{getStatusBadge(doc.status)}</TableCell> */}
                           <TableCell>
                             <Button
                               variant="ghost"

@@ -3,6 +3,9 @@
  * Functions to handle PDF preview and viewing across the application
  */
 
+import { downloadAttachment } from "@/lib/api/internalDocumentApi";
+import { addUserWatermarkToPdf, isPdfFile } from "./pdf-watermark";
+
 export interface PDFViewerOptions {
   title?: string;
   width?: string;
@@ -10,6 +13,7 @@ export interface PDFViewerOptions {
   allowDownload?: boolean;
   allowPrint?: boolean;
 }
+
 
 /**
  * Check if a file is a PDF based on file type or extension

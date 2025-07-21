@@ -42,7 +42,7 @@ export const usersAPI = {
   //get users by Department Id
   getUsersByDepartmentId: async (departmentId: number): Promise<UserDTO[]> => {
     const response = await api.get(`/users/department/${departmentId}`);
-    console.log("response", response.data);
+    // console.log("response", response.data);
     return response.data;
   },
   /**

@@ -365,9 +365,6 @@ export default function UserGuidePage() {
                 <User className="h-5 w-5" />
                 Thông tin liên hệ
               </CardTitle>
-              <CardDescription>
-                Thông tin về nhà phát triển và hỗ trợ kỹ thuật
-              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-lg border">
@@ -398,33 +395,28 @@ export default function UserGuidePage() {
                         <p className="flex items-center gap-2">
                           <span className="font-medium">Họ tên:</span>
                           <span className="text-blue-600 font-semibold">
-                            Phạm Bá Nam
+                            P.NCPT
                           </span>
                         </p>
                         <p className="flex items-center gap-2">
                           <MapPin className="h-3 w-3" />
                           <span className="font-medium">Đơn vị:</span>
-                          <span>Phòng 7</span>
+                          <span>Phòng 7 - Cục 75</span>
                         </p>
                         <p className="flex items-center gap-2">
                           <Phone className="h-3 w-3" />
                           <span className="font-medium">Liên hệ:</span>
                           <a
-                            href="tel:0342561409"
+                            href="tel:521248"
                             className="text-blue-600 hover:underline font-medium"
                           >
-                            0342561409
+                            521248
                           </a>
                         </p>
                       </div>
                     </div>
                   </div>
 
-                  <div className="text-center pt-4 border-t">
-                    <p className="text-sm text-gray-600">
-                      Cảm ơn bạn đã sử dụng hệ thống!
-                    </p>
-                  </div>
                 </div>
               </div>
             </CardContent>

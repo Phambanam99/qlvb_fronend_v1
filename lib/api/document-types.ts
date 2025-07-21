@@ -56,9 +56,9 @@ export const documentTypesAPI = {
     documentTypeData: Partial<DocumentTypeDTO>
   ): Promise<DocumentTypeDTO> => {
     try {
-        console.log("response createDocumentType", 0);
+        // console.log("response createDocumentType", 0);
       const response = await api.post("/document-types", documentTypeData);
-      console.log("response createDocumentType", response);
+      // console.log("response createDocumentType", response);
       return response.data;
     } catch (error) {
       console.error("Error creating document type:", error);

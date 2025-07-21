@@ -68,8 +68,8 @@ export default function ScheduleMonthView({
 
   // Prepare events based on provided schedules
   useEffect(() => {
-    console.log("Month View Schedules:", schedules); // Debug log
-    console.log("Department filter (Month View):", department); // Debug log để kiểm tra giá trị department
+    // console.log("Month View Schedules:", schedules); // Debug log
+    // console.log("Department filter (Month View):", department); // Debug log để kiểm tra giá trị department
 
     // Skip if no schedules provided
     if (!schedules || schedules.length === 0) {
@@ -151,7 +151,7 @@ export default function ScheduleMonthView({
     }
 
     setEvents(transformedEvents);
-    console.log("Transformed Month Events:", transformedEvents); // Debug log
+    // console.log("Transformed Month Events:", transformedEvents); // Debug log
   }, [schedules, date, department, type]);
 
   const getDayEvents = (day: Date | null) => {
@@ -163,13 +163,13 @@ export default function ScheduleMonthView({
       "0"
     )}-${String(day.getDate()).padStart(2, "0")}`;
 
-    console.log("Looking for events on day:", dayStr);
+    // console.log("Looking for events on day:", dayStr);
     const matchingEvents = events.filter((event) => {
       const eventDate = event.date;
       const match = eventDate === dayStr;
-      console.log(
-        `Event ${event.id} date: ${eventDate}, match with ${dayStr}: ${match}`
-      );
+      // console.log(
+      //   `Event ${event.id} date: ${eventDate}, match with ${dayStr}: ${match}`
+      // );
       return match;
     });
 

@@ -240,10 +240,20 @@ export const getSentDocuments = async (page = 0, size = 10) => {
   return response.data;
 };
 
+export const getAllSentDocuments = async () => {
+  const response = await api.get("/internal-documents/sent/all");
+  return response.data;
+};
+
 export const getReceivedDocuments = async (page = 0, size = 10) => {
   const response = await api.get("/internal-documents/received", {
     params: { page, size },
   });
+  return response.data;
+};
+
+export const getAllReceivedDocuments = async () => {
+  const response = await api.get("/internal-documents/received/all");
   return response.data;
 };
 
@@ -277,10 +287,39 @@ export const getReceivedDocumentsExcludingSent = async (
   return response.data;
 };
 
+export const getAllReceivedDocumentsExcludingSent = async () => {
+  const response = await api.get("/internal-documents/received/all");
+
+  // Lọc ra những văn bản không phải do chính user tạo
+  if (response.data && response.data.data) {
+    // Lấy thông tin user hiện tại từ localStorage hoặc context
+    const userStr = localStorage.getItem("user");
+    const currentUser = userStr ? JSON.parse(userStr) : null;
+
+    if (currentUser) {
+      const filteredContent = response.data.data.filter(
+        (doc: any) => doc.senderId !== currentUser.id
+      );
+
+      return {
+        ...response.data,
+        data: filteredContent,
+      };
+    }
+  }
+
+  return response.data;
+};
+
 export const getUnreadDocuments = async (page = 0, size = 10) => {
   const response = await api.get("/internal-documents/unread", {
     params: { page, size },
   });
+  return response.data;
+};
+
+export const getAllUnreadDocuments = async () => {
+  const response = await api.get("/internal-documents/unread/all");
   return response.data;
 };
 
@@ -411,36 +450,36 @@ export const replyToDocumentWithAttachments = async (
   files?: File[],
   descriptions?: string[]
 ) => {
-  console.log("=== DEBUG replyToDocumentWithAttachments ===");
-  console.log("Document ID:", id);
-  console.log("Document data:", document);
-  console.log("Files:", files);
-  console.log("Descriptions:", descriptions);
+  // console.log("=== DEBUG replyToDocumentWithAttachments ===");
+  // console.log("Document ID:", id);
+  // console.log("Document data:", document);
+  // console.log("Files:", files);
+  // console.log("Descriptions:", descriptions);
 
   const formData = new FormData();
   formData.append("document", JSON.stringify(document));
 
   if (files && files.length > 0) {
-    console.log(`Adding ${files.length} files to FormData`);
+    // console.log(`Adding ${files.length} files to FormData`);
     files.forEach((file, index) => {
-      console.log(`File ${index}:`, file.name, file.size, file.type);
+      // console.log(`File ${index}:`, file.name, file.size, file.type);  
       formData.append("files", file);
     });
   } else {
-    console.log("No files to upload");
+    // console.log("No files to upload");
   }
 
   if (descriptions) {
-    console.log("Adding descriptions:", descriptions);
+    // console.log("Adding descriptions:", descriptions);
     descriptions.forEach((desc) => {
       formData.append("descriptions", desc);
     });
   }
 
   // Log FormData contents
-  console.log("FormData entries:");
+  //  console.log("FormData entries:");
   for (let [key, value] of formData.entries()) {
-    console.log(key, value);
+    // console.log(key, value);
   }
 
   const response = await api.post(
@@ -450,7 +489,7 @@ export const replyToDocumentWithAttachments = async (
       headers: { "Content-Type": "multipart/form-data" },
     }
   ).catch((error) => {
-    console.log("error", error.response);
+    // console.log("error", error.response);
     return {
       success: false,
       data: error.response.data,
@@ -490,6 +529,7 @@ export const downloadAttachment = async (
       responseType: "blob", // Important for file downloads
     }
   );
+  console.log("response", response);
   return response;
 };
 

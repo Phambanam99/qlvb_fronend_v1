@@ -163,12 +163,12 @@ export const incomingDocumentsAPI = {
           responses: [],
         })
       );
-
+     console.log("totalPages", response.data.data.totalPages)
       return {
         content: documents,
         page: {
-          totalPages: response.data.totalPages,
-          totalElements: response.data.totalElements,
+          totalPages: response.data.data.totalPages,
+          totalElements: response.data.data.totalElements,
         },
       };
     } catch (error) {
@@ -187,7 +187,7 @@ export const incomingDocumentsAPI = {
   ): Promise<{ data: IncomingDocumentDTO }> => {
     try {
       const response = await api.get(`/documents/incoming/${id}`);
-      console.log("response cc", response.data);
+      // console.log("response cc", response.data);
       // Map backend response to frontend expected format
       const document = {
         ...response.data,
@@ -242,7 +242,7 @@ export const incomingDocumentsAPI = {
         params: { page, size },
       }
     );
-    console.log("response", response.data.content);
+    // console.log("response", response.data.content);
 
     return response.data;
   },

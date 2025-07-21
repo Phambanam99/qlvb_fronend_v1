@@ -3,8 +3,13 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-
-  import {Card,
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {Card,
   CardContent,
   CardDescription,
   CardHeader,
@@ -49,6 +54,7 @@ import {
 } from "@/lib/api/internalDocumentApi";
 import { useDocumentReadStatus } from "@/hooks/use-document-read-status";
 import { downloadPdfWithWatermark, isPdfFile } from "@/lib/utils/pdf-watermark";
+import { createPDFBlobUrl, cleanupBlobUrl } from "@/lib/utils/pdf-viewer";
 import { DocumentReadersDialog } from "@/components/document-readers-dialog";
 import { DocumentReadStats } from "@/components/document-read-stats";
 import { outgoingInternalReadStatus } from "@/lib/api/documentReadStatus";
@@ -81,6 +87,18 @@ export default function InternalDocumentDetailPage() {
   const [showAllHistory, setShowAllHistory] = useState(false);
   const HISTORY_PREVIEW_COUNT = 5; // Show first 5 history entries by default
 
+  const [pdfPreviewOpen, setPdfPreviewOpen] = useState(false);
+  const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
+  const [selectedFileName, setSelectedFileName] = useState<string>("");
+  
+  // Cleanup PDF preview URL when dialog closes
+  useEffect(() => {
+    if (!pdfPreviewOpen && pdfPreviewUrl) {
+      cleanupBlobUrl(pdfPreviewUrl);
+      setPdfPreviewUrl(null);
+    }
+  }, [pdfPreviewOpen, pdfPreviewUrl]);
+
   const documentId = params.id as string;
 
   useEffect(() => {
@@ -90,9 +108,9 @@ export default function InternalDocumentDetailPage() {
         const response_ = await getDocumentById(Number(documentId));
         const response = response_.data;
         setDocument(response);
-        console.log("Debug document:", response);
-        console.log("Drafting department:", response.draftingDepartment);
-        console.log("Sender department:", response.senderDepartment);
+        // console.log("Debug document:", response);
+        // console.log("Drafting department:", response.draftingDepartment);
+        // console.log("Sender department:", response.senderDepartment);
         if (response && response.isRead) {
           globalMarkAsRead(Number(documentId));
         }
@@ -126,7 +144,7 @@ export default function InternalDocumentDetailPage() {
         );
         // Handle ResponseDTO format: extract data from response
         const historyResponse = historyResponse_?.data?.data || historyResponse_?.data || [];
-        console.log("Debug history:", historyResponse);
+        // console.log("Debug history:", historyResponse);
         setDocumentHistory(historyResponse || []);
 
         // Fetch stats
@@ -134,14 +152,14 @@ export default function InternalDocumentDetailPage() {
         const statsResponse_ = await getDocumentStats(Number(documentId));
         // Handle ResponseDTO format: extract data from response
         const statsResponse = statsResponse_?.data?.data || statsResponse_?.data || null;
-        console.log("Debug stats:", statsResponse);
+        // console.log("Debug stats:", statsResponse);
         setDocumentStats(statsResponse);
 
         // Fetch replies
         const repliesResponse_ = await getDocumentReplies(Number(documentId));
         // Handle ResponseDTO format: extract data from response
         const repliesResponse = repliesResponse_?.data?.data || repliesResponse_?.data || [];
-        console.log("Debug replies:", repliesResponse);
+        //  console.log("Debug replies:", repliesResponse);
         setDocumentReplies(repliesResponse || []);
       } catch (error) {
         console.error("Error fetching document history/stats:", error);
@@ -220,23 +238,57 @@ export default function InternalDocumentDetailPage() {
     return <Badge variant={info.variant}>{info.text}</Badge>;
   };
 
+  const handlePreviewPDF = async (
+    attachmentId: number,
+    filename: string,
+    contentType?: string
+  ) => {
+    try {
+      const response = await downloadAttachment(
+        Number(documentId),
+        attachmentId
+      );
+
+      if (!response || !response.data) {
+        throw new Error("Invalid response data");
+      }
+
+      const blob = new Blob([response.data], { type: contentType || 'application/pdf' });
+      const url = createPDFBlobUrl(blob);
+      
+      setSelectedFileName(filename);
+      setPdfPreviewUrl(url);
+      setPdfPreviewOpen(true);
+    } catch (error) {
+      console.error("Error previewing PDF:", error);
+      toast({
+        title: "Lỗi",
+        description: "Không thể xem trước file PDF. Vui lòng thử lại sau.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleDownloadAttachment = async (
     attachmentId: number,
     filename: string,
     contentType?: string
   ) => {
     try {
-      const response_ = await downloadAttachment(
+      const response = await downloadAttachment(
         Number(documentId),
         attachmentId
       );
-      const response = response_.data;
 
-      const pdfBlob = response.data;
+      if (!response || !response.data) {
+        throw new Error("Invalid response data");
+      }
 
+      const blob = new Blob([response.data], { type: contentType || 'application/octet-stream' });
+      console.log("blob", blob);
       if (isPdfFile(filename, contentType) && user?.fullName) {
         try {
-          await downloadPdfWithWatermark(pdfBlob, filename, user.fullName);
+          await downloadPdfWithWatermark(blob, filename, user.fullName);
 
           toast({
             title: "Thành công",
@@ -256,7 +308,7 @@ export default function InternalDocumentDetailPage() {
         }
       }
 
-      const url = window.URL.createObjectURL(pdfBlob);
+      const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
       link.download = filename;
@@ -774,20 +826,36 @@ export default function InternalDocumentDetailPage() {
                           )}
                         </div>
                       </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          handleDownloadAttachment(
-                            attachment.id,
-                            attachment.filename,
-                            attachment.contentType
-                          )
-                        }
-                      >
-                        <Download className="h-4 w-4 mr-2" />
-                        Tải xuống
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            handlePreviewPDF(
+                              attachment.id,
+                              attachment.filename,
+                              attachment.contentType
+                            )
+                          }
+                        >
+                          <Eye className="h-4 w-4 mr-2" />
+                          Xem trước
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            handleDownloadAttachment(
+                              attachment.id,
+                              attachment.filename,
+                              attachment.contentType
+                            )
+                          }
+                        >
+                          <Download className="h-4 w-4 mr-2" />
+                          Tải xuống
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -963,6 +1031,45 @@ export default function InternalDocumentDetailPage() {
           </Card>
         </div>
       </div>
+
+      {/* PDF Preview Dialog */}
+      {pdfPreviewOpen && pdfPreviewUrl && (
+        <Dialog open={pdfPreviewOpen} onOpenChange={setPdfPreviewOpen}>
+          <DialogContent className="max-w-screen-xl h-[90vh] flex flex-col">
+            {/* DialogHeader chỉ cao nhất là title */}
+            <DialogHeader className="h-5">
+              <DialogTitle className="text-lg font-semibold">
+                Xem trước tài liệu: {selectedFileName}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="flex flex-1 flex-col h-full">
+              <div className="flex-1 overflow-hidden">
+                <iframe
+                  src={pdfPreviewUrl}
+                  className="w-full h-full"
+                  title={selectedFileName}
+                />
+              </div>
+              <div className="flex justify-end gap-2 p-4 border-t">
+                <Button variant="outline" onClick={() => setPdfPreviewOpen(false)}>
+                  Đóng
+                </Button>
+                <Button onClick={() => {
+                  const link = document.createElement("a");
+                  link.href = pdfPreviewUrl;
+                  link.download = selectedFileName;
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                  setPdfPreviewOpen(false);
+                }}>
+                  Tải xuống
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

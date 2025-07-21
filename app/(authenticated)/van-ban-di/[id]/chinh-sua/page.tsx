@@ -231,7 +231,7 @@ function EditOutgoingDocumentPage() {
         // Set form data from document
         // Đảm bảo các trường dữ liệu được định dạng đúng
         const doc = documentData.data as any;
-        console.log("Document data:", doc);
+        // console.log("Document data:", doc);
         setFormData({
           documentNumber: doc.number || doc.documentNumber || "",
           title: doc.title || "",

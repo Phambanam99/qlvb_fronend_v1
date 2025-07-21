@@ -9,7 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileText, Wrench, ArrowRight } from "lucide-react";
+import { FileText, Wrench, ArrowRight, PenSquare } from "lucide-react";
 
 const utilities = [
   {
@@ -18,6 +18,13 @@ const utilities = [
     href: "/tien-ich/ghep-pdf",
     icon: FileText,
     color: "bg-red-100 text-red-600",
+  },
+  {
+    title: "Chữ ký số",
+    description: "Quản lý và sử dụng chữ ký số để ký tài liệu PDF",
+    href: "/tien-ich/chu-ky-so",
+    icon: PenSquare,
+    color: "bg-green-100 text-green-600",
   },
   // Có thể thêm các tiện ích khác trong tương lai
   // {
@@ -46,9 +53,9 @@ export default function UtilitiesPage() {
         {utilities.map((utility) => (
           <Card
             key={utility.href}
-            className="hover:shadow-lg transition-shadow"
+            className="hover:shadow-lg transition-shadow flex flex-col"
           >
-            <CardHeader>
+            <CardHeader className="flex-grow">
               <div className="flex items-center gap-3">
                 <div className={`p-2 rounded-lg ${utility.color}`}>
                   <utility.icon className="h-6 w-6" />
@@ -83,24 +90,6 @@ export default function UtilitiesPage() {
         </div>
       )}
 
-      <div className="mt-12">
-        <Card>
-          <CardHeader>
-            <CardTitle>Thông tin</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2 text-sm text-muted-foreground">
-              <p>
-                • Tất cả các tiện ích đều hoạt động offline trên trình duyệt của
-                bạn
-              </p>
-              <p>• Dữ liệu không được gửi lên server, đảm bảo tính bảo mật</p>
-              <p>• Hỗ trợ xử lý file PDF với kích thước lớn</p>
-              <p>• Tương thích với tất cả các trình duyệt hiện đại</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
     </div>
   );
 }

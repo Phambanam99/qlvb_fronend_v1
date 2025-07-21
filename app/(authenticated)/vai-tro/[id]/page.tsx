@@ -105,7 +105,7 @@ export default function RoleDetailPage({ params }: { params: { id: string } }) {
 
   const onSubmit = async (data: RoleFormValues) => {
     try {
-      console.log(data);
+      // console.log(data);
       setIsSubmitting(true);
 
       // Thêm tiền tố ROLE_ nếu chưa có

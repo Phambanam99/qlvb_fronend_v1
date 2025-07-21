@@ -4,6 +4,7 @@ import { ResponseDTO } from "./types";
 export interface AuthRequest {
   username: string;
   password: string;
+  rememberMe?: boolean;
 }
 
 export interface AuthResponse {
@@ -12,6 +13,20 @@ export interface AuthResponse {
   refreshToken: string;
   user: User;
   roles: string[];
+  rememberMe?: boolean;
+}
+
+export interface RefreshTokenRequest {
+  refreshToken: string;
+}
+
+export interface RefreshTokenResponse {
+  accessToken: string;
+  refreshToken: string;
+  user: User;
+  roles: string[];
+  tokenType: string;
+  expiresIn: number;
 }
 
 export interface RegisterRequest {
@@ -28,14 +43,30 @@ export const authAPI = {
    * Login user
    * @param username Username
    * @param password Password
+   * @param rememberMe Remember me option
    * @returns Authentication response with token and user info
    */
-  login: async (username: string, password: string): Promise<ResponseDTO<AuthResponse> >=> {
+  login: async (username: string, password: string, rememberMe: boolean = false): Promise<ResponseDTO<AuthResponse> >=> {
     try {
-      const response = await api.post("/auth/login", { username, password });
+      const response = await api.post("/auth/login", { username, password, rememberMe });
       return response.data;
     } catch (error) {
       console.error("Login error:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Refresh access token
+   * @param refreshToken Refresh token
+   * @returns New access token and refresh token
+   */
+  refreshToken: async (refreshToken: string): Promise<ResponseDTO<RefreshTokenResponse>> => {
+    try {
+      const response = await api.post("/auth/refresh-token", { refreshToken });
+      return response.data;
+    } catch (error) {
+      console.error("Token refresh error:", error);
       throw error;
     }
   },

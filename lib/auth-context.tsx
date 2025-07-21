@@ -43,15 +43,74 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
 
-  const validateToken = () => {
+  const getStoredRememberMe = () => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("rememberMe") === "true";
+    }
+    return false;
+  };
+
+  const setStoredRememberMe = (value: boolean) => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("rememberMe", value.toString());
+    }
+  };
+
+  const refreshAccessToken = async (): Promise<boolean> => {
+    try {
+      const refreshToken = localStorage.getItem("refreshToken");
+      if (!refreshToken) {
+        return false;
+      }
+
+      const response = await authAPI.refreshToken(refreshToken);
+      if (response.success && response.data) {
+        const { accessToken, refreshToken: newRefreshToken, user } = response.data;
+        
+        // Update tokens
+        localStorage.setItem("accessToken", accessToken);
+        localStorage.setItem("refreshToken", newRefreshToken);
+        
+        // Update cookie based on remember me preference
+        const rememberMe = getStoredRememberMe();
+        if (rememberMe) {
+          Cookies.set("auth-token", accessToken, {
+            expires: 7, // 7 days for remember me
+            sameSite: "strict",
+          });
+        } else {
+          Cookies.set("auth-token", accessToken, { sameSite: "strict" });
+        }
+
+        // Update user info
+        setUser(user);
+
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error("Token refresh failed:", error);
+      return false;
+    }
+  };
+
+  const validateToken = async () => {
     const token = localStorage.getItem("accessToken");
 
     if (isTokenExpired(token)) {
-      console.log(
-        "AuthContext: Token hết hạn hoặc không hợp lệ, tự động đăng xuất"
-      );
+      console.log("AuthContext: Token expired, attempting to refresh...");
+      
+      // Try to refresh token
+      const refreshSuccess = await refreshAccessToken();
+      if (refreshSuccess) {
+        console.log("AuthContext: Token refreshed successfully");
+        return true;
+      }
+      
+      console.log("AuthContext: Token refresh failed, logging out");
       localStorage.removeItem("accessToken");
       localStorage.removeItem("refreshToken");
+      localStorage.removeItem("rememberMe");
       Cookies.remove("auth-token");
       setUser(null);
       setIsAuthenticated(false);
@@ -70,34 +129,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // console.log("AuthContext: Checking authentication status...");
         const token = localStorage.getItem("accessToken");
 
-        if (token && !isTokenExpired(token)) {
-          // console.log(
-          //   "AuthContext: Token found and valid, fetching current user..."
-          // );
-          const userData_ = await authAPI.getCurrentUser();
-          const userData = userData_.data;
-          if (userData) {
-            console.log(
-              "AuthContext: User data retrieved successfully:",
-              userData
-            );
-            setUser({
-              ...userData,
-              fullName: userData.fullName || userData.name,
-            });
-            setIsAuthenticated(true);
-          } else {
-            console.warn("AuthContext: User data is empty or invalid");
-            setIsAuthenticated(false);
+        if (token) {
+          // Validate token and refresh if needed
+          const isValid = await validateToken();
+          
+          if (isValid) {
+            // console.log("AuthContext: Token valid, fetching current user...");
+            const userData_ = await authAPI.getCurrentUser();
+            const userData = userData_.data;
+            if (userData) {
+              // console.log("AuthContext: User data retrieved successfully:", userData);
+              setUser(userData);
+              setIsAuthenticated(true);
+            } else {
+              console.warn("AuthContext: User data is empty or invalid");
+              setIsAuthenticated(false);
+            }
           }
         } else {
-          if (token) {
-            console.log("AuthContext: Token found but expired");
-          } else {
-            console.log("AuthContext: No token found");
-          }
+          // console.log("AuthContext: No token found");
           localStorage.removeItem("accessToken");
           localStorage.removeItem("refreshToken");
+          localStorage.removeItem("rememberMe");
           Cookies.remove("auth-token");
           setIsAuthenticated(false);
         }
@@ -105,6 +158,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error("AuthContext: Auth check failed:", err);
         localStorage.removeItem("accessToken");
         localStorage.removeItem("refreshToken");
+        localStorage.removeItem("rememberMe");
         Cookies.remove("auth-token");
         setIsAuthenticated(false);
       } finally {
@@ -117,11 +171,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     checkAuth();
 
-    const tokenCheckInterval = setInterval(() => {
+    // Set up auto-refresh interval
+    const tokenCheckInterval = setInterval(async () => {
       if (isAuthenticated) {
-        validateToken();
+        await validateToken();
       }
-    }, 60000);
+    }, 5 * 60 * 1000); // Check every 5 minutes
 
     return () => {
       clearInterval(tokenCheckInterval);
@@ -137,8 +192,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(true);
       setDataLoading(true);
       setError(null);
-      console.log("Đang thực hiện đăng nhập cho tài khoản:", username);
-      const userData_ = await authAPI.login(username, password);
+      // console.log("Đang thực hiện đăng nhập cho tài khoản:", username);
+      const userData_ = await authAPI.login(username, password, rememberMe);
       
       if (userData_.success === false) {
         setError(userData_.message);
@@ -147,6 +202,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const userData = userData_.data;
       const { accessToken, refreshToken, user } = userData;
 
+      // Store remember me preference
+      setStoredRememberMe(rememberMe);
 
       // Lưu token với đúng property names từ backend
       localStorage.setItem("accessToken", accessToken);
@@ -154,24 +211,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (rememberMe) {
         Cookies.set("auth-token", accessToken, {
-          expires: 30,
+          expires: 7, // 7 days for remember me
           sameSite: "strict",
         });
       } else {
         Cookies.set("auth-token", accessToken, { sameSite: "strict" });
       }
 
-      const userInfo = {
-        id: String(userData.user.id),
-        name: userData.user.fullName,
+      const userInfo: User = {
+        id: userData.user.id,
         username: userData.user.username,
+        fullName: userData.user.fullName,
         email: userData.user.email,
         roles: userData.user.roles,
         departmentId: userData.user.departmentId,
-        fullName:  userData.user.fullName,
+        roleId: userData.user.roleId || 0,
+        createdAt: userData.user.createdAt || new Date().toISOString(),
+        updatedAt: userData.user.updatedAt || new Date().toISOString(),
       };
 
-      console.log("Login successful", userInfo);
+      // console.log("Login successful", userInfo);
       setUser(userInfo);
       setIsAuthenticated(true);
 
@@ -194,6 +253,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       localStorage.removeItem("accessToken");
       localStorage.removeItem("refreshToken");
+      localStorage.removeItem("rememberMe");
       Cookies.remove("auth-token");
       setUser(null);
       router.push("/dang-nhap");
@@ -206,7 +266,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const checkAuth = async () => {
     try {
       setLoading(true);
-      if (!validateToken()) {
+      const isValid = await validateToken();
+      if (!isValid) {
         setUser(null);
         return;
       }
@@ -214,10 +275,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const userData_ = await authAPI.getCurrentUser();
       const userData = userData_.data;
       if (userData) {
-        setUser({
-          ...userData.user,
-          fullName: userData.fullName || userData.name,
-        });
+        setUser(userData);
       }
     } catch (error) {
       setUser(null);

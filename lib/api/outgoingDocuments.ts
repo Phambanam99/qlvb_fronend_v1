@@ -89,7 +89,7 @@ export const outgoingDocumentsAPI = {
         attachments: [],
         history: [],
       };
-      console.log(document);
+      // console.log(document);
       return { data: document };
     } catch (error) {
       console.error("Error fetching outgoing document:", error);
@@ -226,7 +226,7 @@ export const outgoingDocumentsAPI = {
       });
       return response.data;
     } catch (error: any) {
-      console.log("Primary endpoint failed, trying alternative...", error);
+      // console.log("Primary endpoint failed, trying alternative...", error);
 
       // Try alternative endpoint if primary fails
       try {
@@ -237,10 +237,10 @@ export const outgoingDocumentsAPI = {
         });
         return response.data;
       } catch (altError: any) {
-        console.log(
-          "Alternative endpoint also failed, trying workflow comment...",
-          altError
-        );
+        // console.log(
+        //   "Alternative endpoint also failed, trying workflow comment...",
+        //   altError
+        // );
 
         // Try workflow comment endpoint as last resort
         const response = await api.put(`/workflow/${id}/comment`, {

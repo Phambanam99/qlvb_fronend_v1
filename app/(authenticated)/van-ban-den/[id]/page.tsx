@@ -151,11 +151,11 @@ export default function DocumentDetailPage({
     }
 
     try {
-      console.log("Bắt đầu tải dữ liệu văn bản:", {
-        documentId,
-        timestamp: new Date().toISOString(),
-        user: user?.fullName,
-      });
+      // console.log("Bắt đầu tải dữ liệu văn bản:", {
+      //   documentId,
+      //   timestamp: new Date().toISOString(),
+      //   user: user?.fullName,
+      // });
 
       // Bắt đầu tải document
       setIsDocumentLoading(true);
@@ -167,19 +167,19 @@ export default function DocumentDetailPage({
         documentId
       );
       const response = response_.data;
-      console.log("1. Tải văn bản thành công:", response);
+      // console.log("1. Tải văn bản thành công:", response);
       setIsDocumentLoading(false);
 
       // Fetch document workflow status
       const workflowStatus_ = await workflowAPI.getDocumentStatus(documentId);
       const workflowStatus = workflowStatus_.data;
-      console.log("2. Tải workflow status thành công:", workflowStatus);
+      // console.log("2. Tải workflow status thành công:", workflowStatus);
       setIsWorkflowLoading(false);
 
       // Fetch document history
       const history_ = await workflowAPI.getDocumentHistory(documentId);
       const history = history_.data;
-      console.log("3. Tải history thành công:", history);
+      // console.log("3. Tải history thành công:", history);
       setIsHistoryLoading(false);
 
       // Combine data
@@ -197,10 +197,10 @@ export default function DocumentDetailPage({
         relatedDocuments: [],
         responses: [],
       };
-      console.log(
-        "✅ Tất cả dữ liệu đã tải xong, bắt đầu render",
-        documentData
-      );
+      // console.log(
+      //   "✅ Tất cả dữ liệu đã tải xong, bắt đầu render",
+      //   documentData
+      // );
       setDocument(documentData);
       setError(null);
     } catch (err: any) {
@@ -460,7 +460,7 @@ export default function DocumentDetailPage({
         documentId.toString()
       );
       const existingDraftsResponse = existingDraftsResponse_.data;
-      console.log("Checking for existing drafts:", existingDraftsResponse);
+      // console.log("Checking for existing drafts:", existingDraftsResponse);
 
       // Look for a draft that was rejected (has status "draft" and was previously rejected in history)
       const existingDraft = existingDraftsResponse?.content?.find(
@@ -544,14 +544,14 @@ export default function DocumentDetailPage({
       _document.processingStatus === "parent_dept_review";
 
     // Kiểm tra trạng thái văn bản và thông tin phân công
-    console.log("Document assignment info:", {
-      document: _document,
-      user: user,
-      departments: departments,
-      currentDeptId: currentDeptId,
-      isCurrentDepartmentAssigned: isCurrentDepartmentAssigned,
-      isForwardedFromChildDept: isForwardedFromChildDept,
-    });
+    // console.log("Document assignment info:", {
+    //   document: _document,
+    //   user: user,
+    //   departments: departments,
+    //   currentDeptId: currentDeptId,
+    //   isCurrentDepartmentAssigned: isCurrentDepartmentAssigned,
+    //   isForwardedFromChildDept: isForwardedFromChildDept,
+    // });
 
     // Sử dụng tiếp cận đơn giản hơn: tạo key riêng để theo dõi xem phòng đã phân công chưa
     const processKey = `document_${_document.id}_dept_${currentDeptId}_assigned`;
@@ -738,12 +738,12 @@ export default function DocumentDetailPage({
       // kiểm tra xem người dùng đã trả lời văn bản trong lịch sử chưa
 
       // Log thông tin để debug
-      console.log("Trợ lý/nhân viên quyền trả lời:", {
-        userId: user.id,
-        userName: user.fullName,
-        assignedToIds: _document.assignedToIds,
-        isAssignedToCurrentUser: isAssignedToCurrentUser,
-      });
+      // console.log("Trợ lý/nhân viên quyền trả lời:", {
+      //   userId: user.id,
+      //   userName: user.fullName,
+      //   assignedToIds: _document.assignedToIds,
+      //   isAssignedToCurrentUser: isAssignedToCurrentUser,
+      // });
 
       // Kiểm tra trong nhiều vị trí khác có thể chứa thông tin phân công
       const isUserAssigned =
@@ -1392,12 +1392,12 @@ export default function DocumentDetailPage({
                       (_document.primaryProcessor &&
                         _document.primaryProcessor == user?.id);
 
-                    console.log("Kiểm tra quyền cập nhật thông tin xử lý:", {
-                      userId: user?.id,
-                      assignedToIds: _document.assignedToIds,
-                      isAssignedToCurrentUser,
-                      isUserAssigned,
-                    });
+                    // console.log("Kiểm tra quyền cập nhật thông tin xử lý:", {
+                    //   userId: user?.id,
+                    //   assignedToIds: _document.assignedToIds,
+                    //   isAssignedToCurrentUser,
+                    //   isUserAssigned,
+                    // });
 
                     // Chỉ hiển thị nút nếu người dùng được phân công xử lý
                     if (isUserAssigned) {

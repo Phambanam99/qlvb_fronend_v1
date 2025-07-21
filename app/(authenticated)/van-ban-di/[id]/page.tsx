@@ -130,7 +130,7 @@ export default function OutgoingDocumentDetailPage({
         if (!isMounted) return;
 
         const documentData = documentResponse.data;
-        console.log("documentData", documentData);
+        // console.log("documentData", documentData);
         // Cập nhật document một lần duy nhất với đầy đủ thông tin
         setDocument({
           ...documentData,
@@ -189,7 +189,7 @@ export default function OutgoingDocumentDetailPage({
   ]);
 
   const getStatusBadge = (status: string) => {
-    console.log("status", status);
+    // console.log("status", status);
     const badgeInfo = getStatusBadgeInfo(status);
     return <Badge variant={badgeInfo.variant}>{badgeInfo.text}</Badge>;
   };
@@ -245,7 +245,7 @@ export default function OutgoingDocumentDetailPage({
         documentId
       );
       const blob = blob_.data;
-      console.log("Blob:", blob);
+      //  console.log("Blob:", blob);
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -630,8 +630,8 @@ export default function OutgoingDocumentDetailPage({
           (item.description.toLowerCase().includes("trả lại") ||
             item.description.toLowerCase().includes("chỉnh sửa thể thức")))
     );
-    console.log("(item.newStatus", _document.history);
-    console.log("wasReturnedByClerk", wasReturnedByClerk);
+    // console.log("(item.newStatus", _document.history);
+    // console.log("wasReturnedByClerk", wasReturnedByClerk);
     // Nếu là trợ lý/nhân viên và văn bản bị văn thư trả lại để chỉnh sửa thể thức
     if (
       hasRole(["ROLE_DRAF", "ROLE_TRO_LY", "ROLE_NHAN_VIEN"]) &&
@@ -838,7 +838,7 @@ export default function OutgoingDocumentDetailPage({
                     history: history,
                   };
                 });
-                console.log("Document after update:", document);
+                // console.log("Document after update:", document);
 
                 toast({
                   title: "Thành công",

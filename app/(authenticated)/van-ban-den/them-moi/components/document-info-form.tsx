@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SearchableSelect, SearchableSelectItem } from "@/components/ui/searchable-select";
 import {
   Dialog,
   DialogTrigger,
@@ -350,35 +351,21 @@ export function DocumentInfoForm({
         <div className="space-y-2">
           <Label htmlFor="documentType">Loại văn bản</Label>
           <div className="flex gap-2">
-            <Select
+            <SearchableSelect
+              items={documentTypes.map((type): SearchableSelectItem => ({
+                value: type.name,
+                label: type.name,
+              }))}
               value={selectedDocumentType || "OFFICIAL_LETTER"}
               onValueChange={setSelectedDocumentType}
-            >
-              <SelectTrigger
-                id="documentType"
-                name="documentType"
-                className="flex-1"
-              >
-                <SelectValue placeholder="Chọn loại văn bản" />
-              </SelectTrigger>
-              <SelectContent>
-                {isLoadingDocumentTypes ? (
-                  <SelectItem value="loading" disabled>
-                    Đang tải...
-                  </SelectItem>
-                ) : documentTypes.length === 0 ? (
-                  <SelectItem value="empty" disabled>
-                    Không có loại văn bản nào
-                  </SelectItem>
-                ) : (
-                  documentTypes.map((type) => (
-                    <SelectItem key={type.id} value={type.name}>
-                      {type.name}
-                    </SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
+              placeholder="Chọn loại văn bản"
+              searchPlaceholder="Tìm kiếm loại văn bản..."
+              emptyMessage="Không tìm thấy loại văn bản phù hợp"
+              loading={isLoadingDocumentTypes}
+              loadingMessage="Đang tải..."
+              disabled={isLoadingDocumentTypes}
+              className="flex-1"
+            />
 
             <Dialog
               open={isDocumentTypeDialogOpen}

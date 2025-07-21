@@ -68,6 +68,11 @@ export default function DocumentTypesPage() {
 
   // Check permissions
   const canManage = hasPermission("ROLE_ADMIN");
+  
+  // console.log("🔐 Document Types Page - Permission check:", {
+  //   canManage,
+  //   hasPermission: typeof hasPermission,
+  // });
 
   // Fetch document types
   const fetchDocumentTypes = async () => {
@@ -189,6 +194,14 @@ export default function DocumentTypesPage() {
     setFormData({ name: "" });
   };
 
+  // Handle button click
+  const handleAddButtonClick = () => {
+    // console.log("➕ Add Document Type button clicked");
+    // console.log("🔍 Current dialog state before:", isDialogOpen);
+    setIsDialogOpen(true);
+    // console.log("🔍 Setting dialog state to: true");
+  };
+
   if (!canManage) {
     return (
       <div className="container mx-auto p-6">
@@ -204,7 +217,7 @@ export default function DocumentTypesPage() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto max-w-full px-4 py-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="space-y-1">
@@ -230,13 +243,12 @@ export default function DocumentTypesPage() {
             Làm mới
           </Button>
 
+          <Button onClick={handleAddButtonClick}>
+            <Plus className="h-4 w-4 mr-2" />
+            Thêm loại văn bản
+          </Button>
+
           <Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
-            <DialogTrigger asChild>
-              <Button onClick={() => setIsDialogOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Thêm loại văn bản
-              </Button>
-            </DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
                 <DialogTitle>

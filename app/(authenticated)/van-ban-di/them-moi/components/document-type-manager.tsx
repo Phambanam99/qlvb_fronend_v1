@@ -50,7 +50,7 @@ export function DocumentTypeManager({
         setIsLoadingDocumentTypes(true);
         const types_ = await documentTypesAPI.getAllDocumentTypes();
         const types = types_.data;
-        console.log("Fetched Document Types:", types);
+        // console.log("Fetched Document Types:", types);
         setDocumentTypes(types);
       } catch (error) {
         console.error("Error fetching document types:", error);
@@ -96,12 +96,12 @@ export function DocumentTypeManager({
         isActive: true,
       };
 
-      console.log("Creating Document Type:", documentTypeData);
+      // console.log("Creating Document Type:", documentTypeData);
       const createdType_ = await documentTypesAPI.createDocumentType(
         documentTypeData
       );
       const createdType = createdType_.data;
-      console.log("Created Document Type:", createdType);
+      // console.log("Created Document Type:", createdType);
 
       // Add the new document type to the list
       setDocumentTypes((prevTypes) => [...prevTypes, createdType]);

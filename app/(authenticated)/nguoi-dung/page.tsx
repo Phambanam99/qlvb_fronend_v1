@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +37,7 @@ import {
   Plus,
   Search,
   UserCog,
+  RotateCcw,
 } from "lucide-react";
 import { UserDTO, usersAPI } from "@/lib/api/users";
 import { rolesAPI } from "@/lib/api/roles";
@@ -58,11 +59,17 @@ export default function UsersPage() {
   const [departments, setDepartments] = useState<PageResponse<DepartmentDTO>>();
   const [loading, setLoading] = useState(true);
 
-  // Filter states
+  // Filter states (form values - not yet applied)
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [departmentFilter, setDepartmentFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+
+  // Applied filter states (actually used for API calls)
+  const [appliedSearchTerm, setAppliedSearchTerm] = useState("");
+  const [appliedRoleFilter, setAppliedRoleFilter] = useState("all");
+  const [appliedDepartmentFilter, setAppliedDepartmentFilter] = useState("all");
+  const [appliedStatusFilter, setAppliedStatusFilter] = useState("all");
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(0);
@@ -73,7 +80,18 @@ export default function UsersPage() {
   const { user, hasRole } = useAuth();
 
   // Function to fetch users with pagination
-  const fetchUsers = async (page: number, size: number, filters: any = {}) => {
+  const fetchUsers = useCallback(async (page: number, size: number) => {
+    // console.log('📡 fetchUsers called with:', {
+    //   page,
+    //   size,
+    //   appliedFilters: {
+    //     appliedSearchTerm,
+    //     appliedRoleFilter,
+    //     appliedDepartmentFilter,
+    //     appliedStatusFilter
+    //   }
+    // });
+    
     setLoading(true);
 
     try {
@@ -101,39 +119,51 @@ export default function UsersPage() {
         "ROLE_TRAM_TRUONG",
       ]);
 
-      // Prepare filter parameters
+      // Prepare filter parameters using applied filters
       const params: any = {
         page,
         size,
-        ...filters,
       };
 
       // Apply role filter if selected
-      if (roleFilter !== "all") {
-        params.roleId = roleFilter;
+      if (appliedRoleFilter !== "all") {
+        params.roleId = appliedRoleFilter;
       }
 
       // Apply status filter if selected
-      if (statusFilter !== "all") {
-        params.status = statusFilter === "active" ? 1 : 0;
+      if (appliedStatusFilter !== "all") {
+        params.status = appliedStatusFilter === "active" ? 1 : 0;
       }
 
       // Apply search term if provided
-      if (searchTerm.trim()) {
-        params.keyword = searchTerm.trim();
+      if (appliedSearchTerm.trim()) {
+        params.keyword = appliedSearchTerm.trim();
       }
+
+      // console.log('👤 User permissions:', {
+      //   userRoles: user?.roles,
+      //   userDepartmentId: user?.departmentId,
+      //   isAdmin,
+      //   isLeadership,
+      //   isDepartmentHead
+      // });
 
       let usersData;
 
       if (isAdmin || isLeadership) {
+        // console.log('🔑 Admin/Leadership branch');
         // Admin and leadership see all users with pagination
         // Apply department filter if selected
-        if (departmentFilter !== "all") {
-          params.departmentId = departmentFilter;
+        if (appliedDepartmentFilter !== "all") {
+          params.departmentId = appliedDepartmentFilter;
+          // console.log('✅ Added departmentId to params:', appliedDepartmentFilter);
         }
+        
+        // console.log('🌐 Final API params for Admin/Leadership:', params);
         const usersData_ = await usersAPI.getPaginatedUsers(params);
         usersData = usersData_.data;
       } else if (isDepartmentHead && userDepartmentId) {
+        // console.log('🏢 Department Head branch');
         // Department heads see users in their department and child departments
         let departmentIds = [Number(userDepartmentId)];
 
@@ -152,23 +182,29 @@ export default function UsersPage() {
           // Continue with just the current department
         }
 
+        // console.log('🏢 Allowed department IDs:', departmentIds);
+        // console.log('🎯 Applied department filter:', appliedDepartmentFilter);
+
         // If department filter is selected and it's within allowed departments, use it
         if (
-          departmentFilter !== "all" &&
-          departmentIds.includes(Number(departmentFilter))
+          appliedDepartmentFilter !== "all" &&
+          departmentIds.includes(Number(appliedDepartmentFilter))
         ) {
-          params.departmentId = departmentFilter;
+          // console.log('✅ Department filter applied');
+          params.departmentId = appliedDepartmentFilter;
+          // console.log('🌐 Final API params for Department Head (filtered):', params);
           const usersData_ = await usersAPI.getPaginatedUsers(params);
           usersData = usersData_.data;
-        } else {
-          // Otherwise, filter by all allowed departments
-          // For API calls, we'll need to call multiple times or use a department list filter
-          // For now, let's get all users and filter client-side
+        } else if (appliedDepartmentFilter === "all") {
+          // console.log('🔄 Fetching from all allowed departments');
+          // No specific department filter, get all users from allowed departments
+          // Since API doesn't support multiple department IDs, we'll call for each department
           const allUsersInDepartments = [];
 
           for (const deptId of departmentIds) {
             try {
               const deptParams = { ...params, departmentId: deptId };
+              // console.log('🌐 API params for dept', deptId, ':', deptParams);
               const deptUsers_ = await usersAPI.getPaginatedUsers(deptParams);
               const deptUsers = deptUsers_.data;
               allUsersInDepartments.push(...deptUsers.content);
@@ -198,8 +234,19 @@ export default function UsersPage() {
             size,
             number: page,
           };
+        } else {
+          // console.log('❌ Department filter not allowed for this user');
+          // Department filter selected but not allowed for this user
+          usersData = {
+            content: [],
+            totalElements: 0,
+            totalPages: 0,
+            size,
+            number: page,
+          };
         }
       } else {
+          //
         // Regular users can only see themselves - no need for pagination here
         usersData = {
           content: user ? [user as UserDTO] : [],
@@ -223,7 +270,7 @@ export default function UsersPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, appliedRoleFilter, appliedStatusFilter, appliedSearchTerm, appliedDepartmentFilter, toast]);
 
   // Fetch initial data: roles and departments
   useEffect(() => {
@@ -297,9 +344,6 @@ export default function UsersPage() {
             content: allowedDepartments,
             totalElements: allowedDepartments.length,
           });
-
-          // Don't pre-select department filter for department heads anymore
-          // Let them choose from their allowed departments
         } else {
           // Regular users see no department filter options (they can only see themselves)
           setDepartments({
@@ -308,9 +352,6 @@ export default function UsersPage() {
             totalElements: 0,
           });
         }
-
-        // Initial fetch of users
-        fetchUsers(currentPage, itemsPerPage);
       } catch (error) {
         console.error("Error fetching initial data:", error);
         toast({
@@ -322,43 +363,41 @@ export default function UsersPage() {
       }
     };
 
-    fetchInitialData();
-  }, []);
+    // Only fetch initial data when user is available
+    if (user) {
+      fetchInitialData();
+    }
+  }, [user, toast]);
 
-  // Refetch users when filters or pagination changes
+  // Refetch users when applied filters or pagination changes
   useEffect(() => {
-    const filters = {
-      roleId: roleFilter !== "all" ? roleFilter : undefined,
-      departmentId: departmentFilter !== "all" ? departmentFilter : undefined,
-      status:
-        statusFilter !== "all"
-          ? statusFilter === "active"
-            ? 1
-            : 0
-          : undefined,
-      keyword: searchTerm.trim() || undefined,
-    };
+    // Skip if user data or roles/departments haven't loaded yet
+    if (!user || !roles.length || !departments) {
+      return;
+    }
 
-    // Use debounce for search term to prevent too many API calls
-    const timer = setTimeout(() => {
-      fetchUsers(currentPage, itemsPerPage, filters);
-    }, 300);
+    // console.log('🔍 Applied filters changed:', {
+    //   appliedSearchTerm,
+    //   appliedRoleFilter,
+    //   appliedDepartmentFilter,
+    //   appliedStatusFilter,
+    //   currentPage,
+    //   itemsPerPage
+    // });
 
-    return () => clearTimeout(timer);
+    fetchUsers(currentPage, itemsPerPage);
   }, [
     currentPage,
     itemsPerPage,
-    roleFilter,
-    departmentFilter,
-    statusFilter,
-    searchTerm,
+    fetchUsers,
+    user,
+    roles,
+    departments,
+    appliedSearchTerm,
+    appliedRoleFilter,
+    appliedDepartmentFilter,
+    appliedStatusFilter,
   ]);
-
-  // Apply filters and reset to first page
-  const applyFilters = () => {
-    // Reset to first page when filters change
-    setCurrentPage(0);
-  };
 
   // Page change handler
   const handlePageChange = (page: number) => {
@@ -373,6 +412,40 @@ export default function UsersPage() {
     setCurrentPage(0); // Reset to first page when changing items per page
   };
 
+  // Apply filters function
+  const applyFilters = () => {
+    console.log('🚀 Apply filters clicked:', {
+      from: { searchTerm, roleFilter, departmentFilter, statusFilter },
+      to: { 
+        appliedSearchTerm: searchTerm, 
+        appliedRoleFilter: roleFilter, 
+        appliedDepartmentFilter: departmentFilter, 
+        appliedStatusFilter: statusFilter 
+      }
+    });
+    
+    setAppliedSearchTerm(searchTerm);
+    setAppliedRoleFilter(roleFilter);
+    setAppliedDepartmentFilter(departmentFilter);
+    setAppliedStatusFilter(statusFilter);
+    setCurrentPage(0); // Reset to first page when applying filters
+  };
+
+  // Reset filters function
+  const resetFilters = () => {
+    // console.log('🔄 Reset filters clicked');
+    
+    setSearchTerm("");
+    setRoleFilter("all");
+    setDepartmentFilter("all");
+    setStatusFilter("all");
+    setAppliedSearchTerm("");
+    setAppliedRoleFilter("all");
+    setAppliedDepartmentFilter("all");
+    setAppliedStatusFilter("all");
+    setCurrentPage(0);
+  };
+
   const getRoleName = (roleId: string) => {
     const role = roles.find((r) => r.id === roleId);
     return role ? role.name : "Không xác định";
@@ -385,7 +458,7 @@ export default function UsersPage() {
     return department ? department.name : "Không xác định";
   };
 
-  if (loading && currentPage === 0) {
+  if (loading && currentPage === 0 && !users.length) {
     return (
       <div className="flex h-[calc(100vh-4rem)] w-full items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -394,7 +467,7 @@ export default function UsersPage() {
   }
 
   return (
-    <div className="container py-6">
+    <div className="container mx-auto max-w-full px-4 py-6">
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold">Quản lý người dùng</h1>
 
@@ -420,7 +493,7 @@ export default function UsersPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">Tìm kiếm</label>
               <div className="relative">
@@ -429,11 +502,7 @@ export default function UsersPage() {
                   placeholder="Tìm theo tên, email..."
                   className="pl-8"
                   value={searchTerm}
-                  onChange={(e) => {
-                    setSearchTerm(e.target.value);
-                    // Reset to first page when search changes
-                    setCurrentPage(0);
-                  }}
+                  onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
             </div>
@@ -442,10 +511,7 @@ export default function UsersPage() {
               <label className="text-sm font-medium">Vai trò</label>
               <Select
                 value={roleFilter}
-                onValueChange={(value) => {
-                  setRoleFilter(value);
-                  applyFilters();
-                }}
+                onValueChange={setRoleFilter}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Chọn vai trò" />
@@ -465,10 +531,7 @@ export default function UsersPage() {
               <label className="text-sm font-medium">Phòng ban</label>
               <Select
                 value={departmentFilter}
-                onValueChange={(value) => {
-                  setDepartmentFilter(value);
-                  applyFilters();
-                }}
+                onValueChange={setDepartmentFilter}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Chọn phòng ban" />
@@ -491,10 +554,7 @@ export default function UsersPage() {
               <label className="text-sm font-medium">Trạng thái</label>
               <Select
                 value={statusFilter}
-                onValueChange={(value) => {
-                  setStatusFilter(value);
-                  applyFilters();
-                }}
+                onValueChange={setStatusFilter}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Chọn trạng thái" />
@@ -507,6 +567,25 @@ export default function UsersPage() {
               </Select>
             </div>
           </div>
+          
+          {/* Filter action buttons */}
+          <div className="flex gap-2 mt-4 justify-end">
+            <Button
+              variant="outline"
+              onClick={resetFilters}
+              disabled={loading}
+            >
+              <RotateCcw className="mr-2 h-4 w-4" />
+              Đặt lại
+            </Button>
+            <Button
+              onClick={applyFilters}
+              disabled={loading}
+            >
+              <Search className="mr-2 h-4 w-4" />
+              Tìm kiếm
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
@@ -517,22 +596,22 @@ export default function UsersPage() {
             Hiển thị {users.length} / {totalUsers} người dùng
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="rounded-md border">
+        <CardContent className="px-0">
+          <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Họ tên</TableHead>
-                  <TableHead>Vai trò</TableHead>
-                  <TableHead>Phòng ban</TableHead>
-                  <TableHead>Trạng thái</TableHead>
-                  <TableHead className="text-right">Thao tác</TableHead>
+                  <TableHead className="px-6">Họ tên</TableHead>
+                  <TableHead className="px-6">Vai trò</TableHead>
+                  <TableHead className="px-6">Phòng ban</TableHead>
+                  <TableHead className="px-6">Trạng thái</TableHead>
+                  <TableHead className="px-6 text-right">Thao tác</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center">
+                    <TableCell colSpan={5} className="h-24 text-center px-6">
                       <div className="flex justify-center items-center">
                         <Loader2 className="h-6 w-6 animate-spin text-primary mr-2" />
                         Đang tải dữ liệu...
@@ -541,23 +620,23 @@ export default function UsersPage() {
                   </TableRow>
                 ) : users.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center">
+                    <TableCell colSpan={5} className="h-24 text-center px-6">
                       Không tìm thấy người dùng nào
                     </TableCell>
                   </TableRow>
                 ) : (
                   users.map((user) => (
                     <TableRow key={user.id}>
-                      <TableCell className="font-medium">
+                      <TableCell className="font-medium px-6">
                         {user.fullName}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="px-6">
                         {user.roleDisplayNames?.[0] || "Không xác định"}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="px-6">
                         {getDepartmentName(user.departmentId)}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="px-6">
                         {user.status === 1 ? (
                           <Badge
                             variant="outline"
@@ -574,7 +653,7 @@ export default function UsersPage() {
                           </Badge>
                         )}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="px-6 text-right">
                         <Link href={`/nguoi-dung/${user.id}`}>
                           <Button variant="ghost" size="icon">
                             <UserCog className="h-4 w-4" />

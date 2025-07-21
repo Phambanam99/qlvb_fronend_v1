@@ -396,11 +396,11 @@ export default function ReplyInternalDocumentPage() {
       };
 
       // Log the data being sent to debug
-      console.log("Sending reply data:", {
-        originalDocumentId: Number(originalDocumentId),
-        replyData,
-        hasFiles: files.length > 0
-      });
+      // console.log("Sending reply data:", {
+      //   originalDocumentId: Number(originalDocumentId),
+      //   replyData,
+      //   hasFiles: files.length > 0
+      // });
 
       // Submit the reply
       let result_;
@@ -410,7 +410,7 @@ export default function ReplyInternalDocumentPage() {
         result_ = await replyToDocument(Number(originalDocumentId), replyData);
       }
 
-      console.log("API Response:", result_);
+      // console.log("API Response:", result_);
 
       // Check for errors in the response
       if (result_.success === false || (result_.message && result_.data === null)) {
@@ -1084,13 +1084,6 @@ export default function ReplyInternalDocumentPage() {
             </CardContent>
           </Card>
         </form>
-
-        <div className="rounded-md bg-amber-50 border border-amber-200 p-3">
-          <p className="text-sm text-amber-800">
-            <span className="font-medium">Lưu ý:</span> Văn bản trả lời sẽ được
-            gửi trực tiếp đến người gửi văn bản gốc và đơn vị liên quan.
-          </p>
-        </div>
       </div>
     </div>  
   );

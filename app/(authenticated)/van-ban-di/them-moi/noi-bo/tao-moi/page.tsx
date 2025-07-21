@@ -37,6 +37,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SearchableSelect, SearchableSelectItem } from "@/components/ui/searchable-select";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -582,33 +583,22 @@ export default function CreateInternalOutgoingDocumentPage() {
 
                 <div className="space-y-2">
                   <Label htmlFor="documentType">Loại văn bản</Label>
-                  <Select
+                  <SearchableSelect
+                    items={(documentTypes || []).map((type): SearchableSelectItem => ({
+                      value: type.name,
+                      label: type.name,
+                    }))}
                     value={formData.documentType}
                     onValueChange={(value) =>
                       handleSelectChange("documentType", value)
                     }
-                  >
-                    <SelectTrigger id="documentType">
-                      <SelectValue placeholder="Chọn loại văn bản" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {isLoadingDocumentTypes ? (
-                        <SelectItem value="loading" disabled>
-                          Đang tải danh sách loại văn bản...
-                        </SelectItem>
-                      ) : documentTypes.length === 0 ? (
-                        <SelectItem value="empty" disabled>
-                          Chưa có loại văn bản nào
-                        </SelectItem>
-                      ) : (
-                        documentTypes.map((type) => (
-                          <SelectItem key={type.id} value={type.name}>
-                            {type.name}
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
+                    placeholder="Chọn loại văn bản"
+                    searchPlaceholder="Tìm kiếm loại văn bản..."
+                    emptyMessage="Không tìm thấy loại văn bản phù hợp"
+                    loading={isLoadingDocumentTypes}
+                    loadingMessage="Đang tải danh sách loại văn bản..."
+                    disabled={isLoadingDocumentTypes}
+                  />
                 </div>
               </div>
 
@@ -657,17 +647,6 @@ export default function CreateInternalOutgoingDocumentPage() {
                       </SelectItem>
                     </SelectContent>
                   </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="signer">Người ký</Label>
-                  <Input
-                    id="signer"
-                    name="signer"
-                    value={formData.signer}
-                    onChange={handleInputChange}
-                    placeholder="Nhập người ký"
-                  />
                 </div>
               </div>
 
@@ -754,15 +733,13 @@ export default function CreateInternalOutgoingDocumentPage() {
                         </SelectItem>
                       ))}
                       {leadershipUsers.length === 0 && !isLoadingLeadershipUsers && (
-                        <SelectItem value="" disabled>
+                        <SelectItem value="no-leaders" disabled>
                           Không có lãnh đạo trong đơn vị
                         </SelectItem>
                       )}
                     </SelectContent>
                   </Select>
-                  <p className="text-sm text-gray-500">
-                    Chỉ hiển thị lãnh đạo đơn vị của bạn
-                  </p>
+                 
                 </div>
               </div>
 
@@ -1034,14 +1011,7 @@ export default function CreateInternalOutgoingDocumentPage() {
             </CardContent>
           </Card>
 
-          {/* Info Note */}
-          <div className="rounded-md bg-amber-50 border border-amber-200 p-4">
-            <p className="text-sm text-amber-800">
-              <span className="font-medium">Lưu ý:</span> Văn bản nội bộ sẽ được
-              gửi đến tất cả phòng ban và cá nhân được chọn. Văn bản được gửi
-              đến phòng ban sẽ được chuyển đến trưởng phòng của phòng ban đó.
-            </p>
-          </div>
+        
         </form>
       </div>
     </div>

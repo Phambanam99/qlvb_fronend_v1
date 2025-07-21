@@ -62,6 +62,64 @@ export interface UserActivityDTO {
   currentAssignments: number;
 }
 
+// Comprehensive dashboard stats interface based on backend API
+export interface ComprehensiveDashboardStats {
+  generatedAt: string;
+  userId: number;
+  userRole: string;
+  departmentName: string;
+  incomingDocuments: {
+    total: number;
+    internal: number;
+    external: number;
+    notProcessed: number;
+    inProcess: number;
+    processed: number;
+  };
+  outgoingDocuments: {
+    total: number;
+    internal: number;
+    external: number;
+    draft: number;
+    pending: number;
+    published: number;
+  };
+  internalDocuments: {
+    total: number;
+    sent: number;
+    received: number;
+    unread: number;
+    urgent: number;
+    // Detailed breakdown for internal documents
+    sentTotal?: number;
+    sentSent?: number;
+    sentDraft?: number;
+    receivedTotal?: number;
+    receivedRead?: number;
+    receivedUnread?: number;
+  };
+  overallStats: {
+    totalDocuments: number;
+    totalUnread: number;
+    totalPendingApproval: number;
+    totalUrgent: number;
+    todayDocuments: number;
+    thisWeekDocuments: number;
+    thisMonthDocuments: number;
+  };
+  periodStats: {
+    todayCount: number;
+    yesterdayCount: number;
+    thisWeekCount: number;
+    lastWeekCount: number;
+    thisMonthCount: number;
+    lastMonthCount: number;
+    weekGrowthPercent: number;
+    monthGrowthPercent: number;
+  };
+  recentDocuments: any[];
+}
+
 export const dashboardAPI = {
   /**
    * Get system dashboard statistics
@@ -69,7 +127,7 @@ export const dashboardAPI = {
    */
   getSystemDashboardStatistics: async (): Promise<DashboardDTO> => {
     const response = await api.get("/dashboard");
-    return response.data;
+    return response.data.data || response.data;
   },
 
   /**
@@ -78,7 +136,7 @@ export const dashboardAPI = {
    */
   getCurrentUserDashboardStatistics: async (): Promise<DashboardDTO> => {
     const response = await api.get("/dashboard/me");
-    return response.data;
+    return response.data.data || response.data;
   },
 
   /**
@@ -90,9 +148,7 @@ export const dashboardAPI = {
     departmentId: number
   ): Promise<DashboardDTO> => {
     const response = await api.get(`/dashboard/department/${departmentId}`);
-    console.log("response", departmentId);
-    console.log("response heehe ", response.data);
-    return response.data;
+    return response.data.data || response.data;
   },
 
   /**
@@ -102,16 +158,16 @@ export const dashboardAPI = {
    */
   getUserDashboardStatistics: async (userId: number): Promise<DashboardDTO> => {
     const response = await api.get(`/dashboard/user/${userId}`);
-    return response.data;
+    return response.data.data || response.data;
   },
 
   /**
-   * Get dashboard stats
-   * @returns Dashboard stats object
+   * Get comprehensive dashboard stats - MAIN API ENDPOINT
+   * @returns Comprehensive dashboard stats object based on user role
    */
-  getDashboardStats: async (): Promise<Record<string, any>> => {
+  getDashboardStats: async (): Promise<ComprehensiveDashboardStats> => {
     const response = await api.get("/dashboard/stats");
-    return response.data;
+    return response.data.data || response.data;
   },
 
   /**
@@ -120,7 +176,7 @@ export const dashboardAPI = {
    */
   getStatusBreakdown: async (): Promise<Record<string, any>> => {
     const response = await api.get("/dashboard/status-breakdown");
-    return response.data;
+    return response.data.data || response.data;
   },
 
   /**
@@ -129,7 +185,7 @@ export const dashboardAPI = {
    */
   getQuickMetrics: async (): Promise<Record<string, any>> => {
     const response = await api.get("/dashboard/quick-metrics");
-    return response.data;
+    return response.data.data || response.data;
   },
 
   /**
@@ -138,7 +194,7 @@ export const dashboardAPI = {
    */
   getPeriodStats: async (): Promise<Record<string, any>> => {
     const response = await api.get("/dashboard/period-stats");
-    return response.data;
+    return response.data.data || response.data;
   },
 
   /**
@@ -147,7 +203,7 @@ export const dashboardAPI = {
    */
   getOverallStats: async (): Promise<Record<string, any>> => {
     const response = await api.get("/dashboard/overall-stats");
-    return response.data;
+    return response.data.data || response.data;
   },
 
   /**
@@ -156,7 +212,7 @@ export const dashboardAPI = {
    */
   getIncomingDocumentStats: async (): Promise<Record<string, any>> => {
     const response = await api.get("/dashboard/incoming-stats");
-    return response.data;
+    return response.data.data || response.data;
   },
 
   /**
@@ -165,7 +221,7 @@ export const dashboardAPI = {
    */
   getOutgoingDocumentStats: async (): Promise<Record<string, any>> => {
     const response = await api.get("/dashboard/outgoing-stats");
-    return response.data;
+    return response.data.data || response.data;
   },
 
   /**
@@ -174,7 +230,7 @@ export const dashboardAPI = {
    */
   getInternalDocumentStats: async (): Promise<Record<string, any>> => {
     const response = await api.get("/dashboard/internal-stats");
-    return response.data;
+    return response.data.data || response.data;
   },
 
   /**
@@ -183,7 +239,7 @@ export const dashboardAPI = {
    */
   getRecentDocuments: async (): Promise<any> => {
     const response = await api.get("/dashboard/recent-documents");
-    return response.data;
+    return response.data.data || response.data;
   },
 
   /**
@@ -196,7 +252,8 @@ export const dashboardAPI = {
       ? { date }
       : { date: new Date().toISOString().split("T")[0] };
     const response = await api.get("/dashboard/schedules/today", { params });
-    return response.data;
+    // Fix: Backend returns ResponseDTO<List<ScheduleEventDTO>>, so we need .data.data
+    return response.data.data || response.data || [];
   },
 
   // Legacy methods (kept for backward compatibility)

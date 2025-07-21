@@ -93,10 +93,10 @@ export function RecipientSelector({
         name: newRecipient.trim(),
       };
 
-      console.log("Creating Recipient:", senderData);
+      // console.log("Creating Recipient:", senderData);
       const createdRecipient_ = await senderApi.createSender(senderData);
       const createdRecipient = createdRecipient_.data;
-      console.log("Created Recipient:", createdRecipient);
+      // console.log("Created Recipient:", createdRecipient);
 
       // Add the new recipient to the list
       setRecipients((prevRecipients) => [...prevRecipients, createdRecipient]);

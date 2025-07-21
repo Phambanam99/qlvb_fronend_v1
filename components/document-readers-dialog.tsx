@@ -69,12 +69,12 @@ export function DocumentReadersDialog({
       setError(null);
       
       // Debug logging
-      console.log("DocumentReadersDialog loadData called with:", {
-        documentId,
-        documentType,
-        onGetReaders: typeof onGetReaders,
-        onGetStatistics: typeof onGetStatistics
-      });
+      // console.log("DocumentReadersDialog loadData called with:", {
+      //   documentId,
+      //   documentType,
+      //   onGetReaders: typeof onGetReaders,
+      //   onGetStatistics: typeof onGetStatistics
+      // });
       
       // Validate required props
       if (typeof onGetReaders !== 'function') {
@@ -93,9 +93,9 @@ export function DocumentReadersDialog({
         onGetReaders(documentId),
         onGetStatistics(documentId)
       ]);
-      
-      console.log("Document readers data:", readersData);
-      console.log("Document stats data:", statsData);
+          
+          // console.log("Document readers data:", readersData);
+          // console.log("Document stats data:", statsData);
       
       // Handle ResponseDTO format - extract data if wrapped
       const readers = Array.isArray(readersData) 
@@ -104,8 +104,8 @@ export function DocumentReadersDialog({
         
       const statistics = (statsData as any)?.data || statsData;
       
-      console.log("Processed readers:", readers);
-      console.log("Processed statistics:", statistics);
+      // console.log("Processed readers:", readers);
+      // console.log("Processed statistics:", statistics);
       
       setReaders(readers);
       setStatistics(statistics);

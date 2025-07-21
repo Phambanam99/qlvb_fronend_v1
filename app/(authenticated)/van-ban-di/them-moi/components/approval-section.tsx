@@ -68,7 +68,7 @@ export function ApprovalSection({
             index === self.findIndex((a) => a.id === approver.id)
         );
 
-        console.log("Fetched approvers:", uniqueApprovers);
+        // console.log("Fetched approvers:", uniqueApprovers);
         setApprovers(uniqueApprovers);
       } catch (error) {
         console.error("Error fetching approvers:", error);
