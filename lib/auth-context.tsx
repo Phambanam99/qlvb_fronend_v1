@@ -8,12 +8,12 @@ import {
   ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
-import { authAPI } from "@/lib/api/auth";
+import { authAPI, AuthResponse } from "@/lib/api/auth";
 import Cookies from "js-cookie";
 import { isTokenExpired } from "@/lib/utils";
 import { UserDTO as User } from "./api";
 import { hasRoleInGroup } from "./role-utils";
-
+import { ResponseDTO } from "./api/types";
 interface AuthContextType {
   user: User | null;
   loading: boolean;
@@ -65,12 +65,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const response = await authAPI.refreshToken(refreshToken);
       if (response.success && response.data) {
-        const { accessToken, refreshToken: newRefreshToken, user } = response.data;
-        
+        const {
+          accessToken,
+          refreshToken: newRefreshToken,
+          user,
+        } = response.data;
+
         // Update tokens
         localStorage.setItem("accessToken", accessToken);
         localStorage.setItem("refreshToken", newRefreshToken);
-        
+
         // Update cookie based on remember me preference
         const rememberMe = getStoredRememberMe();
         if (rememberMe) {
@@ -99,14 +103,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (isTokenExpired(token)) {
       console.log("AuthContext: Token expired, attempting to refresh...");
-      
+
       // Try to refresh token
       const refreshSuccess = await refreshAccessToken();
       if (refreshSuccess) {
         console.log("AuthContext: Token refreshed successfully");
         return true;
       }
-      
+
       console.log("AuthContext: Token refresh failed, logging out");
       localStorage.removeItem("accessToken");
       localStorage.removeItem("refreshToken");
@@ -132,7 +136,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (token) {
           // Validate token and refresh if needed
           const isValid = await validateToken();
-          
+
           if (isValid) {
             // console.log("AuthContext: Token valid, fetching current user...");
             const userData_ = await authAPI.getCurrentUser();
@@ -193,14 +197,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setDataLoading(true);
       setError(null);
       // console.log("Đang thực hiện đăng nhập cho tài khoản:", username);
-      const userData_ = await authAPI.login(username, password, rememberMe);
-      
-      if (userData_.success === false) {
-        setError(userData_.message);
-        return false;
-      }
-      const userData = userData_.data;
-      const { accessToken, refreshToken, user } = userData;
+      const userData: ResponseDTO<AuthResponse> = await authAPI.login(
+        username,
+        password,
+        rememberMe
+      );
+
+      const { accessToken, refreshToken, user } = userData.data;
 
       // Store remember me preference
       setStoredRememberMe(rememberMe);
@@ -218,20 +221,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         Cookies.set("auth-token", accessToken, { sameSite: "strict" });
       }
 
-      const userInfo: User = {
-        id: userData.user.id,
-        username: userData.user.username,
-        fullName: userData.user.fullName,
-        email: userData.user.email,
-        roles: userData.user.roles,
-        departmentId: userData.user.departmentId,
-        roleId: userData.user.roleId || 0,
-        createdAt: userData.user.createdAt || new Date().toISOString(),
-        updatedAt: userData.user.updatedAt || new Date().toISOString(),
-      };
-
       // console.log("Login successful", userInfo);
-      setUser(userInfo);
+      setUser(user);
       setIsAuthenticated(true);
 
       try {

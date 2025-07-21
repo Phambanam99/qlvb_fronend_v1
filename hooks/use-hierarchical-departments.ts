@@ -34,8 +34,7 @@ export function useHierarchicalDepartments() {
     const fetchDepartments = async () => {
       try {
         setLoading(true);
-        const response_ = await departmentsAPI.getAllDepartments(0, 500);
-        const response = response_.data;
+        const response = await departmentsAPI.getAllDepartments(0, 500);
         setAllDepartments(response.content || []);
       } catch (err: any) {
         console.error("Lỗi khi tải danh sách phòng ban:", err);

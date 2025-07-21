@@ -46,9 +46,18 @@ export const authAPI = {
    * @param rememberMe Remember me option
    * @returns Authentication response with token and user info
    */
-  login: async (username: string, password: string, rememberMe: boolean = false): Promise<ResponseDTO<AuthResponse> >=> {
+  login: async (
+    username: string,
+    password: string,
+    rememberMe: boolean = false
+  ): Promise<ResponseDTO<AuthResponse>> => {
     try {
-      const response = await api.post("/auth/login", { username, password, rememberMe });
+      const response = await api.post("/auth/login", {
+        username,
+        password,
+        rememberMe,
+      });
+
       return response.data;
     } catch (error) {
       console.error("Login error:", error);
@@ -61,7 +70,9 @@ export const authAPI = {
    * @param refreshToken Refresh token
    * @returns New access token and refresh token
    */
-  refreshToken: async (refreshToken: string): Promise<ResponseDTO<RefreshTokenResponse>> => {
+  refreshToken: async (
+    refreshToken: string
+  ): Promise<ResponseDTO<RefreshTokenResponse>> => {
     try {
       const response = await api.post("/auth/refresh-token", { refreshToken });
       return response.data;
