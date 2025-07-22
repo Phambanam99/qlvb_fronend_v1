@@ -28,9 +28,8 @@ export default function DocumentAssignmentPage({
     const fetchDocument = async () => {
       try {
         setLoading(true);
-        const documentData_ = await incomingDocumentsAPI.getIncomingDocumentById(
-          documentId
-        );
+        const documentData_ =
+          await incomingDocumentsAPI.getIncomingDocumentById(documentId);
         const documentData = documentData_.data;
         setDocument(documentData);
       } catch (error) {
@@ -100,9 +99,7 @@ export default function DocumentAssignmentPage({
                 <span className="h-5 w-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs mr-2 mt-0.5">
                   1
                 </span>
-                <span>
-                  Chọn một hoặc nhiều cán bộ để phân công xử lý văn bản
-                </span>
+                <span>Chọn cán bộ để phân công xử lý văn bản</span>
               </li>
               <li className="flex items-start">
                 <span className="h-5 w-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs mr-2 mt-0.5">

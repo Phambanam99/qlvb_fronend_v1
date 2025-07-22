@@ -1,4 +1,6 @@
+import { ResponseDTO } from "./types";
 import api from "./config";
+import { logger } from "../utils/logger";
 
 export interface ScheduleEventDTO {
   id: number;
@@ -9,7 +11,7 @@ export interface ScheduleEventDTO {
   location: string;
   type: string;
   description?: string;
-  participants: string[];
+  participants: number[];
   participantNames: string[];
   scheduleId: number;
   createdAt: string;
@@ -20,21 +22,35 @@ export interface ScheduleDTO {
   id: number;
   title: string;
   description?: string;
-  department: string;
+  departmentId: number;
+  departmentName: string;
   period: string;
   status: string;
-  createdById: string;
+  createdById: number;
   createdByName: string;
-  approver?: string;
-  approvedAt?: string;
-  approvedById?: string;
+  approvedById?: number;
   approvedByName?: string;
   approvalDate?: string;
   approvalComments?: string;
-  comments?: string;
   createdAt: string;
   updatedAt: string;
   events?: ScheduleEventDTO[];
+}
+
+export interface PaginatedScheduleResponse {
+  content: ScheduleDTO[];
+  pageable: {
+    pageNumber: number;
+    pageSize: number;
+    sort: any[];
+    offset: number;
+  };
+  totalElements: number;
+  totalPages: number;
+  size: number;
+  number: number;
+  sort: any[];
+  numberOfElements: number;
 }
 
 export interface ScheduleEventParams {
@@ -43,15 +59,32 @@ export interface ScheduleEventParams {
   departmentId?: string;
 }
 
+export interface ScheduleListParams {
+  page?: number;
+  size?: number;
+  sort?: string[];
+  search?: string;
+  status?: string;
+  departmentId?: number;
+}
+
 export const schedulesAPI = {
   /**
    * Get all schedules
-   * @returns List of all schedules
+   * @param params Query parameters for pagination and filtering
+   * @returns Paginated list of schedules
    */
-  getAllSchedules: async (): Promise<ScheduleDTO[]> => {
-    const response = await api.get("/schedules")
-    return response.data
-   
+  getAllSchedules: async (
+    params?: ScheduleListParams
+  ): Promise<ResponseDTO<PaginatedScheduleResponse>> => {
+    logger.api("GET", "/schedules", params);
+    const response = await api.get("/schedules", { params });
+    logger.debug("getAllSchedules response", {
+      count: response.data?.data?.content?.length,
+      totalElements: response.data?.data?.totalElements,
+      currentPage: response.data?.data?.number,
+    });
+    return response.data;
   },
 
   /**
@@ -59,10 +92,63 @@ export const schedulesAPI = {
    * @param id Schedule ID
    * @returns Schedule data
    */
-  getScheduleById: async (id: string | number): Promise<ScheduleDTO> => {
-    const response = await api.get(`/schedules/${id}`)
-    return response.data
-    
+  getScheduleById: async (
+    id: string | number
+  ): Promise<ResponseDTO<ScheduleDTO>> => {
+    logger.api("GET", `/schedules/${id}`);
+    const response = await api.get(`/schedules/${id}`);
+    logger.debug("getScheduleById response", {
+      id,
+      title: response.data?.title,
+    });
+    return response.data;
+  },
+
+  /**
+   * Get schedules by department ID - try multiple possible endpoints
+   * @param departmentId Department ID
+   * @returns List of schedules for the department
+   */
+  getSchedulesByDepartmentId: async (
+    departmentId: number
+  ): Promise<ResponseDTO<ScheduleDTO[]>> => {
+    // Try different possible endpoint paths
+    const possiblePaths = [
+      `/schedules/department/${departmentId}`,
+      `/schedule/department/${departmentId}`,
+      `/schedules/${departmentId}/department`,
+    ];
+
+    logger.api("GET", `trying multiple paths for department ${departmentId}`);
+
+    for (const path of possiblePaths) {
+      try {
+        logger.api("GET", path);
+        const response = await api.get(path);
+        logger.debug("getSchedulesByDepartmentId success", {
+          departmentId,
+          path,
+          count: response.data?.data?.length || response.data?.length,
+        });
+        return response.data;
+      } catch (error: any) {
+        logger.debug("getSchedulesByDepartmentId failed", {
+          departmentId,
+          path,
+          status: error.response?.status,
+          error: error.message,
+        });
+
+        // If this is the last path and still failing, throw the error
+        if (path === possiblePaths[possiblePaths.length - 1]) {
+          throw error;
+        }
+        // Otherwise, continue to next path
+      }
+    }
+
+    // This should never be reached, but TypeScript requires it
+    throw new Error("All department endpoint paths failed");
   },
 
   /**
@@ -73,9 +159,12 @@ export const schedulesAPI = {
   getScheduleEvents: async (
     params: ScheduleEventParams
   ): Promise<ScheduleEventDTO[]> => {
-    const response = await api.get("/schedules/events", { params })
-    return response.data
-    
+    logger.api("GET", "/schedules/events", params);
+    const response = await api.get("/schedules/events", { params });
+    logger.debug("getScheduleEvents response", {
+      count: response.data?.length,
+    });
+    return response.data;
   },
 
   /**
@@ -84,9 +173,10 @@ export const schedulesAPI = {
    * @returns Event data
    */
   getEventById: async (id: string | number): Promise<ScheduleEventDTO> => {
-    const response = await api.get(`/schedules/events/${id}`)
-    return response.data
-    
+    logger.api("GET", `/schedules/events/${id}`);
+    const response = await api.get(`/schedules/events/${id}`);
+    logger.debug("getEventById response", { id, title: response.data?.title });
+    return response.data;
   },
 
   /**
@@ -95,9 +185,13 @@ export const schedulesAPI = {
    * @returns Created schedule data
    */
   createSchedule: async (scheduleData: any): Promise<ScheduleDTO> => {
-    const response = await api.post("/schedules", scheduleData)
-    return response.data
-  
+    logger.api("POST", "/schedules", { title: scheduleData?.title });
+    const response = await api.post("/schedules", scheduleData);
+    logger.info("Schedule created successfully", {
+      id: response.data?.id,
+      title: response.data?.title,
+    });
+    return response.data;
   },
 
   /**
@@ -110,9 +204,13 @@ export const schedulesAPI = {
     id: string | number,
     scheduleData: any
   ): Promise<ScheduleDTO> => {
-    const response = await api.put(`/schedules/${id}`, scheduleData)
-    return response.data
-  
+    logger.api("PUT", `/schedules/${id}`, { title: scheduleData?.title });
+    const response = await api.put(`/schedules/${id}`, scheduleData);
+    logger.info("Schedule updated successfully", {
+      id,
+      title: response.data?.title,
+    });
+    return response.data;
   },
 
   /**
@@ -121,9 +219,10 @@ export const schedulesAPI = {
    * @returns Success message
    */
   deleteSchedule: async (id: string | number): Promise<{ message: string }> => {
-    const response = await api.delete(`/schedules/${id}`)
-    return response.data
-
+    logger.api("DELETE", `/schedules/${id}`);
+    const response = await api.delete(`/schedules/${id}`);
+    logger.info("Schedule deleted successfully", { id });
+    return response.data;
   },
 
   /**
@@ -136,9 +235,10 @@ export const schedulesAPI = {
     id: string | number,
     data: { comments?: string }
   ): Promise<ScheduleDTO> => {
-    const response = await api.post(`/schedules/${id}/approve`, data)
-    return response.data
-    
+    logger.api("POST", `/schedules/${id}/approve`, data);
+    const response = await api.post(`/schedules/${id}/approve`, data);
+    logger.info("Schedule approved successfully", { id });
+    return response.data;
   },
 
   /**
@@ -151,14 +251,23 @@ export const schedulesAPI = {
     id: string | number,
     data: { comments?: string }
   ): Promise<ScheduleDTO> => {
-    const response = await api.post(`/schedules/${id}/reject`, data)
-    return response.data
-    
+    logger.api("POST", `/schedules/${id}/reject`, data);
+    const response = await api.post(`/schedules/${id}/reject`, data);
+    logger.info("Schedule rejected", { id, comments: data.comments });
+    return response.data;
   },
 
-  // Thêm phương thức mới để tương thích với code hiện tại
+  /**
+   * Get related schedules
+   * @param id Schedule ID
+   * @returns List of related schedules
+   */
   getRelatedSchedules: async (id: string | number): Promise<ScheduleDTO[]> => {
+    logger.api("GET", `/schedules/${id}/related`);
     const response = await api.get(`/schedules/${id}/related`);
+    logger.debug("getRelatedSchedules response", {
+      count: response.data?.length,
+    });
     return response.data;
   },
 };

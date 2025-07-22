@@ -1,5 +1,5 @@
 import api from "./config";
-import type { DocumentWorkflowDTO, DocumentHistoryDTO } from "./types";
+import type { DocumentWorkflowDTO, DocumentHistoryDTO, ResponseDTO } from "./types";
 
 export const workflowAPI = {
   /**
@@ -198,7 +198,7 @@ export const workflowAPI = {
    */
   getDocumentHistory: async (
     documentId: number | string
-  ): Promise<DocumentHistoryDTO[]> => {
+  ): Promise<ResponseDTO<DocumentHistoryDTO[]>> => {
     const response = await api.get(`/workflow/${documentId}/history`);
     return response.data;
   },
