@@ -58,7 +58,8 @@ export const documentReadStatusAPI = {
       null,
       { params: { documentType } }
     );
-    return response.data;
+    // Backend returns ResponseDTO<String>, extract the message
+    return response.data.data ? { message: response.data.data } : response.data;
   },
 
   /**
@@ -73,7 +74,8 @@ export const documentReadStatusAPI = {
       null,
       { params: { documentType } }
     );
-    return response.data;
+    // Backend returns ResponseDTO<String>, extract the message
+    return response.data.data ? { message: response.data.data } : response.data;
   },
 
   /**
@@ -97,12 +99,20 @@ export const documentReadStatusAPI = {
     documentIds: number[],
     documentType: DocumentType
   ): Promise<BatchReadStatusResponse> => {
+    console.log("API: getBatchReadStatus called with", {
+      documentIds,
+      documentType,
+    });
     const response = await api.post(
       `/documents/read-status/batch-status`,
       documentIds,
       { params: { documentType } }
     );
-    return response.data;
+    console.log("API: getBatchReadStatus response", response.data);
+    // Backend returns ResponseDTO<Map<Long, Boolean>>, so we need response.data.data
+    const result = response.data.data || response.data;
+    console.log("API: getBatchReadStatus processed result", result);
+    return result;
   },
 
   /**

@@ -1,5 +1,5 @@
 import api from "./config";
-import type { PageResponse } from "./types";
+import type { PageResponse, ResponseDTO } from "./types";
 
 export interface DepartmentDTO {
   id: number;
@@ -34,7 +34,7 @@ export const departmentsAPI = {
   getAllDepartments: async (
     page = 0,
     size = 100
-  ): Promise<PageResponse<DepartmentDTO>> => {
+  ): Promise<ResponseDTO<PageResponse<DepartmentDTO>>> => {
     const response = await api.get("/departments", {
       params: { page, size },
     });

@@ -1,7 +1,5 @@
 "use client";
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -9,38 +7,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  ArrowLeft,
-  Paperclip,
-  Save,
-  X,
-  Plus,
-  Building,
-  Users,
-} from "lucide-react";
-import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/components/ui/use-toast";
-import {
-  Dialog,
-  DialogTrigger,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { cn } from "@/lib/utils";
 
 // Import hooks and components
 import { DepartmentTree } from "@/components/department-tree";
@@ -49,67 +15,20 @@ import { useDocumentForm } from "@/hooks/use-document-form";
 import { useDepartmentUsers } from "@/hooks/use-department-users";
 import { useDocumentTypeManagement } from "@/hooks/use-document-type-management";
 import { useSenderManagement } from "@/hooks/use-sender-management";
-import { RichTextEditor } from "@/components/ui";
+
 // Import new components
 import { DocumentPurposeSelector } from "./components/document-purpose-selector";
 import { ProcessingSection } from "./components/processing-section";
 import { NotificationSection } from "./components/notification-section";
 import { DocumentInfoForm } from "./components/document-info-form";
+import { PageHeader } from "./components/page-header";
+import { DepartmentSelection } from "./components/department-selection";
 
-// Leadership role configuration
-const leadershipRoleOrder: Record<string, number> = {
-  ROLE_CUC_TRUONG: 1,
-  ROLE_CUC_PHO: 2,
-  ROLE_CHINH_UY: 3,
-  ROLE_PHO_CHINH_UY: 4,
-  ROLE_TRUONG_PHONG: 5,
-  ROLE_PHO_PHONG: 6,
-  ROLE_TRAM_TRUONG: 7,
-  ROLE_PHO_TRAM_TRUONG: 8,
-  ROLE_CHINH_TRI_VIEN_TRAM: 9,
-  ROLE_CUM_TRUONG: 10,
-  ROLE_PHO_CUM_TRUONG: 11,
-  ROLE_CHINH_TRI_VIEN_CUM: 12,
-  ROLE_TRUONG_BAN: 13,
-};
-
-// Get role display name helper
-const getRoleDisplayName = (role: string): string => {
-  switch (role) {
-    case "ROLE_CUC_TRUONG":
-      return "Cục trưởng";
-    case "ROLE_CUC_PHO":
-      return "Cục phó";
-    case "ROLE_CHINH_UY":
-      return "Chính ủy";
-    case "ROLE_PHO_CHINH_UY":
-      return "Phó Chính ủy";
-    case "ROLE_TRUONG_PHONG":
-      return "Trưởng phòng";
-    case "ROLE_PHO_PHONG":
-      return "Phó phòng";
-    case "ROLE_TRAM_TRUONG":
-      return "Trạm trưởng";
-    case "ROLE_PHO_TRAM_TRUONG":
-      return "Phó Trạm trưởng";
-    case "ROLE_CHINH_TRI_VIEN_TRAM":
-      return "Chính trị viên trạm";
-    case "ROLE_CUM_TRUONG":
-      return "Cụm trưởng";
-    case "ROLE_PHO_CUM_TRUONG":
-      return "Phó cụm trưởng";
-    case "ROLE_CHINH_TRI_VIEN_CUM":
-      return "Chính trị viên cụm";
-    case "ROLE_TRUONG_BAN":
-      return "Trưởng Ban";
-    default:
-      return role.replace("ROLE_", "").replace(/_/g, " ").toLowerCase();
-  }
-};
+// Import utilities and hooks
+import { leadershipRoleOrder } from "./lib/constants";
+import { useAddDocumentForm } from "./hooks/use-add-document-form";
 
 export default function AddIncomingDocumentPage() {
-  const { toast } = useToast();
-
   // Use custom hooks
   const {
     departments,
@@ -196,254 +115,64 @@ export default function AddIncomingDocumentPage() {
     createSender,
   } = useSenderManagement();
 
-  // Local state
-  const [validationErrors, setValidationErrors] = useState<
-    Record<string, string>
-  >({});
-  const [documentPurpose, setDocumentPurpose] = useState<
-    "PROCESS" | "NOTIFICATION"
-  >("PROCESS");
-  const [notificationScope, setNotificationScope] = useState<
-    "ALL_UNITS" | "SPECIFIC_UNITS"
-  >("ALL_UNITS");
-
-  // Validation function
-  const validateForm = () => {
-    const errors: Record<string, string> = {};
-
-    if (!documentNumber.trim()) {
-      errors.documentNumber = "Số văn bản là bắt buộc";
-    }
-
-    if (!documentTitle.trim()) {
-      errors.documentTitle = "Trích yếu là bắt buộc";
-    }
-
-    if (!sendingDepartmentName.trim()) {
-      errors.sendingDepartmentName = "Đơn vị gửi là bắt buộc";
-    }
-
-    // // Chỉ validate phòng ban xử lý chính khi văn bản cần xử lý
-    // if (documentPurpose === "PROCESS" && !primaryDepartment) {
-    //   errors.primaryDepartment = "Phòng ban xử lý chính là bắt buộc";
-    // }
-
-    // Validate notification scope
-    if (
-      documentPurpose === "NOTIFICATION" &&
-      notificationScope === "SPECIFIC_UNITS" &&
-      secondaryDepartments.length === 0
-    ) {
-      errors.notificationDepartments =
-        "Vui lòng chọn ít nhất một phòng ban nhận thông báo";
-    }
-
-    setValidationErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
-  // File handling is now managed by the useDocumentForm hook
-
-  // Handle primary department selection
-  const handleSelectPrimaryDepartment = (deptId: number | string) => {
-    // Convert string IDs back to number if needed
-    const id =
-      typeof deptId === "string" && deptId.includes("-")
-        ? deptId
-        : Number(deptId);
-    selectPrimaryDepartment(id as number);
-  };
-
-  // Handle secondary department selection
-  const handleSelectSecondaryDepartment = (deptId: number | string) => {
-    const id =
-      typeof deptId === "string" && deptId.includes("-")
-        ? deptId
-        : Number(deptId);
-    selectSecondaryDepartment(id as number);
-  };
-
-  // Handle removing selections
-  const handleRemovePrimaryDepartment = () => {
-    selectPrimaryDepartment(null as any);
-  };
-
-  const handleRemoveSecondaryDepartment = (deptId: number | string) => {
-    // Convert back to number if it was a composite string ID
-    if (typeof deptId === "string" && deptId.includes("-")) {
-      // For composite IDs like "departmentId-userId", we need to handle differently
-      // Just remove from the array directly through the hook
-      const currentIds = secondaryDepartments.filter(
-        (id: any) => id !== deptId
-      );
-      // Since we can't set secondary departments directly, we need to clear and re-add
-      clearSelection();
-      if (primaryDepartment) {
-        selectPrimaryDepartment(primaryDepartment);
-      }
-      currentIds.forEach((id: any) => selectSecondaryDepartment(id));
-    } else {
-      // For regular department IDs, use the hook method
-      selectSecondaryDepartment(Number(deptId));
-    }
-  };
+  // Form logic hook
+  const {
+    validationErrors,
+    validationErrorsForComponents,
+    setValidationErrors,
+    documentPurpose,
+    setDocumentPurpose,
+    notificationScope,
+    setNotificationScope,
+    handleSelectPrimaryDepartment,
+    handleSelectSecondaryDepartment,
+    handleRemovePrimaryDepartment,
+    handleRemoveSecondaryDepartment,
+    handleNotificationScopeChange,
+    handleSubmit,
+    handleReset,
+    getRoleDisplayName,
+    findUserByIdHelper,
+  } = useAddDocumentForm();
 
   // Handle document type creation
   const handleAddDocumentType = async () => {
-    const updatedTypes_ = await createDocumentType(documentTypes);
-    const updatedTypes = updatedTypes_.data;
+    const updatedTypes = await createDocumentType(documentTypes);
     if (updatedTypes) {
-      // The document types are managed by the useDocumentForm hook
-      // We don't need to set them manually as the hook will refresh them
-      // Just close the dialog
       setIsDocumentTypeDialogOpen(false);
     }
   };
 
-  // Handle notification scope change
-  const handleNotificationScopeChange = (
-    scope: "ALL_UNITS" | "SPECIFIC_UNITS"
-  ) => {
-    setNotificationScope(scope);
-    if (scope === "ALL_UNITS") {
-      clearSelection();
-    }
-  };
-
-  // Helper function to find user by ID
-  const findUserById = (deptId: number, userId: number) => {
-    const users = departmentUsers[deptId] || [];
-    return users.find((user) => user.id === userId) || null;
-  };
-
-  // Handle form submission
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    // Validate form first
-    if (!validateForm()) {
-      toast({
-        title: "Lỗi validation",
-        description: "Vui lòng kiểm tra và điền đầy đủ thông tin bắt buộc",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // No need to read from FormData since all data is managed by useState
-    // All form fields are already managed by useState through custom hooks
-
-    // Prepare processing data based on document purpose
-    const processingData = {
-      purpose: documentPurpose,
-      primaryDepartment:
-        documentPurpose === "PROCESS" ? primaryDepartment : null,
-      secondaryDepartments:
-        documentPurpose === "NOTIFICATION" && notificationScope === "ALL_UNITS"
-          ? [] // Empty array for ALL_UNITS - backend will handle this
-          : (secondaryDepartments as number[]),
-      notificationScope:
-        documentPurpose === "NOTIFICATION" ? notificationScope : null,
-    };
-
-    // Submit using the hook
-    await submitDocument(
-      processingData.primaryDepartment,
-      processingData.secondaryDepartments,
-      documentPurpose,
-      processingData.notificationScope || undefined
-    );
-  };
+  // Check if form should be disabled
+  const isFormDisabled =
+    documentPurpose === "NOTIFICATION" &&
+    notificationScope === "SPECIFIC_UNITS" &&
+    secondaryDepartments.length === 0;
 
   return (
     <div className="container mx-auto max-w-7xl space-y-6">
-      {/* Breadcrumb Navigation */}
-      <nav className="flex" aria-label="Breadcrumb">
-        <ol className="inline-flex items-center space-x-1 md:space-x-3">
-          <li className="inline-flex items-center">
-            <Link
-              href="/"
-              className="text-gray-700 hover:text-primary inline-flex items-center"
-            >
-              Trang chủ
-            </Link>
-          </li>
-          <li>
-            <div className="flex items-center">
-              <span className="mx-2 text-gray-400">/</span>
-              <Link
-                href="/van-ban-den"
-                className="text-gray-700 hover:text-primary"
-              >
-                Văn bản đến
-              </Link>
-            </div>
-          </li>
-          <li aria-current="page">
-            <div className="flex items-center">
-              <span className="mx-2 text-gray-400">/</span>
-              <span className="text-gray-500">Thêm mới</span>
-            </div>
-          </li>
-        </ol>
-      </nav>
+      <PageHeader
+        isSubmitting={isSubmitting}
+        isFormDisabled={isFormDisabled}
+        onReset={handleReset}
+      />
 
-      {/* Page Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <Button variant="outline" size="icon" asChild>
-            <Link href="/van-ban-den">
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
-          </Button>
-          <h1 className="text-2xl font-bold tracking-tight text-primary">
-            Thêm văn bản đến mới
-          </h1>
-        </div>
-        <div className="flex items-center space-x-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => {
-              // Reset form
-              if (
-                confirm(
-                  "Bạn có chắc muốn đặt lại form? Tất cả dữ liệu sẽ bị mất."
-                )
-              ) {
-                window.location.reload();
-              }
-            }}
-          >
-            Đặt lại
-          </Button>
-          <Button
-            type="submit"
-            form="document-form"
-            disabled={
-              isSubmitting ||
-              (documentPurpose === "NOTIFICATION" &&
-                notificationScope === "SPECIFIC_UNITS" &&
-                secondaryDepartments.length === 0)
-            }
-            className="bg-primary hover:bg-primary/90"
-          >
-            {isSubmitting ? (
-              <>
-                <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-background border-t-transparent" />
-                Đang lưu...
-              </>
-            ) : (
-              <>
-                <Save className="mr-2 h-4 w-4" />
-                Lưu văn bản
-              </>
-            )}
-          </Button>
-        </div>
-      </div>
-
-      <form id="document-form" onSubmit={handleSubmit}>
+      <form
+        id="document-form"
+        onSubmit={(e) =>
+          handleSubmit(
+            e,
+            {
+              documentNumber,
+              documentTitle,
+              sendingDepartmentName,
+              primaryDepartment,
+              secondaryDepartments,
+            },
+            submitDocument
+          )
+        }
+      >
         <div className="grid gap-6 lg:grid-cols-2">
           {/* Document Information Card */}
           <Card className="bg-card">
@@ -498,7 +227,7 @@ export default function AddIncomingDocumentPage() {
                 senderError={senderError}
                 setSenderError={setSenderError}
                 createSender={createSender}
-                validationErrors={validationErrors}
+                validationErrors={validationErrorsForComponents}
                 setValidationErrors={setValidationErrors}
               />
             </CardContent>
@@ -522,10 +251,21 @@ export default function AddIncomingDocumentPage() {
                 <ProcessingSection
                   primaryDepartment={primaryDepartment}
                   secondaryDepartments={secondaryDepartments as number[]}
-                  validationErrors={validationErrors}
+                  validationErrors={validationErrorsForComponents}
                   findDepartmentById={findDepartmentById}
-                  onRemovePrimaryDepartment={handleRemovePrimaryDepartment}
-                  onRemoveSecondaryDepartment={handleRemoveSecondaryDepartment}
+                  onRemovePrimaryDepartment={() =>
+                    handleRemovePrimaryDepartment(selectPrimaryDepartment)
+                  }
+                  onRemoveSecondaryDepartment={(id) =>
+                    handleRemoveSecondaryDepartment(
+                      id,
+                      secondaryDepartments,
+                      clearSelection,
+                      selectPrimaryDepartment,
+                      selectSecondaryDepartment,
+                      primaryDepartment
+                    )
+                  }
                   onClearSelection={clearSelection}
                 />
               )}
@@ -534,140 +274,60 @@ export default function AddIncomingDocumentPage() {
               {documentPurpose === "NOTIFICATION" && (
                 <NotificationSection
                   notificationScope={notificationScope}
-                  secondaryDepartments={
-                    secondaryDepartments as (number | string)[]
-                  }
+                  secondaryDepartments={secondaryDepartments}
                   findDepartmentById={findDepartmentById}
-                  findUserById={findUserById}
+                  findUserById={(deptId, userId) =>
+                    findUserByIdHelper(departmentUsers, deptId, userId)
+                  }
                   getLeadershipRole={getLeadershipRole}
                   getRoleDisplayName={getRoleDisplayName}
-                  onScopeChange={handleNotificationScopeChange}
-                  onRemoveSecondaryDepartment={handleRemoveSecondaryDepartment}
+                  onScopeChange={(scope) =>
+                    handleNotificationScopeChange(scope, clearSelection)
+                  }
+                  onRemoveSecondaryDepartment={(id) =>
+                    handleRemoveSecondaryDepartment(
+                      id,
+                      secondaryDepartments,
+                      clearSelection,
+                      selectPrimaryDepartment,
+                      selectSecondaryDepartment,
+                      primaryDepartment
+                    )
+                  }
                   onClearSelection={clearSelection}
                 />
               )}
 
-              {/* Department Tree - Show for both cases but with different context */}
-              {(documentPurpose === "PROCESS" ||
-                (documentPurpose === "NOTIFICATION" &&
-                  notificationScope === "SPECIFIC_UNITS")) && (
-                <div className="space-y-2">
-                  <Label>
-                    {documentPurpose === "PROCESS"
-                      ? "Danh sách phòng ban xử lý"
-                      : "Danh sách phòng ban nhận thông báo"}
-                  </Label>
-                  <div className="border rounded-md overflow-hidden">
-                    <div className="bg-primary/5 px-4 py-2 border-b flex items-center justify-between">
-                      <span className="text-sm font-medium">
-                        {documentPurpose === "PROCESS"
-                          ? "Chọn phòng ban xử lý văn bản"
-                          : "Chọn phòng ban nhận thông báo"}
-                      </span>
-                    </div>
-
-                    {isLoadingDepartmentList ? (
-                      <div className="flex items-center justify-center p-4">
-                        <p>Đang tải danh sách phòng ban...</p>
-                      </div>
-                    ) : (
-                      <DepartmentTree
-                        departments={departments}
-                        expandedDepartments={expandedDepartments}
-                        toggleDepartment={toggleDepartment}
-                        onSelectPrimaryDepartment={
-                          documentPurpose === "PROCESS"
-                            ? handleSelectPrimaryDepartment
-                            : undefined
-                        }
-                        onSelectSecondaryDepartment={
-                          handleSelectSecondaryDepartment
-                        }
-                        primaryDepartment={
-                          documentPurpose === "PROCESS"
-                            ? primaryDepartment
-                            : null
-                        }
-                        secondaryDepartments={secondaryDepartments as any}
-                        departmentUsers={departmentUsers}
-                        isLoadingUsers={isLoadingUsers}
-                        onDepartmentExpand={fetchDepartmentUsers}
-                        getLeadershipRole={getLeadershipRole}
-                        getRoleDisplayName={getRoleDisplayName}
-                        selectionMode={
-                          documentPurpose === "PROCESS" ? "both" : "secondary"
-                        }
-                        maxHeight="400px"
-                        primaryButtonText="Chính"
-                        secondaryButtonText="Phụ"
-                      />
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-4 text-xs mt-1">
-                    {documentPurpose === "PROCESS" && (
-                      <div className="flex items-center gap-1">
-                        <div className="w-3 h-3 rounded-sm border border-red-500 bg-white"></div>
-                        <span>Xử lý chính</span>
-                      </div>
-                    )}
-                    <div className="flex items-center gap-1">
-                      <div className="w-3 h-3 rounded-sm border border-blue-500 bg-white"></div>
-                      <span>
-                        {documentPurpose === "PROCESS"
-                          ? "Phối hợp"
-                          : "Nhận thông báo"}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Building className="h-3 w-3 text-muted-foreground" />
-                      <span>Đơn vị lớn</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Users className="h-3 w-3 text-muted-foreground" />
-                      <span>Đơn vị nhỏ</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div className="space-y-2">
-                <Label htmlFor="notes">
-                  {documentPurpose === "PROCESS"
-                    ? "Ghi chú"
-                    : "Nội dung thông báo"}
-                </Label>
-                <RichTextEditor
-                  content={documentNotes}
-                  onChange={(content) => setDocumentNotes(content)}
-                  placeholder={
-                    documentPurpose === "PROCESS"
-                      ? "Nhập ghi chú cho phòng ban xử lý (nếu có)"
-                      : "Nhập nội dung thông báo (nếu có)"
-                  }
-                  className={validationErrors.summary ? "border-red-500" : ""}
-                  minHeight="150px"
-                />
-              </div>
-
-              {documentPurpose === "PROCESS" && (
-                <div className="space-y-2">
-                  <Label htmlFor="deadline">Thời hạn xử lý</Label>
-                  <Input
-                    id="deadline"
-                    name="deadline"
-                    type="date"
-                    value={closureDeadline}
-                    onChange={(e) => setClosureDeadline(e.target.value)}
-                    placeholder="Chọn thời hạn xử lý"
-                  />
-                </div>
-              )}
+              {/* Department Selection Tree */}
+              <DepartmentSelection
+                documentPurpose={documentPurpose}
+                notificationScope={notificationScope}
+                departments={departments}
+                expandedDepartments={expandedDepartments}
+                isLoadingDepartmentList={isLoadingDepartmentList}
+                primaryDepartment={primaryDepartment}
+                secondaryDepartments={secondaryDepartments}
+                departmentUsers={departmentUsers}
+                isLoadingUsers={isLoadingUsers}
+                documentNotes={documentNotes}
+                closureDeadline={closureDeadline}
+                findDepartmentById={findDepartmentById}
+                getLeadershipRole={getLeadershipRole}
+                getRoleDisplayName={getRoleDisplayName}
+                toggleDepartment={toggleDepartment}
+                onSelectPrimaryDepartment={(id) =>
+                  handleSelectPrimaryDepartment(id, selectPrimaryDepartment)
+                }
+                onSelectSecondaryDepartment={(id) =>
+                  handleSelectSecondaryDepartment(id, selectSecondaryDepartment)
+                }
+                fetchDepartmentUsers={fetchDepartmentUsers}
+                setDocumentNotes={setDocumentNotes}
+                setClosureDeadline={setClosureDeadline}
+              />
             </CardContent>
           </Card>
         </div>
-
-
       </form>
     </div>
   );

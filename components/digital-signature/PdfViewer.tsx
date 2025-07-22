@@ -1,15 +1,15 @@
 "use client";
 
-import React, { useState } from 'react';
-import { Document, pdfjs } from 'react-pdf';
-import 'react-pdf/dist/Page/AnnotationLayer.css';
-import 'react-pdf/dist/Page/TextLayer.css';
-import { PageDropTarget } from './PageDropTarget'; // Import the new component
+import React, { useState } from "react";
+import { Document, pdfjs } from "react-pdf";
+import "react-pdf/dist/Page/AnnotationLayer.css";
+import "react-pdf/dist/Page/TextLayer.css";
+import { PageDropTarget } from "./PageDropTarget"; // Import the new component
 
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.mjs',
-  import.meta.url,
-).toString();
+// Sử dụng worker file từ public thay vì CDN để tránh phụ thuộc internet
+if (typeof window !== "undefined") {
+  pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
+}
 
 interface PlacedSignature {
   id: number;
@@ -25,9 +25,18 @@ interface PlacedSignature {
 interface PdfViewerProps {
   file: File | null;
   placedSignatures: PlacedSignature[];
-  onDropSignature: (item: { id: number; src: string }, x: number, y: number, page: number) => void;
+  onDropSignature: (
+    item: { id: number; src: string },
+    x: number,
+    y: number,
+    page: number
+  ) => void;
   onMoveSignature: (instanceId: number, newX: number, newY: number) => void;
-  onResizeSignature: (instanceId: number, newWidth: number, newHeight: number) => void;
+  onResizeSignature: (
+    instanceId: number,
+    newWidth: number,
+    newHeight: number
+  ) => void;
   numPages: number | null;
   setNumPages: (num: number | null) => void;
   // Props for selection
@@ -36,13 +45,13 @@ interface PdfViewerProps {
   onDeleteSignature: (instanceId: number) => void;
 }
 
-export const PdfViewer = ({ 
-  file, 
-  placedSignatures, 
-  onDropSignature, 
+export const PdfViewer = ({
+  file,
+  placedSignatures,
+  onDropSignature,
   onMoveSignature,
   onResizeSignature,
-  numPages, 
+  numPages,
   setNumPages,
   selectedSignatureId,
   onSelectSignature,
@@ -83,9 +92,9 @@ export const PdfViewer = ({
         </Document>
       ) : (
         <div className="flex items-center justify-center h-full">
-            <p className="text-gray-500">Tải lên file PDF để bắt đầu</p>
+          <p className="text-gray-500">Tải lên file PDF để bắt đầu</p>
         </div>
       )}
     </div>
   );
-}; 
+};
