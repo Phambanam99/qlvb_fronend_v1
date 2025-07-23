@@ -412,6 +412,7 @@ export default function CreateInternalOutgoingDocumentPage() {
           }
         }),
       };
+      
 
       // Create cancel token for upload
       const cancelTokenSource = fileUpload.createCancelToken();

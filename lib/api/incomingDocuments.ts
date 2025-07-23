@@ -375,7 +375,12 @@ export const incomingDocumentsAPI = {
         }
       );
       return response.data;
-    } catch (error) {
+    } catch (error: any) {
+      // Don't log 404 errors as errors since they're expected for documents without classification
+      if (error?.response?.status === 404) {
+        throw error; // Re-throw but don't log as error
+      }
+      
       console.error(
         `Error getting document classification for document ${documentId}:`,
         error

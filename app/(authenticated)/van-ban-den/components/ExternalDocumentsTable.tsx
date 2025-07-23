@@ -137,6 +137,7 @@ export function ExternalDocumentsTable({
                       <DocumentStatusBadge
                         documentId={doc.id!}
                         fallbackStatus={doc.processingStatus}
+                        isExternalDocument={true}
                       />
                     </TableCell>
                     <TableCell>

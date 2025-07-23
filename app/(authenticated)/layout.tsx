@@ -37,35 +37,37 @@ export default function AuthenticatedLayout({
 
   // Effect to fetch initial data once authenticated
   useEffect(() => {
-    const loadInitialData = async () => {
-      if (isAuthenticated && user && dataLoading) {
-        try {
-        
-          const timeoutId = setTimeout(() => {
-            // console.log(
-            //   "⚠️ Thời gian tải dữ liệu vượt quá giới hạn - đánh dấu đã tải xong"
-            // );
-            // Đánh dấu dữ liệu đã tải xong
-            setDataLoaded();
+    let timeoutId: NodeJS.Timeout | undefined;
 
-            // Force reload trang nếu cần thiết để đảm bảo dữ liệu được hiển thị
-            if (window.location.pathname === "/") {
-              console.log(
-                "🔄 Tải lại trang dashboard để đảm bảo dữ liệu hiển thị đúng"
-              );
-              // window.location.reload(); // có thể uncomment nếu vẫn gặp vấn đề
-            }
-          }, 1000); // Tăng timeout lên 5 giây
+    if (isAuthenticated && user && dataLoading) {
+      try {
+        timeoutId = setTimeout(() => {
+          // console.log(
+          //   "⚠️ Thời gian tải dữ liệu vượt quá giới hạn - đánh dấu đã tải xong"
+          // );
+          // Đánh dấu dữ liệu đã tải xong
+          setDataLoaded();
 
-          return () => clearTimeout(timeoutId);
-        } catch (error) {
-          console.error("⛔ Lỗi khi tải dữ liệu ban đầu:", error);
-          setDataLoaded(); // Đánh dấu đã tải xong để tránh loading mãi
-        }
+          // Force reload trang nếu cần thiết để đảm bảo dữ liệu được hiển thị
+          if (window.location.pathname === "/") {
+            console.log(
+              "🔄 Tải lại trang dashboard để đảm bảo dữ liệu hiển thị đúng"
+            );
+            // window.location.reload(); // có thể uncomment nếu vẫn gặp vấn đề
+          }
+        }, 1000); // Timeout 1 giây
+      } catch (error) {
+        console.error("⛔ Lỗi khi tải dữ liệu ban đầu:", error);
+        setDataLoaded(); // Đánh dấu đã tải xong để tránh loading mãi
+      }
+    }
+
+    // Cleanup timeout when component unmounts or effect re-runs
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
       }
     };
-
-    loadInitialData();
   }, [isAuthenticated, dataLoading, setDataLoaded, user]);
 
   // Show loading spinner for both auth loading and data loading
