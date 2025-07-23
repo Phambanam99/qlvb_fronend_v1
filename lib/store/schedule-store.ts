@@ -38,7 +38,6 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
         set({ schedules: data, loading: false });
       })
       .catch((err) => {
-        console.error("Error fetching schedules:", err);
         set({
           error:
             err instanceof Error ? err.message : "Không thể tải lịch công tác",

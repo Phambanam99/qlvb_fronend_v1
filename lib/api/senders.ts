@@ -22,7 +22,6 @@ export const senderApi = {
       const response = await api.get('/senders');
       return response.data;
     } catch (error) {
-      console.error('Error fetching senders:', error);
       throw error;
     }
   },
@@ -37,7 +36,6 @@ export const senderApi = {
       const response = await api.get(`/senders/${id}`);
       return response.data;
     } catch (error) {
-      console.error(`Error fetching sender with id ${id}:`, error);
       throw error;
     }
   },
@@ -52,7 +50,6 @@ export const senderApi = {
       const response = await api.post('/senders', senderData);
       return response.data;
     } catch (error) {
-      console.error('Error creating sender:', error);
       throw error;
     }
   },
@@ -68,7 +65,6 @@ export const senderApi = {
       const response = await api.put(`/senders/${id}`, senderData);
       return response.data;
     } catch (error) {
-      console.error(`Error updating sender with id ${id}:`, error);
       throw error;
     }
   },
@@ -82,7 +78,6 @@ export const senderApi = {
     try {
       await api.delete(`/senders/${id}`);
     } catch (error) {
-      console.error(`Error deleting sender with id ${id}:`, error);
       throw error;
     }
   },

@@ -10,7 +10,7 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  output: 'standalone', // ✅ Thêm dòng này để tối ưu build cho Docker
+  // output: 'standalone', // ✅ Temporarily disabled to avoid symlink issues on Windows
   devIndicators: false,
   // Cấu hình cho phép truy cập từ các IP trong mạng LAN
   experimental: {

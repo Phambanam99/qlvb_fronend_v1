@@ -125,12 +125,10 @@ export default function DashboardPage() {
         const schedule = await dashboardAPI.getTodayScheduleEvents();
         setTodaySchedule(schedule);
       } catch (scheduleError) {
-        console.warn("Could not fetch schedule data:", scheduleError);
         setTodaySchedule([]);
       }
 
     } catch (error) {
-      console.error("Error fetching dashboard data:", error);
       toast({
         title: "Lỗi",
         description: "Không thể tải dữ liệu dashboard. Vui lòng thử lại sau.",

@@ -104,10 +104,7 @@ export function ExternalDocumentsTable({
             {documents && documents.length > 0 ? (
               documents.map((doc: any) => {
                 const isRead = getReadStatus(doc.id!);
-                console.log(
-                  `ExternalDocumentsTable: Doc ${doc.id} read status:`,
-                  isRead
-                );
+              
                 return (
                   <TableRow
                     key={doc.id}

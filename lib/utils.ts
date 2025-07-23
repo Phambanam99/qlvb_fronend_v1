@@ -119,7 +119,6 @@ export function parseJwt(token: string) {
 
     return JSON.parse(jsonPayload);
   } catch (e) {
-    console.error("Error parsing JWT token:", e);
     return null;
   }
 }
@@ -137,7 +136,6 @@ export function isTokenExpired(token: string | null): boolean {
     const currentTime = Date.now() / 1000;
     return decoded.exp < currentTime;
   } catch (error) {
-    console.error("Error checking token expiration:", error);
     return true;
   }
 }

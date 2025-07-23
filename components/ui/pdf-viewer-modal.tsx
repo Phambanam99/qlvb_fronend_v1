@@ -86,7 +86,6 @@ export default function PDFViewerModal({
         setError("Không thể tải file PDF");
       }
     } catch (err) {
-      console.error("Error loading PDF:", err);
       setError("Có lỗi xảy ra khi tải file PDF");
       toast({
         title: "Lỗi",
@@ -115,7 +114,6 @@ export default function PDFViewerModal({
           });
         }
       } catch (err) {
-        console.error("Error downloading file:", err);
         toast({
           title: "Lỗi",
           description: "Không thể tải xuống file",
@@ -138,7 +136,6 @@ export default function PDFViewerModal({
           openPDFInNewWindow(blob, title || fileName);
         }
       } catch (err) {
-        console.error("Error opening PDF in new window:", err);
         toast({
           title: "Lỗi",
           description: "Không thể mở file trong tab mới",

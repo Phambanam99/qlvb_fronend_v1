@@ -57,7 +57,6 @@ export default function UserDetailPage() {
         setRoles(rolesData);
         setDepartments(departmentsData.content);
       } catch (error) {
-        console.error("Error fetching user data:", error);
         toast({
           title: "Lỗi",
           description:
@@ -74,7 +73,6 @@ export default function UserDetailPage() {
 
   const handleUpdateProfile = async (data: any) => {
     try {
-      // console.log(data);
       setSaving(true);
       const updatedUser_ = await usersAPI.updateUser(userId, data);
       const updatedUser = updatedUser_.data;
@@ -84,7 +82,6 @@ export default function UserDetailPage() {
         description: "Thông tin người dùng đã được cập nhật",
       });
     } catch (error) {
-      console.error("Error updating user:", error);
       toast({
         title: "Lỗi",
         description:
@@ -98,7 +95,6 @@ export default function UserDetailPage() {
 
   const handleUpdateRole = async (data: any) => {
     try {
-      // console.log(data);
       setSaving(true);
       const updatedUser_ = await usersAPI.updateUser(userId, data);
       const updatedUser = updatedUser_.data;
@@ -108,7 +104,6 @@ export default function UserDetailPage() {
         description: "Vai trò và phòng ban đã được cập nhật",
       });
     } catch (error) {
-      console.error("Error updating user role:", error);
       toast({
         title: "Lỗi",
         description:
@@ -129,7 +124,6 @@ export default function UserDetailPage() {
         description: "Mật khẩu đã được đặt lại",
       });
     } catch (error) {
-      console.error("Error resetting password:", error);
       toast({
         title: "Lỗi",
         description: "Không thể đặt lại mật khẩu. Vui lòng thử lại sau.",
@@ -142,7 +136,6 @@ export default function UserDetailPage() {
 
   const handleUpdateStatus = async (data: any) => {
     try {
-      // console.log(data);
       setSaving(true);
       const updatedUser_ = await usersAPI.updateUser(userId, data);
       const updatedUser = updatedUser_.data;
@@ -154,7 +147,6 @@ export default function UserDetailPage() {
         }`,
       });
     } catch (error) {
-      console.error("Error updating user status:", error);
       toast({
         title: "Lỗi",
         description:

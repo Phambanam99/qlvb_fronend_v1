@@ -51,7 +51,6 @@ export default function ScheduleDetailPage({
         .slice(0, 5); // Limit to 5 related schedules
       setRelatedSchedules(related);
     } catch (error) {
-      console.error("Error fetching related schedules:", error);
     }
   };
 
@@ -65,7 +64,6 @@ export default function ScheduleDetailPage({
         setSchedule(scheduleData);
         setIsLoading(false);
       } catch (error: any) {
-        console.error("Error fetching schedule:", error);
         setError(error.message || "Không thể tải thông tin lịch công tác");
         toast({
           title: "Lỗi",

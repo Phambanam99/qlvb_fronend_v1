@@ -45,16 +45,9 @@ export function useScheduleData() {
 
   // Debug visibleDepartments to see if they're loading
   useEffect(() => {
-    console.log("Department data:", {
-      visibleDepartments: visibleDepartments?.length || 0,
-      loadingDepartments,
-      departmentsError,
-      allDepartments: allDepartments?.length || 0,
-      hasFullAccess,
-    });
+  
 
     if (departmentsError) {
-      console.error("Departments error:", departmentsError);
     }
   }, [
     visibleDepartments,
@@ -90,7 +83,6 @@ export function useScheduleData() {
 
       // If an API call is already in progress, don't start another one
       if (apiCallInProgressRef.current) {
-        console.log("API call already in progress, skipping this request");
         return;
       }
 
@@ -100,7 +92,6 @@ export function useScheduleData() {
         apiCallInProgressRef.current = true;
         setLoading(true);
 
-        console.log("Making API call with params:", params);
 
         schedulesAPI
           .getAllSchedules(params)
@@ -132,7 +123,6 @@ export function useScheduleData() {
             }
           })
           .catch((error) => {
-            console.error("API call failed:", error);
             if (showToast) {
               toast({
                 title: "Lỗi",
@@ -158,7 +148,6 @@ export function useScheduleData() {
   // Initial fetch - only runs once
   useEffect(() => {
     if (!loadingDepartments && !hasFetchedRef.current) {
-      console.log("Initial fetch triggered");
       hasFetchedRef.current = true; // Set this first to prevent multiple initial fetches
 
       fetchSchedulesWithDebounce({
@@ -171,21 +160,13 @@ export function useScheduleData() {
   // Significantly simplified filter logic - now called manually via button
   const applyFilters = useCallback(
     (searchQuery: string, statusFilter: string, departmentFilter: string) => {
-      console.log("🔍 Manual filter application triggered:", {
-        searchQuery,
-        statusFilter,
-        departmentFilter,
-      });
-      console.log("Available departments:", visibleDepartments);
+     
 
       // If department filter is selected, use general endpoint with departmentId parameter
       if (departmentFilter !== "all") {
         const deptId = Number(departmentFilter);
         if (!isNaN(deptId) && deptId > 0) {
-          console.log(
-            "🎯 Using general endpoint with department filter for departmentId:",
-            deptId
-          );
+         
 
           // Use general endpoint with department filter - more reliable
           const filterParams: ScheduleListParams = {
@@ -202,10 +183,7 @@ export function useScheduleData() {
             filterParams.status = statusFilter;
           }
 
-          console.log(
-            "📋 Using general endpoint with department params:",
-            filterParams
-          );
+        
           fetchSchedulesWithDebounce(filterParams);
           return; // Exit early
         }
@@ -222,7 +200,6 @@ export function useScheduleData() {
         filterParams.status = statusFilter;
       }
 
-      console.log("📋 Using general endpoint with filters:", filterParams);
       fetchSchedulesWithDebounce(filterParams);
     },
     [

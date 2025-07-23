@@ -62,7 +62,6 @@ export default function DepartmentHeadReview({
         const responseData = responseData_.data;
         setResponse(responseData);
       } catch (error) {
-        console.error("Error fetching response data:", error);
         toast({
           title: "Lỗi",
           description: "Không thể tải dữ liệu văn bản phản hồi",
@@ -93,7 +92,6 @@ export default function DepartmentHeadReview({
         const parentDept = parentDept_.data;
         setParentDepartment(parentDept);
       } catch (error) {
-        console.error("Error checking parent department:", error);
       } finally {
         setCheckingHierarchy(false);
       }
@@ -137,7 +135,6 @@ export default function DepartmentHeadReview({
         });
       }
     } catch (error: any) {
-      console.error("Error approving document:", error);
       toast({
         title: "Lỗi",
         description: error.message || "Không thể phê duyệt văn bản",
@@ -169,7 +166,6 @@ export default function DepartmentHeadReview({
         description: "Đã gửi yêu cầu chỉnh sửa cho cán bộ",
       });
     } catch (error: any) {
-      console.error("Error rejecting document:", error);
       toast({
         title: "Lỗi",
         description: error.message || "Không thể gửi yêu cầu chỉnh sửa",

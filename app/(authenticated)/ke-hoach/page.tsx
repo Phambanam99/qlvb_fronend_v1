@@ -93,7 +93,6 @@ export default function WorkPlansPage() {
 
         hasFetchedWorkPlansRef.current = true;
       } catch (error) {
-        console.error("Error fetching work plans:", error);
         toast({
           title: "Lỗi",
           description:

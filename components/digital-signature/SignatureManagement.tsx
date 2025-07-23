@@ -87,7 +87,6 @@ export const SignatureManagement = ({
         resetCreateForm();
       }
     } catch (error: any) {
-      console.error("Failed to create signature:", error);
     } finally {
       setIsCreating(false);
     }
@@ -114,7 +113,6 @@ export const SignatureManagement = ({
         setDeletePassword("");
       }
     } catch (error: any) {
-      console.error("Failed to delete signature:", error);
     } finally {
       setIsDeleting(false);
     }

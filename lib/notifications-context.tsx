@@ -40,7 +40,6 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         }))
         setNotifications(formattedNotifications)
       } catch (error) {
-        console.error("Failed to parse notifications from localStorage", error)
         localStorage.removeItem("notifications")
       }
     }

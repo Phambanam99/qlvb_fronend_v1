@@ -111,14 +111,7 @@ export default function IncomingDocumentsPage() {
     enabled: activeTab === "external" && Boolean(allDocuments?.length),
   });
 
-  console.log(
-    "Page render - activeTab:",
-    activeTab,
-    "allDocuments length:",
-    allDocuments?.length,
-    "external read status enabled:",
-    activeTab === "external" && Boolean(allDocuments?.length)
-  );
+ 
 
   // Add test function to global scope for debugging
   useEffect(() => {
@@ -173,7 +166,6 @@ export default function IncomingDocumentsPage() {
   };
 
   const handleTabChange = (value: string) => {
-    console.log("Tab changed to:", value);
     setActiveTab(value as "internal" | "external");
   };
 

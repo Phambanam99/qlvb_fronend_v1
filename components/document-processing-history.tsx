@@ -44,7 +44,6 @@ export default function DocumentProcessingHistory({ documentId }: DocumentProces
         
         setHistory(formattedHistory)
       } catch (error) {
-        console.error("Lỗi khi lấy lịch sử xử lý:", error)
         setError("Không thể tải lịch sử xử lý văn bản. Vui lòng thử lại sau.")
       } finally {
         setIsLoading(false)

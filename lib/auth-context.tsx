@@ -94,7 +94,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       return false;
     } catch (error) {
-      console.error("Token refresh failed:", error);
       return false;
     }
   };
@@ -103,16 +102,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const token = localStorage.getItem("accessToken");
 
     if (isTokenExpired(token)) {
-      console.log("AuthContext: Token expired, attempting to refresh...");
 
       // Try to refresh token
       const refreshSuccess = await refreshAccessToken();
       if (refreshSuccess) {
-        console.log("AuthContext: Token refreshed successfully");
         return true;
       }
 
-      console.log("AuthContext: Token refresh failed, logging out");
       localStorage.removeItem("accessToken");
       localStorage.removeItem("refreshToken");
       localStorage.removeItem("rememberMe");
@@ -131,7 +127,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        console.log("AuthContext: Checking authentication status...");
         const token = localStorage.getItem("accessToken");
 
         if (token) {
@@ -139,22 +134,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const isValid = await validateToken();
 
           if (isValid) {
-            console.log("AuthContext: Token valid, fetching current user...");
             const userData_ = await authAPI.getCurrentUser();
             const userData = userData_.data;
             if (userData) {
-              console.log("AuthContext: User data retrieved successfully");
               setUser(userData);
               setIsAuthenticated(true);
               // Đánh dấu data loading hoàn tất ngay khi có user
               setDataLoading(false);
             } else {
-              console.warn("AuthContext: User data is empty or invalid");
               setIsAuthenticated(false);
             }
           }
         } else {
-          console.log("AuthContext: No token found");
           localStorage.removeItem("accessToken");
           localStorage.removeItem("refreshToken");
           localStorage.removeItem("rememberMe");
@@ -162,7 +153,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setIsAuthenticated(false);
         }
       } catch (err) {
-        console.error("AuthContext: Auth check failed:", err);
         localStorage.removeItem("accessToken");
         localStorage.removeItem("refreshToken");
         localStorage.removeItem("rememberMe");
@@ -229,12 +219,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       try {
       } catch (preloadError) {
-        console.error("Không thể tải trước dữ liệu quan trọng:", preloadError);
       }
 
       return true;
     } catch (err: any) {
-      console.error("Login failed:", err);
       setError(err.message || "Đăng nhập thất bại. Vui lòng thử lại.");
       return false;
     } finally {
@@ -252,7 +240,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       router.push("/dang-nhap");
       setIsAuthenticated(false);
     } catch (err) {
-      console.error("Logout failed:", err);
     }
   };
 
@@ -285,7 +272,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(userData);
       }
     } catch (error) {
-      console.error("Failed to refresh user data:", error);
     }
   };
 

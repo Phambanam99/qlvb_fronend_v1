@@ -88,7 +88,6 @@ export default function AddRolePage() {
       // Chuyển về trang danh sách vai trò
       router.push("/vai-tro");
     } catch (error) {
-      console.error("Error creating role:", error);
       toast({
         title: "Lỗi",
         description: "Không thể tạo vai trò mới. Vui lòng thử lại sau.",

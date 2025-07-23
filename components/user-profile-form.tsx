@@ -76,13 +76,11 @@ export default function UserProfileForm({
       try {
         setLoadingRoles(true);
         const rolesData = await rolesAPI.getAllRoles();
-        console.log("Roles data:", rolesData); // Debug log
         
         // Handle both direct array and wrapped response
         const rolesArray = Array.isArray(rolesData) ? rolesData : (rolesData as any)?.data || [];
         setRoles(rolesArray);
       } catch (error) {
-        console.error("Error fetching roles:", error);
         setRoles([]); // Set empty array on error
       } finally {
         setLoadingRoles(false);

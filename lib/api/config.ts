@@ -39,19 +39,11 @@ api.interceptors.request.use(
           //   "Token:", token.substring(0, 20) + "..."
           // );
         } else {
-          console.warn(
-            "⚠️ API Request: No valid token available for:",
-            config.url,
-            "Token:",
-            token
-          );
+        
           delete config.headers.Authorization;
         }
       } else {
-        console.log(
-          "📖 API Request: Public endpoint, no auth required:",
-          config.url
-        );
+     
       }
     }
     return config;
@@ -69,20 +61,11 @@ api.interceptors.response.use(
     if (error.response) {
       // The request was made and the server responded with a status code
       // that falls out of the range of 2xx
-      console.error(`🔥 API Error ${error.response.status}:`, {
-        url: error.config?.url,
-        method: error.config?.method,
-        status: error.response.status,
-        statusText: error.response.statusText,
-        data: error.response.data,
-        headers: error.response.headers,
-      });
+    
 
       // Handle 401 Unauthorized - redirect to login
       if (error.response.status === 401 && typeof window !== "undefined") {
-        console.warn(
-          "🚫 401 Unauthorized - clearing tokens and redirecting to login"
-        );
+       
         localStorage.removeItem("accessToken");
         localStorage.removeItem("refreshToken");
         window.location.href = "/dang-nhap";
@@ -90,20 +73,12 @@ api.interceptors.response.use(
 
       // Handle 403 Forbidden - log detailed information
       if (error.response.status === 403) {
-        console.error("🚫 403 Forbidden - Access denied:", {
-          url: error.config?.url,
-          hasAuthHeader: !!error.config?.headers?.Authorization,
-          authHeader:
-            error.config?.headers?.Authorization?.substring(0, 20) + "...",
-          userAgent: navigator?.userAgent,
-        });
+      
       }
     } else if (error.request) {
       // The request was made but no response was received
-      console.error("API Error: No response received", error.request);
     } else {
       // Something happened in setting up the request that triggered an Error
-      console.error("API Error:", error.message);
     }
 
     return Promise.reject(error);
