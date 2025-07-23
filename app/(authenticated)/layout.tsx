@@ -40,15 +40,7 @@ export default function AuthenticatedLayout({
     const loadInitialData = async () => {
       if (isAuthenticated && user && dataLoading) {
         try {
-          // console.log("🔄 Đang tải dữ liệu ứng dụng...", {
-          //   userId: user.id,
-          //   isAuthenticated,
-          //   dataLoading,
-          // });
-
-          // Tăng thời gian timeout lên để đảm bảo API có đủ thời gian phản hồi
-          // Dashboards và các components khác sẽ gọi setDataLoaded khi hoàn tất
-          // nhưng chúng ta cần một safety net trong trường hợp có lỗi
+        
           const timeoutId = setTimeout(() => {
             // console.log(
             //   "⚠️ Thời gian tải dữ liệu vượt quá giới hạn - đánh dấu đã tải xong"
@@ -63,7 +55,7 @@ export default function AuthenticatedLayout({
               );
               // window.location.reload(); // có thể uncomment nếu vẫn gặp vấn đề
             }
-          }, 5000); // Tăng timeout lên 5 giây
+          }, 1000); // Tăng timeout lên 5 giây
 
           return () => clearTimeout(timeoutId);
         } catch (error) {

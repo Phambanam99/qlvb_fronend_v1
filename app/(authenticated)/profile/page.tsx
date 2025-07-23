@@ -21,27 +21,55 @@ import { useAuth } from "@/lib/auth-context";
 import { useNotifications } from "@/lib/notifications-context";
 import { Loader2, Save } from "lucide-react";
 import { usersAPI } from "@/lib/api/users";
+import UserProfileForm from "@/components/user-profile-form";
 
 export default function ProfilePage() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const { addNotification } = useNotifications();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
 
-  const handleUpdateProfile = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
+  const handleUpdateProfile = async (profileData: any) => {
+    console.log("Updating profile with data:", profileData);
+    const updateProfile = {
+      email: profileData.email,
+      fullName: profileData.fullName,
+      phone: profileData.phone,
+      roles: [profileData.position],
+      username: profileData.username,
+    };
+    
+    if (!user?.id) {
+      addNotification({
+        title: "Lỗi",
+        message: "Không thể xác định thông tin người dùng.",
+        type: "error",
+      });
+      return;
+    }
 
-    // Giả lập gửi dữ liệu
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    // Thêm thông báo
-    addNotification({
-      title: "Hồ sơ đã được cập nhật",
-      message: "Thông tin hồ sơ của bạn đã được cập nhật thành công.",
-      type: "success",
-    });
-
-    setIsSubmitting(false);
+    setIsUpdatingProfile(true);
+    try {
+      await usersAPI.updateProfile(user.id, updateProfile);
+      
+      // Refresh the user data in auth context
+      await refreshUser();
+      
+      addNotification({
+        title: "Hồ sơ đã được cập nhật",
+        message: "Thông tin hồ sơ của bạn đã được cập nhật thành công.",
+        type: "success",
+      });
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      addNotification({
+        title: "Lỗi cập nhật hồ sơ",
+        message: "Đã xảy ra lỗi khi cập nhật hồ sơ. Vui lòng thử lại sau.",
+        type: "error",
+      });
+    } finally {
+      setIsUpdatingProfile(false);
+    }
   };
 
   const handleChangePassword = async (e: React.FormEvent) => {
@@ -83,7 +111,7 @@ export default function ProfilePage() {
           user.id,
           currentPassword
         );
-        const valid = data_.data.valid;
+        const valid = data_.valid;
         if (!valid) {
           addNotification({
             title: "Mật khẩu hiện tại không đúng",
@@ -140,7 +168,7 @@ export default function ProfilePage() {
                 alt="Avatar"
               />
               <AvatarFallback className="text-4xl">
-                {user?.avatar || "??"}
+                {user?.fullName?.charAt(0) || "??"}
               </AvatarFallback>
             </Avatar>
             <div className="text-center">
@@ -174,8 +202,27 @@ export default function ProfilePage() {
         <div className="md:col-span-5 space-y-6">
           <Tabs defaultValue="profile" className="space-y-4">
             <TabsList>
+              <TabsTrigger value="profile">Thông tin cá nhân</TabsTrigger>
               <TabsTrigger value="password">Đổi mật khẩu</TabsTrigger>
             </TabsList>
+            <TabsContent value="profile">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Cập nhật thông tin cá nhân</CardTitle>
+                  <CardDescription>
+                    Thay đổi thông tin cá nhân của bạn
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <UserProfileForm 
+                    user={user}
+                    onSubmit={handleUpdateProfile}
+                    saving={isUpdatingProfile}
+                    isProfileEdit={true}
+                  />
+                </CardContent>
+              </Card>
+            </TabsContent>
             <TabsContent value="password">
               <Card>
                 <form onSubmit={handleChangePassword}>

@@ -28,6 +28,7 @@ interface AuthContextType {
   ) => Promise<boolean | undefined>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
+  refreshUser: () => Promise<void>;
   hasRole: (role: string | string[]) => boolean;
   hasPermission: (permission: string) => boolean;
   setDataLoaded: () => void;
@@ -130,7 +131,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        // console.log("AuthContext: Checking authentication status...");
+        console.log("AuthContext: Checking authentication status...");
         const token = localStorage.getItem("accessToken");
 
         if (token) {
@@ -138,20 +139,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const isValid = await validateToken();
 
           if (isValid) {
-            // console.log("AuthContext: Token valid, fetching current user...");
+            console.log("AuthContext: Token valid, fetching current user...");
             const userData_ = await authAPI.getCurrentUser();
             const userData = userData_.data;
             if (userData) {
-              // console.log("AuthContext: User data retrieved successfully:", userData);
+              console.log("AuthContext: User data retrieved successfully");
               setUser(userData);
               setIsAuthenticated(true);
+              // Đánh dấu data loading hoàn tất ngay khi có user
+              setDataLoading(false);
             } else {
               console.warn("AuthContext: User data is empty or invalid");
               setIsAuthenticated(false);
             }
           }
         } else {
-          // console.log("AuthContext: No token found");
+          console.log("AuthContext: No token found");
           localStorage.removeItem("accessToken");
           localStorage.removeItem("refreshToken");
           localStorage.removeItem("rememberMe");
@@ -167,9 +170,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsAuthenticated(false);
       } finally {
         setLoading(false);
-        if (!isAuthenticated) {
-          setDataLoading(false);
-        }
+        // Luôn set dataLoading = false để tránh loading vô hạn
+        setDataLoading(false);
       }
     };
 
@@ -275,6 +277,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const refreshUser = async () => {
+    try {
+      const userData_ = await authAPI.getCurrentUser();
+      const userData = userData_.data;
+      if (userData) {
+        setUser(userData);
+      }
+    } catch (error) {
+      console.error("Failed to refresh user data:", error);
+    }
+  };
+
   const hasRole = (role: string | string[]) => {
     if (!user) return false;
     if (Array.isArray(role)) {
@@ -353,6 +367,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         hasRole,
         hasPermission,
         checkAuth,
+        refreshUser,
         setDataLoaded,
       }}
     >

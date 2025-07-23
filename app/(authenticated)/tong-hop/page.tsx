@@ -68,7 +68,7 @@ const COLORS = [
 
 export default function DashboardPage() {
   const { toast } = useToast();
-  const { user, hasRole } = useAuth();
+  const { user, hasRole, setDataLoaded } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [dashboardStats, setDashboardStats] = useState<ComprehensiveDashboardStats | null>(null);
   const [todaySchedule, setTodaySchedule] = useState<any[]>([]);
@@ -101,7 +101,13 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (user) {
-      fetchDashboardData();
+      // Không block UI, fetch data trong background
+      fetchDashboardData().finally(() => {
+        // Đảm bảo setDataLoaded được gọi sau khi fetch xong
+        if (typeof setDataLoaded === 'function') {
+          setDataLoaded();
+        }
+      });
     }
   }, [user]);
 
