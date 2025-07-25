@@ -126,7 +126,6 @@ export default function DocumentResponseList({
         );
         setResponses(res as DocumentResponse[]);
       } catch (error) {
-        console.error("Error fetching responses:", error);
       }
     };
     fetchResponses();
@@ -164,7 +163,6 @@ export default function DocumentResponseList({
         description: "Đang tải tệp xuống",
       });
     } catch (error) {
-      console.error("Lỗi khi tải tệp đính kèm:", error);
       toast({
         title: "Lỗi",
         description: "Không thể tải tệp đính kèm. Vui lòng thử lại sau.",
@@ -232,7 +230,6 @@ export default function DocumentResponseList({
         description: "Đã chấp nhận văn bản trả lời",
       });
     } catch (error) {
-      console.error("Error approving response:", error);
       toast({
         title: "Lỗi",
         description: "Không thể chấp nhận văn bản. Vui lòng thử lại sau.",
@@ -276,7 +273,6 @@ export default function DocumentResponseList({
       setRejectionReason("");
       setSelectedResponseId(null);
     } catch (error) {
-      console.error("Error rejecting response:", error);
       toast({
         title: "Lỗi",
         description: "Không thể từ chối văn bản. Vui lòng thử lại sau.",
@@ -340,7 +336,6 @@ export default function DocumentResponseList({
       setReturnToSpecialistReason("");
       setSelectedResponseId(null);
     } catch (error) {
-      console.error("Error returning document to specialist:", error);
       toast({
         title: "Lỗi",
         description:
@@ -387,7 +382,6 @@ export default function DocumentResponseList({
         description: "Văn bản đã được ban hành thành công",
       });
     } catch (error) {
-      console.error("Lỗi khi ban hành văn bản:", error);
       toast({
         title: "Lỗi",
         description: "Không thể ban hành văn bản. Vui lòng thử lại sau.",

@@ -69,10 +69,7 @@ export default function DocumentTypesPage() {
   // Check permissions
   const canManage = hasPermission("ROLE_ADMIN");
   
-  // console.log("🔐 Document Types Page - Permission check:", {
-  //   canManage,
-  //   hasPermission: typeof hasPermission,
-  // });
+  
 
   // Fetch document types
   const fetchDocumentTypes = async () => {
@@ -82,7 +79,6 @@ export default function DocumentTypesPage() {
       const data = data_.data;
       setDocumentTypes(data);
     } catch (error) {
-      console.error("Error fetching document types:", error);
       toast({
         title: "Lỗi",
         description: "Không thể tải danh sách loại văn bản",
@@ -144,7 +140,6 @@ export default function DocumentTypesPage() {
       setIsDialogOpen(false);
       await fetchDocumentTypes();
     } catch (error) {
-      console.error("Error saving document type:", error);
       toast({
         title: "Lỗi",
         description: editingType
@@ -178,7 +173,6 @@ export default function DocumentTypesPage() {
       });
       await fetchDocumentTypes();
     } catch (error) {
-      console.error("Error deleting document type:", error);
       toast({
         title: "Lỗi",
         description: "Không thể xóa loại văn bản",
@@ -196,10 +190,8 @@ export default function DocumentTypesPage() {
 
   // Handle button click
   const handleAddButtonClick = () => {
-    // console.log("➕ Add Document Type button clicked");
-    // console.log("🔍 Current dialog state before:", isDialogOpen);
+    
     setIsDialogOpen(true);
-    // console.log("🔍 Setting dialog state to: true");
   };
 
   if (!canManage) {

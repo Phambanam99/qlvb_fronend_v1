@@ -66,7 +66,6 @@ export default function AddUserPage() {
         setDepartments(departmentsResponse.content || []);
         setRoles(rolesResponse || []);
       } catch (error) {
-        console.error("Error fetching data:", error);
         addNotification({
           title: "Lỗi",
           message:
@@ -143,7 +142,6 @@ export default function AddUserPage() {
       setIsSubmitting(false);
       router.push("/nguoi-dung");
     } catch (error) {
-      console.error("Error creating user:", error);
       addNotification({
         title: "Lỗi",
         message: "Không thể thêm người dùng. Vui lòng thử lại sau.",

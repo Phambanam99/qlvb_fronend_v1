@@ -22,7 +22,6 @@ export const signatureApi = {
             // Handle cases where the response is 200 OK but data is not as expected
             throw new Error(response.data.message || 'Failed to get signatures');
         } catch (error) {
-            console.error('Error fetching signatures:', error);
             throw error;
         }
     },
@@ -48,7 +47,6 @@ export const signatureApi = {
             }
             throw new Error(response.data.message || 'Failed to create signature');
         } catch (error) {
-            console.error('Error creating signature:', error);
             throw error;
         }
     },
@@ -64,7 +62,6 @@ export const signatureApi = {
             const params = new URLSearchParams({ password });
             await api.delete(`/signatures/${id}?${params.toString()}`);
         } catch (error) {
-            console.error(`Error deleting signature with id ${id}:`, error);
             throw error;
         }
     },
@@ -83,7 +80,6 @@ export const signatureApi = {
             });
             return response.data;
         } catch (error) {
-            console.error(`Error fetching signature image for id ${id}:`, error);
             throw error;
         }
     },

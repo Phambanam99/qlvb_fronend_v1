@@ -1,6 +1,3 @@
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Search, Filter } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -8,10 +5,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Filter } from "lucide-react";
 
 interface ScheduleFiltersProps {
-  searchQuery: string;
-  onSearchChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  // Date filters - thay thế search
+  weekFilter: string;
+  onWeekFilterChange: (value: string) => void;
+  monthFilter: string;
+  onMonthFilterChange: (value: string) => void;
+  yearFilter: string;
+  onYearFilterChange: (value: string) => void;
+  
+  // Existing filters
   statusFilter: string;
   onStatusFilterChange: (value: string) => void;
   departmentFilter: string;
@@ -23,8 +29,12 @@ interface ScheduleFiltersProps {
 }
 
 export function ScheduleFilters({
-  searchQuery,
-  onSearchChange,
+  weekFilter,
+  onWeekFilterChange,
+  monthFilter,
+  onMonthFilterChange,
+  yearFilter,
+  onYearFilterChange,
   statusFilter,
   onStatusFilterChange,
   departmentFilter,
@@ -34,21 +44,102 @@ export function ScheduleFilters({
   onApplyFilters,
   isFiltering,
 }: ScheduleFiltersProps) {
+  // Generate years list (current year ± 5 years)
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: 11 }, (_, i) => currentYear - 5 + i);
+
+  // Generate months list
+  const months = [
+    { value: "1", label: "Tháng 1" },
+    { value: "2", label: "Tháng 2" },
+    { value: "3", label: "Tháng 3" },
+    { value: "4", label: "Tháng 4" },
+    { value: "5", label: "Tháng 5" },
+    { value: "6", label: "Tháng 6" },
+    { value: "7", label: "Tháng 7" },
+    { value: "8", label: "Tháng 8" },
+    { value: "9", label: "Tháng 9" },
+    { value: "10", label: "Tháng 10" },
+    { value: "11", label: "Tháng 11" },
+    { value: "12", label: "Tháng 12" },
+  ];
+
+  // Generate weeks list
+  const weeks = Array.from({ length: 53 }, (_, i) => ({
+    value: String(i + 1),
+    label: `Tuần ${i + 1}`,
+  }));
+
   return (
     <div className="flex flex-col sm:flex-row gap-4">
-      {/* Re-enabled search field */}
-      <div className="relative flex-1">
-        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-        <Input
-          type="search"
-          placeholder="Tìm kiếm lịch..."
-          className="w-full bg-background pl-8"
-          value={searchQuery}
-          onChange={onSearchChange}
-        />
-      </div>
+      {/* Date filters - thay thế search */}
+      <Select value={yearFilter} onValueChange={onYearFilterChange}>
+        <SelectTrigger className="w-full sm:w-[140px]">
+          <SelectValue placeholder="Năm" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">Tất cả năm</SelectItem>
+          {years.map((year) => (
+            <SelectItem key={year} value={String(year)}>
+              {year}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
 
-      {/* Re-enabled status filter */}
+      <Select 
+        value={monthFilter} 
+        onValueChange={(value: string) => {
+          onMonthFilterChange(value);
+          // Nếu chọn tháng (khác "all"), reset tuần về "all"
+          if (value !== "all" && weekFilter !== "all") {
+            onWeekFilterChange("all");
+          }
+        }}
+      >
+        <SelectTrigger 
+          className="w-full sm:w-[140px]"
+          disabled={weekFilter !== "all"} // Disable khi đã chọn tuần
+        >
+          <SelectValue placeholder="Tháng" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">Tất cả tháng</SelectItem>
+          {months.map((month) => (
+            <SelectItem key={month.value} value={month.value}>
+              {month.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      <Select 
+        value={weekFilter} 
+        onValueChange={(value: string) => {
+          onWeekFilterChange(value);
+          // Nếu chọn tuần (khác "all"), reset tháng về "all"
+          if (value !== "all" && monthFilter !== "all") {
+            onMonthFilterChange("all");
+          }
+        }}
+      >
+        <SelectTrigger 
+          className="w-full sm:w-[140px]"
+          disabled={monthFilter !== "all"} // Disable khi đã chọn tháng
+        >
+          <SelectValue placeholder="Tuần" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">Tất cả tuần</SelectItem>
+          {weeks.map((week) => (
+            <SelectItem key={week.value} value={week.value}>
+              {week.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      {/* Status filter */}
       <Select value={statusFilter} onValueChange={onStatusFilterChange}>
         <SelectTrigger className="w-full sm:w-[180px]">
           <SelectValue placeholder="Trạng thái" />
@@ -71,7 +162,11 @@ export function ScheduleFilters({
           />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="all">Tất cả đơn vị</SelectItem>
+          <SelectItem value="all">
+            {!loadingDepartments && visibleDepartments && visibleDepartments.length <= 1 
+              ? "Đơn vị hiện tại" 
+              : "Tất cả đơn vị"}
+          </SelectItem>
           {!loadingDepartments &&
           visibleDepartments &&
           visibleDepartments.length > 0

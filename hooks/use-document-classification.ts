@@ -41,10 +41,8 @@ export function useDocumentClassification(
     } catch (err: any) {
       // Handle 404 errors more gracefully - don't log as errors for missing classifications
       if (err?.response?.status === 404) {
-        console.warn(`Document classification not found for document ${documentId} (404)`);
         setError("CLASSIFICATION_NOT_FOUND");
       } else {
-        console.error("Error fetching document classification:", err);
         setError(
           err instanceof Error ? err.message : "Failed to fetch classification"
         );
@@ -108,12 +106,8 @@ export function useMultipleDocumentClassifications(documentIds: number[]): {
         } catch (err: any) {
           // Handle 404 errors more gracefully
           if (err?.response?.status === 404) {
-            console.warn(`Document classification not found for document ${id} (404)`);
           } else {
-            console.error(
-              `Error fetching classification for document ${id}:`,
-              err
-            );
+           
           }
           return { id, classification: null };
         }
@@ -133,7 +127,6 @@ export function useMultipleDocumentClassifications(documentIds: number[]): {
       setClassifications(newClassifications);
       
     } catch (err) {
-      console.error("Error fetching document classifications:", err);
       setError(
         err instanceof Error ? err.message : "Failed to fetch classifications"
       );

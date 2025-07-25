@@ -35,19 +35,11 @@ export function useHierarchicalDepartments() {
       try {
         setLoading(true);
         setError(null);
-        console.log("Fetching departments...");
-        console.log("User info:", {
-          user: user?.email,
-          departmentId: user?.departmentId,
-        });
+        
 
         // Test if API is working at all
-        console.log("Testing API access...");
 
         const response = await departmentsAPI.getAllDepartments(0, 500);
-        console.log("Departments response:", response);
-        console.log("Response type:", typeof response);
-        console.log("Response keys:", Object.keys(response || {}));
 
         // Handle the response structure: {message: "Success", data: {content: [...], ...}}
         let departments: DepartmentDTO[] = [];
@@ -60,40 +52,23 @@ export function useHierarchicalDepartments() {
           Array.isArray(response.data.content)
         ) {
           departments = response.data.content;
-          console.log(
-            "✅ Successfully extracted departments from response.data.content:",
-            departments.length
-          );
+        
         } else if (
           response &&
           (response as any).content &&
           Array.isArray((response as any).content)
         ) {
           departments = (response as any).content;
-          console.log(
-            "✅ Successfully extracted departments from response.content:",
-            departments.length
-          );
+         
         } else if (response && Array.isArray(response)) {
           departments = response as any;
-          console.log("✅ Response is direct array:", departments.length);
         }
 
         if (departments.length > 0) {
           setAllDepartments(departments);
-          console.log(
-            "✅ Successfully set departments:",
-            departments.length,
-            "departments"
-          );
-          console.log("First few departments:", departments.slice(0, 3));
+         
         } else {
-          console.warn("❌ No departments found in response:", response);
-          console.warn("Response.data:", (response as any)?.data);
-          console.warn("Response.content:", (response as any)?.content);
-
-          // Fallback: Create some test departments if API returns empty
-          console.log("🔄 Creating fallback test departments...");
+                   // Fallback: Create some test departments if API returns empty
           const fallbackDepts: DepartmentDTO[] = [
             {
               id: 1,
@@ -120,17 +95,9 @@ export function useHierarchicalDepartments() {
             },
           ];
           setAllDepartments(fallbackDepts);
-          console.log("✅ Set fallback departments:", fallbackDepts.length);
         }
       } catch (err: any) {
-        console.error("❌ Lỗi khi tải danh sách phòng ban:", err);
-        console.error("Error details:", {
-          message: err.message,
-          status: err.response?.status,
-          statusText: err.response?.statusText,
-          data: err.response?.data,
-          url: err.config?.url,
-        });
+      
         setError(
           `API Error: ${err.response?.status || "Unknown"} - ${err.message}`
         );
@@ -144,7 +111,6 @@ export function useHierarchicalDepartments() {
     if (user) {
       fetchDepartments();
     } else {
-      console.log("⏳ No user available, skipping departments fetch");
       setLoading(false);
     }
   }, [user]); // Add user as dependency
@@ -257,14 +223,7 @@ export function useHierarchicalDepartments() {
     const result = hasFullAccess
       ? flattenedDepartments
       : userDepartmentWithChildren;
-    console.log("visibleDepartments calculation:", {
-      hasFullAccess,
-      flattenedDepartmentsCount: flattenedDepartments.length,
-      userDepartmentWithChildrenCount: userDepartmentWithChildren.length,
-      resultCount: result.length,
-      user: user?.email,
-      userDepartmentId: user?.departmentId,
-    });
+   
     return result;
   }, [hasFullAccess, flattenedDepartments, userDepartmentWithChildren, user]);
 

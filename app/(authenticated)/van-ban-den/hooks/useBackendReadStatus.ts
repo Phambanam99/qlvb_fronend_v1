@@ -26,10 +26,7 @@ export function useBackendReadStatus({
   // Fetch read status for all documents
   const fetchReadStatuses = useCallback(async () => {
     if (!enabled || !documents || documents.length === 0) {
-      console.log("Backend read status: skipping fetch", {
-        enabled,
-        documentsLength: documents?.length,
-      });
+    
       return;
     }
 
@@ -40,23 +37,16 @@ export function useBackendReadStatus({
         .filter((id) => id != null);
 
       if (documentIds.length === 0) {
-        console.log("Backend read status: no valid document IDs");
         return;
       }
 
-      console.log(
-        "Backend read status: fetching for IDs",
-        documentIds,
-        "type:",
-        documentType
-      );
+    
 
       const response = await documentReadStatusAPI.getBatchReadStatus(
         documentIds,
         documentType
       );
 
-      console.log("Backend read status: API response", response);
 
       // Backend returns Map<Long, Boolean> but keys might be numbers or strings
       const numericReadStatuses: Record<number, boolean> = {};
@@ -67,13 +57,9 @@ export function useBackendReadStatus({
         numericReadStatuses[numericId] = Boolean(isRead);
       });
 
-      console.log(
-        "Backend read status: processed statuses",
-        numericReadStatuses
-      );
+  
       setReadStatuses(numericReadStatuses);
     } catch (error) {
-      console.error("Error fetching read statuses:", error);
       // Set all as unread on error
       const errorStatuses: Record<number, boolean> = {};
       documents.forEach((doc) => {
@@ -96,12 +82,7 @@ export function useBackendReadStatus({
   const getReadStatus = useCallback(
     (documentId: number): boolean => {
       const status = readStatuses[documentId] ?? false;
-      console.log(
-        `Backend read status for doc ${documentId}:`,
-        status,
-        "from statuses:",
-        readStatuses
-      );
+    
       return status;
     },
     [readStatuses]
@@ -112,9 +93,7 @@ export function useBackendReadStatus({
     async (documentId: number): Promise<void> => {
       try {
         const currentStatus = getReadStatus(documentId);
-        console.log(
-          `Toggle read status for doc ${documentId}: ${currentStatus} -> ${!currentStatus}`
-        );
+      
 
         if (currentStatus) {
           await documentReadStatusAPI.markAsUnread(documentId, documentType);
@@ -128,14 +107,12 @@ export function useBackendReadStatus({
           [documentId]: !currentStatus,
         }));
 
-        console.log(`Successfully toggled read status for doc ${documentId}`);
 
         // Refetch to ensure consistency with backend
         setTimeout(() => {
           fetchReadStatuses();
         }, 500);
       } catch (error) {
-        console.error("Error toggling read status:", error);
         // Revert local state on error
         fetchReadStatuses();
       }
@@ -147,7 +124,6 @@ export function useBackendReadStatus({
   const markAsRead = useCallback(
     async (documentId: number): Promise<void> => {
       try {
-        console.log(`Mark as read for doc ${documentId}`);
         await documentReadStatusAPI.markAsRead(documentId, documentType);
 
         // Update local state
@@ -156,9 +132,7 @@ export function useBackendReadStatus({
           [documentId]: true,
         }));
 
-        console.log(`Successfully marked doc ${documentId} as read`);
       } catch (error) {
-        console.error("Error marking as read:", error);
       }
     },
     [documentType]

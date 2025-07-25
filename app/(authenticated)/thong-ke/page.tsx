@@ -169,7 +169,6 @@ export default function DashboardPage() {
 
       setDashboardStats(stats);
     } catch (error) {
-      console.error("Error fetching dashboard data:", error);
       toast({
         title: "Lỗi",
         description: "Không thể tải dữ liệu dashboard. Vui lòng thử lại sau.",

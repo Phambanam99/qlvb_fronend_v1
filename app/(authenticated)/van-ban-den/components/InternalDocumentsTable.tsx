@@ -19,12 +19,19 @@ interface InternalDocumentsTableProps {
   documents: any[];
   onDocumentClick: (doc: any) => void;
   formatDate: (date: string | Date | null | undefined) => string;
+  // Read status props - like in văn bản đi
+  universalReadStatus?: any;
+  onReadStatusToggle?: (docId: number) => void;
+  getReadStatus?: (docId: number) => boolean;
 }
 
 export function InternalDocumentsTable({
   documents,
   onDocumentClick,
   formatDate,
+  universalReadStatus,
+  onReadStatusToggle,
+  getReadStatus,
 }: InternalDocumentsTableProps) {
   return (
     <Card className="border-primary/10 shadow-sm">
@@ -42,20 +49,59 @@ export function InternalDocumentsTable({
           </TableHeader>
           <TableBody>
             {documents && documents.length > 0 ? (
-              documents.map((doc: any) => (
-                <TableRow key={doc.id} className="hover:bg-accent/30">
-                  <TableCell className="font-medium">
-                    {doc.documentNumber}
-                  </TableCell>
-                  <TableCell>{formatDate(doc.signingDate)}</TableCell>
-                  <TableCell className="max-w-[300px] truncate">
-                    {doc.title}
-                  </TableCell>
-                  <TableCell>{doc.senderName}</TableCell>
+              documents.map((doc: any) => {
+                const isRead = getReadStatus ? getReadStatus(doc.id) : doc.isRead;
+                return (
+                  <TableRow 
+                    key={doc.id} 
+                    className={`hover:bg-accent/30 cursor-pointer ${
+                      !isRead
+                        ? "bg-blue-50/50 border-l-4 border-l-blue-500"
+                        : ""
+                    }`}
+                    onClick={() => onDocumentClick(doc)}
+                  >
+                    <TableCell className="font-medium">
+                      {doc.documentNumber}
+                    </TableCell>
+                    <TableCell>{formatDate(doc.signingDate)}</TableCell>
+                    <TableCell className="max-w-[300px] truncate">
+                      <div className="flex items-center gap-2">
+                        {!isRead && (
+                          <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />
+                        )}
+                        <span className={!isRead ? "font-semibold" : ""}>
+                          {doc.title}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell>{doc.senderName}</TableCell>
                   <TableCell>
-                    <Badge variant={doc.isRead ? "default" : "outline"}>
-                      {doc.isRead ? "Đã đọc" : "Chưa đọc"}
-                    </Badge>
+                    {universalReadStatus && getReadStatus ? (
+                      // Use Button for read status toggle like văn bản đi
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={`${
+                          getReadStatus(doc.id)
+                            ? "text-green-600 hover:text-green-700"
+                            : "text-blue-600 hover:text-blue-700"
+                        }`}
+                        onClick={(e: React.MouseEvent) => {
+                          e.stopPropagation();
+                          if (onReadStatusToggle) {
+                            onReadStatusToggle(doc.id);
+                          }
+                        }}
+                      >
+                        {getReadStatus(doc.id) ? "Đã đọc" : "Chưa đọc"}
+                      </Button>
+                    ) : (
+                      // Fallback to Badge for backward compatibility
+                      <Badge variant={doc.isRead ? "default" : "outline"}>
+                        {doc.isRead ? "Đã đọc" : "Chưa đọc"}
+                      </Badge>
+                    )}
                   </TableCell>
                   <TableCell>
                     <Button
@@ -68,7 +114,8 @@ export function InternalDocumentsTable({
                     </Button>
                   </TableCell>
                 </TableRow>
-              ))
+              );
+              })
             ) : (
               <TableRow>
                 <TableCell colSpan={6} className="h-24 text-center">

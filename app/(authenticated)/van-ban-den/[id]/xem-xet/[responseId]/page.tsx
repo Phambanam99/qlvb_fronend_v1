@@ -54,7 +54,6 @@ export default function DocumentReviewPage({ params }: { params: { id: string; r
         setDocument(documentData)
         setResponse(responseData)
       } catch (error) {
-        console.error("Error fetching data:", error)
         toast({
           title: "Lỗi",
           description: "Không thể tải thông tin văn bản. Vui lòng thử lại sau.",

@@ -191,7 +191,6 @@ export default function ReplyInternalDocumentPage() {
           selectSecondaryDepartment(senderDeptId);
         }
       } catch (error) {
-        console.error("Error fetching incoming document:", error);
         toast({
           title: "Lỗi",
           description: "Không thể tải thông tin văn bản đến",
@@ -340,7 +339,6 @@ export default function ReplyInternalDocumentPage() {
       // Redirect to outgoing documents list
       router.push("/van-ban-di");
     } catch (error: any) {
-      console.error("Error creating response document:", error);
       toast({
         title: "Lỗi",
         description:
@@ -418,7 +416,6 @@ export default function ReplyInternalDocumentPage() {
       // Redirect to outgoing documents list
       router.push("/van-ban-di");
     } catch (error: any) {
-      console.error("Error saving draft:", error);
       toast({
         title: "Lỗi",
         description:

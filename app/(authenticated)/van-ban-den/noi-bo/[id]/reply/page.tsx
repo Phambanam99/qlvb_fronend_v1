@@ -233,7 +233,6 @@ export default function ReplyInternalDocumentPage() {
           setLeadershipUsers(leaders);
         }
       } catch (error) {
-        console.error("Error fetching data:", error);
         toast({
           title: "Lỗi",
           description:
@@ -395,12 +394,7 @@ export default function ReplyInternalDocumentPage() {
         ],
       };
 
-      // Log the data being sent to debug
-      // console.log("Sending reply data:", {
-      //   originalDocumentId: Number(originalDocumentId),
-      //   replyData,
-      //   hasFiles: files.length > 0
-      // });
+    
 
       // Submit the reply
       let result_;
@@ -410,7 +404,6 @@ export default function ReplyInternalDocumentPage() {
         result_ = await replyToDocument(Number(originalDocumentId), replyData);
       }
 
-      // console.log("API Response:", result_);
 
       // Check for errors in the response
       if (result_.success === false || (result_.message && result_.data === null)) {
@@ -441,7 +434,6 @@ export default function ReplyInternalDocumentPage() {
         router.push("/van-ban-den?tab=internal");
       }
     } catch (error) {
-      console.error("Error submitting form:", error);
       toast({
         title: "Lỗi",
         description: "Không thể gửi văn bản. Vui lòng thử lại sau.",
@@ -505,7 +497,6 @@ export default function ReplyInternalDocumentPage() {
 
       router.push(`/van-ban-den/noi-bo/${originalDocumentId}`);
     } catch (error: any) {
-      console.error("Error saving draft:", error);
       toast({
         title: "Lỗi",
         description:

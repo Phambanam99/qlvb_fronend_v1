@@ -24,45 +24,28 @@ export default function AuthenticatedLayout({
     }
   }, [isAuthenticated, loading, router]);
 
-  // Effect to track when to safely render content
   useEffect(() => {
-    // Chỉ hiển thị nội dung khi đã xác thực và tải xong dữ liệu
     if (isAuthenticated && !loading && !dataLoading) {
-      // console.log("✅ Tất cả dữ liệu đã tải xong - sẵn sàng hiển thị nội dung");
       setRenderContent(true);
     } else {
       setRenderContent(false);
     }
   }, [isAuthenticated, loading, dataLoading]);
 
-  // Effect to fetch initial data once authenticated
   useEffect(() => {
     let timeoutId: NodeJS.Timeout | undefined;
 
     if (isAuthenticated && user && dataLoading) {
       try {
         timeoutId = setTimeout(() => {
-          // console.log(
-          //   "⚠️ Thời gian tải dữ liệu vượt quá giới hạn - đánh dấu đã tải xong"
-          // );
-          // Đánh dấu dữ liệu đã tải xong
           setDataLoaded();
-
-          // Force reload trang nếu cần thiết để đảm bảo dữ liệu được hiển thị
-          if (window.location.pathname === "/") {
-            console.log(
-              "🔄 Tải lại trang dashboard để đảm bảo dữ liệu hiển thị đúng"
-            );
-            // window.location.reload(); // có thể uncomment nếu vẫn gặp vấn đề
-          }
-        }, 1000); // Timeout 1 giây
+        }, 1000); 
       } catch (error) {
-        console.error("⛔ Lỗi khi tải dữ liệu ban đầu:", error);
-        setDataLoaded(); // Đánh dấu đã tải xong để tránh loading mãi
+       
+        setDataLoaded();
       }
     }
 
-    // Cleanup timeout when component unmounts or effect re-runs
     return () => {
       if (timeoutId) {
         clearTimeout(timeoutId);
@@ -70,7 +53,6 @@ export default function AuthenticatedLayout({
     };
   }, [isAuthenticated, dataLoading, setDataLoaded, user]);
 
-  // Show loading spinner for both auth loading and data loading
   if (loading || dataLoading || !renderContent) {
     return (
       <div className="flex h-screen items-center justify-center">

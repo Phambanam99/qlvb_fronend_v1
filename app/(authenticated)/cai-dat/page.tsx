@@ -67,7 +67,7 @@ export default function SettingsPage() {
         const response = response_.data;
         setSettings(response);
       } catch (error) {
-        console.error("Error fetching settings:", error);
+
         addNotification({
           title: "Lỗi",
           message: "Không thể tải cài đặt hệ thống",
@@ -115,7 +115,6 @@ export default function SettingsPage() {
         type: "success",
       });
     } catch (error) {
-      console.error("Error saving settings:", error);
       addNotification({
         title: "Lỗi",
         message: "Không thể lưu cài đặt. Vui lòng thử lại sau.",
@@ -161,7 +160,6 @@ export default function SettingsPage() {
         type: "success",
       });
     } catch (error) {
-      console.error("Error saving notification settings:", error);
       addNotification({
         title: "Lỗi",
         message: "Không thể lưu cài đặt thông báo. Vui lòng thử lại sau.",
@@ -209,7 +207,6 @@ export default function SettingsPage() {
         type: "success",
       });
     } catch (error) {
-      console.error("Error saving security settings:", error);
       addNotification({
         title: "Lỗi",
         message: "Không thể lưu cài đặt bảo mật. Vui lòng thử lại sau.",

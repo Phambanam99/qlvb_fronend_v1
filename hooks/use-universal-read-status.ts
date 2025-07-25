@@ -74,7 +74,6 @@ export const useUniversalReadStatus = () => {
         }, 100);
       }
     } catch (error) {
-      console.error("Error marking document as read:", error);
       throw error;
     }
   }, []);
@@ -109,7 +108,6 @@ export const useUniversalReadStatus = () => {
         }, 100);
       }
     } catch (error) {
-      console.error("Error marking document as unread:", error);
       throw error;
     }
   }, []);
@@ -129,12 +127,10 @@ export const useUniversalReadStatus = () => {
     try {
       // Validate input parameters
       if (!Array.isArray(documentIds) || documentIds.length === 0) {
-        console.warn("loadBatchReadStatus called with invalid documentIds:", documentIds);
         return;
       }
 
       if (!documentType) {
-        console.warn("loadBatchReadStatus called with invalid documentType:", documentType);
         return;
       }
 
@@ -142,7 +138,6 @@ export const useUniversalReadStatus = () => {
       
       // Validate response before processing
       if (!response || typeof response !== 'object') {
-        console.warn("Invalid response from getBatchReadStatus:", response);
         return;
       }
       
@@ -156,7 +151,6 @@ export const useUniversalReadStatus = () => {
       
       notifySubscribers();
     } catch (error) {
-      console.error("Error loading batch read status:", error);
       // Don't throw the error to prevent breaking the UI
       // throw error;
     }
@@ -171,7 +165,6 @@ export const useUniversalReadStatus = () => {
       globalUnreadCounts[documentType] = response.unreadCount;
       notifySubscribers();
     } catch (error) {
-      console.error("Error loading unread count:", error);
       throw error;
     }
   }, []);

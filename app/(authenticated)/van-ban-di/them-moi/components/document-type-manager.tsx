@@ -50,10 +50,8 @@ export function DocumentTypeManager({
         setIsLoadingDocumentTypes(true);
         const types_ = await documentTypesAPI.getAllDocumentTypes();
         const types = types_.data;
-        // console.log("Fetched Document Types:", types);
         setDocumentTypes(types);
       } catch (error) {
-        console.error("Error fetching document types:", error);
         addNotification({
           title: "Lỗi",
           message: "Không thể tải danh sách loại văn bản",
@@ -96,12 +94,10 @@ export function DocumentTypeManager({
         isActive: true,
       };
 
-      // console.log("Creating Document Type:", documentTypeData);
       const createdType_ = await documentTypesAPI.createDocumentType(
         documentTypeData
       );
       const createdType = createdType_.data;
-      // console.log("Created Document Type:", createdType);
 
       // Add the new document type to the list
       setDocumentTypes((prevTypes) => [...prevTypes, createdType]);
@@ -119,7 +115,6 @@ export function DocumentTypeManager({
         type: "success",
       });
     } catch (error: any) {
-      console.error("Error creating document type:", error);
       let errorMessage = "Có lỗi xảy ra khi thêm loại văn bản";
       if (error.response?.data?.message) {
         errorMessage = error.response.data.message;

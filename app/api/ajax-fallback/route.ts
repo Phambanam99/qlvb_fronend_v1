@@ -10,7 +10,6 @@ export async function POST() {
 }
 
 export async function GET() {
-  // console.log("Intercepted ajax.php request");
 
   // Return an empty 200 response to prevent errors in the console
   return NextResponse.json({ success: true, message: "API endpoint migrated" });

@@ -169,17 +169,6 @@ export default function LoginPage() {
           <CardFooter>
             <div className="w-full text-center text-sm text-muted-foreground">
               <div className="flex flex-col space-y-4">
-                <div className="p-3 bg-muted/50 rounded-md">
-                  <p className="font-medium text-foreground">
-                    Tài khoản mặc định:
-                  </p>
-                  <p className="mt-1">
-                    Tên đăng nhập: <span className="font-medium">admin</span>
-                  </p>
-                  <p>
-                    Mật khẩu: <span className="font-medium">admin123</span>
-                  </p>
-                </div>
                 <div className="pt-2">
                   Chưa có tài khoản?{" "}
                   <Link href="/dang-ky" className="text-primary font-medium">

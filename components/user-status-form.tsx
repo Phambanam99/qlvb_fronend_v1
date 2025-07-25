@@ -24,7 +24,7 @@ interface UserStatusFormProps {
 export default function UserStatusForm({ user, onSubmit, saving }: UserStatusFormProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [action, setAction] = useState<"activate" | "deactivate">("activate")
-
+ 
   const handleStatusChange = (isActive: boolean) => {
     setAction(isActive ? "activate" : "deactivate")
     setIsDialogOpen(true)

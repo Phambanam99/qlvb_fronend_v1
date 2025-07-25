@@ -7,7 +7,7 @@ import "react-pdf/dist/Page/TextLayer.css";
 import { PageDropTarget } from "./PageDropTarget"; // Import the new component
 
 // Sử dụng worker file từ public thay vì CDN để tránh phụ thuộc internet
-if (typeof window !== "undefined") {
+if (typeof window !== "undefined" && !pdfjs.GlobalWorkerOptions.workerSrc) {
   pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
 }
 

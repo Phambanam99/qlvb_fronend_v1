@@ -49,7 +49,6 @@ export const rolesAPI = {
       const response = await api.get("/roles");
       return response.data;
     } catch (error) {
-      console.error("Error fetching all roles:", error);
       throw error;
     }
   },
@@ -70,7 +69,6 @@ export const rolesAPI = {
       });
       return response.data;
     } catch (error) {
-      console.error("Error fetching paginated roles:", error);
       throw error;
     }
   },
@@ -85,7 +83,6 @@ export const rolesAPI = {
       const response = await api.get(`/roles/${id}`);
       return response.data;
     } catch (error) {
-      console.error(`Error fetching role with ID ${id}:`, error);
       throw error;
     }
   },
@@ -100,7 +97,6 @@ export const rolesAPI = {
       const response = await api.get(`/roles/name/${name}`);
       return response.data;
     } catch (error) {
-      console.error(`Error fetching role with name ${name}:`, error);
       throw error;
     }
   },
@@ -115,7 +111,6 @@ export const rolesAPI = {
       const response = await api.post("/roles", roleData);
       return response.data;
     } catch (error) {
-      console.error("Error creating role:", error);
       throw error;
     }
   },
@@ -134,7 +129,6 @@ export const rolesAPI = {
       const response = await api.put(`/roles/${id}`, roleData);
       return response.data;
     } catch (error) {
-      console.error(`Error updating role with ID ${id}:`, error);
       throw error;
     }
   },
@@ -149,7 +143,6 @@ export const rolesAPI = {
       const response = await api.delete(`/roles/${id}`);
       return response.data;
     } catch (error) {
-      console.error(`Error deleting role with ID ${id}:`, error);
       throw error;
     }
   },

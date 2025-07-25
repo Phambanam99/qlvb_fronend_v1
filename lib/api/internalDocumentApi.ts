@@ -240,6 +240,30 @@ export const getSentDocuments = async (page = 0, size = 10) => {
   return response.data;
 };
 
+export const getSentDocumentsByYear = async (year: number, month?: number, page = 0, size = 10) => {
+  const params: any = { page, size };
+  if (month !== undefined && month !== null) {
+    params.month = month;
+  }
+  
+  const response = await api.get(`/internal-documents/sent/by-year/${year}`, {
+    params
+  });
+  return response.data;
+};
+
+export const getReceivedDocumentsByYear = async (year: number, month?: number, page = 0, size = 10) => {
+  const params: any = { page, size };
+  if (month !== undefined && month !== null) {
+    params.month = month;
+  }
+  
+  const response = await api.get(`/internal-documents/received/by-year/${year}`, {
+    params
+  });
+  return response.data;
+};
+
 export const getAllSentDocuments = async () => {
   const response = await api.get("/internal-documents/sent/all");
   return response.data;

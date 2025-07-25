@@ -33,7 +33,6 @@ export default function DocumentAssignmentPage({
         const documentData = documentData_.data;
         setDocument(documentData);
       } catch (error) {
-        console.error("Error fetching document:", error);
         toast({
           title: "Lỗi",
           description: "Không thể tải thông tin văn bản. Vui lòng thử lại sau.",

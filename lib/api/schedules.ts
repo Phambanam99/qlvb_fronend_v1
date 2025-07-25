@@ -66,6 +66,9 @@ export interface ScheduleListParams {
   search?: string;
   status?: string;
   departmentId?: number;
+  // Date filtering parameters - backend uses fromDate/toDate
+  fromDate?: string; // format: YYYY-MM-DD
+  toDate?: string;   // format: YYYY-MM-DD
 }
 
 export const schedulesAPI = {
@@ -84,6 +87,110 @@ export const schedulesAPI = {
       totalElements: response.data?.data?.totalElements,
       currentPage: response.data?.data?.number,
     });
+    return response.data;
+  },
+
+  /**
+   * Get schedules by week
+   * @param year Year (e.g., 2024, 2025)
+   * @param week Week number (1-53)
+   * @param params Query parameters
+   * @returns Paginated list of schedules for the week
+   */
+  getSchedulesByWeek: async (
+    year: number,
+    week: number,
+    params?: { page?: number; size?: number }
+  ): Promise<ResponseDTO<PaginatedScheduleResponse>> => {
+    logger.api("GET", `/schedules/week/${year}/${week}`, params);
+    const response = await api.get(`/schedules/week/${year}/${week}`, { params });
+    return response.data;
+  },
+
+  /**
+   * Get schedules by month
+   * @param year Year (e.g., 2024, 2025)
+   * @param month Month (1-12)
+   * @param params Query parameters
+   * @returns Paginated list of schedules for the month
+   */
+  getSchedulesByMonth: async (
+    year: number,
+    month: number,
+    params?: { page?: number; size?: number }
+  ): Promise<ResponseDTO<PaginatedScheduleResponse>> => {
+    logger.api("GET", `/schedules/month/${year}/${month}`, params);
+    const response = await api.get(`/schedules/month/${year}/${month}`, { params });
+    return response.data;
+  },
+
+  /**
+   * Get schedules by year
+   * @param year Year (e.g., 2024, 2025)
+   * @param params Query parameters
+   * @returns Paginated list of schedules for the year
+   */
+  getSchedulesByYear: async (
+    year: number,
+    params?: { page?: number; size?: number }
+  ): Promise<ResponseDTO<PaginatedScheduleResponse>> => {
+    logger.api("GET", `/schedules/year/${year}`, params);
+    const response = await api.get(`/schedules/year/${year}`, { params });
+    return response.data;
+  },
+
+  /**
+   * Get schedules by department and week
+   * @param departmentId Department ID
+   * @param year Year (e.g., 2024, 2025)
+   * @param week Week number (1-53)
+   * @param params Query parameters
+   * @returns Paginated list of schedules for the department and week
+   */
+  getSchedulesByDepartmentAndWeek: async (
+    departmentId: number,
+    year: number,
+    week: number,
+    params?: { page?: number; size?: number }
+  ): Promise<ResponseDTO<PaginatedScheduleResponse>> => {
+    logger.api("GET", `/schedules/department/${departmentId}/week/${year}/${week}`, params);
+    const response = await api.get(`/schedules/department/${departmentId}/week/${year}/${week}`, { params });
+    return response.data;
+  },
+
+  /**
+   * Get schedules by department and month
+   * @param departmentId Department ID
+   * @param year Year (e.g., 2024, 2025)
+   * @param month Month (1-12)
+   * @param params Query parameters
+   * @returns Paginated list of schedules for the department and month
+   */
+  getSchedulesByDepartmentAndMonth: async (
+    departmentId: number,
+    year: number,
+    month: number,
+    params?: { page?: number; size?: number }
+  ): Promise<ResponseDTO<PaginatedScheduleResponse>> => {
+    logger.api("GET", `/schedules/department/${departmentId}/month/${year}/${month}`, params);
+    const response = await api.get(`/schedules/department/${departmentId}/month/${year}/${month}`, { params });
+    return response.data;
+  },
+
+  /**
+   * Get schedules by department and year
+   * @param departmentId Department ID
+   * @param year Year (e.g., 2024, 2025)
+   * @param params Query parameters
+   * @returns Paginated list of schedules for the department and year
+   */
+  getSchedulesByDepartmentAndYear: async (
+    departmentId: number,
+    year: number,
+    params?: { page?: number; size?: number }
+  ): Promise<ResponseDTO<PaginatedScheduleResponse>> => {
+    logger.api("GET", `/schedules/department/${departmentId}/year/${year}`, params);
+    const response = await api.get(`/schedules/department/${departmentId}/year/${year}`, { params });
     return response.data;
   },
 

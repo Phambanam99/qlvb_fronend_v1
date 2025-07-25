@@ -85,7 +85,6 @@ export default function SendersPage() {
       const data = data_.data;
       setSenders(data);
     } catch (error) {
-      console.error("Error fetching senders:", error);
       toast({
         title: "Lỗi",
         description: "Không thể tải danh sách đơn vị ngoài",
@@ -130,7 +129,6 @@ export default function SendersPage() {
       await fetchSenders();
       handleDialogClose();
     } catch (error) {
-      console.error("Error saving sender:", error);
       toast({
         title: "Lỗi",
         description: editingSender
@@ -165,7 +163,6 @@ export default function SendersPage() {
       });
       await fetchSenders();
     } catch (error) {
-      console.error("Error deleting sender:", error);
       toast({
         title: "Lỗi",
         description: "Không thể xóa đơn vị ngoài",

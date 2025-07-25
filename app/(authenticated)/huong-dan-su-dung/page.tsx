@@ -233,7 +233,6 @@ export default function UserGuidePage() {
         description: "Không thể tải file PDF",
         variant: "destructive",
       });
-      console.log(error);
       return null;
     }
   };

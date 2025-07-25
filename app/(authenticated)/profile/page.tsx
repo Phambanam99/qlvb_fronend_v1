@@ -30,7 +30,6 @@ export default function ProfilePage() {
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
 
   const handleUpdateProfile = async (profileData: any) => {
-    console.log("Updating profile with data:", profileData);
     const updateProfile = {
       email: profileData.email,
       fullName: profileData.fullName,
@@ -61,7 +60,6 @@ export default function ProfilePage() {
         type: "success",
       });
     } catch (error) {
-      console.error("Error updating profile:", error);
       addNotification({
         title: "Lỗi cập nhật hồ sơ",
         message: "Đã xảy ra lỗi khi cập nhật hồ sơ. Vui lòng thử lại sau.",
@@ -136,7 +134,6 @@ export default function ProfilePage() {
         });
       }
     } catch (error) {
-      console.error("Error changing password:", error);
       addNotification({
         title: "Lỗi hệ thống",
         message: "Đã xảy ra lỗi khi thay đổi mật khẩu. Vui lòng thử lại sau.",

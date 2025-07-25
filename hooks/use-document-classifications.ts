@@ -45,10 +45,7 @@ export function useDocumentClassifications(
           const classification = classification_.data;
           return { docId, classification };
         } catch (err) {
-          console.warn(
-            `Failed to get classification for document ${docId}:`,
-            err
-          );
+         
           return null;
         }
       });
@@ -66,7 +63,6 @@ export function useDocumentClassifications(
 
       setClassifications(newClassifications);
     } catch (err: any) {
-      console.error("Error fetching document classifications:", err);
       setError(err.message || "Failed to fetch document classifications");
     } finally {
       setIsLoading(false);

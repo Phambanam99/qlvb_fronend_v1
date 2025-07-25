@@ -37,7 +37,6 @@ export const useIncomingDocumentsData = (
   const activeTab = props.activeTab || "internal";
 
   // Debug logging
-  console.log("Hook activeTab:", activeTab);
   const [filters, setFilters] = useState<DocumentFilters>({
     searchQuery: "",
     statusFilter: "all",
@@ -86,7 +85,6 @@ export const useIncomingDocumentsData = (
         fetchInProgressRef.current = true;
         setError(null);
 
-        console.log("Fetching documents for activeTab:", activeTab);
 
         if (activeTab === "internal") {
           setLoadingInternal(true);
@@ -141,7 +139,6 @@ export const useIncomingDocumentsData = (
           }
         }
       } catch (error) {
-        console.error("Error fetching documents:", error);
         const errorMessage =
           activeTab === "internal"
             ? "Không thể tải dữ liệu văn bản nội bộ. Vui lòng thử lại sau."

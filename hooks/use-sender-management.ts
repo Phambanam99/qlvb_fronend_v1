@@ -22,7 +22,6 @@ export function useSenderManagement() {
         const senders = senders_.data;
         setDepartments(senders || []);
       } catch (error) {
-        console.error("Lỗi khi lấy danh sách đơn vị gửi:", error);
         toast({
           title: "Lỗi",
           description: "Không thể tải danh sách đơn vị gửi",
@@ -72,7 +71,6 @@ export function useSenderManagement() {
         description: "Đã thêm đơn vị gửi mới",
       });
     } catch (error) {
-      console.error("Lỗi khi tạo đơn vị gửi mới:", error);
       setSenderError("Không thể tạo đơn vị gửi mới");
       toast({
         title: "Lỗi",
