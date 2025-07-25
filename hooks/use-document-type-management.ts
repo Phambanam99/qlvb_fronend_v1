@@ -59,7 +59,6 @@ export function useDocumentTypeManagement() {
 
       return updatedTypes;
     } catch (error) {
-      console.error("Lỗi khi tạo loại văn bản mới:", error);
       setDocumentTypeError("Không thể tạo loại văn bản mới");
       toast({
         title: "Lỗi",

@@ -68,7 +68,6 @@ export default function CreateWorkPlanPage() {
         // Fetch departments
         const departmentsData_ = await departmentsAPI.getAllDepartments();
         const departmentsData = departmentsData_.data;
-        // console.log("API departments response:", departmentsData); // Log để debug
 
         // Kiểm tra và xử lý nhiều trường hợp cấu trúc dữ liệu
         if (Array.isArray(departmentsData)) {
@@ -78,17 +77,14 @@ export default function CreateWorkPlanPage() {
           setDepartments(departmentsData.content);
         } else {
           // Nếu không phải mảng, khởi tạo một mảng rỗng
-          console.error("Departments data is not an array:", departmentsData);
           setDepartments([]);
         }
 
         // Fetch users
         const usersData_ = await usersAPI.getAllUsers();
         const usersData = usersData_.data;
-        // console.log("API users response:", usersData); // Log để debug
 
         // Thêm log để xem cấu trúc dữ liệu người dùng
-        // console.log("Sample user:", usersData[0]);
 
         // Đảm bảo dữ liệu người dùng có cả id và name
         const formattedUsers = Array.isArray(usersData)
@@ -103,7 +99,6 @@ export default function CreateWorkPlanPage() {
 
         setUsers(formattedUsers);
       } catch (error) {
-        console.error("Error fetching data:", error);
         toast({
           title: "Lỗi",
           description: "Không thể tải dữ liệu. Vui lòng thử lại sau.",
@@ -222,7 +217,6 @@ export default function CreateWorkPlanPage() {
 
       router.push(`/ke-hoach/${response.id}`);
     } catch (error: any) {
-      console.error("Error creating work plan:", error);
       toast({
         title: "Lỗi",
         description:
@@ -420,7 +414,6 @@ export default function CreateWorkPlanPage() {
                           <Select
                             value={task.assignee}
                             onValueChange={(value) => {
-                              // console.log("Selected user ID:", value);
                               updateTask(task.id, "assignee", value);
                             }}
                             required

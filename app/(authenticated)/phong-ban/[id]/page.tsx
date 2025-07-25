@@ -172,7 +172,6 @@ export default function DepartmentDetailPage({
         // Hiện tại đang sử dụng mảng giả định
         setUsers(users);
       } catch (error) {
-        console.error("Error fetching data:", error);
         toast({
           title: "Lỗi",
           description: "Không thể tải dữ liệu phòng ban. Vui lòng thử lại sau.",
@@ -226,7 +225,6 @@ export default function DepartmentDetailPage({
       const updatedDepartment = updatedDepartment_.data;
       setDepartment(updatedDepartment);
     } catch (error) {
-      console.error("Error updating department:", error);
       toast({
         title: "Lỗi",
         description: "Không thể cập nhật phòng ban. Vui lòng thử lại sau.",
@@ -260,7 +258,6 @@ export default function DepartmentDetailPage({
       // Chuyển về trang danh sách phòng ban
       router.push("/phong-ban");
     } catch (error) {
-      console.error("Error deleting department:", error);
       toast({
         title: "Lỗi",
         description: "Không thể xóa phòng ban. Vui lòng thử lại sau.",

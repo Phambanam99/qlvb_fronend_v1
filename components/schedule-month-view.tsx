@@ -95,9 +95,7 @@ export default function ScheduleMonthView({
       schedule.events.forEach((event) => {
         // Skip if event has no date
         if (!event.date) {
-          console.warn(
-            `Event ${event.id} in schedule ${schedule.id} missing date, skipping`
-          );
+         
           return;
         }
 

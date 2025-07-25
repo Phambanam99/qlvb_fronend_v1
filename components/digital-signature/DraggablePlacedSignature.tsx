@@ -66,7 +66,13 @@ export const DraggablePlacedSignature = ({
         onSelectSignature(sig.instanceId);
       }}
     >
-      <Image src={sig.src} alt="signature" layout="fill" objectFit="contain" />
+      <Image 
+        src={sig.src} 
+        alt="signature" 
+        fill 
+        style={{ objectFit: 'contain' }}
+        sizes="(max-width: 768px) 100vw, 300px"
+      />
       {isSelected && (
         <>
           <button

@@ -104,10 +104,7 @@ export function ExternalDocumentsTable({
             {documents && documents.length > 0 ? (
               documents.map((doc: any) => {
                 const isRead = getReadStatus(doc.id!);
-                console.log(
-                  `ExternalDocumentsTable: Doc ${doc.id} read status:`,
-                  isRead
-                );
+              
                 return (
                   <TableRow
                     key={doc.id}
@@ -137,14 +134,19 @@ export function ExternalDocumentsTable({
                       <DocumentStatusBadge
                         documentId={doc.id!}
                         fallbackStatus={doc.processingStatus}
+                        isExternalDocument={true}
                       />
                     </TableCell>
                     <TableCell>
                       <Button
                         variant="ghost"
                         size="sm"
-                        className={isRead ? "text-green-600" : "text-blue-600"}
-                        onClick={(e) => {
+                        className={`${
+                          isRead
+                            ? "text-green-600 hover:text-green-700"
+                            : "text-blue-600 hover:text-blue-700"
+                        }`}
+                        onClick={(e: React.MouseEvent) => {
                           e.stopPropagation();
                           onReadStatusToggle(doc.id!);
                         }}
@@ -156,7 +158,7 @@ export function ExternalDocumentsTable({
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={(e) => {
+                        onClick={(e: React.MouseEvent) => {
                           e.stopPropagation();
                           onDocumentClick(doc);
                         }}

@@ -62,7 +62,6 @@ export default function ParentDepartmentReview({
         const documentData = documentData_.data;
         setDocument(documentData);
       } catch (error) {
-        console.error("Error fetching document data:", error);
         toast({
           title: "Lỗi",
           description: "Không thể tải dữ liệu văn bản",
@@ -93,7 +92,6 @@ export default function ParentDepartmentReview({
         const parentDept = parentDept_.data;
         setParentDepartment(parentDept);
       } catch (error) {
-        console.error("Error checking parent department:", error);
       } finally {
         setCheckingHierarchy(false);
       }
@@ -140,7 +138,6 @@ export default function ParentDepartmentReview({
       // Redirect back to document detail page
       router.push(`/van-ban-di/${documentId}`);
     } catch (error: any) {
-      console.error("Error approving document:", error);
       toast({
         title: "Lỗi",
         description: error.message || "Không thể phê duyệt văn bản",
@@ -177,7 +174,6 @@ export default function ParentDepartmentReview({
       // Redirect back to document detail page
       router.push(`/van-ban-di/${documentId}`);
     } catch (error: any) {
-      console.error("Error rejecting document:", error);
       toast({
         title: "Lỗi",
         description: error.message || "Không thể gửi yêu cầu chỉnh sửa",

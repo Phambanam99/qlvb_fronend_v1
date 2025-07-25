@@ -67,7 +67,6 @@ export default function RolesPage() {
         const rolesData = rolesData_.data;
         setRoles(rolesData);
       } catch (error) {
-        console.error("Error fetching roles:", error);
         toast({
           title: "Lỗi",
           description: "Không thể tải dữ liệu vai trò. Vui lòng thử lại sau.",
@@ -116,7 +115,6 @@ export default function RolesPage() {
         description: "Đã xóa vai trò thành công",
       });
     } catch (error) {
-      console.error("Error deleting role:", error);
       toast({
         title: "Lỗi",
         description: "Không thể xóa vai trò. Vui lòng thử lại sau.",

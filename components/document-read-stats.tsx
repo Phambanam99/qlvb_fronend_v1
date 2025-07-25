@@ -42,7 +42,6 @@ export function DocumentReadStats({
       
       setStatistics(stats);
     } catch (err) {
-      console.error("Error loading statistics:", err);
       setError("Không thể tải thống kê");
     } finally {
       setLoading(false);

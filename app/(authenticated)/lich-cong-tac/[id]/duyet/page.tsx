@@ -60,7 +60,6 @@ export default function ApproveSchedulePage({
         setSchedule(response);
         setError(null);
       } catch (err: any) {
-        console.error("Error fetching schedule:", err);
         setError(err.message || "Không thể tải thông tin lịch công tác");
         toast({
           title: "Lỗi",
@@ -118,7 +117,6 @@ export default function ApproveSchedulePage({
 
       router.push("/lich-cong-tac");
     } catch (err: any) {
-      console.error("Error approving schedule:", err);
       toast({
         title: "Lỗi",
         description: err.message || "Không thể phê duyệt lịch công tác",
@@ -157,7 +155,6 @@ export default function ApproveSchedulePage({
 
       router.push("/lich-cong-tac");
     } catch (err: any) {
-      console.error("Error rejecting schedule:", err);
       toast({
         title: "Lỗi",
         description: err.message || "Không thể từ chối lịch công tác",

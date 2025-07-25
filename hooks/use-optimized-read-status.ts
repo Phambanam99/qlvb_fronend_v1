@@ -28,7 +28,6 @@ export function useOptimizedReadStatus() {
         loadingRef.current.add(key);
         await universalReadStatus.loadBatchReadStatus(documentIds, documentType);
       } catch (error) {
-        console.error("Error loading batch read status:", error);
       } finally {
         // Remove from loading set after a delay to prevent immediate re-loading
         setTimeout(() => {
@@ -46,7 +45,6 @@ export function useOptimizedReadStatus() {
         await universalReadStatus.markAsRead(documentId, documentType);
         return true;
       } catch (error) {
-        console.error("Error marking document as read:", error);
         return false;
       }
     },
@@ -60,7 +58,6 @@ export function useOptimizedReadStatus() {
         await universalReadStatus.markAsUnread(documentId, documentType);
         return true;
       } catch (error) {
-        console.error("Error marking document as unread:", error);
         return false;
       }
     },
@@ -74,7 +71,6 @@ export function useOptimizedReadStatus() {
         await universalReadStatus.toggleReadStatus(documentId, documentType);
         return true;
       } catch (error) {
-        console.error("Error toggling read status:", error);
         return false;
       }
     },

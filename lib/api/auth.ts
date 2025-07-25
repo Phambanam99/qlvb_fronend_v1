@@ -60,7 +60,6 @@ export const authAPI = {
 
       return response.data;
     } catch (error) {
-      console.error("Login error:", error);
       throw error;
     }
   },
@@ -77,7 +76,6 @@ export const authAPI = {
       const response = await api.post("/auth/refresh-token", { refreshToken });
       return response.data;
     } catch (error) {
-      console.error("Token refresh error:", error);
       throw error;
     }
   },
@@ -92,7 +90,6 @@ export const authAPI = {
       const response = await api.post("/auth/register", userData);
       return response.data;
     } catch (error) {
-      console.error("Registration error:", error);
       throw error;
     }
   },

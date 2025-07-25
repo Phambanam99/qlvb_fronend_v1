@@ -99,12 +99,10 @@ export default function DocumentUpdatePage({
           try {
             setDeadline(new Date(combinedData.processDeadline));
           } catch (e) {
-            console.error("Lỗi xử lý ngày tháng:", e);
           }
         }
         
       } catch (error) {
-        console.error("Error fetching document:", error);
         toast({
           title: "Lỗi",
           description: "Không thể tải thông tin văn bản. Vui lòng thử lại sau.",
@@ -147,7 +145,6 @@ export default function DocumentUpdatePage({
       router.push(`/van-ban-den/${documentId}`);
       
     } catch (error) {
-      console.error("Lỗi khi cập nhật thông tin xử lý:", error);
       toast({
         title: "Lỗi",
         description: "Không thể cập nhật thông tin xử lý. Vui lòng thử lại sau.",

@@ -72,7 +72,6 @@ export function useDocumentForm() {
         const response = response_.data;
         setDocumentTypes(response);
       } catch (error) {
-        console.error("Lỗi khi lấy danh sách loại văn bản:", error);
         toast({
           title: "Lỗi",
           description: "Không thể tải danh sách loại văn bản",
@@ -177,9 +176,7 @@ export function useDocumentForm() {
             error.response?.status === 403 ||
             error.message?.includes("403")
           ) {
-            console.warn(
-              "Multi-attachment endpoint not available, falling back to single file"
-            );
+           
             await workflowAPI.createFullDocument(data, [files[0]]);
 
             if (files.length > 1) {
@@ -210,7 +207,6 @@ export function useDocumentForm() {
 
       router.push("/van-ban-den");
     } catch (error) {
-      console.error("Lỗi khi tạo văn bản:", error);
       toast({
         title: "Lỗi",
         description:

@@ -88,7 +88,6 @@ export default function DepartmentHeadAssignment({
         setChildDepartments(Array.isArray(childDepts) ? childDepts : []);
         setHasChildDepts(Array.isArray(childDepts) && childDepts.length > 0);
       } catch (error) {
-        console.error("Error fetching child departments:", error);
         toast({
           title: "Lỗi",
           description: "Không thể tải danh sách đơn vị con",
@@ -106,7 +105,6 @@ export default function DepartmentHeadAssignment({
   useEffect(() => {
     const fetchDepartmentStaff = async () => {
       if (!departmentId) {
-        console.error("Missing departmentId");
         setIsLoadingStaff(false);
         return;
       }
@@ -119,7 +117,6 @@ export default function DepartmentHeadAssignment({
         // console.log("Staff data received:", staffData);
         setDepartmentStaff(staffData);
       } catch (error) {
-        console.error("Error fetching department staff:", error);
         toast({
           title: "Lỗi",
           description: "Không thể tải danh sách cán bộ trong phòng",
@@ -202,7 +199,6 @@ export default function DepartmentHeadAssignment({
       // Chuyển về trang chi tiết
       router.push(`/van-ban-den/${documentId}`);
     } catch (error: any) {
-      console.error("Lỗi khi phân công xử lý:", error);
       toast({
         title: "Lỗi",
         description:

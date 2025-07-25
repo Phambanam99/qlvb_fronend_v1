@@ -72,7 +72,6 @@ export default function MergePDFPage() {
             pages: pageCount,
           });
         } catch (error) {
-          console.error(`Error reading PDF ${file.name}:`, error);
           toast({
             title: "Lỗi",
             description: `Không thể đọc file ${file.name}`,
@@ -191,7 +190,6 @@ export default function MergePDFPage() {
         description: `Đã ghép ${pdfFiles.length} file PDF thành công. Bạn có thể xem trước file đã ghép.`,
       });
     } catch (error) {
-      console.error("Error merging PDFs:", error);
       toast({
         title: "Lỗi",
         description: "Không thể ghép file PDF. Vui lòng thử lại.",

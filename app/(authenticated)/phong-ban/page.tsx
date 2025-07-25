@@ -50,7 +50,6 @@ export default function DepartmentsPage() {
       try {
         const response_ = await departmentsAPI.getAllDepartments();
         const response = response_.data;
-        // console.log(response);
         if (response.content) {
           setDepartments(response.content as DepartmentDTO[]);
         } else {
@@ -61,7 +60,6 @@ export default function DepartmentsPage() {
           });
         }
       } catch (error) {
-        console.error("Error loading departments:", error);
         toast({
           title: "Lỗi",
           description: "Đã xảy ra lỗi khi tải dữ liệu",

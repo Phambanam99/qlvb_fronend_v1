@@ -123,7 +123,6 @@ function EditOutgoingDocumentPage() {
         description: "Đang tải tệp xuống",
       });
     } catch (error) {
-      console.error("Lỗi khi tải tệp đính kèm:", error);
       toast({
         title: "Lỗi",
         description: "Không thể tải tệp đính kèm. Vui lòng thử lại sau.",
@@ -231,7 +230,6 @@ function EditOutgoingDocumentPage() {
         // Set form data from document
         // Đảm bảo các trường dữ liệu được định dạng đúng
         const doc = documentData.data as any;
-        // console.log("Document data:", doc);
         setFormData({
           documentNumber: doc.number || doc.documentNumber || "",
           title: doc.title || "",
@@ -269,7 +267,6 @@ function EditOutgoingDocumentPage() {
         // Sử dụng dữ liệu phòng ban từ API
         setDepartments(departmentsData.content as any);
       } catch (error) {
-        console.error("Error fetching document data:", error);
         if (isMounted) {
           toast({
             title: "Lỗi",
@@ -409,7 +406,6 @@ function EditOutgoingDocumentPage() {
       // Navigate back to document details
       router.push(`/van-ban-di/${documentId}`);
     } catch (error) {
-      console.error("Error updating document:", error);
       toast({
         title: "Lỗi",
         description: "Không thể cập nhật văn bản. Vui lòng thử lại sau.",
@@ -433,7 +429,6 @@ function EditOutgoingDocumentPage() {
       // Navigate back to documents list
       router.push("/van-ban-di");
     } catch (error) {
-      console.error("Error deleting document:", error);
       toast({
         title: "Lỗi",
         description: "Không thể xóa văn bản. Vui lòng thử lại sau.",

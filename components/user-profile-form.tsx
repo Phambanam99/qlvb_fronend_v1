@@ -31,7 +31,10 @@ const profileFormSchema = z.object({
   username: z.string().min(2, {
     message: "Tên đăng nhập phải có ít nhất 2 ký tự",
   }),
-  email: z.string().email({
+  email: z.string().optional().refine((val) => {
+    if (!val || val === "") return true; // Allow empty
+    return z.string().email().safeParse(val).success;
+  }, {
     message: "Email không hợp lệ",
   }),
   phone: z.string().optional(),
@@ -44,12 +47,14 @@ interface UserProfileFormProps {
   user: any;
   onSubmit: (data: ProfileFormValues) => void;
   saving: boolean;
+  isProfileEdit?: boolean; // Add flag to indicate if this is for profile editing
 }
 
 export default function UserProfileForm({
   user,
   onSubmit,
   saving,
+  isProfileEdit = false,
 }: UserProfileFormProps) {
   const [roles, setRoles] = useState<RoleDTO[]>([]);
   const [loadingRoles, setLoadingRoles] = useState(true);
@@ -70,11 +75,13 @@ export default function UserProfileForm({
     const fetchRoles = async () => {
       try {
         setLoadingRoles(true);
-        const rolesData_ = await rolesAPI.getAllRoles();
-        const rolesData = rolesData_.data;  
-        setRoles(rolesData);
+        const rolesData = await rolesAPI.getAllRoles();
+        
+        // Handle both direct array and wrapped response
+        const rolesArray = Array.isArray(rolesData) ? rolesData : (rolesData as any)?.data || [];
+        setRoles(rolesArray);
       } catch (error) {
-        console.error("Error fetching roles:", error);
+        setRoles([]); // Set empty array on error
       } finally {
         setLoadingRoles(false);
       }
@@ -106,7 +113,7 @@ export default function UserProfileForm({
             name="email"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Email</FormLabel>
+                <FormLabel>Email <span className="text-muted-foreground">(không bắt buộc)</span></FormLabel>
                 <FormControl>
                   <Input
                     type="email"
@@ -124,7 +131,7 @@ export default function UserProfileForm({
             name="phone"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Số điện thoại</FormLabel>
+                <FormLabel>Số điện thoại <span className="text-muted-foreground">(không bắt buộc)</span></FormLabel>
                 <FormControl>
                   <Input placeholder="Nhập số điện thoại" {...field} />
                 </FormControl>
@@ -160,7 +167,7 @@ export default function UserProfileForm({
                           Đang tải danh sách chức vụ...
                         </div>
                       </SelectItem>
-                    ) : roles.length === 0 ? (
+                    ) : !Array.isArray(roles) || roles.length === 0 ? (
                       <SelectItem value="empty" disabled>
                         Không có chức vụ nào
                       </SelectItem>
@@ -187,7 +194,10 @@ export default function UserProfileForm({
               <FormItem>
                 <FormLabel>Tên đăng nhập</FormLabel>
                 <FormControl>
-                  <Input placeholder="Nhập tên đăng nhập" {...field} />
+                  <Input 
+                    placeholder="Nhập tên đăng nhập" 
+                    {...field} 
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>

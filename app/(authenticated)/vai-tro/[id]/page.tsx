@@ -89,7 +89,6 @@ export default function RoleDetailPage({ params }: { params: { id: string } }) {
           description: roleData.description || "",
         });
       } catch (error) {
-        console.error("Error fetching role data:", error);
         toast({
           title: "Lỗi",
           description: "Không thể tải dữ liệu vai trò. Vui lòng thử lại sau.",
@@ -105,7 +104,6 @@ export default function RoleDetailPage({ params }: { params: { id: string } }) {
 
   const onSubmit = async (data: RoleFormValues) => {
     try {
-      // console.log(data);
       setIsSubmitting(true);
 
       // Thêm tiền tố ROLE_ nếu chưa có
@@ -124,7 +122,6 @@ export default function RoleDetailPage({ params }: { params: { id: string } }) {
         description: "Đã cập nhật vai trò thành công",
       });
     } catch (error) {
-      console.error("Error updating role:", error);
       toast({
         title: "Lỗi",
         description: "Không thể cập nhật vai trò. Vui lòng thử lại sau.",

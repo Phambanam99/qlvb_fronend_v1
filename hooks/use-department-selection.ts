@@ -83,7 +83,6 @@ export function useDepartmentSelection() {
       const hierarchicalData = buildDepartmentTree(departmentData);
       setDepartments(hierarchicalData);
     } catch (error) {
-      console.error("Error loading departments:", error);
       toast({
         title: "Lỗi tải dữ liệu phòng ban",
         description: "Không thể tải cấu trúc phòng ban. Vui lòng thử lại sau.",

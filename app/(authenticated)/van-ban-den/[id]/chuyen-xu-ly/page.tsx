@@ -67,7 +67,6 @@ export default function AssignDocumentPage() {
         const response = response_.data;
         setDocument(response.data);
       } catch (error) {
-        console.error("Lỗi khi lấy thông tin văn bản:", error);
         setError("Không thể tải thông tin văn bản");
         toast({
           title: "Lỗi",
@@ -118,7 +117,6 @@ export default function AssignDocumentPage() {
             setDepartmentList(response.content || []);
           }
         } catch (error) {
-          console.error("Lỗi khi lấy danh sách phòng ban con:", error);
           // Fallback to all departments
           const response_ = await departmentsAPI.getAllDepartments();
           const response = response_.data;
@@ -253,7 +251,6 @@ export default function AssignDocumentPage() {
 
       router.push(`/van-ban-den/${documentId}`);
     } catch (error) {
-      console.error("Lỗi khi chuyển xử lý văn bản:", error);
       toast({
         title: "Lỗi",
         description: "Không thể chuyển xử lý văn bản",

@@ -23,7 +23,6 @@ export const useSignatures = (): UseSignaturesReturn => {
       const userSignatures = await signatureApi.getSignatures();
       setSignatures(userSignatures);
     } catch (error) {
-      console.error("Failed to fetch signatures:", error);
       toast({
         title: "Lỗi",
         description: SIGNATURE_MESSAGES.ERROR.FETCH_FAILED,
@@ -50,7 +49,6 @@ export const useSignatures = (): UseSignaturesReturn => {
         await fetchSignatures();
         return true;
       } catch (error: any) {
-        console.error("Failed to create signature:", error);
         toast({
           title: "Lỗi",
           description: error?.message || SIGNATURE_MESSAGES.ERROR.CREATE_FAILED,
@@ -73,7 +71,6 @@ export const useSignatures = (): UseSignaturesReturn => {
         await fetchSignatures();
         return true;
       } catch (error: any) {
-        console.error("Failed to delete signature:", error);
         toast({
           title: "Lỗi",
           description: error?.message || SIGNATURE_MESSAGES.ERROR.DELETE_FAILED,

@@ -37,7 +37,6 @@ export default function OutgoingDocumentTypePage() {
         const doc = doc_.data;
         setIncomingDocument(doc.data);
       } catch (error) {
-        console.error("Error fetching incoming document:", error);
       } finally {
         setIsLoading(false);
       }

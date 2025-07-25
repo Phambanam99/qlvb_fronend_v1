@@ -160,7 +160,6 @@ class NotificationsRealtimeClient {
         this.handleMessage(message);
       } catch (error) {
         // eslint-disable-next-line no-console
-        console.error('Error parsing notification message:', error);
       }
     };
 

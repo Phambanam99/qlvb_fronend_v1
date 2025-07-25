@@ -32,7 +32,6 @@ export function useDocumentHandlers({
         // Navigate to detail page
         router.push(`/van-ban-den/noi-bo/${doc.id}`);
       } catch (error) {
-        console.error("Error handling internal document click:", error);
         // Still navigate even if read status fails
         router.push(`/van-ban-den/noi-bo/${doc.id}`);
       }
@@ -51,7 +50,6 @@ export function useDocumentHandlers({
         // Navigate to detail page - use correct route
         router.push(`/van-ban-den/${doc.id}`);
       } catch (error) {
-        console.error("Error handling external document click:", error);
         // Still navigate even if read status fails
         router.push(`/van-ban-den/${doc.id}`);
       }
@@ -66,7 +64,6 @@ export function useDocumentHandlers({
           await onExternalReadStatusToggle(docId);
         }
       } catch (error) {
-        console.error("Error toggling external read status:", error);
       }
     },
     [onExternalReadStatusToggle]
@@ -77,10 +74,7 @@ export function useDocumentHandlers({
       const status = getExternalReadStatus
         ? getExternalReadStatus(docId)
         : false;
-      console.log(
-        `DocumentHandlers: getExternalReadStatus for doc ${docId}:`,
-        status
-      );
+     
       return status;
     },
     [getExternalReadStatus]

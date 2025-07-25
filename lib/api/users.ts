@@ -11,6 +11,7 @@ export interface UserDTO {
   isActive?: boolean;
   statusDisplayName?: string;
   email?: string;
+  phone?: string;
   roles: string[];
   roleId: number;
   createdAt: string;
@@ -162,5 +163,16 @@ export const usersAPI = {
   getUserForApproval: async (id: string | number): Promise<UserDTO[]> => {
     const response = await api.get(`/users/${id}/for-approval`);
     return response.data;
+  },
+
+  /**
+   * Update current user's profile
+   * @param id User ID
+   * @param userData User data to update
+   * @returns Updated user data
+   */
+  updateProfile: async (id: string | number, userData: Partial<UserDTO>): Promise<UserDTO> => {
+    const response = await api.put(`/users/${id}/update`, userData);
+    return response.data.data; // Handle ResponseDTO wrapper
   },
 };

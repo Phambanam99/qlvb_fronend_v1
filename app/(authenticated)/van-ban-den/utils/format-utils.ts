@@ -24,7 +24,6 @@ export const formatDate = (
       year: "numeric",
     });
   } catch (error) {
-    console.warn("Invalid date format:", dateString);
     return "N/A";
   }
 };
@@ -52,7 +51,6 @@ export const formatDateTime = (
       minute: "2-digit",
     });
   } catch (error) {
-    console.warn("Invalid datetime format:", dateString);
     return "N/A";
   }
 };

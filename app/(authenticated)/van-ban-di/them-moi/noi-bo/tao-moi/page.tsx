@@ -201,7 +201,6 @@ export default function CreateInternalOutgoingDocumentPage() {
         const types = types_.data;
         setDocumentTypes(types);
       } catch (error) {
-        console.error("Error fetching document types:", error);
         toast({
           title: "Lỗi",
           description: "Không thể tải danh sách loại văn bản",
@@ -235,7 +234,6 @@ export default function CreateInternalOutgoingDocumentPage() {
           const leaders = leaders_.data;
           setLeadershipUsers(leaders);
         } catch (error) {
-          console.error("Error fetching leadership users:", error);
           toast({
             title: "Lỗi",
             description: "Không thể tải danh sách lãnh đạo đơn vị",
@@ -412,6 +410,7 @@ export default function CreateInternalOutgoingDocumentPage() {
           }
         }),
       };
+      
 
       // Create cancel token for upload
       const cancelTokenSource = fileUpload.createCancelToken();
@@ -443,7 +442,6 @@ export default function CreateInternalOutgoingDocumentPage() {
 
       router.push("/van-ban-di");
     } catch (error: any) {
-      console.error("Error creating document:", error);
 
       if (error.code === "ECONNABORTED" || error.message.includes("timeout")) {
         fileUpload.setError(
@@ -466,52 +464,7 @@ export default function CreateInternalOutgoingDocumentPage() {
     }
   };
 
-  // const handleSaveDraft = async () => {
-  //   try {
-  //     setIsSubmitting(true);
-
-  //     const documentData: CreateInternalDocumentDTO = {
-  //       documentNumber: formData.documentNumber,
-  //       title: formData.title,
-  //       summary: formData.summary,
-  //       documentType: formData.documentType,
-  //       urgencyLevel: formData.urgencyLevel,
-  //       notes: formData.notes,
-  //       signingDate: formData.signingDate.toISOString(),
-  //       recipients: secondaryDepartments.map((deptId) => ({
-  //         departmentId: deptId,
-  //       })),
-       
-  //     };
-
-  //     const response = await createInternalDocument(
-  //       documentData,
-  //       fileUpload.files.length > 0 ? fileUpload.files : undefined
-  //     );
-
-  //     addNotification({
-  //       title: "Nháp đã được lưu",
-  //       message: `Nháp văn bản "${formData.title}" đã được lưu thành công.`,
-  //       type: "info",
-  //     });
-
-  //     toast({
-  //       title: "Thành công",
-  //       description: "Nháp văn bản đã được lưu thành công",
-  //     });
-
-  //     router.push("/van-ban-di");
-  //   } catch (error: any) {
-  //     console.error("Error saving draft:", error);
-  //     toast({
-  //       title: "Lỗi",
-  //       description: error.message || "Không thể lưu nháp văn bản",
-  //       variant: "destructive",
-  //     });
-  //   } finally {
-  //     setIsSubmitting(false);
-  //   }
-  // };
+  
 
   const showAllUsers = (user: any) => null;
 

@@ -5,18 +5,43 @@ import { useDocumentClassification } from "@/hooks/use-document-classification";
 import { Loader2 } from "lucide-react";
 
 interface DocumentStatusBadgeProps {
-  documentId: number;
+  documentId?: number | null;
   fallbackStatus?: string;
   fallbackDisplayStatus?: string;
+  isExternalDocument?: boolean; // Flag to indicate if this is an external document
 }
 
 export function DocumentStatusBadge({
   documentId,
   fallbackStatus,
   fallbackDisplayStatus,
+  isExternalDocument = false,
 }: DocumentStatusBadgeProps) {
-  const { classification, isLoading, error } =
-    useDocumentClassification(documentId);
+  // For external documents, skip classification fetch and use fallback immediately
+  const shouldFetchClassification = !!documentId && !isExternalDocument;
+  
+  // Only fetch classification if we have a valid documentId and it's not an external document
+  const { classification, isLoading, error } = useDocumentClassification(
+    documentId || 0,
+    shouldFetchClassification // Only enabled if documentId is truthy and not external
+  );
+
+  // If no documentId provided, show fallback immediately
+  if (!documentId) {
+    return (
+      <Badge variant="secondary">
+        {fallbackDisplayStatus || fallbackStatus || "Unknown"}
+      </Badge>
+    );
+  }
+
+  // For external documents, skip classification and use fallback directly
+  if (isExternalDocument && fallbackStatus) {
+    return getBadgeForStatus(
+      fallbackStatus,
+      fallbackDisplayStatus || fallbackStatus
+    );
+  }
 
   // Show loading state
   if (isLoading) {
@@ -29,10 +54,28 @@ export function DocumentStatusBadge({
   }
 
   // Show error state with fallback
-  if (error && fallbackStatus) {
-    return getBadgeForStatus(
-      fallbackStatus,
-      fallbackDisplayStatus || fallbackStatus
+  if (error) {
+    // For 404 errors (classification not found), use fallback gracefully
+    if (error === "CLASSIFICATION_NOT_FOUND" && fallbackStatus) {
+      return getBadgeForStatus(
+        fallbackStatus,
+        fallbackDisplayStatus || fallbackStatus
+      );
+    }
+    
+    // For other errors, show fallback if available, otherwise show error
+    if (fallbackStatus) {
+      return getBadgeForStatus(
+        fallbackStatus,
+        fallbackDisplayStatus || fallbackStatus
+      );
+    }
+    
+    // No fallback available, show error
+    return (
+      <Badge variant="outline" className="text-red-600 border-red-200">
+        Lỗi tải dữ liệu
+      </Badge>
     );
   }
 

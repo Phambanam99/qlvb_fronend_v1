@@ -99,7 +99,6 @@ export default function ReplyExternalDocumentPage() {
           recipient: doc.data.issuingAuthority || "",
         }));
       } catch (error) {
-        console.error("Error fetching incoming document:", error);
         toast({
           title: "Lỗi",
           description: "Không thể tải thông tin văn bản đến",
@@ -118,7 +117,6 @@ export default function ReplyExternalDocumentPage() {
   useEffect(() => {
     const fetchApprovers = async () => {
       if (!user || !user.id) {
-        console.error("No user ID available");
         return;
       }
 
@@ -146,7 +144,6 @@ export default function ReplyExternalDocumentPage() {
 
         setApprovers(uniqueApprovers);
       } catch (error) {
-        console.error("Error fetching approvers:", error);
         toast({
           title: "Lỗi",
           description: "Không thể tải danh sách người phê duyệt",
@@ -264,7 +261,6 @@ export default function ReplyExternalDocumentPage() {
       // Redirect to outgoing documents list
       router.push("/van-ban-di");
     } catch (error: any) {
-      console.error("Error creating response document:", error);
       toast({
         title: "Lỗi",
         description:
@@ -330,7 +326,6 @@ export default function ReplyExternalDocumentPage() {
       // Redirect to outgoing documents list
       router.push("/van-ban-di");
     } catch (error: any) {
-      console.error("Error saving draft:", error);
       toast({
         title: "Lỗi",
         description:

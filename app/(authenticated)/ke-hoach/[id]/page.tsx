@@ -100,7 +100,6 @@ export default function WorkPlanDetailPage({
         setWorkPlan(data);
         setError(null);
       } catch (err: any) {
-        console.error("Error fetching work plan:", err);
         setError(err.message || "Không thể tải thông tin kế hoạch");
         toast({
           title: "Lỗi",
@@ -178,7 +177,6 @@ export default function WorkPlanDetailPage({
       const data = data_.data;
       setWorkPlan(data);
     } catch (err: any) {
-      console.error("Error approving work plan:", err);
       toast({
         title: "Lỗi",
         description: err.message || "Không thể phê duyệt kế hoạch",
@@ -206,7 +204,6 @@ export default function WorkPlanDetailPage({
       const data = data_.data;
       setWorkPlan(data);
     } catch (err: any) {
-      console.error("Error rejecting work plan:", err);
       toast({
         title: "Lỗi",
         description: err.message || "Không thể từ chối kế hoạch",
@@ -230,7 +227,6 @@ export default function WorkPlanDetailPage({
       // Redirect to list page
       window.location.href = "/ke-hoach";
     } catch (err: any) {
-      console.error("Error deleting work plan:", err);
       toast({
         title: "Lỗi",
         description: err.message || "Không thể xóa kế hoạch",
@@ -271,7 +267,6 @@ export default function WorkPlanDetailPage({
       setNewStatus("");
       setProgressComment("");
     } catch (err: any) {
-      console.error("Error updating task progress:", err);
       toast({
         title: "Lỗi",
         description: err.message || "Không thể cập nhật tiến độ công việc",
