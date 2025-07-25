@@ -30,7 +30,6 @@ export const apiWrapper = async <T = any>(
       data: response as T,
     };
   } catch (error: any) {
-    console.error("API Error:", error);
 
     // Handle different error formats
     if (error?.response?.data) {

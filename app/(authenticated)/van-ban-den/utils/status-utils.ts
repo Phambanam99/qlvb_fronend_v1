@@ -116,7 +116,6 @@ export const getSimplifiedStatusGroup = (
 ): { code: string; displayName: string } => {
   // Handle null/undefined status
   if (!detailedStatus) {
-    console.warn("⚠️ Status is null/undefined, defaulting to 'not_processed'");
     return { code: "not_processed", displayName: "Chưa xử lý" };
   }
 
@@ -136,9 +135,7 @@ export const getSimplifiedStatusGroup = (
   }
 
   // Log unknown status for debugging
-  console.warn(
-    `⚠️ Unknown status: "${detailedStatus}", defaulting to 'pending'`
-  );
+ 
   return { code: "pending", displayName: "Đang xử lý" };
 };
 

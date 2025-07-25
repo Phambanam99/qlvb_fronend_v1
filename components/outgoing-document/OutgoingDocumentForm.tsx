@@ -243,7 +243,6 @@ export default function OutgoingDocumentForm({
               );
             }
           } catch (error) {
-            console.error("Error fetching approvers:", error);
           }
         }
 
@@ -303,7 +302,6 @@ export default function OutgoingDocumentForm({
           }
         }
       } catch (error) {
-        console.error("Error fetching data:", error);
         if (isMounted) {
           toast({
             title: "Lỗi",
@@ -440,7 +438,6 @@ export default function OutgoingDocumentForm({
         router.push("/van-ban-di");
       }
     } catch (error) {
-      console.error("Error submitting document:", error);
       toast({
         title: "Lỗi",
         description: "Không thể gửi văn bản. Vui lòng thử lại sau.",
@@ -531,7 +528,6 @@ export default function OutgoingDocumentForm({
         router.push("/van-ban-di");
       }
     } catch (error) {
-      console.error("Error saving draft:", error);
       toast({
         title: "Lỗi",
         description: "Không thể lưu nháp văn bản. Vui lòng thử lại sau.",
@@ -558,7 +554,6 @@ export default function OutgoingDocumentForm({
       // Chuyển hướng về trang danh sách văn bản
       router.push("/van-ban-di");
     } catch (error) {
-      console.error("Error deleting document:", error);
       toast({
         title: "Lỗi",
         description: "Không thể xóa văn bản. Vui lòng thử lại sau.",

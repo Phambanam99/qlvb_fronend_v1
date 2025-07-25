@@ -41,7 +41,6 @@ export const guideFilesAPI = {
       const response = await api.get("/guide-files");
       return response.data;
     } catch (error) {
-      console.error("Error fetching guide files:", error);
       throw error;
     }
   },
@@ -55,7 +54,6 @@ export const guideFilesAPI = {
       const response = await api.get("/guide-files/active");
       return response.data;
     } catch (error) {
-      console.error("Error fetching active guide files:", error);
       throw error;
     }
   },
@@ -76,7 +74,6 @@ export const guideFilesAPI = {
       });
       return response.data;
     } catch (error) {
-      console.error("Error fetching paginated guide files:", error);
       throw error;
     }
   },
@@ -91,7 +88,6 @@ export const guideFilesAPI = {
       const response = await api.get(`/guide-files/${id}`);
       return response.data;
     } catch (error) {
-      console.error(`Error fetching guide file with ID ${id}:`, error);
       throw error;
     }
   },
@@ -121,7 +117,6 @@ export const guideFilesAPI = {
       });
       return response.data;
     } catch (error) {
-      console.error("Error uploading guide file:", error);
       throw error;
     }
   },
@@ -140,7 +135,6 @@ export const guideFilesAPI = {
       const response = await api.put(`/guide-files/${id}`, fileData);
       return response.data;
     } catch (error) {
-      console.error(`Error updating guide file with ID ${id}:`, error);
       throw error;
     }
   },
@@ -166,7 +160,6 @@ export const guideFilesAPI = {
       });
       return response.data;
     } catch (error) {
-      console.error(`Error replacing guide file with ID ${id}:`, error);
       throw error;
     }
   },
@@ -183,7 +176,6 @@ export const guideFilesAPI = {
       const response = await api.delete(`/guide-files/${id}`);
       return response.data;
     } catch (error) {
-      console.error(`Error deleting guide file with ID ${id}:`, error);
       throw error;
     }
   },
@@ -200,7 +192,6 @@ export const guideFilesAPI = {
       });
       return response.data;
     } catch (error) {
-      console.error(`Error downloading guide file with ID ${id}:`, error);
       throw error;
     }
   },

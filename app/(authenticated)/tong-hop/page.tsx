@@ -68,7 +68,7 @@ const COLORS = [
 
 export default function DashboardPage() {
   const { toast } = useToast();
-  const { user, hasRole } = useAuth();
+  const { user, hasRole, setDataLoaded } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [dashboardStats, setDashboardStats] = useState<ComprehensiveDashboardStats | null>(null);
   const [todaySchedule, setTodaySchedule] = useState<any[]>([]);
@@ -101,7 +101,13 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (user) {
-      fetchDashboardData();
+      // Không block UI, fetch data trong background
+      fetchDashboardData().finally(() => {
+        // Đảm bảo setDataLoaded được gọi sau khi fetch xong
+        if (typeof setDataLoaded === 'function') {
+          setDataLoaded();
+        }
+      });
     }
   }, [user]);
 
@@ -119,12 +125,10 @@ export default function DashboardPage() {
         const schedule = await dashboardAPI.getTodayScheduleEvents();
         setTodaySchedule(schedule);
       } catch (scheduleError) {
-        console.warn("Could not fetch schedule data:", scheduleError);
         setTodaySchedule([]);
       }
 
     } catch (error) {
-      console.error("Error fetching dashboard data:", error);
       toast({
         title: "Lỗi",
         description: "Không thể tải dữ liệu dashboard. Vui lòng thử lại sau.",

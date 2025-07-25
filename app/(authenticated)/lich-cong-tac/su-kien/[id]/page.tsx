@@ -90,7 +90,6 @@ export default function EventDetailPage({
         const eventsData = eventsData_.data;
         setRelatedEvents(eventsData.slice(0, 3)); // Limit to 3 related events
       } catch (error) {
-        console.error("Error fetching event details:", error);
         toast({
           title: "Lỗi",
           description: "Không thể tải thông tin sự kiện. Vui lòng thử lại sau.",

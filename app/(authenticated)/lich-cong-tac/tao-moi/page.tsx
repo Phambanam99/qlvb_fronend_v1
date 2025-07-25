@@ -203,7 +203,6 @@ export default function CreateSchedulePage() {
 
       router.push("/lich-cong-tac");
     } catch (error) {
-      console.error("Error creating schedule:", error);
       addNotification({
         title: "Lỗi",
         message: "Không thể tạo lịch công tác. Vui lòng thử lại sau.",
@@ -230,10 +229,7 @@ export default function CreateSchedulePage() {
           } else if (Array.isArray(departmentsData)) {
             setDepartments(departmentsData);
           } else {
-            console.error(
-              "Unexpected departments data structure:",
-              departmentsData
-            );
+            ;
             setDepartments([]);
             addNotification({
               title: "Lỗi",
@@ -252,7 +248,6 @@ export default function CreateSchedulePage() {
           if (Array.isArray(usersData)) {
             setStaffMembers(usersData);
           } else {
-            console.error("Unexpected users data structure:", usersData);
             setStaffMembers([]);
             addNotification({
               title: "Lỗi",
@@ -263,7 +258,6 @@ export default function CreateSchedulePage() {
           setIsLoadingStaff(false);
         }
       } catch (error) {
-        console.error("Error fetching departments and staff:", error);
         addNotification({
           title: "Lỗi",
           message: "Không thể tải dữ liệu phòng ban và cán bộ",
@@ -291,7 +285,6 @@ export default function CreateSchedulePage() {
         const usersData = usersData_.data;
         setStaffMembers(usersData);
       } catch (error) {
-        console.error("Error fetching staff for department:", error);
         addNotification({
           title: "Lỗi",
           message: "Không thể tải danh sách cán bộ cho phòng ban này",

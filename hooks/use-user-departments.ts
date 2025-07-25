@@ -43,14 +43,12 @@ export function useUserDepartments() {
             userDepartments.push(...childDepartments);
           }
         } catch (error) {
-          console.warn("Không thể tải phòng ban con:", error);
           // Tiếp tục xử lý ngay cả khi không lấy được phòng ban con
         }
 
         setDepartments(userDepartments);
         hasFetchedRef.current = true;
       } catch (err: any) {
-        console.error("Lỗi khi tải phòng ban:", err);
         setError(err.message || "Không thể tải phòng ban");
       } finally {
         setLoading(false);

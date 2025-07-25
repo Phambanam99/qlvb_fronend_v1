@@ -102,7 +102,6 @@ export default function OutgoingDocumentDetailPage({
       const attachmentsData = attachmentsData_.data;
       setAttachments(attachmentsData);
     } catch (error) {
-      console.error("Error fetching attachments:", error);
       // Don't show error toast as this might be expected if API doesn't exist yet
     }
   };
@@ -130,8 +129,7 @@ export default function OutgoingDocumentDetailPage({
         if (!isMounted) return;
 
         const documentData = documentResponse.data;
-        // console.log("documentData", documentData);
-        // Cập nhật document một lần duy nhất với đầy đủ thông tin
+        
         setDocument({
           ...documentData,
           history: history,
@@ -150,13 +148,11 @@ export default function OutgoingDocumentDetailPage({
 
             setRelatedDocuments(relatedDocsData.data);
           } catch (error) {
-            console.error("Error fetching related documents:", error);
           }
         }
 
         setError(null);
       } catch (err: any) {
-        console.error("Error fetching document:", err);
         if (isMounted) {
           setError(err.message || "Không thể tải thông tin văn bản");
           toast({
@@ -189,7 +185,6 @@ export default function OutgoingDocumentDetailPage({
   ]);
 
   const getStatusBadge = (status: string) => {
-    // console.log("status", status);
     const badgeInfo = getStatusBadgeInfo(status);
     return <Badge variant={badgeInfo.variant}>{badgeInfo.text}</Badge>;
   };
@@ -219,7 +214,6 @@ export default function OutgoingDocumentDetailPage({
         setHistoryLoaded(true);
       }
     } catch (err) {
-      console.error("Error fetching document history:", err);
       toast({
         title: "Lỗi",
         description: "Không thể tải lịch sử xử lý văn bản",
@@ -245,7 +239,6 @@ export default function OutgoingDocumentDetailPage({
         documentId
       );
       const blob = blob_.data;
-      //  console.log("Blob:", blob);
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -263,7 +256,6 @@ export default function OutgoingDocumentDetailPage({
         description: "Đang tải tệp xuống",
       });
     } catch (error) {
-      console.error("Lỗi khi tải tệp đính kèm:", error);
       toast({
         title: "Lỗi",
         description: "Không thể tải tệp đính kèm. Vui lòng thử lại sau.",
@@ -333,7 +325,6 @@ export default function OutgoingDocumentDetailPage({
         description: `Đang tải ${file.originalFilename}`,
       });
     } catch (error) {
-      console.error("Error downloading specific attachment:", error);
       // Fallback to generic download
       try {
         await handleDownloadAttachment();
@@ -390,7 +381,6 @@ export default function OutgoingDocumentDetailPage({
         description: "Văn bản đã được phê duyệt thành công",
       });
     } catch (err: any) {
-      console.error("Error approving document:", err);
       toast({
         title: "Lỗi",
         description: err.message || "Không thể phê duyệt văn bản",
@@ -467,7 +457,6 @@ export default function OutgoingDocumentDetailPage({
         variant: "success",
       });
     } catch (err: any) {
-      console.error("Error rejecting document:", err);
       toast({
         title: "Lỗi",
         description: err.message || "Không thể từ chối văn bản",
@@ -505,7 +494,6 @@ export default function OutgoingDocumentDetailPage({
         description: "Đã chấp nhận văn bản trả lời",
       });
     } catch (error) {
-      console.error("Error approving response:", error);
       toast({
         title: "Lỗi",
         description: "Không thể chấp nhận văn bản. Vui lòng thử lại sau.",
@@ -564,7 +552,6 @@ export default function OutgoingDocumentDetailPage({
         variant: "success",
       });
     } catch (err: any) {
-      console.error("Error rejecting document:", err);
       toast({
         title: "Lỗi",
         description: err.message || "Không thể từ chối văn bản",
@@ -630,10 +617,7 @@ export default function OutgoingDocumentDetailPage({
           (item.description.toLowerCase().includes("trả lại") ||
             item.description.toLowerCase().includes("chỉnh sửa thể thức")))
     );
-    // console.log("(item.newStatus", _document.history);
-    // console.log("wasReturnedByClerk", wasReturnedByClerk);
-    // Nếu là trợ lý/nhân viên và văn bản bị văn thư trả lại để chỉnh sửa thể thức
-    if (
+       if (
       hasRole(["ROLE_DRAF", "ROLE_TRO_LY", "ROLE_NHAN_VIEN"]) &&
       _document.status === "format_correction" &&
       wasReturnedByClerk
@@ -838,7 +822,6 @@ export default function OutgoingDocumentDetailPage({
                     history: history,
                   };
                 });
-                // console.log("Document after update:", document);
 
                 toast({
                   title: "Thành công",

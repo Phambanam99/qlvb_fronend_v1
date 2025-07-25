@@ -135,7 +135,6 @@ export const useIncomingDocumentsDataSimple = (
           }
         }
       } catch (error) {
-        console.error("Error fetching documents:", error);
         const errorMessage =
           activeTab === "internal"
             ? "Không thể tải dữ liệu văn bản nội bộ. Vui lòng thử lại sau."

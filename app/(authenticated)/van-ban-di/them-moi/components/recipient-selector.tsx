@@ -50,7 +50,6 @@ export function RecipientSelector({
         const senders = senders_.data;
         setRecipients(senders);
       } catch (error) {
-        console.error("Error fetching recipients:", error);
         addNotification({
           title: "Lỗi",
           message: "Không thể tải danh sách nơi nhận",
@@ -93,12 +92,8 @@ export function RecipientSelector({
         name: newRecipient.trim(),
       };
 
-      // console.log("Creating Recipient:", senderData);
       const createdRecipient_ = await senderApi.createSender(senderData);
       const createdRecipient = createdRecipient_.data;
-      // console.log("Created Recipient:", createdRecipient);
-
-      // Add the new recipient to the list
       setRecipients((prevRecipients) => [...prevRecipients, createdRecipient]);
 
       // Set the new recipient as selected
@@ -114,7 +109,6 @@ export function RecipientSelector({
         type: "success",
       });
     } catch (error: any) {
-      console.error("Error creating recipient:", error);
       let errorMessage = "Có lỗi xảy ra khi thêm người nhận";
       if (error.response?.data?.message) {
         errorMessage = error.response.data.message;

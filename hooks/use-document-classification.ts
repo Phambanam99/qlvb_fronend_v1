@@ -14,10 +14,12 @@ export interface UseDocumentClassificationReturn {
 /**
  * Hook to get document classification status for current user
  * @param documentId - Document ID to get classification for
+ * @param enabled - Whether to fetch classification data (default: true)
  * @returns Classification data, loading state, error state, and refetch function
  */
 export function useDocumentClassification(
-  documentId: number
+  documentId: number,
+  enabled: boolean = true
 ): UseDocumentClassificationReturn {
   const [classification, setClassification] =
     useState<DocumentClassificationResponse | null>(null);
@@ -31,25 +33,33 @@ export function useDocumentClassification(
     setError(null);
 
     try {
-      const result_ = await incomingDocumentsAPI.getDocumentClassification(
+      const result = await incomingDocumentsAPI.getDocumentClassification(
         documentId
       );
-      const result = result_.data;
       setClassification(result);
       // console.log("Classification fetched:", result);
-    } catch (err) {
-      console.error("Error fetching document classification:", err);
-      setError(
-        err instanceof Error ? err.message : "Failed to fetch classification"
-      );
+    } catch (err: any) {
+      // Handle 404 errors more gracefully - don't log as errors for missing classifications
+      if (err?.response?.status === 404) {
+        setError("CLASSIFICATION_NOT_FOUND");
+      } else {
+        setError(
+          err instanceof Error ? err.message : "Failed to fetch classification"
+        );
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
+    // Don't fetch if explicitly disabled
+    if (!enabled) {
+      return;
+    }
+    
     fetchClassification();
-  }, [documentId]);
+  }, [documentId, enabled]);
 
   const refetch = async () => {
     await fetchClassification();
@@ -89,16 +99,16 @@ export function useMultipleDocumentClassifications(documentIds: number[]): {
     try {
       const promises = documentIds.map(async (id) => {
         try {
-          const result_ = await incomingDocumentsAPI.getDocumentClassification(
+          const result = await incomingDocumentsAPI.getDocumentClassification(
             id
           );
-          const result = result_.data;
           return { id, classification: result };
-        } catch (err) {
-          console.error(
-            `Error fetching classification for document ${id}:`,
-            err
-          );
+        } catch (err: any) {
+          // Handle 404 errors more gracefully
+          if (err?.response?.status === 404) {
+          } else {
+           
+          }
           return { id, classification: null };
         }
       });
@@ -117,7 +127,6 @@ export function useMultipleDocumentClassifications(documentIds: number[]): {
       setClassifications(newClassifications);
       
     } catch (err) {
-      console.error("Error fetching document classifications:", err);
       setError(
         err instanceof Error ? err.message : "Failed to fetch classifications"
       );

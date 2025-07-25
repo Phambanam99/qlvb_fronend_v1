@@ -25,7 +25,6 @@ export const documentTypesAPI = {
       const response = await api.get("/document-types");
       return response.data;
     } catch (error) {
-      console.error("Error fetching document types:", error);
       throw error;
     }
   },
@@ -42,7 +41,6 @@ export const documentTypesAPI = {
       const response = await api.get(`/document-types/${id}`);
       return response.data;
     } catch (error) {
-      console.error(`Error fetching document type with id ${id}:`, error);
       throw error;
     }
   },
@@ -61,7 +59,6 @@ export const documentTypesAPI = {
       // console.log("response createDocumentType", response);
       return response.data;
     } catch (error) {
-      console.error("Error creating document type:", error);
       throw error;
     }
   },
@@ -80,7 +77,6 @@ export const documentTypesAPI = {
       const response = await api.put(`/document-types/${id}`, documentTypeData);
       return response.data;
     } catch (error) {
-      console.error(`Error updating document type with id ${id}:`, error);
       throw error;
     }
   },
@@ -97,7 +93,6 @@ export const documentTypesAPI = {
       const response = await api.delete(`/document-types/${id}`);
       return response.data;
     } catch (error) {
-      console.error(`Error deleting document type with id ${id}:`, error);
       throw error;
     }
   },
@@ -113,7 +108,6 @@ export const documentTypesAPI = {
       });
       return response.data;
     } catch (error) {
-      console.error("Error fetching active document types:", error);
       throw error;
     }
   },

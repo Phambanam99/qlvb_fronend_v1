@@ -133,10 +133,7 @@ export default function InternalDocumentReceivedDetailPage() {
                 }, 100);
               }
 
-              // console.log("Document automatically marked as read");
             } catch (markError) {
-              console.error("Error auto-marking document as read:", markError);
-              // Continue without marking as read
             }
           } else {
             // Already read, just update global state
@@ -144,7 +141,6 @@ export default function InternalDocumentReceivedDetailPage() {
           }
         }
       } catch (error) {
-        console.error("Error fetching document:", error);
         toast({
           title: "Lỗi",
           description: "Không thể tải thông tin văn bản. Vui lòng thử lại sau.",
@@ -172,7 +168,6 @@ export default function InternalDocumentReceivedDetailPage() {
         );
         // Handle ResponseDTO format: extract data from response
         const historyResponse = historyResponse_?.data?.data || historyResponse_?.data || [];
-        // console.log("Debug history:", historyResponse);
         setDocumentHistory(historyResponse || []);
 
         // Fetch stats
@@ -180,17 +175,14 @@ export default function InternalDocumentReceivedDetailPage() {
         const statsResponse_ = await getDocumentStats(Number(documentId));
         // Handle ResponseDTO format: extract data from response
         const statsResponse = statsResponse_?.data?.data || statsResponse_?.data || null;
-        // console.log("Debug stats:", statsResponse);
         setDocumentStats(statsResponse);
 
         // Fetch replies
         const repliesResponse_ = await getDocumentReplies(Number(documentId));
         // Handle ResponseDTO format: extract data from response
         const repliesResponse = repliesResponse_?.data?.data || repliesResponse_?.data || [];
-        // console.log("Debug replies:", repliesResponse);
         setDocumentReplies(repliesResponse || []);
       } catch (error) {
-        console.error("Error fetching document history/stats:", error);
         // Fallback to empty data if API not available
         setDocumentHistory([]);
         setDocumentStats(null);
@@ -280,7 +272,6 @@ export default function InternalDocumentReceivedDetailPage() {
 
       // response.data là Blob từ API
       const fileBlob = response;
-      console.log("fileBlob", response);
       // Kiểm tra nếu là file PDF thì thêm watermark
       if (isPdfFile(filename, contentType) && user?.fullName) {
         try {
@@ -296,10 +287,7 @@ export default function InternalDocumentReceivedDetailPage() {
           });
           return;
         } catch (watermarkError) {
-          console.error(
-            "Error adding watermark, falling back to normal download:",
-            watermarkError
-          );
+         
           toast({
             title: "Cảnh báo",
             description: "Không thể thêm watermark, tải xuống file gốc",
@@ -323,7 +311,6 @@ export default function InternalDocumentReceivedDetailPage() {
         description: `Đã tải xuống file ${filename}`,
       });
     } catch (error) {
-      console.error("Error downloading attachment:", error);
       toast({
         title: "Lỗi",
         description: "Không thể tải xuống file. Vui lòng thử lại sau.",
@@ -360,7 +347,6 @@ export default function InternalDocumentReceivedDetailPage() {
         description: "Đã đánh dấu văn bản là đã đọc",
       });
     } catch (error) {
-      console.error("Error marking as read:", error);
       toast({
         title: "Lỗi",
         description: "Không thể đánh dấu văn bản đã đọc. Vui lòng thử lại sau.",

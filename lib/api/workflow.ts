@@ -470,7 +470,6 @@ export const workflowAPI = {
       const response = await api.get(`/departments/${departmentId}/parent`);
       return response.data;
     } catch (error) {
-      console.error("Error getting parent department:", error);
       return null;
     }
   },

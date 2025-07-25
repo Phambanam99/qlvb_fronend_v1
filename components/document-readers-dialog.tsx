@@ -110,7 +110,6 @@ export function DocumentReadersDialog({
       setReaders(readers);
       setStatistics(statistics);
     } catch (err) {
-      console.error("Error loading document readers:", err);
       const errorMessage = err instanceof Error ? err.message : String(err);
       setError(`Không thể tải danh sách người đọc: ${errorMessage}`);
     } finally {

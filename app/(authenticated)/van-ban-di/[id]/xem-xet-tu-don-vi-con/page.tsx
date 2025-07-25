@@ -85,7 +85,6 @@ export default function OutgoingDocumentReviewPage({
 
         setHasPermission(true);
       } catch (error) {
-        console.error("Error checking permission:", error);
         toast({
           title: "Lỗi",
           description: "Không thể tải thông tin văn bản",

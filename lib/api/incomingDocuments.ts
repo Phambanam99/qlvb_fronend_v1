@@ -149,7 +149,6 @@ export const incomingDocumentsAPI = {
       const response = await api.get("/documents/incoming", {
         params: { page, size },
       });
-      console.log("backend ", response);
       if (response.data.success === false) {
         throw new Error(response.data.message);
       }
@@ -163,8 +162,7 @@ export const incomingDocumentsAPI = {
           responses: [],
         })
       );
-     console.log("totalPages", response.data.data.totalPages)
-      return {
+        return {
         content: documents,
         page: {
           totalPages: response.data.data.totalPages,
@@ -172,7 +170,6 @@ export const incomingDocumentsAPI = {
         },
       };
     } catch (error) {
-      console.error("Error fetching incoming documents:", error);
       throw error;
     }
   },
@@ -375,7 +372,12 @@ export const incomingDocumentsAPI = {
         }
       );
       return response.data;
-    } catch (error) {
+    } catch (error: any) {
+      // Don't log 404 errors as errors since they're expected for documents without classification
+      if (error?.response?.status === 404) {
+        throw error; // Re-throw but don't log as error
+      }
+      
       console.error(
         `Error getting document classification for document ${documentId}:`,
         error

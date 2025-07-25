@@ -82,9 +82,7 @@ export default function ScheduleWeekView({
       schedule.events.forEach((event) => {
         // Skip if event has no date
         if (!event.date) {
-          console.warn(
-            `Event ${event.id} in schedule ${schedule.id} missing date, skipping`
-          );
+         
           return;
         }
         // console.log("Event Date:", event.date); // Debug log

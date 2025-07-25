@@ -42,7 +42,6 @@ export function ApprovalSection({
   useEffect(() => {
     const fetchApprovers = async () => {
       if (!user || !user.id) {
-        console.error("No user ID available");
         return;
       }
 
@@ -68,10 +67,8 @@ export function ApprovalSection({
             index === self.findIndex((a) => a.id === approver.id)
         );
 
-        // console.log("Fetched approvers:", uniqueApprovers);
         setApprovers(uniqueApprovers);
       } catch (error) {
-        console.error("Error fetching approvers:", error);
         addNotification({
           title: "Lỗi",
           message: "Không thể tải danh sách người phê duyệt",

@@ -74,7 +74,6 @@ export const useUniversalReadStatus = () => {
         }, 100);
       }
     } catch (error) {
-      console.error("Error marking document as read:", error);
       throw error;
     }
   }, []);
@@ -109,7 +108,6 @@ export const useUniversalReadStatus = () => {
         }, 100);
       }
     } catch (error) {
-      console.error("Error marking document as unread:", error);
       throw error;
     }
   }, []);
@@ -127,19 +125,34 @@ export const useUniversalReadStatus = () => {
    */
   const loadBatchReadStatus = useCallback(async (documentIds: number[], documentType: DocumentType) => {
     try {
-      const response_ = await documentReadStatusAPI.getBatchReadStatus(documentIds, documentType);
-      const response = response_.data;
+      // Validate input parameters
+      if (!Array.isArray(documentIds) || documentIds.length === 0) {
+        return;
+      }
+
+      if (!documentType) {
+        return;
+      }
+
+      const response = await documentReadStatusAPI.getBatchReadStatus(documentIds, documentType);
+      
+      // Validate response before processing
+      if (!response || typeof response !== 'object') {
+        return;
+      }
       
       // Update global state
       Object.entries(response).forEach(([docId, isRead]) => {
-        const key = getKey(parseInt(docId), documentType);
-        globalReadStatus[key] = isRead;
+        if (docId && typeof docId === 'string' && !isNaN(parseInt(docId))) {
+          const key = getKey(parseInt(docId), documentType);
+          globalReadStatus[key] = Boolean(isRead);
+        }
       });
       
       notifySubscribers();
     } catch (error) {
-      console.error("Error loading batch read status:", error);
-      throw error;
+      // Don't throw the error to prevent breaking the UI
+      // throw error;
     }
   }, []);
 
@@ -148,12 +161,10 @@ export const useUniversalReadStatus = () => {
    */
   const loadUnreadCount = useCallback(async (documentType: DocumentType) => {
     try {
-      const response_ = await documentReadStatusAPI.countUnreadDocuments(documentType);
-      const response = response_.data;
+      const response = await documentReadStatusAPI.countUnreadDocuments(documentType);
       globalUnreadCounts[documentType] = response.unreadCount;
       notifySubscribers();
     } catch (error) {
-      console.error("Error loading unread count:", error);
       throw error;
     }
   }, []);

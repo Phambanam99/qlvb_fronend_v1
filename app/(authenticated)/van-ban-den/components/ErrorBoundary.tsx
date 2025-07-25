@@ -42,7 +42,6 @@ export class DocumentErrorBoundary extends Component<
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error("DocumentErrorBoundary caught an error:", error, errorInfo);
 
     this.setState({
       error,
@@ -132,7 +131,6 @@ export const useErrorHandler = () => {
   }, []);
 
   const handleError = React.useCallback((error: Error) => {
-    console.error("Error caught by useErrorHandler:", error);
     setError(error);
   }, []);
 

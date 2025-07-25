@@ -79,7 +79,6 @@ export default function ParentDepartmentReviewPage({
           setChildDepartmentId(documentData.sourceDepartmentId);
         }
       } catch (error) {
-        console.error("Error fetching data:", error);
         toast({
           title: "Lỗi",
           description: "Không thể tải thông tin văn bản và phản hồi",

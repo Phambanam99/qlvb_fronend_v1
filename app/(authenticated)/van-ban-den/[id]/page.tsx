@@ -97,7 +97,6 @@ export default function DocumentDetailPage({
       const response = response_.data;
       setDepartments(response);
     } catch (error) {
-      console.error("Error fetching departments:", error);
       toast({
         title: "Lỗi",
         description: "Không thể tải danh sách đơn vị",
@@ -117,7 +116,6 @@ export default function DocumentDetailPage({
       const response = response_.data;
       setAttachments(response);
     } catch (error) {
-      console.error("Error fetching attachments:", error);
       // Don't show toast error for attachments as it might not be supported yet
     }
   };
@@ -151,13 +149,7 @@ export default function DocumentDetailPage({
     }
 
     try {
-      // console.log("Bắt đầu tải dữ liệu văn bản:", {
-      //   documentId,
-      //   timestamp: new Date().toISOString(),
-      //   user: user?.fullName,
-      // });
-
-      // Bắt đầu tải document
+     
       setIsDocumentLoading(true);
       setIsWorkflowLoading(true);
       setIsHistoryLoading(true);
@@ -167,22 +159,17 @@ export default function DocumentDetailPage({
         documentId
       );
       const response = response_.data;
-      // console.log("1. Tải văn bản thành công:", response);
       setIsDocumentLoading(false);
 
       // Fetch document workflow status
       const workflowStatus_ = await workflowAPI.getDocumentStatus(documentId);
       const workflowStatus = workflowStatus_.data;
-      // console.log("2. Tải workflow status thành công:", workflowStatus);
       setIsWorkflowLoading(false);
 
-      // Fetch document history
       const history_ = await workflowAPI.getDocumentHistory(documentId);
       const history = history_.data;
-      // console.log("3. Tải history thành công:", history);
       setIsHistoryLoading(false);
 
-      // Combine data
       const documentData = {
         ...response.data,
         status: workflowStatus.status,
@@ -197,14 +184,10 @@ export default function DocumentDetailPage({
         relatedDocuments: [],
         responses: [],
       };
-      // console.log(
-      //   "✅ Tất cả dữ liệu đã tải xong, bắt đầu render",
-      //   documentData
-      // );
+    
       setDocument(documentData);
       setError(null);
     } catch (err: any) {
-      console.error("❌ Lỗi khi tải dữ liệu văn bản:", err);
       setError(err.message || "Không thể tải thông tin văn bản");
       toast({
         title: "Lỗi",
@@ -260,10 +243,7 @@ export default function DocumentDetailPage({
           });
           return;
         } catch (watermarkError) {
-          console.error(
-            "Error adding watermark, falling back to normal download:",
-            watermarkError
-          );
+         
           toast({
             title: "Cảnh báo",
             description: "Không thể thêm watermark, tải xuống file gốc",
@@ -287,7 +267,6 @@ export default function DocumentDetailPage({
         description: `Đã tải xuống file ${filename}`,
       });
     } catch (error) {
-      console.error("Error downloading attachment:", error);
       toast({
         title: "Lỗi",
         description: "Không thể tải xuống file. Vui lòng thử lại sau.",
@@ -320,10 +299,7 @@ export default function DocumentDetailPage({
           );
           blob = blob_.data;
         } catch (specificError) {
-          console.log(
-            "Specific attachment download failed, falling back to generic:",
-            specificError
-          );
+          
           const blob_ = await incomingDocumentsAPI.downloadIncomingAttachment(
             documentId
           );
@@ -340,11 +316,7 @@ export default function DocumentDetailPage({
       // Check if it's a PDF file and user has a name for watermark
       if (isPdfFile(filename) && user?.fullName) {
         try {
-          console.log("Downloading PDF with watermark:", {
-            filename,
-            userFullName: user.fullName,
-            blob,
-          });
+          
           await downloadPdfWithWatermark(blob, filename, user.fullName);
           toast({
             title: "Thành công",
@@ -352,10 +324,7 @@ export default function DocumentDetailPage({
           });
           return;
         } catch (watermarkError) {
-          console.error(
-            "Error adding watermark, falling back to normal download:",
-            watermarkError
-          );
+          
           toast({
             title: "Cảnh báo",
             description: "Không thể thêm watermark, tải xuống file gốc",
@@ -379,7 +348,6 @@ export default function DocumentDetailPage({
         description: `Đã tải xuống file ${filename}`,
       });
     } catch (error) {
-      console.error("Error downloading specific attachment:", error);
       toast({
         title: "Lỗi",
         description: "Không thể tải xuống file. Vui lòng thử lại sau.",
@@ -431,10 +399,7 @@ export default function DocumentDetailPage({
           );
           return result_.data;
         } catch (specificError) {
-          console.log(
-            "Specific attachment download failed for PDF viewer, falling back to generic:",
-            specificError
-          );
+         
         }
       }
 
@@ -460,7 +425,6 @@ export default function DocumentDetailPage({
         documentId.toString()
       );
       const existingDraftsResponse = existingDraftsResponse_.data;
-      // console.log("Checking for existing drafts:", existingDraftsResponse);
 
       // Look for a draft that was rejected (has status "draft" and was previously rejected in history)
       const existingDraft = existingDraftsResponse?.content?.find(
@@ -505,7 +469,6 @@ export default function DocumentDetailPage({
 
       router.push(`/van-ban-di/them-moi?replyToId=${_document.id}`);
     } catch (error) {
-      console.error("Lỗi khi bắt đầu xử lý văn bản:", error);
       toast({
         title: "Lỗi",
         description: "Không thể bắt đầu xử lý văn bản. Vui lòng thử lại sau.",
@@ -543,15 +506,7 @@ export default function DocumentDetailPage({
       _document.sourceDepartmentId &&
       _document.processingStatus === "parent_dept_review";
 
-    // Kiểm tra trạng thái văn bản và thông tin phân công
-    // console.log("Document assignment info:", {
-    //   document: _document,
-    //   user: user,
-    //   departments: departments,
-    //   currentDeptId: currentDeptId,
-    //   isCurrentDepartmentAssigned: isCurrentDepartmentAssigned,
-    //   isForwardedFromChildDept: isForwardedFromChildDept,
-    // });
+   
 
     // Sử dụng tiếp cận đơn giản hơn: tạo key riêng để theo dõi xem phòng đã phân công chưa
     const processKey = `document_${_document.id}_dept_${currentDeptId}_assigned`;
@@ -737,13 +692,7 @@ export default function DocumentDetailPage({
         _document.assignedToIds.includes(user.id);
       // kiểm tra xem người dùng đã trả lời văn bản trong lịch sử chưa
 
-      // Log thông tin để debug
-      // console.log("Trợ lý/nhân viên quyền trả lời:", {
-      //   userId: user.id,
-      //   userName: user.fullName,
-      //   assignedToIds: _document.assignedToIds,
-      //   isAssignedToCurrentUser: isAssignedToCurrentUser,
-      // });
+      
 
       // Kiểm tra trong nhiều vị trí khác có thể chứa thông tin phân công
       const isUserAssigned =
@@ -1392,12 +1341,7 @@ export default function DocumentDetailPage({
                       (_document.primaryProcessor &&
                         _document.primaryProcessor == user?.id);
 
-                    // console.log("Kiểm tra quyền cập nhật thông tin xử lý:", {
-                    //   userId: user?.id,
-                    //   assignedToIds: _document.assignedToIds,
-                    //   isAssignedToCurrentUser,
-                    //   isUserAssigned,
-                    // });
+                    
 
                     // Chỉ hiển thị nút nếu người dùng được phân công xử lý
                     if (isUserAssigned) {

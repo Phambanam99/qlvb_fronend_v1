@@ -81,16 +81,7 @@ export default function UsersPage() {
 
   // Function to fetch users with pagination
   const fetchUsers = useCallback(async (page: number, size: number) => {
-    // console.log('📡 fetchUsers called with:', {
-    //   page,
-    //   size,
-    //   appliedFilters: {
-    //     appliedSearchTerm,
-    //     appliedRoleFilter,
-    //     appliedDepartmentFilter,
-    //     appliedStatusFilter
-    //   }
-    // });
+    
     
     setLoading(true);
 
@@ -140,31 +131,19 @@ export default function UsersPage() {
         params.keyword = appliedSearchTerm.trim();
       }
 
-      // console.log('👤 User permissions:', {
-      //   userRoles: user?.roles,
-      //   userDepartmentId: user?.departmentId,
-      //   isAdmin,
-      //   isLeadership,
-      //   isDepartmentHead
-      // });
+     
 
       let usersData;
 
       if (isAdmin || isLeadership) {
-        // console.log('🔑 Admin/Leadership branch');
-        // Admin and leadership see all users with pagination
-        // Apply department filter if selected
+       
         if (appliedDepartmentFilter !== "all") {
           params.departmentId = appliedDepartmentFilter;
-          // console.log('✅ Added departmentId to params:', appliedDepartmentFilter);
         }
         
-        // console.log('🌐 Final API params for Admin/Leadership:', params);
         const usersData_ = await usersAPI.getPaginatedUsers(params);
         usersData = usersData_.data;
       } else if (isDepartmentHead && userDepartmentId) {
-        // console.log('🏢 Department Head branch');
-        // Department heads see users in their department and child departments
         let departmentIds = [Number(userDepartmentId)];
 
         try {
@@ -178,41 +157,27 @@ export default function UsersPage() {
             departmentIds.push(...childDeptIds);
           }
         } catch (error) {
-          console.warn("Could not fetch child departments:", error);
-          // Continue with just the current department
         }
 
-        // console.log('🏢 Allowed department IDs:', departmentIds);
-        // console.log('🎯 Applied department filter:', appliedDepartmentFilter);
 
-        // If department filter is selected and it's within allowed departments, use it
         if (
           appliedDepartmentFilter !== "all" &&
           departmentIds.includes(Number(appliedDepartmentFilter))
         ) {
-          // console.log('✅ Department filter applied');
           params.departmentId = appliedDepartmentFilter;
-          // console.log('🌐 Final API params for Department Head (filtered):', params);
           const usersData_ = await usersAPI.getPaginatedUsers(params);
           usersData = usersData_.data;
         } else if (appliedDepartmentFilter === "all") {
-          // console.log('🔄 Fetching from all allowed departments');
-          // No specific department filter, get all users from allowed departments
-          // Since API doesn't support multiple department IDs, we'll call for each department
           const allUsersInDepartments = [];
 
           for (const deptId of departmentIds) {
             try {
               const deptParams = { ...params, departmentId: deptId };
-              // console.log('🌐 API params for dept', deptId, ':', deptParams);
               const deptUsers_ = await usersAPI.getPaginatedUsers(deptParams);
               const deptUsers = deptUsers_.data;
               allUsersInDepartments.push(...deptUsers.content);
             } catch (error) {
-              console.warn(
-                `Error fetching users for department ${deptId}:`,
-                error
-              );
+             
             }
           }
 
@@ -235,8 +200,6 @@ export default function UsersPage() {
             number: page,
           };
         } else {
-          // console.log('❌ Department filter not allowed for this user');
-          // Department filter selected but not allowed for this user
           usersData = {
             content: [],
             totalElements: 0,
@@ -261,7 +224,6 @@ export default function UsersPage() {
       setTotalUsers(usersData.totalElements);
       setTotalPages(usersData.totalPages);
     } catch (error) {
-      console.error("Error fetching paginated users:", error);
       toast({
         title: "Lỗi",
         description: "Không thể tải dữ liệu người dùng. Vui lòng thử lại sau.",
@@ -335,7 +297,6 @@ export default function UsersPage() {
               allowedDepartments.push(...childDepartments);
             }
           } catch (error) {
-            console.warn("Could not fetch child departments:", error);
           }
 
           // Update departments state with filtered list
@@ -353,7 +314,6 @@ export default function UsersPage() {
           });
         }
       } catch (error) {
-        console.error("Error fetching initial data:", error);
         toast({
           title: "Lỗi",
           description: "Không thể tải dữ liệu ban đầu. Vui lòng thử lại sau.",
@@ -376,14 +336,7 @@ export default function UsersPage() {
       return;
     }
 
-    // console.log('🔍 Applied filters changed:', {
-    //   appliedSearchTerm,
-    //   appliedRoleFilter,
-    //   appliedDepartmentFilter,
-    //   appliedStatusFilter,
-    //   currentPage,
-    //   itemsPerPage
-    // });
+   
 
     fetchUsers(currentPage, itemsPerPage);
   }, [
@@ -414,15 +367,7 @@ export default function UsersPage() {
 
   // Apply filters function
   const applyFilters = () => {
-    console.log('🚀 Apply filters clicked:', {
-      from: { searchTerm, roleFilter, departmentFilter, statusFilter },
-      to: { 
-        appliedSearchTerm: searchTerm, 
-        appliedRoleFilter: roleFilter, 
-        appliedDepartmentFilter: departmentFilter, 
-        appliedStatusFilter: statusFilter 
-      }
-    });
+ 
     
     setAppliedSearchTerm(searchTerm);
     setAppliedRoleFilter(roleFilter);
@@ -431,9 +376,7 @@ export default function UsersPage() {
     setCurrentPage(0); // Reset to first page when applying filters
   };
 
-  // Reset filters function
   const resetFilters = () => {
-    // console.log('🔄 Reset filters clicked');
     
     setSearchTerm("");
     setRoleFilter("all");

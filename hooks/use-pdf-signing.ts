@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { signatureApi } from "@/lib/api/signature";
 import { PDFDocument } from "pdf-lib";
@@ -10,10 +10,14 @@ import {
 } from "@/lib/utils/signature";
 import { PlacedSignature } from "@/lib/types/digital-signature";
 
+// Check if we're in browser environment
+const isBrowser = typeof window !== "undefined";
+
 interface UsePdfSigningReturn {
   placedSignatures: PlacedSignature[];
   selectedSignatureId: number | null;
   isSigning: boolean;
+  isClientReady: boolean;
   handleDropSignature: (
     item: { id: number; src: string },
     x: number,
@@ -41,6 +45,14 @@ export const usePdfSigning = (): UsePdfSigningReturn => {
     null
   );
   const [isSigning, setIsSigning] = useState(false);
+  const [isClientReady, setIsClientReady] = useState(false);
+
+  // Ensure we're on client side before initializing
+  useEffect(() => {
+    if (isBrowser) {
+      setIsClientReady(true);
+    }
+  }, []);
 
   const resetSigningState = useCallback(() => {
     setPlacedSignatures([]);
@@ -134,7 +146,6 @@ export const usePdfSigning = (): UsePdfSigningReturn => {
           new Uint8Array(await imageBlob.arrayBuffer())
         );
       } catch (error) {
-        console.error("Invalid password for signature:", sig.id, error);
         toast({
           title: "Lỗi mật khẩu",
           description: `${SIGNATURE_MESSAGES.ERROR.INVALID_PASSWORD} ID: ${sig.id}`,
@@ -177,17 +188,11 @@ export const usePdfSigning = (): UsePdfSigningReturn => {
           try {
             embeddedImage = await pdfDoc.embedPng(imageBytes);
           } catch (pngError) {
-            console.warn(
-              `Failed to embed as PNG for signature ${sig.id}, trying JPEG:`,
-              pngError
-            );
+          
             try {
               embeddedImage = await pdfDoc.embedJpg(imageBytes);
             } catch (jpgError) {
-              console.error(
-                `Failed to embed image for signature ${sig.id}:`,
-                jpgError
-              );
+             
               throw new Error(
                 `Unsupported image format for signature ${sig.id}`
               );
@@ -203,7 +208,6 @@ export const usePdfSigning = (): UsePdfSigningReturn => {
           height: sig.height,
         });
       } catch (error) {
-        console.error(`Error embedding signature ${sig.id}:`, error);
         throw error;
       }
     }
@@ -244,7 +248,6 @@ export const usePdfSigning = (): UsePdfSigningReturn => {
 
       resetSigningState();
     } catch (error: any) {
-      console.error("Failed to sign PDF:", error);
       toast({
         title: "Lỗi ký",
         description: error?.message || SIGNATURE_MESSAGES.ERROR.SIGNING_FAILED,
@@ -259,6 +262,7 @@ export const usePdfSigning = (): UsePdfSigningReturn => {
     placedSignatures,
     selectedSignatureId,
     isSigning,
+    isClientReady,
     handleDropSignature,
     handleMoveSignature,
     handleResizeSignature,

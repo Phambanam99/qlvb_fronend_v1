@@ -24,59 +24,35 @@ export default function AuthenticatedLayout({
     }
   }, [isAuthenticated, loading, router]);
 
-  // Effect to track when to safely render content
   useEffect(() => {
-    // Chỉ hiển thị nội dung khi đã xác thực và tải xong dữ liệu
     if (isAuthenticated && !loading && !dataLoading) {
-      // console.log("✅ Tất cả dữ liệu đã tải xong - sẵn sàng hiển thị nội dung");
       setRenderContent(true);
     } else {
       setRenderContent(false);
     }
   }, [isAuthenticated, loading, dataLoading]);
 
-  // Effect to fetch initial data once authenticated
   useEffect(() => {
-    const loadInitialData = async () => {
-      if (isAuthenticated && user && dataLoading) {
-        try {
-          // console.log("🔄 Đang tải dữ liệu ứng dụng...", {
-          //   userId: user.id,
-          //   isAuthenticated,
-          //   dataLoading,
-          // });
+    let timeoutId: NodeJS.Timeout | undefined;
 
-          // Tăng thời gian timeout lên để đảm bảo API có đủ thời gian phản hồi
-          // Dashboards và các components khác sẽ gọi setDataLoaded khi hoàn tất
-          // nhưng chúng ta cần một safety net trong trường hợp có lỗi
-          const timeoutId = setTimeout(() => {
-            // console.log(
-            //   "⚠️ Thời gian tải dữ liệu vượt quá giới hạn - đánh dấu đã tải xong"
-            // );
-            // Đánh dấu dữ liệu đã tải xong
-            setDataLoaded();
+    if (isAuthenticated && user && dataLoading) {
+      try {
+        timeoutId = setTimeout(() => {
+          setDataLoaded();
+        }, 1000); 
+      } catch (error) {
+       
+        setDataLoaded();
+      }
+    }
 
-            // Force reload trang nếu cần thiết để đảm bảo dữ liệu được hiển thị
-            if (window.location.pathname === "/") {
-              console.log(
-                "🔄 Tải lại trang dashboard để đảm bảo dữ liệu hiển thị đúng"
-              );
-              // window.location.reload(); // có thể uncomment nếu vẫn gặp vấn đề
-            }
-          }, 5000); // Tăng timeout lên 5 giây
-
-          return () => clearTimeout(timeoutId);
-        } catch (error) {
-          console.error("⛔ Lỗi khi tải dữ liệu ban đầu:", error);
-          setDataLoaded(); // Đánh dấu đã tải xong để tránh loading mãi
-        }
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
       }
     };
-
-    loadInitialData();
   }, [isAuthenticated, dataLoading, setDataLoaded, user]);
 
-  // Show loading spinner for both auth loading and data loading
   if (loading || dataLoading || !renderContent) {
     return (
       <div className="flex h-screen items-center justify-center">

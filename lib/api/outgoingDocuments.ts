@@ -304,10 +304,7 @@ export const outgoingDocumentsAPI = {
       const response = await api.get(`/documents/outgoing/${id}/attachments`);
       return response.data || [];
     } catch (error) {
-      console.error(
-        `Error getting attachments for outgoing document ${id}:`,
-        error
-      );
+    
       // Return empty array if endpoint doesn't exist yet
       return [];
     }
@@ -335,10 +332,7 @@ export const outgoingDocumentsAPI = {
       );
       return response.data;
     } catch (error) {
-      console.error(
-        `Error downloading specific attachment ${attachmentId} for outgoing document ${documentId}:`,
-        error
-      );
+     
       throw error;
     }
   },

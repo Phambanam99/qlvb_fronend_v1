@@ -100,7 +100,6 @@ export default function AddDepartmentPage() {
         const departmentsResponse = departmentsResponse_.data;
         setParentDepartments(departmentsResponse.content || []);
       } catch (error) {
-        console.error("Error fetching data:", error);
         toast({
           title: "Lỗi",
           description: "Không thể tải dữ liệu. Vui lòng thử lại sau.",
@@ -153,7 +152,6 @@ export default function AddDepartmentPage() {
       // Chuyển về trang danh sách phòng ban
       router.push("/phong-ban");
     } catch (error) {
-      console.error("Error creating department:", error);
       toast({
         title: "Lỗi",
         description: "Không thể tạo phòng ban mới. Vui lòng thử lại sau.",

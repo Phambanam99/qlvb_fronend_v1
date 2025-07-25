@@ -76,7 +76,6 @@ const createSchedulesStore = () => {
         const data = data_.data;
         set({ schedules: data });
       } catch (error) {
-        console.error("Error fetching schedules:", error);
         set({
           error:
             error instanceof Error
