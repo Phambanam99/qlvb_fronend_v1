@@ -14,7 +14,8 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, Printer } from "lucide-react";
 import Link from "next/link";
-import { schedulesAPI } from "@/lib/api";
+import { ScheduleDTO, schedulesAPI } from "@/lib/api";
+import { usersAPI } from "@/lib/api/users";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import { use } from "react";
@@ -29,10 +30,54 @@ export default function ScheduleDetailPage({
   const { hasRole } = useAuth();
   const { toast } = useToast();
 
-  const [schedule, setSchedule] = useState<any>(null);
+  const [schedule, setSchedule] = useState<ScheduleDTO>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [relatedSchedules, setRelatedSchedules] = useState<any[]>([]);
+  const [userNames, setUserNames] = useState<Record<string, string>>({});
+
+  // Function to fetch user names for participants
+  const fetchUserNames = async (userIds: number[]) => {
+    try {
+      const userPromises = userIds.map(id => usersAPI.getUserById(id));
+      const users = await Promise.all(userPromises);
+      
+      const nameMap: Record<string, string> = {};
+      users.forEach(user => {
+        if (user.id) {
+          nameMap[user.id.toString()] = user.fullName;
+        }
+      });
+      
+      setUserNames(prevNames => ({ ...prevNames, ...nameMap }));
+    } catch (error) {
+      console.error("Error fetching user names:", error);
+    }
+  };
+
+  // Function to get participant display text
+  const getParticipantDisplay = (participants: any) => {
+    if (!participants) return "Không có thông tin";
+    
+    if (Array.isArray(participants)) {
+      if (participants.length === 0) return "Không có thông tin";
+      
+      // If all participants are numbers (user IDs), try to get names
+      if (participants.every(p => typeof p === 'number' || (typeof p === 'string' && !isNaN(Number(p))))) {
+        const names = participants.map(p => userNames[p.toString()] || `User ${p}`);
+        return names.join(", ");
+      }
+      
+      // If participants are already names
+      return participants.join(", ");
+    }
+    
+    if (typeof participants === "string") {
+      return participants;
+    }
+    
+    return "Không có thông tin";
+  };
 
   // Replace getRelatedSchedules with a custom function
   const fetchRelatedSchedules = async () => {
@@ -62,6 +107,27 @@ export default function ScheduleDetailPage({
         const scheduleData_ = await schedulesAPI.getScheduleById(scheduleId);
         const scheduleData = scheduleData_.data;
         setSchedule(scheduleData);
+        
+        // Extract participant IDs from all events and fetch user names
+        if (scheduleData?.events) {
+          const participantIds = new Set<number>();
+          scheduleData.events.forEach((event: any) => {
+            if (event.participants && Array.isArray(event.participants)) {
+              event.participants.forEach((id: any) => {
+                if (typeof id === 'number') {
+                  participantIds.add(id);
+                } else if (typeof id === 'string' && !isNaN(Number(id))) {
+                  participantIds.add(Number(id));
+                }
+              });
+            }
+          });
+          
+          if (participantIds.size > 0) {
+            await fetchUserNames(Array.from(participantIds));
+          }
+        }
+        
         setIsLoading(false);
       } catch (error: any) {
         setError(error.message || "Không thể tải thông tin lịch công tác");
@@ -76,7 +142,7 @@ export default function ScheduleDetailPage({
 
     fetchScheduleData();
     fetchRelatedSchedules();
-  }, [scheduleId, toast, schedule?.title, schedule?.description]);
+  }, [scheduleId, toast]);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -175,7 +241,7 @@ export default function ScheduleDetailPage({
               </div>
               <CardDescription>
                 {schedule.department} • Người tạo:{" "}
-                {schedule.creator?.name || "Không xác định"} • Ngày tạo:{" "}
+                {schedule.createdByName || "Không xác định"} • Ngày tạo:{" "}
                 {new Date(schedule.createdAt).toLocaleDateString("vi-VN")}
               </CardDescription>
             </CardHeader>
@@ -242,10 +308,10 @@ export default function ScheduleDetailPage({
                                   <span className="text-muted-foreground">
                                     Thành phần:{" "}
                                   </span>
-                                  {Array.isArray(item.participants)
-                                    ? item.participants.join(", ")
-                                    : typeof item.participants === "string"
-                                    ? item.participants
+                                  {Array.isArray(item.participantNames)
+                                    ? item.participantNames.join(", ")
+                                    : typeof item.participantNames === "string"
+                                    ? item.participantNames
                                     : "Không có thông tin"}
                                 </p>
                               </div>

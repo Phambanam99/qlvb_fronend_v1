@@ -141,8 +141,12 @@ export function ExternalDocumentsTable({
                       <Button
                         variant="ghost"
                         size="sm"
-                        className={isRead ? "text-green-600" : "text-blue-600"}
-                        onClick={(e) => {
+                        className={`${
+                          isRead
+                            ? "text-green-600 hover:text-green-700"
+                            : "text-blue-600 hover:text-blue-700"
+                        }`}
+                        onClick={(e: React.MouseEvent) => {
                           e.stopPropagation();
                           onReadStatusToggle(doc.id!);
                         }}
@@ -154,7 +158,7 @@ export function ExternalDocumentsTable({
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={(e) => {
+                        onClick={(e: React.MouseEvent) => {
                           e.stopPropagation();
                           onDocumentClick(doc);
                         }}

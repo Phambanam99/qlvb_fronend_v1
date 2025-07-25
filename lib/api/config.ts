@@ -2,7 +2,7 @@ import axios from "axios";
 
 // API base URL
 export const API_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api";
+  process.env.NEXT_PUBLIC_API_URL || "http://192.168.0.103:8080/api";
 
 // Create axios instance with common configuration
 const api = axios.create({

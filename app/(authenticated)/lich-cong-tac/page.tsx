@@ -32,12 +32,19 @@ export default function SchedulesPage() {
 
   // Custom hooks for filter management
   const {
-    searchQuery,
+    // Date filters
+    weekFilter,
+    setWeekFilter,
+    monthFilter,
+    setMonthFilter,
+    yearFilter,
+    setYearFilter,
+    
+    // Existing filters
     departmentFilter,
     statusFilter,
     setStatusFilter,
     setDepartmentFilter,
-    handleSearchChange,
     handleApplyFilters,
     isFiltering,
   } = useScheduleFilters({
@@ -89,8 +96,15 @@ export default function SchedulesPage() {
       )}
 
       <ScheduleFilters
-        searchQuery={searchQuery}
-        onSearchChange={handleSearchChange}
+        // Date filters
+        weekFilter={weekFilter}
+        onWeekFilterChange={setWeekFilter}
+        monthFilter={monthFilter}
+        onMonthFilterChange={setMonthFilter}
+        yearFilter={yearFilter}
+        onYearFilterChange={setYearFilter}
+        
+        // Existing filters
         statusFilter={statusFilter}
         onStatusFilterChange={setStatusFilter}
         departmentFilter={departmentFilter}

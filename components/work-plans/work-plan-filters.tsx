@@ -1,3 +1,5 @@
+"use client";
+
 import {
   Select,
   SelectContent,
@@ -7,8 +9,9 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Filter } from "lucide-react";
+import type { HierarchicalDepartment } from "@/hooks/use-hierarchical-departments";
 
-interface ScheduleFiltersProps {
+interface WorkPlanFiltersProps {
   // Date filters - thay thế search
   weekFilter: string;
   onWeekFilterChange: (value: string) => void;
@@ -22,13 +25,13 @@ interface ScheduleFiltersProps {
   onStatusFilterChange: (value: string) => void;
   departmentFilter: string;
   onDepartmentFilterChange: (value: string) => void;
-  visibleDepartments: any[];
+  visibleDepartments: HierarchicalDepartment[];
   loadingDepartments: boolean;
   onApplyFilters: () => void;
   isFiltering: boolean;
 }
 
-export function ScheduleFilters({
+export function WorkPlanFilters({
   weekFilter,
   onWeekFilterChange,
   monthFilter,
@@ -43,7 +46,7 @@ export function ScheduleFilters({
   loadingDepartments,
   onApplyFilters,
   isFiltering,
-}: ScheduleFiltersProps) {
+}: WorkPlanFiltersProps) {
   // Generate years list (current year ± 5 years)
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 11 }, (_, i) => currentYear - 5 + i);
@@ -152,6 +155,7 @@ export function ScheduleFilters({
         </SelectContent>
       </Select>
 
+      {/* Department filter */}
       <Select value={departmentFilter} onValueChange={onDepartmentFilterChange}>
         <SelectTrigger
           className="w-full sm:w-[300px]"

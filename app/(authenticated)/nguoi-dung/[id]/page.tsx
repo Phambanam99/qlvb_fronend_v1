@@ -136,6 +136,7 @@ export default function UserDetailPage() {
 
   const handleUpdateStatus = async (data: any) => {
     try {
+      console.log("Updating user status:", data);
       setSaving(true);
       const updatedUser_ = await usersAPI.updateUser(userId, data);
       const updatedUser = updatedUser_.data;
