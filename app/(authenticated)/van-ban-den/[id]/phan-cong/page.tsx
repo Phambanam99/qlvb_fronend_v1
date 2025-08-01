@@ -14,7 +14,7 @@ import { ArrowLeft } from "lucide-react";
 export default function DocumentAssignmentPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
   // const documentId = Number.parseInt(params.id)
   const { toast } = useToast();

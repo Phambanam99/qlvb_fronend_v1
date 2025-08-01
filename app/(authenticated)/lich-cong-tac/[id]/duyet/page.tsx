@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, use } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -35,9 +35,10 @@ import { useNotifications } from "@/lib/notifications-context";
 export default function ApproveSchedulePage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const { id } = params;
+  const unwrappedParams = use(params);
+  const { id } = unwrappedParams;
   const scheduleId = Number.parseInt(id);
   const router = useRouter();
   const { toast } = useToast();

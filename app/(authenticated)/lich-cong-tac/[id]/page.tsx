@@ -22,7 +22,7 @@ import { use } from "react";
 export default function ScheduleDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
   const unwrappedParams = use(params);
   const { id } = unwrappedParams;

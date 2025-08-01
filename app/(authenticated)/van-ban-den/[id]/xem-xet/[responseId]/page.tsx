@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, use } from "react"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
@@ -31,9 +31,10 @@ interface DocumentResponse {
   createdAt: string
 }
 
-export default function DocumentReviewPage({ params }: { params: { id: string; responseId: string } }) {
-  const documentId = Number.parseInt(params.id)
-  const responseId = Number.parseInt(params.responseId)
+export default function DocumentReviewPage({ params }: { params: Promise<{ id: string; responseId: string }> }) {
+  const unwrappedParams = use(params);
+  const documentId = Number.parseInt(unwrappedParams.id)
+  const responseId = Number.parseInt(unwrappedParams.responseId)
   const { toast } = useToast()
   const [document, setDocument] = useState<Document | null>(null)
   const [response, setResponse] = useState<DocumentResponse | null>(null)

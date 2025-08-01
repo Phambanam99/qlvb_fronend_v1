@@ -27,7 +27,7 @@ const REVIEW_ROLES = [
 export default function OutgoingDocumentReviewPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
   const unwrappedParams = use(params);
   const { id } = unwrappedParams;

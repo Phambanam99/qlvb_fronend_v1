@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, use } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -61,12 +61,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { use } from "react";
 
 export default function WorkPlanDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
   const unwrappedParams = use(params);
   const { id } = unwrappedParams;

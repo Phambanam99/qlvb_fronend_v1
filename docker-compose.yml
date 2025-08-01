@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  # Frontend Next.js
+  frontend:
+    build: .
+    ports:
+      - "3000:3000"
+    env_file:
+      - docker-compose.env
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - NEXT_PUBLIC_BACKEND_URL=${NEXT_PUBLIC_BACKEND_URL:-http://backend:8080}
+      - NEXT_PUBLIC_APP_NAME=${NEXT_PUBLIC_APP_NAME:-QLVB Frontend}
+    depends_on:
+      - backend
+    networks:
+      - app-network
+
+  # Backend (giả sử bạn có backend container)
+  backend:
+    # image: your-backend-image:latest
+    # build: ../path-to-backend
+    ports:
+      - "8080:8080"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://user:pass@db:5432/qlvb
+    networks:
+      - app-network
+
+  # Database (nếu cần)
+  db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=qlvb
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+
+volumes:
+  postgres_data:
+
+networks:
+  app-network:
+    driver: bridge

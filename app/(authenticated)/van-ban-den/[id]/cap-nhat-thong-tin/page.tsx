@@ -24,7 +24,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 export default function DocumentUpdatePage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
   const { toast } = useToast();
   const router = useRouter();

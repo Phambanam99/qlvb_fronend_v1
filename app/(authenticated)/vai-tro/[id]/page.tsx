@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -32,7 +32,7 @@ import { rolesAPI } from "@/lib/api/roles";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { use } from "react";
+
 const roleFormSchema = z.object({
   name: z
     .string()
@@ -53,7 +53,7 @@ const roleFormSchema = z.object({
 
 type RoleFormValues = z.infer<typeof roleFormSchema>;
 
-export default function RoleDetailPage({ params }: { params: { id: string } }) {
+export default function RoleDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const unwrappedParams = use(params);
   const { id } = unwrappedParams;
   const roleId = Number.parseInt(id);

@@ -95,8 +95,9 @@ type DepartmentFormValues = z.infer<typeof departmentFormSchema>;
 export default function DepartmentDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  
   const unwrappedParams = use(params);
   const { id } = unwrappedParams;
   const departmentId = Number.parseInt(id);
