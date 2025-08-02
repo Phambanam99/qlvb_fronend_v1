@@ -50,7 +50,10 @@ export function InternalDocumentsTable({
           <TableBody>
             {documents && documents.length > 0 ? (
               documents.map((doc: any) => {
-                const isRead = getReadStatus ? getReadStatus(doc.id) : doc.isRead;
+                // FIX: Use backend data as primary source, frontend state for real-time updates
+                const frontendStatus = getReadStatus ? getReadStatus(doc.id) : undefined;
+                const isRead = frontendStatus !== undefined ? frontendStatus : doc.isRead;
+                  
                 return (
                   <TableRow 
                     key={doc.id} 
@@ -83,7 +86,7 @@ export function InternalDocumentsTable({
                         variant="ghost"
                         size="sm"
                         className={`${
-                          getReadStatus(doc.id)
+                          isRead
                             ? "text-green-600 hover:text-green-700"
                             : "text-blue-600 hover:text-blue-700"
                         }`}
@@ -94,12 +97,12 @@ export function InternalDocumentsTable({
                           }
                         }}
                       >
-                        {getReadStatus(doc.id) ? "Đã đọc" : "Chưa đọc"}
+                        {isRead ? "Đã đọc" : "Chưa đọc"}
                       </Button>
                     ) : (
                       // Fallback to Badge for backward compatibility
-                      <Badge variant={doc.isRead ? "default" : "outline"}>
-                        {doc.isRead ? "Đã đọc" : "Chưa đọc"}
+                      <Badge variant={isRead ? "default" : "outline"}>
+                        {isRead ? "Đã đọc" : "Chưa đọc"}
                       </Badge>
                     )}
                   </TableCell>

@@ -115,9 +115,17 @@ export const useUniversalReadStatus = () => {
   /**
    * Get read status for a document
    */
-  const getReadStatus = useCallback((documentId: number, documentType: DocumentType): boolean => {
+  const getReadStatus = useCallback((documentId: number, documentType: DocumentType): boolean | undefined => {
     const key = getKey(documentId, documentType);
-    return globalReadStatus[key] ?? false;
+    return key in globalReadStatus ? globalReadStatus[key] : undefined;
+  }, []);
+
+  /**
+   * Check if read status has been loaded for a document
+   */
+  const hasReadStatus = useCallback((documentId: number, documentType: DocumentType): boolean => {
+    const key = getKey(documentId, documentType);
+    return key in globalReadStatus;
   }, []);
 
   /**
@@ -201,6 +209,7 @@ export const useUniversalReadStatus = () => {
     markAsRead,
     markAsUnread,
     getReadStatus,
+    hasReadStatus,
     loadBatchReadStatus,
     loadUnreadCount,
     getUnreadCount,

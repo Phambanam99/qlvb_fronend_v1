@@ -54,6 +54,7 @@ import {
 } from "@/lib/api/internalDocumentApi";
 import { useDocumentReadStatus } from "@/hooks/use-document-read-status";
 import { downloadPdfWithWatermark, isPdfFile } from "@/lib/utils/pdf-watermark";
+import { useUserDepartmentInfo } from "@/hooks/use-user-department-info";
 import { createPDFBlobUrl, cleanupBlobUrl } from "@/lib/utils/pdf-viewer";
 import { DocumentReadersDialog } from "@/components/document-readers-dialog";
 import { DocumentReadStats } from "@/components/document-read-stats";
@@ -66,6 +67,7 @@ export default function InternalDocumentDetailPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { user } = useAuth();
+  const { departmentName } = useUserDepartmentInfo();
   const { markAsRead: globalMarkAsRead } = useDocumentReadStatus();
   const [_document, setDocument] = useState<InternalDocumentDetail | null>(
     null
@@ -276,9 +278,9 @@ export default function InternalDocumentDetailPage() {
       }
 
       const blob = new Blob([response.data], { type: contentType || 'application/octet-stream' });
-      if (isPdfFile(filename, contentType) && user?.fullName) {
+      if (isPdfFile(filename, contentType) && user?.fullName && departmentName) {
         try {
-          await downloadPdfWithWatermark(blob, filename, user.fullName);
+          await downloadPdfWithWatermark(blob, filename, user.fullName, departmentName);
 
           toast({
             title: "Thành công",
