@@ -98,7 +98,7 @@ export const Header = () => {
       title: "Người dùng",
       href: "/nguoi-dung",
       icon: Users,
-      permission: "manage_users",
+      permission: "ROLE_ADMIN",
     },
     {
       title: "Vai trò",

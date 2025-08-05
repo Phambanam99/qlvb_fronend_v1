@@ -39,17 +39,20 @@ export function InternalDocumentsTable({
         <Table>
           <TableHeader className="bg-accent/50">
             <TableRow>
+              <TableHead className="w-16">STT</TableHead>
               <TableHead>Số văn bản</TableHead>
               <TableHead>Ngày ký</TableHead>
               <TableHead>Tiêu đề</TableHead>
               <TableHead>Người gửi</TableHead>
+             
               <TableHead>Trạng thái đọc</TableHead>
               <TableHead>Thao tác</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {documents && documents.length > 0 ? (
-              documents.map((doc: any) => {
+              documents.map((doc: any, index: number) => {
+                console.log("Document:", doc);
                 // FIX: Use backend data as primary source, frontend state for real-time updates
                 const frontendStatus = getReadStatus ? getReadStatus(doc.id) : undefined;
                 const isRead = frontendStatus !== undefined ? frontendStatus : doc.isRead;
@@ -64,6 +67,9 @@ export function InternalDocumentsTable({
                     }`}
                     onClick={() => onDocumentClick(doc)}
                   >
+                    <TableCell className="text-center text-muted-foreground">
+                      {index + 1}
+                    </TableCell>
                     <TableCell className="font-medium">
                       {doc.documentNumber}
                     </TableCell>
@@ -79,6 +85,7 @@ export function InternalDocumentsTable({
                       </div>
                     </TableCell>
                     <TableCell>{doc.senderName}</TableCell>
+
                   <TableCell>
                     {universalReadStatus && getReadStatus ? (
                       // Use Button for read status toggle like văn bản đi

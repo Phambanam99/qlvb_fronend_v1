@@ -11,6 +11,8 @@ import {
 } from "@/components/ui/select";
 import { Search, Filter, Plus } from "lucide-react";
 import Link from "next/link";
+import { PrintInternalDocumentsButton } from "@/components/print/print-internal-documents-button";
+import { InternalDocument } from "@/lib/api/internalDocumentApi";
 
 interface SearchFiltersProps {
   searchQuery: string;
@@ -201,7 +203,7 @@ export function SearchFilters({
               onClick={onApplyFilters}
               variant="default"
               size="sm"
-              className="whitespace-nowrap bg-blue-600 hover:bg-blue-700 text-white"
+              className="whitespace-nowrap bg-black hover:bg-gray-200 text-white"
             >
               <Filter className="h-4 w-4 mr-1" />
               Áp dụng bộ lọc

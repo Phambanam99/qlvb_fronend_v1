@@ -6,12 +6,34 @@ export interface NotificationDTO {
   userId: number
   title: string
   message: string
+  content: string
   type: string
   read: boolean
   createdAt: string
-  relatedEntityId?: number
-  relatedEntityType?: string
+  entityId?: number
+  entityType?: string
   link?: string
+  user?: {
+    id: number
+    name: string
+    fullName: string
+  }
+}
+
+// Backend notification format (what we actually receive via WebSocket)
+export interface BackendNotification {
+  id: number
+  entityId: number
+  entityType: string
+  user: {
+    id: number
+    name: string
+    fullName: string
+  }
+  type: string // This is NotificationType enum as string
+  content: string
+  createdAt: string
+  read?: boolean
 }
 
 export const notificationsAPI = {
@@ -25,7 +47,7 @@ export const notificationsAPI = {
     const response = await api.get("/notifications", {
       params: { page, size },
     })
-    return response.data
+    return response.data.data
   },
 
   /**
@@ -100,130 +122,295 @@ export const notificationsAPI = {
   },
 }
 
+// ===== Notification Types for Internal Documents =====
+
+export type InternalDocumentNotificationType = 
+  | 'INTERNAL_DOCUMENT_RECEIVED'
+  | 'INTERNAL_DOCUMENT_READ'
+  | 'INTERNAL_DOCUMENT_SENT'
+  | 'INTERNAL_DOCUMENT_UPDATED'
+
+export interface InternalDocumentNotification extends NotificationDTO {
+  entityType: 'internal_document'
+  type: InternalDocumentNotificationType
+  entityId: number
+  metadata?: {
+    documentTitle?: string
+    senderName?: string
+    recipientName?: string
+  }
+}
+
 // ===== Realtime Notifications WebSocket client =====
 
 export interface RealTimeNotification {
-  id: number;
-  type: string;
-  content: string;
+  id: number
+  type: string
+  content: string
+  entityId?: number
+  entityType?: string
+  createdAt: string
+  read: boolean
+  user?: {
+    id: number
+    name: string
+    fullName: string
+  }
   document?: {
-    id: number;
-    title: string;
-  };
-  createdAt: string;
-  read: boolean;
-  metadata?: Record<string, unknown>;
+    id: number
+    title: string
+  }
+  metadata?: Record<string, unknown>
 }
 
-type NotificationHandler = (notification: RealTimeNotification) => void;
+// Helper function to convert backend notification to frontend format
+export function mapBackendNotification(backendNotification: BackendNotification): RealTimeNotification {
+  return {
+    id: backendNotification.id,
+    type: backendNotification.type,
+    content: backendNotification.content,
+    entityId: backendNotification.entityId,
+    entityType: backendNotification.entityType,
+    createdAt: backendNotification.createdAt,
+    read: backendNotification.read || false,
+    user: backendNotification.user,
+  }
+}
+
+import SockJS from 'sockjs-client'
+import { Client, Frame } from '@stomp/stompjs'
+
+type NotificationHandler = (notification: RealTimeNotification) => void
+type InternalDocumentHandler = (notification: InternalDocumentNotification) => void
 
 class NotificationsRealtimeClient {
-  private ws: WebSocket | null = null;
-  private handlers: Map<string, NotificationHandler[]> = new Map();
-  private reconnectAttempts = 0;
-  private heartbeatInterval: ReturnType<typeof setInterval> | null = null;
-  private token: string | null = null;
-  private wsUrl: string;
-  private static instance: NotificationsRealtimeClient;
+  private stompClient: Client | null = null
+  private handlers: Map<string, NotificationHandler[]> = new Map()
+  private internalDocHandlers: Map<InternalDocumentNotificationType, InternalDocumentHandler[]> = new Map()
+  private reconnectAttempts = 0
+  private token: string | null = null
+  private baseUrl: string
+  private static instance: NotificationsRealtimeClient
 
   private constructor() {
-    // Lấy URL từ biến môi trường, hoặc mặc định ws://localhost:4000/notifications/ws
-    this.wsUrl =
-      (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_WS_URL) ||
-      (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_API_URL
-        ? `wss://${process.env.NEXT_PUBLIC_API_URL}/notifications/ws`
-        : 'ws://localhost:4000/notifications/ws');
+    // Lấy base URL từ biến môi trường
+    this.baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
   }
 
   public static getInstance() {
     if (!NotificationsRealtimeClient.instance) {
-      NotificationsRealtimeClient.instance = new NotificationsRealtimeClient();
+      NotificationsRealtimeClient.instance = new NotificationsRealtimeClient()
     }
-    return NotificationsRealtimeClient.instance;
+    return NotificationsRealtimeClient.instance
   }
 
   public connect(token: string) {
-    if (this.ws) return;
-    this.token = token;
-    this.ws = new window.WebSocket(this.wsUrl);
+    if (this.stompClient?.connected) {
+      console.log('🔗 STOMP client already connected')
+      return
+    }
+    
+    console.log('🚀 Connecting to WebSocket...')
+    console.log('📍 Backend URL:', this.baseUrl)
+    console.log('🔑 Token (first 30 chars):', token.substring(0, 30) + '...')
+    
+    this.token = token
+    this.stompClient = new Client({
+      brokerURL: `${this.baseUrl.replace('http', 'ws')}/ws`,
+      connectHeaders: {
+        Authorization: `Bearer ${token}`
+      },
+      debug: (str) => console.log('🔵 STOMP Debug:', str),
+      reconnectDelay: 5000,
+      heartbeatIncoming: 4000,
+      heartbeatOutgoing: 4000,
+    })
 
-    this.ws.onopen = () => {
-      this.reconnectAttempts = 0;
-      this.sendAuth(token);
-      this.startHeartbeat();
-    };
+    console.log('🌐 WebSocket URL:', `${this.baseUrl.replace('http', 'ws')}/ws`)
 
-    this.ws.onmessage = (event) => {
-      try {
-        const message = JSON.parse(event.data);
-        if (message.type === 'HEARTBEAT') return;
-        this.handleMessage(message);
-      } catch (error) {
-        // eslint-disable-next-line no-console
-      }
-    };
+    // Use SockJS for better compatibility
+    this.stompClient.webSocketFactory = () => {
+      console.log('🔌 Creating SockJS connection...')
+      return new SockJS(`${this.baseUrl}/ws`) as any
+    }
 
-    this.ws.onclose = (event) => {
-      this.cleanup();
-      if (!event.wasClean && this.reconnectAttempts < 5) {
-        setTimeout(() => this.connect(token), this.getReconnectDelay());
-        this.reconnectAttempts++;
-      }
-    };
+    this.stompClient.onConnect = (frame: Frame) => {
+      console.log('✅ WebSocket connected successfully!')
+      console.log('📋 Connection frame:', frame)
+      this.reconnectAttempts = 0
+      this.setupSubscriptions()
+    }
+
+    this.stompClient.onStompError = (frame: Frame) => {
+      console.error('STOMP error:', frame)
+      this.handleConnectionError()
+    }
+
+    this.stompClient.onWebSocketClose = () => {
+      this.handleConnectionError()
+    }
+
+    this.stompClient.onWebSocketError = (error) => {
+      console.error('❌ WebSocket error:', error)
+    }
+
+    console.log('🚀 Activating STOMP client...')
+    this.stompClient.activate()
   }
 
   public disconnect() {
-    this.ws?.close();
-    this.cleanup();
-  }
-
-  public onMessage(type: string, handler: NotificationHandler) {
-    if (!this.handlers.has(type)) {
-      this.handlers.set(type, []);
+    if (this.stompClient?.connected) {
+      this.stompClient.deactivate()
     }
-    this.handlers.get(type)?.push(handler);
+    this.cleanup()
   }
 
-  public offMessage(type: string, handler: NotificationHandler) {
-    const handlers = this.handlers.get(type);
-    if (handlers) {
-      this.handlers.set(
-        type,
-        handlers.filter((h) => h !== handler)
-      );
+  private setupSubscriptions() {
+    if (!this.stompClient?.connected) {
+      console.log('❌ Cannot setup subscriptions - STOMP client not connected')
+      return
+    }
+
+    console.log('📡 Setting up WebSocket subscriptions...')
+
+    // Subscribe to personal notification queue
+    this.stompClient.subscribe('/user/queue/notifications', (message) => {
+      try {
+        console.log('📨 Raw WebSocket message received!')
+        console.log('📄 Message body:', message.body)
+        console.log('📋 Message headers:', message.headers)
+        
+        const backendNotification: BackendNotification = JSON.parse(message.body)
+        console.log('🔍 Parsed backend notification:', backendNotification)
+        
+        const notification: RealTimeNotification = mapBackendNotification(backendNotification)
+        console.log('✅ Mapped frontend notification:', notification)
+        
+        this.handleMessage(notification)
+      } catch (error) {
+        console.error('❌ Error parsing notification:', error)
+        console.error('📄 Raw message body:', message.body)
+      }
+    })
+    
+    console.log('✅ Successfully subscribed to /user/queue/notifications')
+  }
+
+  private handleMessage(notification: RealTimeNotification) {
+    console.log('🔔 Received notification:', notification)
+    
+    // Handle general notification handlers
+    const handlers = this.handlers.get(notification.type)
+    if (handlers && handlers.length > 0) {
+      console.log(`✅ Found ${handlers.length} handlers for type: ${notification.type}`)
+      handlers.forEach(handler => handler(notification))
+    } else {
+      console.log(`⚠️ No handlers found for notification type: ${notification.type}`)
+    }
+
+    // Handle Internal Document specific notifications
+    if (notification.entityType === 'internal_document') {
+      console.log('📄 Processing as Internal Document notification')
+      this.handleInternalDocumentNotification(notification as InternalDocumentNotification)
     }
   }
 
-  private sendAuth(token: string) {
-    this.ws?.send(
-      JSON.stringify({
-        type: 'AUTH',
-        payload: token,
-      })
-    );
+  private handleInternalDocumentNotification(notification: InternalDocumentNotification) {
+    console.log('📋 Processing Internal Document notification:', notification.type)
+    
+    const handlers = this.internalDocHandlers.get(notification.type)
+    if (handlers && handlers.length > 0) {
+      console.log(`✅ Found ${handlers.length} internal doc handlers for type: ${notification.type}`)
+      handlers.forEach(handler => handler(notification))
+    } else {
+      console.log(`⚠️ No internal doc handlers found for type: ${notification.type}`)
+    }
   }
 
-  private handleMessage(message: any) {
-    const handlers = this.handlers.get(message.type);
-    handlers?.forEach((handler) => handler(message));
-  }
-
-  private startHeartbeat() {
-    this.heartbeatInterval = setInterval(() => {
-      this.ws?.send(JSON.stringify({ type: 'HEARTBEAT' }));
-    }, 30000);
+  private handleConnectionError() {
+    this.cleanup()
+    
+    if (this.reconnectAttempts < 10 && this.token) {
+      const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000)
+      
+      setTimeout(() => {
+        this.reconnectAttempts++
+        this.connect(this.token!)
+      }, delay)
+    }
   }
 
   private cleanup() {
-    if (this.heartbeatInterval) {
-      clearInterval(this.heartbeatInterval);
-      this.heartbeatInterval = null;
-    }
-    this.ws = null;
+    this.stompClient = null
   }
 
-  private getReconnectDelay() {
-    return Math.min(1000 * 2 ** this.reconnectAttempts, 30000);
+  // General notification handlers
+  public onMessage(type: string, handler: NotificationHandler) {
+    if (!this.handlers.has(type)) {
+      this.handlers.set(type, [])
+    }
+    this.handlers.get(type)?.push(handler)
+  }
+
+  public offMessage(type: string, handler: NotificationHandler) {
+    const handlers = this.handlers.get(type)
+    if (handlers) {
+      this.handlers.set(type, handlers.filter(h => h !== handler))
+    }
+  }
+
+  // Internal Document specific handlers
+  public onInternalDocumentNotification(
+    type: InternalDocumentNotificationType, 
+    handler: InternalDocumentHandler
+  ) {
+    if (!this.internalDocHandlers.has(type)) {
+      this.internalDocHandlers.set(type, [])
+    }
+    this.internalDocHandlers.get(type)?.push(handler)
+  }
+
+  public offInternalDocumentNotification(
+    type: InternalDocumentNotificationType, 
+    handler: InternalDocumentHandler
+  ) {
+    const handlers = this.internalDocHandlers.get(type)
+    if (handlers) {
+      this.internalDocHandlers.set(type, handlers.filter(h => h !== handler))
+    }
+  }
+
+  // Helper methods for Internal Document workflows
+  public subscribeToInternalDocumentUpdates(callbacks: {
+    onReceived?: (notification: InternalDocumentNotification) => void
+    onRead?: (notification: InternalDocumentNotification) => void
+    onSent?: (notification: InternalDocumentNotification) => void
+    onUpdated?: (notification: InternalDocumentNotification) => void
+  }) {
+    if (callbacks.onReceived) {
+      this.onInternalDocumentNotification('INTERNAL_DOCUMENT_RECEIVED', callbacks.onReceived)
+    }
+    if (callbacks.onRead) {
+      this.onInternalDocumentNotification('INTERNAL_DOCUMENT_READ', callbacks.onRead)
+    }
+    if (callbacks.onSent) {
+      this.onInternalDocumentNotification('INTERNAL_DOCUMENT_SENT', callbacks.onSent)
+    }
+    if (callbacks.onUpdated) {
+      this.onInternalDocumentNotification('INTERNAL_DOCUMENT_UPDATED', callbacks.onUpdated)
+    }
+  }
+
+  // For debugging/testing - simulate receiving a notification
+  public simulateNotification(notification: InternalDocumentNotification) {
+    const handlers = this.internalDocHandlers.get(notification.type)
+    if (handlers) {
+      handlers.forEach(handler => handler(notification))
+    }
+  }
+
+  public get isConnected() {
+    return this.stompClient?.connected || false
   }
 }
 

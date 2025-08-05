@@ -122,7 +122,7 @@ export const usersAPI = {
     const response = await api.post(`/users/${id}/check-password`, {
       password,
     });
-    return response.data;
+    return response.data.data;
   },
 
   // Thêm phương thức mới để tương thích với code hiện tại

@@ -58,7 +58,7 @@ import { downloadPdfWithWatermark, isPdfFile } from "@/lib/utils/pdf-watermark";
 import { useUserDepartmentInfo } from "@/hooks/use-user-department-info";
 import { DocumentReadersDialog } from "@/components/document-readers-dialog";
 import { DocumentReadStats } from "@/components/document-read-stats";
-import { outgoingInternalReadStatus } from "@/lib/api/documentReadStatus";
+import { incomingInternalReadStatus } from "@/lib/api/documentReadStatus";
 import { createPDFBlobUrl, cleanupBlobUrl } from "@/lib/utils/pdf-viewer";
 import {
   Dialog,
@@ -134,7 +134,7 @@ export default function InternalDocumentReceivedDetailPage() {
           // Automatically mark as read if not already read
           if (!response.isRead) {
             try {
-              await outgoingInternalReadStatus.markAsRead(Number(documentId));
+              await incomingInternalReadStatus.markAsRead(Number(documentId));
               // Update local state
               documentWithAttachments.isRead = true;
               documentWithAttachments.readAt = new Date().toISOString();
@@ -147,12 +147,25 @@ export default function InternalDocumentReceivedDetailPage() {
               if (typeof window !== "undefined") {
                 localStorage.setItem(
                   "documentReadStatusUpdate",
-                  Date.now().toString()
+                  JSON.stringify({
+                    documentId: Number(documentId),
+                    documentType: "INCOMING_INTERNAL",
+                    timestamp: Date.now()
+                  })
                 );
                 // Remove the item immediately to allow future triggers
                 setTimeout(() => {
                   localStorage.removeItem("documentReadStatusUpdate");
                 }, 100);
+
+                // Also dispatch custom event for same-tab communication
+                window.dispatchEvent(new CustomEvent("documentReadStatusUpdate", {
+                  detail: {
+                    documentId: Number(documentId),
+                    documentType: "INCOMING_INTERNAL",
+                    timestamp: Date.now()
+                  }
+                }));
               }
 
             } catch (markError) {
@@ -176,7 +189,7 @@ export default function InternalDocumentReceivedDetailPage() {
     if (documentId) {
       fetchDocument();
     }
-  }, [documentId, toast, globalMarkAsRead]);
+  }, [documentId, globalMarkAsRead]);
 
   useEffect(() => {
     const fetchHistoryAndStats = async () => {
@@ -377,7 +390,7 @@ export default function InternalDocumentReceivedDetailPage() {
 
     try {
       setMarkingAsRead(true);
-      await outgoingInternalReadStatus.markAsRead(documentDetail.id);
+      await incomingInternalReadStatus.markAsRead(documentDetail.id);
       setDocumentDetail({
         ...documentDetail,
         isRead: true,
@@ -388,11 +401,27 @@ export default function InternalDocumentReceivedDetailPage() {
 
       // Trigger storage event to notify list page to refresh
       if (typeof window !== "undefined") {
-        localStorage.setItem("documentReadStatusUpdate", Date.now().toString());
+        localStorage.setItem(
+          "documentReadStatusUpdate",
+          JSON.stringify({
+            documentId: documentDetail.id,
+            documentType: "INCOMING_INTERNAL",
+            timestamp: Date.now()
+          })
+        );
         // Remove the item immediately to allow future triggers
         setTimeout(() => {
           localStorage.removeItem("documentReadStatusUpdate");
         }, 100);
+
+        // Also dispatch custom event for same-tab communication
+        window.dispatchEvent(new CustomEvent("documentReadStatusUpdate", {
+          detail: {
+            documentId: documentDetail.id,
+            documentType: "INCOMING_INTERNAL",
+            timestamp: Date.now()
+          }
+        }));
       }
 
       toast({

@@ -7,6 +7,7 @@ import { Toaster } from "@/components/ui/toaster"
 import { ToastProvider } from "@/components/ui/use-toast"
 import { AuthProvider } from "@/lib/auth-context"
 import { Providers } from "./providers"
+import { NotificationsProvider } from "@/lib/notifications-context"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -28,8 +29,10 @@ export default function RootLayout({
           <Providers>
             <ToastProvider>
               <AuthProvider>
-                {children}
-                <Toaster />
+                <NotificationsProvider>
+                  {children}
+                  <Toaster />
+                </NotificationsProvider>
               </AuthProvider>
             </ToastProvider>
           </Providers>

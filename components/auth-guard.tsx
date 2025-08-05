@@ -10,18 +10,18 @@ interface AuthGuardProps {
 }
 
 export default function AuthGuard({ children, allowedRoles }: AuthGuardProps) {
-  const { isAuthenticated, user, loading, checkPermission } = useAuth()
+  const { isAuthenticated, user, loading, hasRole } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
     if (!loading) {
       if (!isAuthenticated) {
         router.push("/dang-nhap")
-      } else if (allowedRoles && !checkPermission(allowedRoles)) {
+      } else if (allowedRoles && !hasRole(allowedRoles)) {
         router.push("/khong-co-quyen")
       }
     }
-  }, [isAuthenticated, loading, router, allowedRoles, checkPermission])
+  }, [isAuthenticated, loading, router, allowedRoles, hasRole   ])
 
   if (loading) {
     return (
@@ -35,7 +35,7 @@ export default function AuthGuard({ children, allowedRoles }: AuthGuardProps) {
     return null
   }
 
-  if (allowedRoles && !checkPermission(allowedRoles)) {
+  if (allowedRoles && !hasRole(allowedRoles)) {
     return null
   }
 

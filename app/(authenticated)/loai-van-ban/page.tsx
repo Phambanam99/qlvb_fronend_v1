@@ -48,6 +48,7 @@ import {
 } from "lucide-react";
 import { documentTypesAPI, DocumentTypeDTO } from "@/lib/api/document-types";
 import { useAuth } from "@/lib/auth-context";
+import AuthGuard from "@/components/auth-guard";
 
 interface DocumentTypeFormData {
   name: string;
@@ -209,7 +210,8 @@ export default function DocumentTypesPage() {
   }
 
   return (
-    <div className="container mx-auto max-w-full px-4 py-6">
+    <AuthGuard allowedRoles={["ROLE_ADMIN"]}>
+      <div className="container mx-auto max-w-full px-4 py-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="space-y-1">
@@ -390,6 +392,7 @@ export default function DocumentTypesPage() {
           )}
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </AuthGuard>
   );
 }

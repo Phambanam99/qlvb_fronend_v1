@@ -790,9 +790,9 @@ export default function CreateInternalOutgoingDocumentPage() {
 
 
           {/* Content and Recipients */}
-          <div className="grid gap-6 lg:grid-cols-3">
+          <div className="grid gap-6 lg:grid-cols-6">
             {/* Content Card - Takes 2 columns */}
-            <div className="lg:col-span-2">
+            <div className="lg:col-span-3">
               <Card className="h-full">
                 <CardContent className="pt-6 h-full">
                   <div className="space-y-2 h-full flex flex-col">
@@ -811,7 +811,7 @@ export default function CreateInternalOutgoingDocumentPage() {
             </div>
 
             {/* Recipients Card - Takes 1 column */}
-            <Card className="h-full">
+            <Card className="h-full lg:col-span-3">
               <CardContent className="pt-6">
                 {isLoadingDepartmentList ? (
                   <div className="flex items-center justify-center p-4">

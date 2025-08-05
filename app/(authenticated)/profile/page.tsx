@@ -119,8 +119,6 @@ export default function ProfilePage() {
           setIsSubmitting(false);
           return;
         }
-
-        // Nếu mật khẩu hiện tại đúng, thực hiện đổi mật khẩu
         await usersAPI.changePassword(user.id, currentPassword, newPassword);
 
         // Xóa dữ liệu trong form
@@ -183,7 +181,7 @@ export default function ProfilePage() {
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Vai trò:</span>
+                <span className="text-sm text-muted-foreground">Chức vụ:</span>
                 <span className="text-sm">{user?.roleDisplayNames || "Người dùng"}</span>
               </div>
               <div className="flex justify-between">

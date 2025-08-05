@@ -320,7 +320,29 @@ function DepartmentNode({
           {!isLoading && users.length > 0 && (
             <div className="space-y-1 mb-3">
               {users
-                // No filtering - show all users
+                // Sort users by leadership role priority
+                .sort((a, b) => {
+                  const getRolePriority = (user: UserDTO): number => {
+                    const role = user.roles[0];
+                    if (!role) return 999; // Non-leadership roles go last
+                   
+                    switch (role) {
+                      case 'ROLE_CUC_TRUONG': return 1;
+                      case 'ROLE_CHINH_UY': return 2;
+                      case 'ROLE_PHO_CUC_TRUONG': return 3;
+                      case 'ROLE_PHO_CHINH_UY': return 4;
+                      case 'ROLE_TRUONG_PHONG': return 5;
+                      case 'ROLE_CUM_TRUONG': return 5;
+                      case 'ROLE_PHO_PHONG': return 6;
+                      case 'ROLE_CUM_PHO': return 6;
+                      
+
+                      default: return 999;
+                    }
+                  };
+                  
+                  return getRolePriority(a) - getRolePriority(b);
+                })
                 .map((user) => {
                   const leadershipRole = getLeadershipRole?.(user);
                   const roleDisplayName = leadershipRole

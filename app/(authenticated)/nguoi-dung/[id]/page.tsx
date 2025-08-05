@@ -74,8 +74,10 @@ export default function UserDetailPage() {
   const handleUpdateProfile = async (data: any) => {
     try {
       setSaving(true);
+      console.log("Updating user profile with data:", data);
+      // Merge role/department data with current user profile data
       const updatedUser_ = await usersAPI.updateUser(userId, data);
-      const updatedUser = updatedUser_.data;
+      const updatedUser = updatedUser_; // Remove .data since API returns UserDTO directly
       setUser(updatedUser);
       toast({
         title: "Thành công",
@@ -96,8 +98,21 @@ export default function UserDetailPage() {
   const handleUpdateRole = async (data: any) => {
     try {
       setSaving(true);
-      const updatedUser_ = await usersAPI.updateUser(userId, data);
-      const updatedUser = updatedUser_.data;
+      
+      // Merge role/department data with current user profile data
+      const mergedData = {
+        // Preserve current profile information
+        fullName: user.fullName,
+        username: user.username,
+        email: user.email,
+        phone: user.phone,
+        
+        // Update with new role and department data
+        ...data,
+      };
+      console.log("Updating user with data:", mergedData);
+      const updatedUser_ = await usersAPI.updateUser(userId, mergedData);
+      const updatedUser = updatedUser_; // Remove .data since API returns UserDTO directly
       setUser(updatedUser);
       toast({
         title: "Thành công",
@@ -139,7 +154,7 @@ export default function UserDetailPage() {
       console.log("Updating user status:", data);
       setSaving(true);
       const updatedUser_ = await usersAPI.updateUser(userId, data);
-      const updatedUser = updatedUser_.data;
+      const updatedUser = updatedUser_; // Remove .data since API returns UserDTO directly
       setUser(updatedUser);
       toast({
         title: "Thành công",
@@ -184,7 +199,7 @@ export default function UserDetailPage() {
   }
 
   return (
-    <div className="container py-6">
+    <div className="w-full px-4 py-6 sm:px-6 lg:px-8">
       <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Button variant="outline" size="icon" onClick={() => router.back()}>
@@ -202,7 +217,7 @@ export default function UserDetailPage() {
           </TabsTrigger>
           <TabsTrigger value="role" className="flex items-center gap-1">
             <Shield className="h-4 w-4" />
-            Vai trò & Phòng ban
+            Chức vụ & Phòng ban
           </TabsTrigger>
           <TabsTrigger value="password" className="flex items-center gap-1">
             <Key className="h-4 w-4" />

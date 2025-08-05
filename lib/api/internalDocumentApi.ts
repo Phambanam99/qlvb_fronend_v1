@@ -237,6 +237,7 @@ export const getSentDocuments = async (page = 0, size = 10) => {
   const response = await api.get("/internal-documents/sent", {
     params: { page, size },
   });
+  console.log("Sent documents response:", response.data);
   return response.data;
 };
 
@@ -249,6 +250,7 @@ export const getSentDocumentsByYear = async (year: number, month?: number, page 
   const response = await api.get(`/internal-documents/sent/by-year/${year}`, {
     params
   });
+  console.log("Sent documents by year response:", response.data);
   return response.data;
 };
 
@@ -357,6 +359,7 @@ export const searchDocuments = async (keyword: string, page = 0, size = 10) => {
   const response = await api.get("/internal-documents/search", {
     params: { keyword, page, size },
   });
+  console.log("Search response:", response.data);
   return response.data;
 };
 

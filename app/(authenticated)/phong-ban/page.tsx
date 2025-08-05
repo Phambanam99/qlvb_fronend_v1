@@ -35,6 +35,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import { DepartmentDTO, departmentsAPI, fetchData } from "@/lib/api";
 import { DEPARTMENT_MANAGEMENT_ROLES, hasRoleInGroup } from "@/lib/role-utils";
+import AuthGuard from "@/components/auth-guard";
 
 export default function DepartmentsPage() {
   const [departments, setDepartments] = useState<DepartmentDTO[]>([]);
@@ -132,7 +133,8 @@ export default function DepartmentsPage() {
   }
 
   return (
-    <div className="container mx-auto max-w-full px-4 py-6">
+    <AuthGuard allowedRoles={["ROLE_ADMIN"]}>
+      <div className="container mx-auto max-w-full px-4 py-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Quản lý phòng ban</h1>
         {(user?.roles?.includes("ROLE_ADMIN") ||
@@ -236,6 +238,7 @@ export default function DepartmentsPage() {
           </div>
         </CardFooter>
       </Card>
-    </div>
+      </div>
+    </AuthGuard>
   );
 }

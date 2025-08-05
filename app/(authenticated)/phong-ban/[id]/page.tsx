@@ -611,7 +611,7 @@ export default function DepartmentDetailPage({
                       <TableRow>
                         <TableHead>Họ tên</TableHead>
                         <TableHead>Tài khoản</TableHead>
-                        <TableHead>Vai trò</TableHead>
+                        <TableHead>Chức vụ</TableHead>
                         <TableHead>Trạng thái</TableHead>
                       </TableRow>
                     </TableHeader>

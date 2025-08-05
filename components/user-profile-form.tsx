@@ -140,7 +140,7 @@ export default function UserProfileForm({
             )}
           />
 
-          <FormField
+          {/* <FormField
             control={form.control}
             name="position"
             render={({ field }) => (
@@ -186,7 +186,7 @@ export default function UserProfileForm({
                 <FormMessage />
               </FormItem>
             )}
-          />
+          /> */}
           <FormField
             control={form.control}
             name="username"

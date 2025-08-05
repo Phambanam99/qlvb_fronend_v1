@@ -287,7 +287,7 @@ export default function AddUserPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="role">Vai trò</Label>
+                <Label htmlFor="role">Chức vụ</Label>
                 <Select
                   id="role"
                   value={selectedRole}
