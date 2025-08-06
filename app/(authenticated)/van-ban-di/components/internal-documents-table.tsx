@@ -13,6 +13,8 @@ import {
 import { UrgencyBadge } from "@/components/urgency-badge";
 import { UrgencyLevel, migrateFromOldUrgency } from "@/lib/types/urgency";
 import { InternalDocument } from "@/lib/api/internalDocumentApi";
+import { Edit, Eye } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface InternalDocumentsTableProps {
   documents: InternalDocument[];
@@ -151,29 +153,48 @@ export function InternalDocumentsTable({
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="hover:bg-blue-50 hover:text-blue-600"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            // Navigate to edit page with document number
-                            window.location.href = `/van-ban-di/cap-nhat/noi-bo/${doc.id}`;
-                          }}
-                        >
-                          Chỉnh sửa
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="hover:bg-primary/10 hover:text-primary"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onDocumentClick(doc);
-                          }}
-                        >
-                          Chi tiết
-                        </Button>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="hover:bg-blue-50 hover:text-blue-600 h-8 w-8 p-0"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  // Navigate to edit page with document number
+                                  window.location.href = `/van-ban-di/cap-nhat/noi-bo/${doc.id}`;
+                                }}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Chỉnh sửa</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                        
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="hover:bg-primary/10 hover:text-primary h-8 w-8 p-0"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onDocumentClick(doc);
+                                }}
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Chi tiết</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       </div>
                     </TableCell>
                   </TableRow>

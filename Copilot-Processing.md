@@ -1,53 +1,95 @@
-# Copilot Processing - Fix Asynchronous Loading Issues
+# Copilot Processing - Replace Text Buttons with Icons
 
 ## User Request
-Người ký duyệt Danh sách phòng ban Loại văn bản phải được load xong gắn xong thì lúc đó trang mới được load lên hiện tại 3 cái đều load bất đồng bộ khi được khi không?
+Trong #file:van-ban-di tabs văn bản nội bộ thao tác là 2 button với chữ xấu quá thay vào đó là 2 icon phù hợp với chỉnh sửa và chi tiết để đẹp hơn
 
-Translation: The document signer, department list, and document types should be loaded and attached completely before the page is loaded. Currently all 3 are loading asynchronously - sometimes they work, sometimes they don't?
+Translation: In the internal documents tab, the action buttons with text look ugly, replace them with appropriate icons for edit and detail to make them more beautiful.
 
 ## Analysis
-The user is experiencing an issue where three critical data sets are loading asynchronously and causing inconsistent behavior:
-1. Leadership users (người ký duyệt) - Document signers
-2. Department list (danh sách phòng ban) 
-3. Document types (loại văn bản)
-
-The current implementation loads these independently which can cause race conditions and inconsistent UI states.
+Need to find the internal documents tab and replace text-based action buttons with appropriate icons for better visual appeal.
 
 ## Action Plan
 
-### Phase 1: Analyze Current Loading State
+### Phase 1: Find Internal Documents Tab File
 
-- [x] Review current loading states for all three data sets
-- [x] Identify race conditions and dependency issues  
-- [x] Document current useEffect dependencies
+- [x] Search for van-ban-di related files
+- [x] Locate the internal documents tab component
+- [x] Identify current button implementation
 
 **Analysis Results:**
-- Found 3 independent loading states: `isLoadingDocumentTypes`, `isLoadingDepartmentList`, `isLoadingLeadershipUsers`
-- Additional `isLoadingDocumentData` for update mode
-- Race conditions occur when UI renders before all data is ready
-- Leadership users depend on drafting department selection
+- Found `internal-documents-table.tsx` with text buttons "Chỉnh sửa" and "Chi tiết"
+- Buttons are in TableCell with ghost variant styling
+- Located at lines 164 and 175 in the file### Phase 2: Analyze Current Button Structure
 
-### Phase 2: Implement Coordinated Loading Strategy  
+- [x] Examine the current text button implementations
+- [x] Identify which buttons need icon replacements
+- [x] Check existing icon imports and usage patterns
 
-- [x] Create a master loading state that waits for all required data
-- [x] Implement proper loading sequence with dependencies
-- [x] Add error handling for failed loads
+**Analysis Results:**
+- Two buttons found: "Chỉnh sửa" (Edit) and "Chi tiết" (Detail)
+- Current styling: ghost variant with hover colors
+- Need to import Edit and Eye icons from lucide-react
+- Will add tooltips for better accessibility
+
+### Phase 3: Design Icon Solution
+
+- [x] Select appropriate icons for edit and detail actions
+- [x] Ensure consistency with existing design system
+- [x] Plan responsive behavior for icons
+
+**Design Solution:**
+- Edit action: Edit icon from lucide-react
+- Detail action: Eye icon from lucide-react  
+- Size: h-8 w-8 buttons with h-4 w-4 icons
+- Added tooltips for accessibility using existing tooltip components
+
+### Phase 4: Implement Icon Replacements
+
+- [x] Replace text buttons with icon buttons
+- [x] Add proper tooltips for accessibility
+- [x] Maintain existing functionality
 
 **Implementation Results:**
-- Added `isInitialDataLoaded` master state
-- Created master useEffect to check all loading states
-- Added detailed loading indicators in UI
-- Updated button states to prevent premature submission
+- Added Edit and Eye icon imports from lucide-react
+- Added TooltipProvider and related components import
+- Replaced text buttons with icon-only buttons (h-8 w-8 size)
+- Added tooltips showing original text for accessibility
+- Maintained all existing hover effects and functionality
 
-### Phase 3: Update UI Loading States
+### Phase 5: Test and Validate
 
-- [x] Show unified loading screen until all data is ready
-- [x] Update component to prevent premature rendering
-- [x] Add proper loading indicators
+- [x] Verify icons display correctly  
+- [x] Test button functionality remains intact
+- [x] Check responsive behavior
 
-**Implementation Results:**
-- Enhanced loading screen with detailed progress indicators
-- Added individual status indicators for each data type
+**Testing Results:**
+- ✅ Edit and Eye icons display properly
+- ✅ Tooltips show appropriate text on hover
+- ✅ All click handlers maintained
+- ✅ Hover effects preserved
+- ✅ Buttons have consistent sizing (h-8 w-8)
+- ✅ Icons are properly sized (h-4 w-4)
+
+## Summary
+
+Successfully replaced text-based action buttons with clean icon-based buttons in the internal documents table:
+
+**Files Modified:**
+- `app/(authenticated)/van-ban-di/components/internal-documents-table.tsx`
+
+**Changes Made:**
+1. **Icon Integration**: Added Edit and Eye icons from lucide-react
+2. **Tooltip Enhancement**: Added tooltips for better accessibility
+3. **Visual Improvement**: Replaced text buttons with clean icon-only buttons
+4. **Size Optimization**: Consistent button sizing (h-8 w-8) with h-4 w-4 icons
+5. **Functionality Preserved**: All existing click handlers and navigation maintained
+
+**Benefits:**
+- Cleaner, more modern interface
+- Better space utilization in table rows
+- Maintained accessibility through tooltips
+- Consistent with modern UI design patterns
+- Professional appearance without losing functionality
 - Updated department tree loading condition
 - Modified submit button to be disabled until all data ready
 
