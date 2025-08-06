@@ -52,7 +52,6 @@ import {
   hasRoleInGroup,
 } from "@/lib/role-utils";
 import { useHierarchicalDepartments } from "@/hooks/use-hierarchical-departments";
-import AuthGuard from "@/components/auth-guard";
 
 export default function UsersPage() {
   // User data states
@@ -123,7 +122,7 @@ export default function UsersPage() {
 
       // Apply status filter if selected
       if (appliedStatusFilter !== "all") {
-        params.status = appliedStatusFilter === "active" ? 1 : 0;
+        params.status = appliedStatusFilter === "ACTIVE" ? 1 : 0;
       }
 
       // Apply search term if provided
@@ -140,7 +139,7 @@ export default function UsersPage() {
         if (appliedDepartmentFilter !== "all") {
           params.departmentId = appliedDepartmentFilter;
         }
-        
+        console.log("Fetching all users with params:", params);
         const usersData_ = await usersAPI.getPaginatedUsers(params);
         usersData = usersData_.data;
       } else if (isDepartmentHead && userDepartmentId) {
@@ -328,8 +327,7 @@ export default function UsersPage() {
   }
 
   return (
-    <AuthGuard allowedRoles={["ROLE_ADMIN"]}>
-      <div className="container mx-auto max-w-full px-4 py-6">
+    <div className="container mx-auto max-w-full px-4 py-6">
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold">Quản lý người dùng</h1>
 
@@ -436,8 +434,8 @@ export default function UsersPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tất cả trạng thái</SelectItem>
-                  <SelectItem value="active">Đang hoạt động</SelectItem>
-                  <SelectItem value="inactive">Đã vô hiệu hóa</SelectItem>
+                  <SelectItem value="ACTIVE">Đang hoạt động</SelectItem>
+                  <SelectItem value="INACTIVE">Đã vô hiệu hóa</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -615,7 +613,6 @@ export default function UsersPage() {
           </div>
         </CardFooter>
       </Card>
-      </div>
-    </AuthGuard>
+    </div>
   );
 }

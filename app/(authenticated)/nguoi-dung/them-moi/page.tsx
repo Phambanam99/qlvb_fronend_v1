@@ -125,11 +125,11 @@ export default function AddUserPage() {
         username,
         password,
         roles: [selectedRole],
-        isActive,
+        userStatus: isActive ? "ACTIVE" : "INACTIVE",
       };
-
+       console.log("userData", userData);
       // Gọi API để tạo người dùng mới
-      await usersAPI.createUser(userData);
+      await usersAPI.createUser_(userData);
 
       // Thêm thông báo
       addNotification({
@@ -313,7 +313,7 @@ export default function AddUserPage() {
                     id="active"
                     defaultChecked
                     checked={isActive}
-                    onCheckedChange={setIsActive}
+                    onCheckedChange={(checked) => setIsActive(checked === true)}
                   />
                   <label
                     htmlFor="active"

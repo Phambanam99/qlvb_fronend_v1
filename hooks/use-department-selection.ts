@@ -78,7 +78,7 @@ export function useDepartmentSelection() {
       const response_ = await departmentsAPI.getAllDepartments();
       const response = response_.data;
       const departmentData = response.content || [];
-
+      console.log("Loaded departments:", departmentData);
       // Transform flat list to hierarchical structure
       const hierarchicalData = buildDepartmentTree(departmentData);
       setDepartments(hierarchicalData);

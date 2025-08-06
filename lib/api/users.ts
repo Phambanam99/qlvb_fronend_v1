@@ -65,7 +65,10 @@ export const usersAPI = {
     const response = await api.post("/auth/register", userData);
     return response.data;
   },
-
+ createUser_: async (userData: Partial<UserDTO>): Promise<UserDTO> => {
+    const response = await api.post("/users", userData);
+    return response.data;
+  },
   /**
    * Update user
    * @param id User ID

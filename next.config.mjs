@@ -15,7 +15,12 @@ const nextConfig = {
   // Cấu hình cho phép truy cập từ các IP trong mạng LAN
   experimental: {
     allowedDevOrigins: [
-      '*',   // Cho phép mạng private 172.16-31.x.x
+      '192.168.88.130',      // IP cụ thể của backend server
+      '192.168.88.130/16',     // Cho phép toàn bộ mạng 192.168.x.x
+      '172.16.0.0/12',      // Cho phép mạng private 172.16-31.x.x
+      '10.0.0.0/8',         // Cho phép mạng private 10.x.x.x
+      'localhost',          // Localhost
+      '127.0.0.1',          // Loopback
     ]
   },
   webpack: (config, { isServer }) => {
