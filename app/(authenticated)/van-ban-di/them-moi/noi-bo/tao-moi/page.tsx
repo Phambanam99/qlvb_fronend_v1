@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -52,7 +52,7 @@ import { UserDTO } from "@/lib/api/users";
 import { DepartmentTree } from "@/components/department-tree";
 import { useDepartmentSelection } from "@/hooks/use-department-selection";
 import { useDepartmentUsers } from "@/hooks/use-department-users";
-import { createInternalDocument, updateInternalDocument, getDocumentById, CreateInternalDocumentDTO } from "@/lib/api/internalDocumentApi";
+import { createInternalDocument, CreateInternalDocumentDTO } from "@/lib/api/internalDocumentApi";
 import { RichTextEditor } from "@/components/ui";
 import { useFileUpload } from "@/hooks/use-file-upload";
 import { FileUploadProgress } from "@/components/ui/file-upload-progress";
@@ -125,15 +125,10 @@ const LEADERSHIP_ROLES = [
 
 export default function CreateInternalOutgoingDocumentPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { user } = useAuth();
   const { addNotification } = useNotifications();
   const { toast } = useToast();
   const formRef = useRef<HTMLFormElement>(null);
-
-  // Check if we're in edit mode
-  const editDocumentNumber = searchParams.get('edit');
-  const isEditMode = Boolean(editDocumentNumber);
 
   // Use custom hooks for department selection
   const {
@@ -189,13 +184,9 @@ export default function CreateInternalOutgoingDocumentPage() {
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isLoadingDocumentData, setIsLoadingDocumentData] = useState(false);
   const [validationErrors, setValidationErrors] = useState<
     Record<string, string>
   >({});
-
-  // State for storing recipients data during edit mode loading
-  const [storedRecipients, setStoredRecipients] = useState<any[] | null>(null);
 
   // State for document types
   const [documentTypes, setDocumentTypes] = useState<DocumentTypeDTO[]>([]);
@@ -225,107 +216,10 @@ export default function CreateInternalOutgoingDocumentPage() {
     fetchDocumentTypes();
   }, [toast]);
 
-  // Load document data if in edit mode
-  useEffect(() => {
-    if (isEditMode && editDocumentNumber && !isNaN(parseInt(editDocumentNumber))) {
-      const loadDocumentForEdit = async () => {
-        try {
-          setIsLoadingDocumentData(true);
-          const documentId = parseInt(editDocumentNumber);
-          const response = await getDocumentById(documentId);
-          const document = response.data;
-          console.log('Document loaded for edit:', document);
-
-          // Fill form with existing document data
-          setFormData({
-            documentNumber: document.documentNumber || "",
-            title: document.title || "",
-            summary: document.summary || "",
-            documentType: document.documentType || "",
-            signingDate: document.signingDate ? new Date(document.signingDate) : new Date(),
-            urgencyLevel: document.urgencyLevel || URGENCY_LEVELS.KHAN,
-            notes: document.notes || "",
-            signer: document.signer || "",
-            draftingDepartmentId: document.draftingDepartment?.id || user?.departmentId,
-            securityLevel: document.securityLevel || "NORMAL",
-            documentSignerId: document.documentSigner?.id,
-            isSecureTransmission: document.isSecureTransmission || false,
-            processingDeadline: document.processingDeadline ? new Date(document.processingDeadline) : undefined,
-            issuingAgency: document.issuingAgency || "",
-            distributionType: document.distributionType || "REGULAR",
-            numberOfCopies: document.numberOfCopies || 1,
-            numberOfPages: document.numberOfPages || 1,
-            noPaperCopy: document.noPaperCopy || false,
-          });
-
-          console.log('Document loaded for edit:', {
-            documentSigner: document.documentSigner,
-            documentSignerId: document.documentSigner?.id
-          });
-
-          // Store recipients data to be processed after departments are loaded
-          if (document.recipients && document.recipients.length > 0) {
-            console.log('Storing recipients for later processing:', document.recipients);
-            setStoredRecipients(document.recipients);
-          }
-
-          toast({
-            title: "Thành công",
-            description: "Đã tải dữ liệu văn bản để chỉnh sửa",
-          });
-        } catch (error) {
-          console.error('Error loading document for edit:', error);
-          toast({
-            title: "Lỗi",
-            description: "Không thể tải dữ liệu văn bản để chỉnh sửa",
-            variant: "destructive",
-          });
-         
-        } finally {
-          setIsLoadingDocumentData(false);
-        }
-      };
-
-      loadDocumentForEdit();
-    } else if (isEditMode && (!editDocumentNumber || isNaN(parseInt(editDocumentNumber)))) {
-      // Invalid document ID, redirect back
-      toast({
-        title: "Lỗi",
-        description: "ID văn bản không hợp lệ",
-        variant: "destructive",
-      });
-      router.push('/van-ban-di/them-moi/noi-bo/tao-moi');
-    }
-  }, [isEditMode, editDocumentNumber, router]);
-
-  // Process stored recipients after departments are loaded
-  useEffect(() => {
-    if (storedRecipients && storedRecipients.length > 0 && departments && departments.length > 0 && !isLoadingDepartmentList) {
-      console.log('Processing stored recipients now that departments are loaded:', {
-        storedRecipients,
-        departmentsLength: departments.length
-      });
-
-      storedRecipients.forEach((recipient: any) => {
-        console.log('Processing recipient:', recipient);
-        if (recipient.departmentId) {
-          const dept = findDepartmentById(recipient.departmentId);
-          console.log('Found department:', dept);
-          if (dept) {
-            selectSecondaryDepartment(recipient.departmentId);
-          }
-        }
-      });
-
-      // Clear stored recipients after processing
-      setStoredRecipients(null);
-    }
-  }, [storedRecipients, departments, isLoadingDepartmentList, findDepartmentById, selectSecondaryDepartment]);
-
   // Auto-set drafting department and load leadership users when user is available
   useEffect(() => {
     if (user && user.departmentId) {
-      // Load leadership users for document signer dropdown (always load, regardless of edit mode)
+      // Load leadership users for document signer dropdown
       const fetchLeadershipUsers = async () => {
         try {
           setIsLoadingLeadershipUsers(true);
@@ -353,74 +247,16 @@ export default function CreateInternalOutgoingDocumentPage() {
     }
   }, [user?.departmentId]);
 
-  // Load leadership users for drafting department when in edit mode
-  useEffect(() => {
-    if (isEditMode && formData.draftingDepartmentId && formData.draftingDepartmentId !== user?.departmentId) {
-      const fetchDraftingDepartmentLeaders = async () => {
-        try {
-          setIsLoadingLeadershipUsers(true);
-          const leaders = await usersAPI.getUsersByRoleAndDepartment(
-            LEADERSHIP_ROLES,
-            formData.draftingDepartmentId!
-          );
-          console.log('Drafting department leadership users loaded:', leaders);
-          setLeadershipUsers(Array.isArray(leaders) ? leaders : []);
-        } catch (error) {
-          console.error('Error loading drafting department leadership users:', error);
-          setLeadershipUsers([]);
-          toast({
-            title: "Lỗi", 
-            description: "Không thể tải danh sách lãnh đạo đơn vị soạn thảo",
-            variant: "destructive",
-          });
-        } finally {
-          setIsLoadingLeadershipUsers(false);
-        }
-      };
-
-      fetchDraftingDepartmentLeaders();
-    }
-  }, [isEditMode, formData.draftingDepartmentId, user?.departmentId]);
-
-  // Ensure document signer is in leadership users list when in edit mode
-  useEffect(() => {
-    if (isEditMode && formData.documentSignerId && leadershipUsers.length > 0) {
-      const signerExists = leadershipUsers.some(user => user.id === formData.documentSignerId);
-      
-      if (!signerExists && editDocumentNumber) {
-        // If signer not in current leadership list, try to get signer details and add to list
-        const fetchDocumentSigner = async () => {
-          try {
-            const response = await getDocumentById(parseInt(editDocumentNumber));
-            const document = response.data;
-            
-            if (document.documentSigner) {
-              console.log('Adding missing document signer to leadership list:', document.documentSigner);
-              setLeadershipUsers(prev => [
-                ...prev,
-                document.documentSigner
-              ]);
-            }
-          } catch (error) {
-            console.error('Error fetching document signer details:', error);
-          }
-        };
-
-        fetchDocumentSigner();
-      }
-    }
-  }, [isEditMode, formData.documentSignerId, leadershipUsers, editDocumentNumber]);
-
   // Separate useEffect for setting drafting department
   useEffect(() => {
-    if (user?.departmentId && !isEditMode) {
-      // Auto-set drafting department from current user (only if not in edit mode)
+    if (user?.departmentId) {
+      // Auto-set drafting department from current user
       setFormData(prev => ({
         ...prev,
         draftingDepartmentId: user.departmentId
       }));
     }
-  }, [user?.departmentId, isEditMode]);
+  }, [user?.departmentId]);
 
   // Input change handlers
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -529,17 +365,9 @@ export default function CreateInternalOutgoingDocumentPage() {
       errors.title = "Tiêu đề là bắt buộc";
     }
 
-    // Different validation rules for create vs edit mode
-    if (isEditMode) {
-      // In edit mode, recipients are optional (may keep existing recipients)
-      if (secondaryDepartments.length === 0) {
-        console.warn("No recipients selected in edit mode - keeping existing recipients");
-      }
-    } else {
-      // In create mode, recipients are required
-      if (secondaryDepartments.length === 0) {
-        errors.recipients = "Vui lòng chọn ít nhất một người nhận";
-      }
+    // Recipients are required for create mode
+    if (secondaryDepartments.length === 0) {
+      errors.recipients = "Vui lòng chọn ít nhất một người nhận";
     }
 
     setValidationErrors(errors);
@@ -552,9 +380,7 @@ export default function CreateInternalOutgoingDocumentPage() {
     if (!validateForm()) {
       toast({
         title: "Lỗi validation",
-        description: isEditMode 
-          ? "Vui lòng kiểm tra lại thông tin cần chỉnh sửa" 
-          : "Vui lòng kiểm tra lại thông tin đã nhập",
+        description: "Vui lòng kiểm tra lại thông tin đã nhập",
         variant: "destructive",
       });
       return;
@@ -608,53 +434,35 @@ export default function CreateInternalOutgoingDocumentPage() {
         new: newFilesToUpload.length 
       });
 
-      let response;
-      if (isEditMode && editDocumentNumber) {
-        // Update existing document
-        response = await updateInternalDocument(
-          editDocumentNumber,
-          documentData,
-          newFilesToUpload.length > 0 ? newFilesToUpload : undefined,
-          undefined, // descriptions
-          (progressEvent: any) => {
-            const percentCompleted = Math.round(
-              (progressEvent.loaded * 100) / progressEvent.total
-            );
-            fileUpload.setUploadProgress(percentCompleted);
-          },
-          cancelTokenSource.token
-        );
-      } else {
-        // Create new document
-        const response_ = await createInternalDocument(
-          documentData,
-          newFilesToUpload.length > 0 ? newFilesToUpload : undefined,
-          undefined, // descriptions
-          (progressEvent: any) => {
-            const percentCompleted = Math.round(
-              (progressEvent.loaded * 100) / progressEvent.total
-            );
-            fileUpload.setUploadProgress(percentCompleted);
-          },
-          cancelTokenSource.token
-        );
-        response = response_.data;
-      }
+      // Create new document
+      const response_ = await createInternalDocument(
+        documentData,
+        newFilesToUpload.length > 0 ? newFilesToUpload : undefined,
+        undefined, // descriptions
+        (progressEvent: any) => {
+          const percentCompleted = Math.round(
+            (progressEvent.loaded * 100) / progressEvent.total
+          );
+          fileUpload.setUploadProgress(percentCompleted);
+        },
+        cancelTokenSource.token
+      );
+      const response = response_.data;
 
       addNotification({
-        title: isEditMode ? "Văn bản đã được cập nhật" : "Văn bản đã được tạo",
-        message: `Văn bản "${formData.title}" đã được ${isEditMode ? "cập nhật" : "tạo và gửi"} thành công.`,
+        title: "Văn bản đã được tạo",
+        message: `Văn bản "${formData.title}" đã được tạo và gửi thành công.`,
         type: "success",
       });
 
       toast({
         title: "Thành công",
-        description: isEditMode ? "Văn bản đã được cập nhật thành công" : "Văn bản đã được tạo và gửi thành công",
+        description: "Văn bản đã được tạo và gửi thành công",
       });
 
       router.push("/van-ban-di");
     } catch (error: any) {
-
+          console.error("Error creating/updating document:", error);
       if (error.code === "ECONNABORTED" || error.message.includes("timeout")) {
         fileUpload.setError(
           "Tải lên bị timeout. Vui lòng thử lại với file nhỏ hơn."
@@ -667,7 +475,7 @@ export default function CreateInternalOutgoingDocumentPage() {
 
       toast({
         title: "Lỗi",
-        description: error.message || "Không thể tạo văn bản",
+        description: error.response.data.message || "Không thể tạo văn bản",
         variant: "destructive",
       });
     } finally {
@@ -684,11 +492,7 @@ export default function CreateInternalOutgoingDocumentPage() {
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
       <div className="max-w-[1536px] mx-auto py-6 max-w-5xl px-4">
         {/* Header with clear mode indication */}
-        <div className={`mb-6 p-4 rounded-lg border-l-4 ${
-          isEditMode 
-            ? "bg-amber-50 border-l-amber-500 dark:bg-amber-900/20" 
-            : "bg-blue-50 border-l-blue-500 dark:bg-blue-900/20"
-        }`}>
+        <div className="mb-6 p-4 rounded-lg border-l-4 bg-blue-50 border-l-blue-500 dark:bg-blue-900/20">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <Button variant="outline" size="icon" asChild>
@@ -697,49 +501,23 @@ export default function CreateInternalOutgoingDocumentPage() {
                 </Link>
               </Button>
               <div>
-                <h1 className={`text-2xl font-bold tracking-tight ${
-                  isEditMode ? "text-amber-700 dark:text-amber-300" : "text-blue-700 dark:text-blue-300"
-                }`}>
-                  {isEditMode ? "Chỉnh sửa văn bản nội bộ" : "Tạo văn bản đi mới - Nội bộ"}
+                <h1 className="text-2xl font-bold tracking-tight text-blue-700 dark:text-blue-300">
+                  Tạo văn bản đi mới - Nội bộ
                 </h1>
-                <p className={`text-sm mt-1 ${
-                  isEditMode ? "text-amber-600 dark:text-amber-400" : "text-blue-600 dark:text-blue-400"
-                }`}>
-                  {isEditMode 
-                    ? `Đang chỉnh sửa văn bản: ${formData.documentNumber || editDocumentNumber}` 
-                    : "Tạo mới một văn bản nội bộ trong hệ thống"
-                  }
+                <p className="text-sm mt-1 text-blue-600 dark:text-blue-400">
+                  Tạo mới một văn bản nội bộ trong hệ thống
                 </p>
               </div>
             </div>
             <div className="flex items-center space-x-2">
-              {isEditMode && (
-                <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300">
-                  Chế độ chỉnh sửa
-                </Badge>
-              )}
               <Button
                 type="submit"
                 form="document-form"
-                disabled={isSubmitting || isLoadingDocumentData}
-                className={`${
-                  isEditMode 
-                    ? "bg-amber-600 hover:bg-amber-700" 
-                    : "bg-blue-600 hover:bg-blue-700"
-                } text-white`}
+                disabled={isSubmitting}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
               >
                 {isSubmitting ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : isLoadingDocumentData ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Đang tải dữ liệu...
-                  </>
-                ) : isEditMode ? (
-                  <>
-                    <Save className="mr-2 h-4 w-4" />
-                    Cập nhật văn bản
-                  </>
                 ) : (
                   <>
                     <Send className="mr-2 h-4 w-4" />
@@ -752,22 +530,9 @@ export default function CreateInternalOutgoingDocumentPage() {
         </div>
 
         <form ref={formRef} id="document-form" onSubmit={handleSubmit} className="space-y-6">
-        
-          {/* Loading overlay for edit mode */}
-          {isLoadingDocumentData && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-              <div className="flex items-center space-x-3">
-                <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
-                <div>
-                  <p className="text-blue-800 font-medium">Đang tải dữ liệu văn bản...</p>
-                  <p className="text-blue-600 text-sm">Vui lòng chờ trong giây lát</p>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Document Information */}
-          <Card className={isLoadingDocumentData ? "opacity-50 pointer-events-none" : ""}>
+          <Card>
             <CardContent className="pt-6">
               <div className="grid gap-6 md:grid-cols-3">
                 <div className="space-y-2">
@@ -1059,7 +824,7 @@ export default function CreateInternalOutgoingDocumentPage() {
           <div className="grid gap-6 lg:grid-cols-6">
             {/* Content Card - Takes 2 columns */}
             <div className="lg:col-span-3">
-              <Card className={`h-full ${isLoadingDocumentData ? "opacity-50 pointer-events-none" : ""}`}>
+              <Card className="h-full">
                 <CardContent className="pt-6 h-full">
                   <div className="space-y-2 h-full flex flex-col">
                     <Label htmlFor="content">Nội dung văn bản</Label>
@@ -1077,7 +842,7 @@ export default function CreateInternalOutgoingDocumentPage() {
             </div>
 
             {/* Recipients Card - Takes 1 column */}
-            <Card className={`h-full lg:col-span-3 ${isLoadingDocumentData ? "opacity-50 pointer-events-none" : ""}`}>
+            <Card className="h-full lg:col-span-3">
               <CardContent className="pt-6">
                 {isLoadingDepartmentList ? (
                   <div className="flex items-center justify-center p-4">
@@ -1089,13 +854,8 @@ export default function CreateInternalOutgoingDocumentPage() {
                     <div className="space-y-2">
                       <Label>
                         Danh sách phòng ban{" "}
-                        {!isEditMode && validationErrors.recipients && (
+                        {validationErrors.recipients && (
                           <span className="text-red-500">*</span>
-                        )}
-                        {isEditMode && (
-                          <span className="text-amber-600 text-xs ml-2">
-                            (Tùy chọn - có thể giữ nguyên người nhận hiện tại)
-                          </span>
                         )}
                       </Label>
                       <div className="border rounded-md overflow-hidden">
@@ -1124,7 +884,7 @@ export default function CreateInternalOutgoingDocumentPage() {
                           />
                         </div>
                       </div>
-                      {validationErrors.recipients && !isEditMode && (
+                      {validationErrors.recipients && (
                         <p className="text-sm text-red-500">
                           {validationErrors.recipients}
                         </p>
@@ -1192,7 +952,7 @@ export default function CreateInternalOutgoingDocumentPage() {
           </div>
 
           {/* Notes Section */}
-          <Card className={isLoadingDocumentData ? "opacity-50 pointer-events-none" : ""}>
+          <Card>
             <CardContent className="pt-6">
               <div className="space-y-2">
                 <Label htmlFor="note">Ghi chú</Label>
@@ -1207,7 +967,7 @@ export default function CreateInternalOutgoingDocumentPage() {
           </Card>
 
           {/* File Attachments Section */}
-          <Card className={isLoadingDocumentData ? "opacity-50 pointer-events-none" : ""}>
+          <Card>
             <CardContent className="pt-6">
               <div className="space-y-2">
                 <Label htmlFor="file">Tệp đính kèm</Label>
