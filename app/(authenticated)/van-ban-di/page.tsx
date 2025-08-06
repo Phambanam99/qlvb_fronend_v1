@@ -481,49 +481,14 @@ export default function OutgoingDocumentsPage() {
       />
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="internal" className="flex items-center gap-2">
-            <Building2 className="h-4 w-4" />
-            Văn bản nội bộ
-          </TabsTrigger>
-          <TabsTrigger value="external" className="flex items-center gap-2">
-            <Globe className="h-4 w-4" />
-            Văn bản bên ngoài
-          </TabsTrigger>
-        </TabsList>
+    
 
         <TabsContent value="internal" className="mt-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <h3 className="text-lg font-medium">Danh sách văn bản nội bộ đi</h3>
-              {/* <PrintInternalDocumentsButton
-                documents={internalDocsHook.documents}
-                documentType="sent"
-                additionalFilters={{
-                  yearFilter: activeYearFilter,
-                  monthFilter: activeMonthFilter,
-                  searchQuery: internalActiveSearchQuery,
-                }}
-                size="sm"
-                variant="outline"
-              /> */}
-            </div>
-          </div>
           <InternalDocumentsTable
             documents={internalDocsHook.documents}
             isLoading={internalDocsHook.loading}
             universalReadStatus={universalReadStatus}
             onDocumentClick={handleInternalDocumentClick}
-          />
-        </TabsContent>
-
-        <TabsContent value="external" className="mt-6">
-          <ExternalDocumentsTable
-            documents={externalDocsHook.documents}
-            isLoading={externalDocsHook.loading}
-            hasFullAccess={hasFullAccess}
-            universalReadStatus={universalReadStatus}
-            onDocumentClick={handleExternalDocumentClick}
           />
         </TabsContent>
       </Tabs>
