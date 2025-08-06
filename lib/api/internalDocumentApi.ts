@@ -228,6 +228,37 @@ export const createInternalDocumentJson = async (document: any) => {
   return response.data;
 };
 
+export const updateInternalDocument = async (
+  documentNumber: string,
+  document: CreateInternalDocumentDTO,
+  files?: File[],
+  descriptions?: string[],
+  onUploadProgress?: (progressEvent: any) => void,
+  cancelToken?: any
+) => {
+  const formData = new FormData();
+  formData.append("document", JSON.stringify(document));
+  if (files) {
+    files.forEach((file, idx) => {
+      formData.append("files", file);
+    });
+  }
+  if (descriptions) {
+    descriptions.forEach((desc) => {
+      formData.append("descriptions", desc);
+    });
+  }
+
+  const response = await api.put(`/internal-documents/${documentNumber}`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+    onUploadProgress,
+    cancelToken,
+    timeout: 600000, // 10 minutes timeout for large files
+  });
+
+  return response.data;
+};
+
 export const getDocumentById = async (id: number) => {
   const response = await api.get(`/internal-documents/${id}`);
   return response.data;

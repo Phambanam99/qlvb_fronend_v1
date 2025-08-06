@@ -84,12 +84,19 @@ export const Header = () => {
       icon: Wrench,
       permission: null, // Tất cả người dùng đều có thể xem
     },
-    {
-      title: "Cài đặt",
-      href: "/cai-dat",
-      icon: Settings,
-      permission: "ROLE_ADMIN",
+     {
+      title: "Web cũ",
+      href: "http://192.168.88.130/dnn",
+      icon: Wrench,
+      permission: null, // Tất cả người dùng đều có thể xem
+      external: true, // Đánh dấu là external link
     },
+    // {
+    //   title: "Cài đặt",
+    //   href: "/cai-dat",
+    //   icon: Settings,
+    //   permission: "ROLE_ADMIN",
+    // },
   ];
 
   // Định nghĩa các mục trong Thư viện dữ liệu
@@ -163,11 +170,31 @@ export const Header = () => {
         </div>
 
         {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center space-x-1 flex-1">
+        <nav className="hidden xl:flex items-center space-x-1 flex-1">
           {/* Main navigation items */}
           {filteredMainNavItems.map((item) => {
             const isActive =
               pathname === item.href || pathname.startsWith(`${item.href}/`);
+            
+            // Render external link differently
+            if (item.external) {
+              return (
+                <a
+                  key={item.href}
+                  href={item.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={cn(
+                    "flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-colors hover:bg-accent hover:text-accent-foreground",
+                    "text-muted-foreground"
+                  )}
+                >
+                  <item.icon className="h-4 w-4" />
+                  {item.title}
+                </a>
+              );
+            }
+            
             return (
               <Link
                 key={item.href}
@@ -235,7 +262,7 @@ export const Header = () => {
         </nav>
 
         {/* Mobile Navigation */}
-        <div className="md:hidden flex-1">
+        <div className="xl:hidden flex-1">
           <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
             <DropdownMenuTrigger asChild>
               <Button
@@ -257,6 +284,25 @@ export const Header = () => {
                 const isActive =
                   pathname === item.href ||
                   pathname.startsWith(`${item.href}/`);
+                
+                // Render external link differently for mobile
+                if (item.external) {
+                  return (
+                    <DropdownMenuItem key={item.href} asChild>
+                      <a
+                        href={item.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 w-full"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        <item.icon className="h-4 w-4" />
+                        {item.title}
+                      </a>
+                    </DropdownMenuItem>
+                  );
+                }
+                
                 return (
                   <DropdownMenuItem key={item.href} asChild>
                     <Link

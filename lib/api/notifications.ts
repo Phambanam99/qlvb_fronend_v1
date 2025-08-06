@@ -206,13 +206,13 @@ class NotificationsRealtimeClient {
 
   public connect(token: string) {
     if (this.stompClient?.connected) {
-      console.log('🔗 STOMP client already connected')
+      // console.log('🔗 STOMP client already connected')
       return
     }
     
-    console.log('🚀 Connecting to WebSocket...')
-    console.log('📍 Backend URL:', this.baseUrl)
-    console.log('🔑 Token (first 30 chars):', token.substring(0, 30) + '...')
+    // console.log('🚀 Connecting to WebSocket...')
+    // console.log('📍 Backend URL:', this.baseUrl)
+    // console.log('🔑 Token (first 30 chars):', token.substring(0, 30) + '...')
     
     this.token = token
     this.stompClient = new Client({
@@ -220,29 +220,36 @@ class NotificationsRealtimeClient {
       connectHeaders: {
         Authorization: `Bearer ${token}`
       },
-      debug: (str) => console.log('🔵 STOMP Debug:', str),
+      // debug: (str) => console.log('🔵 STOMP Debug:', str),
       reconnectDelay: 5000,
       heartbeatIncoming: 4000,
       heartbeatOutgoing: 4000,
     })
 
-    console.log('🌐 WebSocket URL:', `${this.baseUrl.replace('http', 'ws')}/ws`)
+    // console.log('🌐 WebSocket URL:', `${this.baseUrl.replace('http', 'ws')}/ws`)
 
     // Use SockJS for better compatibility
     this.stompClient.webSocketFactory = () => {
-      console.log('🔌 Creating SockJS connection...')
-      return new SockJS(`${this.baseUrl}/ws`) as any
+      // console.log('🔌 Creating SockJS connection...')
+      return new SockJS(`${this.baseUrl}/ws`, null, {
+        transports: ['websocket', 'xhr-polling'], // Fallback transports
+        timeout: 10000,
+      }) as any
     }
 
     this.stompClient.onConnect = (frame: Frame) => {
-      console.log('✅ WebSocket connected successfully!')
-      console.log('📋 Connection frame:', frame)
+      console.log('✅ WebSocket connected successfully!', frame)
       this.reconnectAttempts = 0
       this.setupSubscriptions()
     }
 
     this.stompClient.onStompError = (frame: Frame) => {
-      console.error('STOMP error:', frame)
+      console.warn('WebSocket STOMP error:', frame)
+      this.handleConnectionError()
+    }
+
+    this.stompClient.onWebSocketError = (error: any) => {
+      console.warn('WebSocket connection error:', error)
       this.handleConnectionError()
     }
 
@@ -260,6 +267,7 @@ class NotificationsRealtimeClient {
 
   public disconnect() {
     if (this.stompClient?.connected) {
+      console.log('Disconnecting WebSocket...')
       this.stompClient.deactivate()
     }
     this.cleanup()
@@ -267,7 +275,7 @@ class NotificationsRealtimeClient {
 
   private setupSubscriptions() {
     if (!this.stompClient?.connected) {
-      console.log('❌ Cannot setup subscriptions - STOMP client not connected')
+      console.warn('❌ Cannot setup subscriptions - STOMP client not connected')
       return
     }
 
@@ -332,11 +340,14 @@ class NotificationsRealtimeClient {
     
     if (this.reconnectAttempts < 10 && this.token) {
       const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000)
+      console.log(`🔄 Attempting to reconnect WebSocket in ${delay}ms (attempt ${this.reconnectAttempts + 1}/10)`)
       
       setTimeout(() => {
         this.reconnectAttempts++
         this.connect(this.token!)
       }, delay)
+    } else {
+      // console.warn('❌ Max reconnection attempts reached or no token available')
     }
   }
 

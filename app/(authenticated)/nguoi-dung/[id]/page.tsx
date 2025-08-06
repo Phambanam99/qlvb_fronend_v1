@@ -24,9 +24,7 @@ import { usersAPI } from "@/lib/api/users";
 import { rolesAPI } from "@/lib/api/roles";
 import { departmentsAPI } from "@/lib/api/departments";
 import UserProfileForm from "@/components/user-profile-form";
-import UserRoleForm from "@/components/user-role-form";
 import UserPasswordForm from "@/components/user-password-form";
-import UserStatusForm from "@/components/user-status-form";
 import { cp } from "fs";
 
 export default function UserDetailPage() {
@@ -50,13 +48,29 @@ export default function UserDetailPage() {
           rolesAPI.getAllRoles(),
           departmentsAPI.getAllDepartments(),
         ]);
-        const userData = userData_.data;
-        const rolesData = rolesData_.data;
-        const departmentsData = departmentsData_.data;
+        const userData = (userData_ as any).data || userData_; // Handle wrapped response
+        const rolesData = (rolesData_ as any).data || rolesData_; // Handle wrapped response  
+        const departmentsData = departmentsData_;
+        console.log("Fetched user data:", userData);
+        console.log("Fetched roles data:", rolesData);
+        console.log("Fetched departments response:", departmentsData);
+        
+        // Handle departments data structure  
+        let finalDepartments: any[] = [];
+        if (departmentsData?.data?.content) {
+          finalDepartments = departmentsData.data.content;
+        } else if (Array.isArray(departmentsData)) {
+          finalDepartments = departmentsData;
+        }
+        
+        console.log("Final departments:", finalDepartments);
+        
         setUser(userData);
-        setRoles(rolesData);
-        setDepartments(departmentsData.content);
+        setRoles(Array.isArray(rolesData) ? rolesData : []);
+        setDepartments(finalDepartments);
       } catch (error) {
+        setRoles([]);
+        setDepartments([]);
         toast({
           title: "Lỗi",
           description:
@@ -75,11 +89,22 @@ export default function UserDetailPage() {
     try {
       setSaving(true);
       console.log("Updating user profile with data:", data);
-      // Merge role/department data with current user profile data
-      const updatedUser_ = await usersAPI.updateUser(userId, data);
-      const updatedUser = updatedUser_; // Remove .data since API returns UserDTO directly
+      
+      const updateData = {
+        fullName: data.fullName,
+        email: data.email,
+        phone: data.phone,
+        username: data.username,
+        roles: data.roles,
+        departmentId: data.departmentId,
+        userStatus: data.isActive ? "ACTIVE" : "INACTIVE",
+      };
+      
+      console.log("Update data prepared:", updateData);
+      const updatedUser_ = await usersAPI.updateUser(userId, updateData);
+      const updatedUser = (updatedUser_ as any).data || updatedUser_; // Handle wrapped response
       setUser(updatedUser);
-      toast({
+      toast({ 
         title: "Thành công",
         description: "Thông tin người dùng đã được cập nhật",
       });
@@ -88,41 +113,6 @@ export default function UserDetailPage() {
         title: "Lỗi",
         description:
           "Không thể cập nhật thông tin người dùng. Vui lòng thử lại sau.",
-        variant: "destructive",
-      });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleUpdateRole = async (data: any) => {
-    try {
-      setSaving(true);
-      
-      // Merge role/department data with current user profile data
-      const mergedData = {
-        // Preserve current profile information
-        fullName: user.fullName,
-        username: user.username,
-        email: user.email,
-        phone: user.phone,
-        
-        // Update with new role and department data
-        ...data,
-      };
-      console.log("Updating user with data:", mergedData);
-      const updatedUser_ = await usersAPI.updateUser(userId, mergedData);
-      const updatedUser = updatedUser_; // Remove .data since API returns UserDTO directly
-      setUser(updatedUser);
-      toast({
-        title: "Thành công",
-        description: "Vai trò và phòng ban đã được cập nhật",
-      });
-    } catch (error) {
-      toast({
-        title: "Lỗi",
-        description:
-          "Không thể cập nhật vai trò và phòng ban. Vui lòng thử lại sau.",
         variant: "destructive",
       });
     } finally {
@@ -142,31 +132,6 @@ export default function UserDetailPage() {
       toast({
         title: "Lỗi",
         description: "Không thể đặt lại mật khẩu. Vui lòng thử lại sau.",
-        variant: "destructive",
-      });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleUpdateStatus = async (data: any) => {
-    try {
-      console.log("Updating user status:", data);
-      setSaving(true);
-      const updatedUser_ = await usersAPI.updateUser(userId, data);
-      const updatedUser = updatedUser_; // Remove .data since API returns UserDTO directly
-      setUser(updatedUser);
-      toast({
-        title: "Thành công",
-        description: `Tài khoản đã được ${
-          data.isActive ? "kích hoạt" : "vô hiệu hóa"
-        }`,
-      });
-    } catch (error) {
-      toast({
-        title: "Lỗi",
-        description:
-          "Không thể cập nhật trạng thái tài khoản. Vui lòng thử lại sau.",
         variant: "destructive",
       });
     } finally {
@@ -215,52 +180,26 @@ export default function UserDetailPage() {
             <UserCog className="h-4 w-4" />
             Thông tin cá nhân
           </TabsTrigger>
-          <TabsTrigger value="role" className="flex items-center gap-1">
-            <Shield className="h-4 w-4" />
-            Chức vụ & Phòng ban
-          </TabsTrigger>
           <TabsTrigger value="password" className="flex items-center gap-1">
             <Key className="h-4 w-4" />
             Đặt lại mật khẩu
-          </TabsTrigger>
-          <TabsTrigger value="status" className="flex items-center gap-1">
-            <AlertTriangle className="h-4 w-4" />
-            Trạng thái tài khoản
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="profile">
           <Card>
             <CardHeader>
-              <CardTitle>Thông tin cá nhân</CardTitle>
+              <CardTitle>Thông tin cá nhân & Quản lý tài khoản</CardTitle>
               <CardDescription>
-                Cập nhật thông tin cá nhân của người dùng
+                Cập nhật thông tin cá nhân, vai trò, phòng ban và trạng thái tài khoản của người dùng
               </CardDescription>
             </CardHeader>
             <CardContent>
               <UserProfileForm
                 user={user}
-                onSubmit={handleUpdateProfile}
-                saving={saving}
-              />
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="role">
-          <Card>
-            <CardHeader>
-              <CardTitle>Vai trò & Phòng ban</CardTitle>
-              <CardDescription>
-                Quản lý vai trò và phòng ban của người dùng
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <UserRoleForm
-                user={user}
                 roles={roles}
                 departments={departments}
-                onSubmit={handleUpdateRole}
+                onSubmit={handleUpdateProfile}
                 saving={saving}
               />
             </CardContent>
@@ -276,24 +215,6 @@ export default function UserDetailPage() {
             <CardContent>
               <UserPasswordForm
                 onSubmit={handleChangePassword}
-                saving={saving}
-              />
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="status">
-          <Card>
-            <CardHeader>
-              <CardTitle>Trạng thái tài khoản</CardTitle>
-              <CardDescription>
-                Kích hoạt hoặc vô hiệu hóa tài khoản người dùng
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <UserStatusForm
-                user={user}
-                onSubmit={handleUpdateStatus}
                 saving={saving}
               />
             </CardContent>

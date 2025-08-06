@@ -18,6 +18,16 @@ const nextConfig = {
       '*',   // Cho phép mạng private 172.16-31.x.x
     ]
   },
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      // Ignore sockjs-client warnings about missing supports-color
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        'supports-color': false,
+      };
+    }
+    return config;
+  },
   
   async rewrites() {
     return [

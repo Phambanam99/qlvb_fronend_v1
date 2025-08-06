@@ -290,6 +290,27 @@ export default function InternalDocumentDetailPage() {
     return <Badge variant={info.variant}>{info.text}</Badge>;
   };
 
+  // Helper function to get unique recipients (remove duplicates)
+  const getUniqueRecipients = (recipients: any[]) => {
+    if (!recipients || !Array.isArray(recipients)) return [];
+    
+    const uniqueMap = new Map();
+    
+    recipients.forEach((recipient) => {
+      if (recipient.userId) {
+        // Individual user: use composite key (departmentId-userId)
+        const key = `${recipient.departmentId}-${recipient.userId}`;
+        uniqueMap.set(key, recipient);
+      } else {
+        // Department: use department ID as key
+        const key = `dept-${recipient.departmentId}`;
+        uniqueMap.set(key, recipient);
+      }
+    });
+    
+    return Array.from(uniqueMap.values());
+  };
+
   const getPriorityBadge = (priority: string) => {
     const variants = {
       NORMAL: { variant: "outline" as const, text: "Bình thường" },
@@ -1003,15 +1024,15 @@ export default function InternalDocumentDetailPage() {
               <CardTitle className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Users className="h-5 w-5" />
-                  Danh sách người nhận ({_document.recipients.length})
+                  Danh sách người nhận ({getUniqueRecipients(_document.recipients).length})
                 </div>
-                {_document.recipients.length > RECIPIENTS_PREVIEW_COUNT && (
+                {getUniqueRecipients(_document.recipients).length > RECIPIENTS_PREVIEW_COUNT && (
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => setShowAllRecipients(!showAllRecipients)}
                   >
-                    {showAllRecipients ? "Thu gọn" : `Xem tất cả (${_document.recipients.length})`}
+                    {showAllRecipients ? "Thu gọn" : `Xem tất cả (${getUniqueRecipients(_document.recipients).length})`}
                   </Button>
                 )}
               </CardTitle>
@@ -1027,10 +1048,10 @@ export default function InternalDocumentDetailPage() {
                 </TableHeader>
                 <TableBody>
                   {(showAllRecipients 
-                    ? _document.recipients 
-                    : _document.recipients.slice(0, RECIPIENTS_PREVIEW_COUNT)
+                    ? getUniqueRecipients(_document.recipients)
+                    : getUniqueRecipients(_document.recipients).slice(0, RECIPIENTS_PREVIEW_COUNT)
                   ).map((recipient) => (
-                    <TableRow key={recipient.id}>
+                    <TableRow key={`${recipient.departmentId}-${recipient.userId || 'dept'}-${recipient.id}`}>
                       <TableCell className="font-medium">
                         {recipient.departmentName}
                       </TableCell>
@@ -1044,7 +1065,7 @@ export default function InternalDocumentDetailPage() {
               </Table>
               
               {/* Show hidden count when collapsed */}
-              {!showAllRecipients && _document.recipients.length > RECIPIENTS_PREVIEW_COUNT && (
+              {!showAllRecipients && getUniqueRecipients(_document.recipients).length > RECIPIENTS_PREVIEW_COUNT && (
                 <div className="mt-4 text-center">
                   <Button
                     variant="ghost"
@@ -1052,7 +1073,7 @@ export default function InternalDocumentDetailPage() {
                     onClick={() => setShowAllRecipients(true)}
                     className="text-muted-foreground hover:text-foreground"
                   >
-                    + {_document.recipients.length - RECIPIENTS_PREVIEW_COUNT} người nhận khác
+                    + {getUniqueRecipients(_document.recipients).length - RECIPIENTS_PREVIEW_COUNT} người nhận khác
                   </Button>
                 </div>
               )}

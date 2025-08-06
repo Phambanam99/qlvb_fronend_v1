@@ -76,8 +76,7 @@ export default function DocumentTypesPage() {
   const fetchDocumentTypes = async () => {
     try {
       setIsLoading(true);
-      const data_ = await documentTypesAPI.getAllDocumentTypes();
-      const data = data_.data;
+      const data = await documentTypesAPI.getAllDocumentTypes();
       setDocumentTypes(data);
     } catch (error) {
       toast({

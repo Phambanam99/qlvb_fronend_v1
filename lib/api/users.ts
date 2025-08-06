@@ -145,7 +145,7 @@ export const usersAPI = {
         indexes: null, // <- điểm mấu chốt: bỏ [] khi serialize array
       },
     });
-    return response.data;
+    return response.data.data;
   },
 
   // approve user

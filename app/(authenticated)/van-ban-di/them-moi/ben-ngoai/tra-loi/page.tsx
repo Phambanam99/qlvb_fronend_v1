@@ -128,11 +128,11 @@ export default function ReplyExternalDocumentPage() {
         const leaderUsers = leaderUsers_.data;
 
         // Get senior leaders across all departments
-        const seniorLeadersResponse_ =    await usersAPI.getUsersByRoleAndDepartment(
+        const seniorLeadersResponse =    await usersAPI.getUsersByRoleAndDepartment(
             ["ROLE_SENIOR_LEADER"],
             0 // 0 to get from all departments
           );
-        const seniorLeadersResponse = seniorLeadersResponse_.data;
+        
         // Combine both lists
         const allApprovers = [...leaderUsers, ...seniorLeadersResponse];
 

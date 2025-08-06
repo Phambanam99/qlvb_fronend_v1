@@ -150,17 +150,31 @@ export function InternalDocumentsTable({
                       </Button>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="hover:bg-primary/10 hover:text-primary"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onDocumentClick(doc);
-                        }}
-                      >
-                        Chi tiết
-                      </Button>
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="hover:bg-blue-50 hover:text-blue-600"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            // Navigate to edit page with document number
+                            window.location.href = `/van-ban-di/cap-nhat/noi-bo/${doc.id}`;
+                          }}
+                        >
+                          Chỉnh sửa
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="hover:bg-primary/10 hover:text-primary"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDocumentClick(doc);
+                          }}
+                        >
+                          Chi tiết
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 );
