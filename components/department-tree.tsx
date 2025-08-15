@@ -59,6 +59,81 @@ export function DepartmentTree({
   primaryButtonText,
   secondaryButtonText,
 }: Props) {
+  // Custom sorting: Thủ trưởng Cục → Phòng 1,6,7 → Cụm 3,4,5 → Trạm 31,37,39 → còn lại (ABC)
+  const getDeptPriority = (name: string): { group: number; order: number; nameKey: string } => {
+    const n = (name || "").trim();
+    const ascii = n.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const lower = ascii.toLowerCase();
+
+    // 0: Thủ trưởng Cục (exact)
+    if (/^\s*thu\s*truong\s*cuc\s*$/.test(lower)) {
+      return { group: 0, order: 0, nameKey: lower };
+    }
+
+    // 1: Phòng 1,6,7 (in this order)
+    const phongNum = lower.match(/^\s*phong\s*(\d+)/);
+    if (phongNum) {
+      const num = Number(phongNum[1]);
+      const desiredOrder = [1, 6, 7, 9];
+      const idx = desiredOrder.indexOf(num);
+      if (idx !== -1) {
+        return { group: 1, order: idx, nameKey: lower };
+      }
+      // Other numbered rooms will fall through to "còn lại"
+    }
+
+    // 2: Phòng Tham mưu
+    if (/^\s*phong\s*tham\s*m[u]u/.test(lower) || lower.includes("phong tham muu")) {
+      return { group: 2, order: 0, nameKey: lower };
+    }
+
+    // 3: Phòng Chính trị
+    if (/^\s*phong\s*chinh\s*tri/.test(lower)) {
+      return { group: 3, order: 0, nameKey: lower };
+    }
+
+    // 4: Cụm 3,4,5
+    const cumNum = lower.match(/^\s*cum\s*(\d+)/);
+    if (cumNum) {
+      const num = Number(cumNum[1]);
+      const desiredOrder = [3, 4, 5];
+      const idx = desiredOrder.indexOf(num);
+      if (idx !== -1) {
+        return { group: 4, order: idx, nameKey: lower };
+      }
+    }
+
+    // 5: Trạm 31,37,39
+    const tramNum = lower.match(/^\s*tram\s*(\d+)/);
+    if (tramNum) {
+      const num = Number(tramNum[1]);
+      const desiredOrder = [31, 37, 39];
+      const idx = desiredOrder.indexOf(num);
+      if (idx !== -1) {
+        return { group: 5, order: idx, nameKey: lower };
+      }
+    }
+
+    // 6: Còn lại → theo ABC
+    return { group: 6, order: 0, nameKey: lower };
+  };
+
+  const sortDepartments = (items: DepartmentNode[] = []): DepartmentNode[] => {
+    return [...items]
+      .sort((a, b) => {
+        const pa = getDeptPriority(a.name);
+        const pb = getDeptPriority(b.name);
+        if (pa.group !== pb.group) return pa.group - pb.group;
+        if (pa.order !== pb.order) return pa.order - pb.order;
+        return pa.nameKey.localeCompare(pb.nameKey, "vi");
+      })
+      .map((dept) => ({
+        ...dept,
+        children: dept.children && dept.children.length > 0 ? sortDepartments(dept.children) : dept.children,
+      }));
+  };
+
+  const sortedDepartments = sortDepartments(departments);
   if (!departments || departments.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-8 text-center">
@@ -83,7 +158,7 @@ export function DepartmentTree({
         }}
       >
         <div className="space-y-1 py-2 pr-4">
-          {departments.map((dept) => (
+          {sortedDepartments.map((dept) => (
             <DepartmentNode
               key={dept.id}
               department={dept}
