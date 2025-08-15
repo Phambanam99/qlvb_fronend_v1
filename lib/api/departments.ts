@@ -13,6 +13,7 @@ export interface DepartmentDTO {
     | "SUBSIDIARY"
     | "LEADERSHIP";
   externalId?: string;
+  codeDepartment?: string;
   group?: string;
   userCount?: number;
   assignedDocumentsCount?: number;
@@ -46,7 +47,7 @@ export const departmentsAPI = {
    * @param id Department ID
    * @returns Department data
    */
-  getDepartmentById: async (id: string | number): Promise<DepartmentDTO> => {
+  getDepartmentById: async (id: string | number): Promise<ResponseDTO<DepartmentDTO>> => {
     const response = await api.get(`/departments/${id}`);
     return response.data;
   },
@@ -92,9 +93,9 @@ export const departmentsAPI = {
    */
   getChildDepartments: async (
     id: string | number
-  ): Promise<DepartmentDTO[]> => {
+  ): Promise<ResponseDTO<DepartmentDTO>> => {
     const response = await api.get(`/departments/${id}`);
-    return response.data.childDepartments || [];
+    return response.data || [];
   },
 
   /**

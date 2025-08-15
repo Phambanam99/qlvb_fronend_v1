@@ -197,10 +197,12 @@ export default function CreateInternalOutgoingDocumentPage() {
     const fetchDocumentTypes = async () => {
       try {
         setIsLoadingDocumentTypes(true);
-        const types_ = await documentTypesAPI.getAllDocumentTypes();
-        const types = types_.data;
-        setDocumentTypes(types);
+        const types = await documentTypesAPI.getAllDocumentTypes();
+        
+        setDocumentTypes(Array.isArray(types) ? types : []);
       } catch (error) {
+        console.error('Error loading document types:', error);
+        setDocumentTypes([]); // Set as empty array on error
         toast({
           title: "Lỗi",
           description: "Không thể tải danh sách loại văn bản",
@@ -217,12 +219,6 @@ export default function CreateInternalOutgoingDocumentPage() {
   // Auto-set drafting department and load leadership users when user is available
   useEffect(() => {
     if (user && user.departmentId) {
-      // Auto-set drafting department from current user
-      setFormData(prev => ({
-        ...prev,
-        draftingDepartmentId: user.departmentId
-      }));
-
       // Load leadership users for document signer dropdown
       const fetchLeadershipUsers = async () => {
         try {
@@ -231,9 +227,12 @@ export default function CreateInternalOutgoingDocumentPage() {
             LEADERSHIP_ROLES,
             user.departmentId!
           );
-          const leaders = leaders_.data;
-          setLeadershipUsers(leaders);
+
+          console.log('Leadership users loaded:', leaders_);
+          setLeadershipUsers(Array.isArray(leaders_) ? leaders_ : []);
         } catch (error) {
+          console.error('Error loading leadership users:', error);
+          setLeadershipUsers([]); // Set as empty array on error
           toast({
             title: "Lỗi",
             description: "Không thể tải danh sách lãnh đạo đơn vị",
@@ -246,7 +245,18 @@ export default function CreateInternalOutgoingDocumentPage() {
 
       fetchLeadershipUsers();
     }
-  }, [user, toast]);
+  }, [user?.departmentId]);
+
+  // Separate useEffect for setting drafting department
+  useEffect(() => {
+    if (user?.departmentId) {
+      // Auto-set drafting department from current user
+      setFormData(prev => ({
+        ...prev,
+        draftingDepartmentId: user.departmentId
+      }));
+    }
+  }, [user?.departmentId]);
 
   // Input change handlers
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -355,6 +365,7 @@ export default function CreateInternalOutgoingDocumentPage() {
       errors.title = "Tiêu đề là bắt buộc";
     }
 
+    // Recipients are required for create mode
     if (secondaryDepartments.length === 0) {
       errors.recipients = "Vui lòng chọn ít nhất một người nhận";
     }
@@ -368,7 +379,7 @@ export default function CreateInternalOutgoingDocumentPage() {
 
     if (!validateForm()) {
       toast({
-        title: "Lỗi",
+        title: "Lỗi validation",
         description: "Vui lòng kiểm tra lại thông tin đã nhập",
         variant: "destructive",
       });
@@ -415,9 +426,18 @@ export default function CreateInternalOutgoingDocumentPage() {
       // Create cancel token for upload
       const cancelTokenSource = fileUpload.createCancelToken();
 
+      // Filter out existing files - only send new files
+      const newFilesToUpload = fileUpload.files.filter(file => !(file as any).isExisting);
+      console.log('Files to upload:', { 
+        total: fileUpload.files.length, 
+        existing: fileUpload.files.filter(f => (f as any).isExisting).length,
+        new: newFilesToUpload.length 
+      });
+
+      // Create new document
       const response_ = await createInternalDocument(
         documentData,
-        fileUpload.files.length > 0 ? fileUpload.files : undefined,
+        newFilesToUpload.length > 0 ? newFilesToUpload : undefined,
         undefined, // descriptions
         (progressEvent: any) => {
           const percentCompleted = Math.round(
@@ -442,7 +462,7 @@ export default function CreateInternalOutgoingDocumentPage() {
 
       router.push("/van-ban-di");
     } catch (error: any) {
-
+          console.error("Error creating/updating document:", error);
       if (error.code === "ECONNABORTED" || error.message.includes("timeout")) {
         fileUpload.setError(
           "Tải lên bị timeout. Vui lòng thử lại với file nhỏ hơn."
@@ -455,7 +475,7 @@ export default function CreateInternalOutgoingDocumentPage() {
 
       toast({
         title: "Lỗi",
-        description: error.message || "Không thể tạo văn bản",
+        description: error.response.data.message || "Không thể tạo văn bản",
         variant: "destructive",
       });
     } finally {
@@ -469,37 +489,48 @@ export default function CreateInternalOutgoingDocumentPage() {
   const showAllUsers = (user: any) => null;
 
   return (
-    <div className="min-h-screen bg-gray-50/30">
+    <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
       <div className="max-w-[1536px] mx-auto py-6 max-w-5xl px-4">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center space-x-2">
-            <Button variant="outline" size="icon" asChild>
-              <Link href="/van-ban-di/them-moi">
-                <ArrowLeft className="h-4 w-4" />
-              </Link>
-            </Button>
-            <h1 className="text-2xl font-bold tracking-tight text-primary">
-              Tạo văn bản đi mới - Nội bộ
-            </h1>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Button
-              type="submit"
-              form="document-form"
-              disabled={isSubmitting}
-              className="bg-primary hover:bg-primary/90"
-            >
-              {isSubmitting ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="mr-2 h-4 w-4" />
-              )}
-              Gửi văn bản
-            </Button>
+        {/* Header with clear mode indication */}
+        <div className="mb-6 p-4 rounded-lg border-l-4 bg-blue-50 border-l-blue-500 dark:bg-blue-900/20">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <Button variant="outline" size="icon" asChild>
+                <Link href="/van-ban-di/them-moi">
+                  <ArrowLeft className="h-4 w-4" />
+                </Link>
+              </Button>
+              <div>
+                <h1 className="text-2xl font-bold tracking-tight text-blue-700 dark:text-blue-300">
+                  Tạo văn bản đi mới - Nội bộ
+                </h1>
+                <p className="text-sm mt-1 text-blue-600 dark:text-blue-400">
+                  Tạo mới một văn bản nội bộ trong hệ thống
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Button
+                type="submit"
+                form="document-form"
+                disabled={isSubmitting}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                {isSubmitting ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <>
+                    <Send className="mr-2 h-4 w-4" />
+                    Gửi văn bản
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         </div>
 
         <form ref={formRef} id="document-form" onSubmit={handleSubmit} className="space-y-6">
+
           {/* Document Information */}
           <Card>
             <CardContent className="pt-6">
@@ -675,7 +706,7 @@ export default function CreateInternalOutgoingDocumentPage() {
                       } />
                     </SelectTrigger>
                     <SelectContent>
-                      {leadershipUsers.map((leader) => (
+                      {Array.isArray(leadershipUsers) && leadershipUsers.map((leader) => (
                         <SelectItem key={leader.id} value={leader.id!.toString()}>
                           <div className="flex flex-col">
                             <span className="font-medium">{leader.fullName}</span>
@@ -685,7 +716,7 @@ export default function CreateInternalOutgoingDocumentPage() {
                           </div>
                         </SelectItem>
                       ))}
-                      {leadershipUsers.length === 0 && !isLoadingLeadershipUsers && (
+                      {(!Array.isArray(leadershipUsers) || leadershipUsers.length === 0) && !isLoadingLeadershipUsers && (
                         <SelectItem value="no-leaders" disabled>
                           Không có lãnh đạo trong đơn vị
                         </SelectItem>
@@ -790,9 +821,9 @@ export default function CreateInternalOutgoingDocumentPage() {
 
 
           {/* Content and Recipients */}
-          <div className="grid gap-6 lg:grid-cols-3">
+          <div className="grid gap-6 lg:grid-cols-6">
             {/* Content Card - Takes 2 columns */}
-            <div className="lg:col-span-2">
+            <div className="lg:col-span-3">
               <Card className="h-full">
                 <CardContent className="pt-6 h-full">
                   <div className="space-y-2 h-full flex flex-col">
@@ -811,7 +842,7 @@ export default function CreateInternalOutgoingDocumentPage() {
             </div>
 
             {/* Recipients Card - Takes 1 column */}
-            <Card className="h-full">
+            <Card className="h-full lg:col-span-3">
               <CardContent className="pt-6">
                 {isLoadingDepartmentList ? (
                   <div className="flex items-center justify-center p-4">

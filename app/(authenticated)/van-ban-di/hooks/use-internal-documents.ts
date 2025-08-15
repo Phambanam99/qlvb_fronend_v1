@@ -84,6 +84,7 @@ export function useInternalDocuments({
         // Sử dụng API mới theo year/month nếu có, fallback về getSentDocuments
         if (year) {
           response_ = await getSentDocumentsByYear(year, month, page, size);
+          
         } else {
           response_ = await getSentDocuments(page, size);
         }

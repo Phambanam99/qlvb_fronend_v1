@@ -13,6 +13,8 @@ import {
 import { UrgencyBadge } from "@/components/urgency-badge";
 import { UrgencyLevel, migrateFromOldUrgency } from "@/lib/types/urgency";
 import { InternalDocument } from "@/lib/api/internalDocumentApi";
+import { Edit, Eye } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface InternalDocumentsTableProps {
   documents: InternalDocument[];
@@ -75,6 +77,7 @@ export function InternalDocumentsTable({
         <Table>
           <TableHeader className="bg-accent/50">
             <TableRow>
+              <TableHead className="w-16">STT</TableHead>
               <TableHead>Số văn bản</TableHead>
               <TableHead className="hidden md:table-cell">Ngày ký</TableHead>
               <TableHead>Tiêu đề</TableHead>
@@ -87,7 +90,7 @@ export function InternalDocumentsTable({
           </TableHeader>
           <TableBody>
             {documents.length > 0 ? (
-              documents.map((doc) => {
+              documents.map((doc, index) => {
                 const isRead = universalReadStatus.getReadStatus(
                   doc.id,
                   "OUTGOING_INTERNAL"
@@ -97,11 +100,14 @@ export function InternalDocumentsTable({
                     key={doc.id}
                     className={`hover:bg-accent/30 cursor-pointer ${
                       !isRead
-                        ? "bg-blue-50/50 border-l-4 border-l-blue-500"
-                        : ""
+                        ? "bg-blue-50/50 border-l-4 border-l-blue-500 text-red-600"
+                        : "text-black"
                     }`}
                     onClick={() => onDocumentClick(doc)}
                   >
+                    <TableCell className="text-center text-muted-foreground">
+                      {index + 1}
+                    </TableCell>
                     <TableCell className="font-medium">
                       {doc.documentNumber}
                     </TableCell>
@@ -124,7 +130,7 @@ export function InternalDocumentsTable({
                     <TableCell className="hidden md:table-cell">
                       {getRecipientSummary(doc.recipients)}
                     </TableCell>
-                    <TableCell>{getUrgencyBadge(doc.priority)}</TableCell>
+                    <TableCell>{getUrgencyBadge(doc.priority || "NORMAL")}</TableCell>
                     <TableCell>
                       <Button
                         variant="ghost"
@@ -146,17 +152,50 @@ export function InternalDocumentsTable({
                       </Button>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="hover:bg-primary/10 hover:text-primary"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onDocumentClick(doc);
-                        }}
-                      >
-                        Chi tiết
-                      </Button>
+                      <div className="flex items-center justify-end gap-2">
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="hover:bg-blue-50 hover:text-blue-600 h-8 w-8 p-0"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  // Navigate to edit page with document number
+                                  window.location.href = `/van-ban-di/cap-nhat/noi-bo/${doc.id}`;
+                                }}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Chỉnh sửa</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                        
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="hover:bg-primary/10 hover:text-primary h-8 w-8 p-0"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onDocumentClick(doc);
+                                }}
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Chi tiết</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
                     </TableCell>
                   </TableRow>
                 );

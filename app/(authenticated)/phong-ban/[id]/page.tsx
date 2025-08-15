@@ -82,9 +82,7 @@ const departmentFormSchema = z.object({
     .email({ message: "Email không hợp lệ" })
     .optional()
     .or(z.literal("")),
-  type: z.string({
-    required_error: "Vui lòng chọn loại phòng ban",
-  }),
+  codeDepartment: z.string().optional(),
   group: z.string().optional(),
   parentDepartmentId: z.string().optional(),
   storageLocation: z.string().optional(),
@@ -95,21 +93,32 @@ type DepartmentFormValues = z.infer<typeof departmentFormSchema>;
 export default function DepartmentDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
   const unwrappedParams = use(params);
   const { id } = unwrappedParams;
   const departmentId = Number.parseInt(id);
   const router = useRouter();
   const { toast } = useToast();
-  const { hasPermission } = useAuth();
+  const { hasPermission, user } = useAuth(); // Move all useAuth hooks to top
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [department, setDepartment] = useState<any>(null);
-  const [departmentTypes, setDepartmentTypes] = useState<any[]>([]);
   const [parentDepartments, setParentDepartments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState<any[]>([]);
+
+  // Calculate permissions early, before any returns
+  const userRoles = user?.roles || [];
+  const canManageDepartment =
+    hasPermission("ROLE_ADMIN") ||
+    hasRoleInGroup(userRoles, DEPARTMENT_MANAGEMENT_ROLES);
+
+  // For department heads, they can only manage their own departments
+  const canManageUsers =
+    canManageDepartment ||
+    (user?.departmentId === departmentId &&
+      hasRoleInGroup(userRoles, ["ROLE_TRUONG_PHONG", "ROLE_TRUONG_BAN"]));
 
   const form = useForm<DepartmentFormValues>({
     resolver: zodResolver(departmentFormSchema),
@@ -117,7 +126,7 @@ export default function DepartmentDetailPage({
       name: "",
       abbreviation: "",
       email: "",
-      type: "",
+      codeDepartment: "",
       group: "",
       parentDepartmentId: "",
       storageLocation: "",
@@ -133,17 +142,13 @@ export default function DepartmentDetailPage({
         const departmentData_ = await departmentsAPI.getDepartmentById(
           departmentId
         );
-        const departmentData = departmentData_.data;
+        const departmentData = departmentData_.data || departmentData_;
+        console.log('📂 Loaded department data:', departmentData);
         setDepartment(departmentData);
-
-        // Lấy danh sách loại phòng ban
-        const types_ = await departmentsAPI.getDepartmentTypes();
-        const types = types_.data;
-        setDepartmentTypes(types || []);
 
         // Lấy danh sách phòng ban cha
         const departmentsResponse_ = await departmentsAPI.getAllDepartments();
-        const departmentsResponse = departmentsResponse_.data;
+        const departmentsResponse = (departmentsResponse_ as any).data || departmentsResponse_;
         // Lọc bỏ phòng ban hiện tại và các phòng ban con của nó
         const filteredDepartments =
           departmentsResponse.content?.filter(
@@ -158,7 +163,7 @@ export default function DepartmentDetailPage({
           name: departmentData.name || "",
           abbreviation: departmentData.abbreviation || "",
           email: departmentData.email || "",
-          type: departmentData.type || "",
+          codeDepartment: departmentData.codeDepartment || "",
           group: departmentData.group || "",
           parentDepartmentId: departmentData.parentDepartmentId
             ? String(departmentData.parentDepartmentId)
@@ -168,7 +173,7 @@ export default function DepartmentDetailPage({
 
         // TODO: Lấy danh sách người dùng thuộc phòng ban
         const users_ = await usersAPI.getUsersByDepartmentId(departmentId);
-        const users = users_.data;
+        const users = (users_ as any).data || users_;
         // Hiện tại đang sử dụng mảng giả định
         setUsers(users);
       } catch (error) {
@@ -202,7 +207,7 @@ export default function DepartmentDetailPage({
         name: data.name,
         abbreviation: data.abbreviation,
         email: data.email || undefined,
-        type: data.type as any,
+        codeDepartment: data.codeDepartment || undefined,
         group: data.group || undefined,
         parentDepartmentId:
           data.parentDepartmentId && data.parentDepartmentId !== "none"
@@ -222,7 +227,7 @@ export default function DepartmentDetailPage({
       const updatedDepartment_ = await departmentsAPI.getDepartmentById(
         departmentId
       );
-      const updatedDepartment = updatedDepartment_.data;
+      const updatedDepartment = (updatedDepartment_ as any).data || updatedDepartment_;
       setDepartment(updatedDepartment);
     } catch (error) {
       toast({
@@ -291,19 +296,6 @@ export default function DepartmentDetailPage({
       </div>
     );
   }
-
-  // Check if user can manage department based on role groups
-  const { user } = useAuth();
-  const userRoles = user?.roles || [];
-  const canManageDepartment =
-    hasPermission("ROLE_ADMIN") ||
-    hasRoleInGroup(userRoles, DEPARTMENT_MANAGEMENT_ROLES);
-
-  // For department heads, they can only manage their own departments
-  const canManageUsers =
-    canManageDepartment ||
-    (user?.departmentId === departmentId &&
-      hasRoleInGroup(userRoles, ["ROLE_TRUONG_PHONG", "ROLE_TRUONG_BAN"]));
 
   return (
     <div className="container py-6">
@@ -445,28 +437,20 @@ export default function DepartmentDetailPage({
                   <div className="grid gap-4 md:grid-cols-2">
                     <FormField
                       control={form.control}
-                      name="type"
+                      name="codeDepartment"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Loại phòng ban</FormLabel>
-                          <Select
-                            onValueChange={field.onChange}
-                            defaultValue={field.value}
-                            disabled={!canManageDepartment}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Chọn loại phòng ban" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {departmentTypes.map((type) => (
-                                <SelectItem key={type.code} value={type.code}>
-                                  {type.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <FormLabel>Mã đơn vị</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="Nhập mã đơn vị"
+                              {...field}
+                              disabled={!canManageDepartment}
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Mã định danh duy nhất cho đơn vị
+                          </FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -611,7 +595,7 @@ export default function DepartmentDetailPage({
                       <TableRow>
                         <TableHead>Họ tên</TableHead>
                         <TableHead>Tài khoản</TableHead>
-                        <TableHead>Vai trò</TableHead>
+                        <TableHead>Chức vụ</TableHead>
                         <TableHead>Trạng thái</TableHead>
                       </TableRow>
                     </TableHeader>

@@ -49,6 +49,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import AuthGuard from "@/components/auth-guard";
 
 export default function RolesPage() {
   const [roles, setRoles] = useState<any[]>([]);
@@ -112,12 +113,12 @@ export default function RolesPage() {
 
       toast({
         title: "Thành công",
-        description: "Đã xóa vai trò thành công",
+        description: "Đã xóa chức vụ thành công",
       });
     } catch (error) {
       toast({
         title: "Lỗi",
-        description: "Không thể xóa vai trò. Vui lòng thử lại sau.",
+        description: "Không thể xóa chức vụ. Vui lòng thử lại sau.",
         variant: "destructive",
       });
     } finally {
@@ -138,14 +139,15 @@ export default function RolesPage() {
     hasPermission("ROLE_ADMIN") || hasPermission("ROLE_MANAGER");
 
   return (
-    <div className="container mx-auto max-w-full px-4 py-6">
+    <AuthGuard allowedRoles={["ROLE_ADMIN"]}>
+      <div className="container mx-auto max-w-full px-4 py-6">
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-bold">Quản lý vai trò</h1>
+        <h1 className="text-2xl font-bold">Quản lý chức vụ</h1>
         {canManageRoles && (
           <Link href="/vai-tro/them-moi">
             <Button>
               <Plus className="mr-2 h-4 w-4" />
-              Thêm vai trò
+              Thêm chức vụ
             </Button>
           </Link>
         )}
@@ -155,7 +157,7 @@ export default function RolesPage() {
         <CardHeader>
           <CardTitle>Bộ lọc</CardTitle>
           <CardDescription>
-            Lọc danh sách vai trò theo các tiêu chí
+            Lọc danh sách chức vụ theo các tiêu chí
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -174,15 +176,15 @@ export default function RolesPage() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Loại vai trò</label>
+              <label className="text-sm font-medium">Loại chức vụ</label>
               <Select value={typeFilter} onValueChange={handleTypeFilterChange}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Chọn loại vai trò" />
+                  <SelectValue placeholder="Chọn loại chức vụ" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Tất cả vai trò</SelectItem>
-                  <SelectItem value="system">Vai trò hệ thống</SelectItem>
-                  <SelectItem value="custom">Vai trò tùy chỉnh</SelectItem>
+                  <SelectItem value="all">Tất cả chức vụ</SelectItem>
+                  <SelectItem value="system">Chức vụ hệ thống</SelectItem>
+                  <SelectItem value="custom">Chức vụ tùy chỉnh</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -305,6 +307,7 @@ export default function RolesPage() {
           </div>
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </AuthGuard>
   );
 }

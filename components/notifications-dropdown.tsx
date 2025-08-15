@@ -20,7 +20,7 @@ import { vi } from "date-fns/locale"
 import Link from "next/link"
 
 export default function NotificationsDropdown() {
-  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications()
+  const { notifications, unreadCount, markAsRead, markAllAsRead, isConnected } = useNotifications()
   const [open, setOpen] = useState(false)
 
   const handleMarkAllAsRead = () => {
@@ -70,7 +70,15 @@ export default function NotificationsDropdown() {
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-80" align="end">
         <DropdownMenuLabel className="flex items-center justify-between">
-          <span>Thông báo</span>
+          <div className="flex items-center gap-2">
+            <span>Thông báo</span>
+            {isConnected && (
+              <div className="h-2 w-2 rounded-full bg-green-500" title="Kết nối realtime" />
+            )}
+            {!isConnected && (
+              <div className="h-2 w-2 rounded-full bg-red-500" title="Không kết nối realtime" />
+            )}
+          </div>
           {unreadCount > 0 && (
             <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={handleMarkAllAsRead}>
               Đánh dấu tất cả đã đọc

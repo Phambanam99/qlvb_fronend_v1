@@ -39,18 +39,24 @@ export function InternalDocumentsTable({
         <Table>
           <TableHeader className="bg-accent/50">
             <TableRow>
+              <TableHead className="w-16">STT</TableHead>
               <TableHead>Số văn bản</TableHead>
               <TableHead>Ngày ký</TableHead>
               <TableHead>Tiêu đề</TableHead>
               <TableHead>Người gửi</TableHead>
+             
               <TableHead>Trạng thái đọc</TableHead>
               <TableHead>Thao tác</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {documents && documents.length > 0 ? (
-              documents.map((doc: any) => {
-                const isRead = getReadStatus ? getReadStatus(doc.id) : doc.isRead;
+              documents.map((doc: any, index: number) => {
+                console.log("Document:", doc);
+                // FIX: Use backend data as primary source, frontend state for real-time updates
+                const frontendStatus = getReadStatus ? getReadStatus(doc.id) : undefined;
+                const isRead = frontendStatus !== undefined ? frontendStatus : doc.isRead;
+                  
                 return (
                   <TableRow 
                     key={doc.id} 
@@ -61,6 +67,9 @@ export function InternalDocumentsTable({
                     }`}
                     onClick={() => onDocumentClick(doc)}
                   >
+                    <TableCell className="text-center text-muted-foreground">
+                      {index + 1}
+                    </TableCell>
                     <TableCell className="font-medium">
                       {doc.documentNumber}
                     </TableCell>
@@ -76,6 +85,7 @@ export function InternalDocumentsTable({
                       </div>
                     </TableCell>
                     <TableCell>{doc.senderName}</TableCell>
+
                   <TableCell>
                     {universalReadStatus && getReadStatus ? (
                       // Use Button for read status toggle like văn bản đi
@@ -83,7 +93,7 @@ export function InternalDocumentsTable({
                         variant="ghost"
                         size="sm"
                         className={`${
-                          getReadStatus(doc.id)
+                          isRead
                             ? "text-green-600 hover:text-green-700"
                             : "text-blue-600 hover:text-blue-700"
                         }`}
@@ -94,12 +104,12 @@ export function InternalDocumentsTable({
                           }
                         }}
                       >
-                        {getReadStatus(doc.id) ? "Đã đọc" : "Chưa đọc"}
+                        {isRead ? "Đã đọc" : "Chưa đọc"}
                       </Button>
                     ) : (
                       // Fallback to Badge for backward compatibility
-                      <Badge variant={doc.isRead ? "default" : "outline"}>
-                        {doc.isRead ? "Đã đọc" : "Chưa đọc"}
+                      <Badge variant={isRead ? "default" : "outline"}>
+                        {isRead ? "Đã đọc" : "Chưa đọc"}
                       </Badge>
                     )}
                   </TableCell>

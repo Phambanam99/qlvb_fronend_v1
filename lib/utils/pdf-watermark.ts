@@ -152,11 +152,12 @@ function sanitizeTextForWatermark(text: string): string {
 }
 
 interface WatermarkOptions {
-  text: string;
+  text: string | string[]; // Hỗ trợ cả single line và multiline
   opacity?: number;
   fontSize?: number;
   color?: [number, number, number];
   angle?: number; // Góc xoay theo độ
+  lineSpacing?: number; // Khoảng cách giữa các dòng
 }
 
 /**
@@ -204,42 +205,83 @@ export async function addWatermarkToPdf(
       fontSize = 50,
       color = [0.7, 0.7, 0.7], // Light gray
       angle = -45, // Diagonal angle
+      lineSpacing = fontSize * 1.2, // Default line spacing
     } = options;
 
-    // Sanitize text to remove Vietnamese characters that WinAnsi can't encode
-    const text = sanitizeTextForWatermark(originalText);
+    // Convert text to array and sanitize
+    const textLines = Array.isArray(originalText) 
+      ? originalText.map(line => sanitizeTextForWatermark(line))
+      : [sanitizeTextForWatermark(originalText)];
 
     // Add watermark to each page
     for (const page of pages) {
       const { width, height } = page.getSize();
 
-      // Calculate text dimensions with error handling
-      let textWidth: number;
-      try {
-        textWidth = font.widthOfTextAtSize(text, fontSize);
-      } catch (encodingError) {
-        console.warn(
-          "Font encoding error, using fallback width calculation:",
-          encodingError
-        );
-        // Fallback: estimate width based on character count
-        textWidth = text.length * fontSize * 0.6;
+      // Calculate total text dimensions with error handling
+      let maxTextWidth = 0;
+      let totalTextHeight = textLines.length * fontSize + (textLines.length - 1) * (lineSpacing - fontSize);
+      
+      // Find the widest line for centering calculations
+      for (const line of textLines) {
+        try {
+          const lineWidth = font.widthOfTextAtSize(line, fontSize);
+          maxTextWidth = Math.max(maxTextWidth, lineWidth);
+        } catch (encodingError) {
+          console.warn(
+            "Font encoding error, using fallback width calculation:",
+            encodingError
+          );
+          // Fallback: estimate width based on character count
+          const fallbackWidth = line.length * fontSize * 0.6;
+          maxTextWidth = Math.max(maxTextWidth, fallbackWidth);
+        }
       }
-      const textHeight = fontSize;
 
-      // Position watermark in center
-      const x = (width - textWidth) / 2;
-      const y = (height - textHeight) / 2;
+      // Calculate center position accounting for rotation
+      // When text is rotated, we need to adjust the position so the CENTER of the text
+      // appears at the center of the page, not just the starting point
+      const centerX = width / 2;
+      const centerY = height / 2;
+      
+      // Convert angle to radians
+      const angleRad = (angle * Math.PI) / 180;
+      
+      // Calculate the offset needed to center rotated text
+      // For rotated text, we need to offset by half the text dimensions
+      const offsetX = (maxTextWidth * Math.cos(angleRad) + totalTextHeight * Math.sin(angleRad)) / 2;
+      const offsetY = (maxTextWidth * Math.sin(angleRad) - totalTextHeight * Math.cos(angleRad)) / 2;
+      
+      // Position watermark so its center aligns with page center
+      const baseX = centerX - offsetX;
+      const baseY = centerY - offsetY;
 
-      // Add watermark text
-      page.drawText(text, {
-        x,
-        y,
-        size: fontSize,
-        font,
-        color: rgb(color[0], color[1], color[2]),
-        opacity,
-        rotate: degrees(angle),
+      // Draw each line of text
+      textLines.forEach((line, index) => {
+        // Calculate Y position for each line (top to bottom)
+        const lineY = baseY + totalTextHeight / 2 - (index * lineSpacing);
+        
+        // Center each line horizontally
+        let lineWidth;
+        try {
+          lineWidth = font.widthOfTextAtSize(line, fontSize);
+        } catch (encodingError) {
+          lineWidth = line.length * fontSize * 0.6;
+        }
+        
+        // Adjust X position to center this specific line
+        const lineOffsetX = (lineWidth * Math.cos(angleRad)) / 2;
+        const lineX = centerX - lineOffsetX;
+
+        // Add watermark text
+        page.drawText(line, {
+          x: lineX,
+          y: lineY,
+          size: fontSize,
+          font,
+          color: rgb(color[0], color[1], color[2]),
+          opacity,
+          rotate: degrees(angle),
+        });
       });
 
       // Add additional watermarks for better coverage (optional)
@@ -248,8 +290,8 @@ export async function addWatermarkToPdf(
         for (let j = -1; j <= 1; j++) {
           if (i === 0 && j === 0) continue; // Skip center (already added)
 
-          const offsetX = x + i * spacing;
-          const offsetY = y + j * spacing;
+          const offsetX = baseX + i * spacing;
+          const offsetY = baseY + j * spacing;
 
           // Only add if within page bounds
           if (
@@ -258,14 +300,29 @@ export async function addWatermarkToPdf(
             offsetY > 0 &&
             offsetY < height
           ) {
-            page.drawText(text, {
-              x: offsetX,
-              y: offsetY,
-              size: fontSize * 0.8,
-              font,
-              color: rgb(color[0], color[1], color[2]),
-              opacity: opacity * 0.6,
-              rotate: degrees(angle),
+            // Draw each line for additional watermarks
+            textLines.forEach((line, index) => {
+              const lineY = offsetY + totalTextHeight / 2 - (index * lineSpacing);
+              
+              let lineWidth;
+              try {
+                lineWidth = font.widthOfTextAtSize(line, fontSize);
+              } catch (encodingError) {
+                lineWidth = line.length * fontSize * 0.6;
+              }
+              
+              const lineOffsetX = (lineWidth * Math.cos(angleRad)) / 2;
+              const lineX = offsetX + centerX - baseX - lineOffsetX;
+
+              page.drawText(line, {
+                x: lineX,
+                y: lineY,
+                size: fontSize * 0.8,
+                font,
+                color: rgb(color[0], color[1], color[2]),
+                opacity: opacity * 0.6,
+                rotate: degrees(angle),
+              });
             });
           }
         }
@@ -285,18 +342,20 @@ export async function addWatermarkToPdf(
 }
 
 /**
- * Tạo watermark với tên người dùng và thời gian tải
+ * Tạo watermark với tên người dùng, đơn vị và thời gian tải
  * @param userFullName - Tên đầy đủ của người dùng
+ * @param userDepartment - Đơn vị của người dùng
  * @param pdfData - Blob, ArrayBuffer hoặc Uint8Array của file PDF gốc
  * @param includeTimestamp - Có bao gồm thời gian tải không (mặc định: true)
  * @returns Bytes của file PDF đã có watermark
  */
 export async function addUserWatermarkToPdf(
   userFullName: string,
+  userDepartment: string,
   pdfData: Blob | ArrayBuffer | Uint8Array,
   includeTimestamp: boolean = true
 ): Promise<Uint8Array> {
-  let watermarkText = userFullName;
+  const watermarkLines = [userFullName, userDepartment];
 
   if (includeTimestamp) {
     const now = new Date();
@@ -309,15 +368,16 @@ export async function addUserWatermarkToPdf(
       second: "2-digit",
       timeZone: "Asia/Ho_Chi_Minh",
     });
-    watermarkText = `${userFullName} - ${timestamp}`;
+    watermarkLines.push(timestamp);
   }
 
   return addWatermarkToPdf(pdfData, {
-    text: watermarkText,
+    text: watermarkLines,
     opacity: 0.25,
-    fontSize: 48, // Giảm size một chút để fit text dài hơn
+    fontSize: 42, // Giảm size để fit 3 dòng
     color: [0.6, 0.6, 0.6],
     angle: -45,
+    lineSpacing: 50, // Khoảng cách giữa các dòng
   });
 }
 
@@ -326,18 +386,21 @@ export async function addUserWatermarkToPdf(
  * @param pdfData - Blob, ArrayBuffer hoặc Uint8Array của file PDF gốc
  * @param fileName - Tên file để download
  * @param userFullName - Tên đầy đủ của người dùng
+ * @param userDepartment - Đơn vị của người dùng
  * @param includeTimestamp - Có bao gồm thời gian tải không (mặc định: true)
  */
 export async function downloadPdfWithWatermark(
   pdfData: Blob | ArrayBuffer | Uint8Array,
   fileName: string,
   userFullName: string,
+  userDepartment: string,
   includeTimestamp: boolean = true
 ): Promise<void> {
   try {
     // Add watermark with timestamp
     const watermarkedPdf = await addUserWatermarkToPdf(
       userFullName,
+      userDepartment,
       pdfData,
       includeTimestamp
     );

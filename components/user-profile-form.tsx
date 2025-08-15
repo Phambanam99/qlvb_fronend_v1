@@ -39,12 +39,25 @@ const profileFormSchema = z.object({
   }),
   phone: z.string().optional(),
   position: z.string().optional(),
+  roles: z.array(
+    z.string({
+      required_error: "Vui lòng chọn vai trò",
+    })
+  ).min(1, "Vui lòng chọn ít nhất một vai trò"),
+  departmentId: z.string({
+    required_error: "Vui lòng chọn phòng ban",
+  }).min(1, "Vui lòng chọn phòng ban"),
+  isActive: z.boolean({
+    required_error: "Vui lòng chọn trạng thái tài khoản",
+  }),
 });
 
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
 
 interface UserProfileFormProps {
   user: any;
+  roles: any[];
+  departments: any[];
   onSubmit: (data: ProfileFormValues) => void;
   saving: boolean;
   isProfileEdit?: boolean; // Add flag to indicate if this is for profile editing
@@ -52,43 +65,66 @@ interface UserProfileFormProps {
 
 export default function UserProfileForm({
   user,
+  roles,
+  departments,
   onSubmit,
   saving,
   isProfileEdit = false,
 }: UserProfileFormProps) {
-  const [roles, setRoles] = useState<RoleDTO[]>([]);
-  const [loadingRoles, setLoadingRoles] = useState(true);
+  const [loadingRoles, setLoadingRoles] = useState(false);
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
     defaultValues: {
-      fullName: user.fullName || "",
-      username: user.username || "",
-      email: user.email || "",
-      phone: user.phone || "",
-      position: user.roleDisplayNames?.[0] || "",
+      fullName: "",
+      username: "",
+      email: "",
+      phone: "",
+      position: "",
+      roles: [],
+      departmentId: "",
+      isActive: true,
     },
   });
 
-  // Fetch roles on component mount
-  useEffect(() => {
-    const fetchRoles = async () => {
-      try {
-        setLoadingRoles(true);
-        const rolesData = await rolesAPI.getAllRoles();
-        
-        // Handle both direct array and wrapped response
-        const rolesArray = Array.isArray(rolesData) ? rolesData : (rolesData as any)?.data || [];
-        setRoles(rolesArray);
-      } catch (error) {
-        setRoles([]); // Set empty array on error
-      } finally {
-        setLoadingRoles(false);
-      }
-    };
+  // Handle role change
+  const handleRoleChange = (value: string) => {
+    if (value && value.trim() !== "") {
+      form.setValue("roles", [value]);
+    }
+  };
 
-    fetchRoles();
-  }, []);
+  // Reset form when user data changes
+  useEffect(() => {
+    console.log("UserProfileForm - user data changed:", user);
+    if (user && user.id) { // Make sure user is fully loaded
+      // Handle current role - check multiple sources
+      let currentRole = "";
+      if (user.roles && user.roles.length > 0) {
+        currentRole = user.roles[0].name || user.roles[0];
+      } else if (user.roleId && roles.length > 0) {
+        // Find role by roleId if roles array is available
+        const roleObj = roles.find(r => r.id === user.roleId);
+        if (roleObj) {
+          currentRole = roleObj.name;
+        }
+      }
+      
+      const formData = {
+        fullName: user.fullName || "",
+        username: user.username || "",
+        email: user.email || "",
+        phone: user.phone || "",
+        position: user.roleDisplayNames?.[0] || "",
+        roles: currentRole ? [currentRole] : [],
+        departmentId: user.departmentId?.toString() || "",
+        isActive: user.status === 1 || user.isActive === true,
+      };
+      
+      console.log("UserProfileForm - resetting form with:", formData);
+      form.reset(formData);
+    }
+  }, [user, roles, form]);
 
   return (
     <Form {...form}>
@@ -140,7 +176,7 @@ export default function UserProfileForm({
             )}
           />
 
-          <FormField
+          {/* <FormField
             control={form.control}
             name="position"
             render={({ field }) => (
@@ -186,7 +222,7 @@ export default function UserProfileForm({
                 <FormMessage />
               </FormItem>
             )}
-          />
+          /> */}
           <FormField
             control={form.control}
             name="username"
@@ -203,6 +239,124 @@ export default function UserProfileForm({
               </FormItem>
             )}
           />
+
+          {!isProfileEdit && (
+            <FormField
+              control={form.control}
+              name="roles"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Vai trò</FormLabel>
+                  <Select
+                    onValueChange={handleRoleChange}
+                    value={field.value?.[0] || ""}
+                    defaultValue={field.value?.[0] || ""}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Chọn vai trò" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {Array.isArray(roles) && roles.length > 0 ? (
+                        roles.map((role) => (
+                          <SelectItem
+                            key={role.id}
+                            value={role.name || `role-${role.id}`}
+                          >
+                            {role.displayName}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="no-roles" disabled>
+                          Không có vai trò nào
+                        </SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
+
+          {!isProfileEdit && (
+            <FormField
+              control={form.control}
+              name="departmentId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Phòng ban</FormLabel>
+                  <Select 
+                    onValueChange={field.onChange} 
+                    value={field.value || ""}
+                    defaultValue={field.value || ""}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Chọn phòng ban" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {Array.isArray(departments) && departments.length > 0 ? (
+                        departments.map((department) => (
+                          <SelectItem
+                            key={department.id}
+                            value={department.id.toString()}
+                          >
+                            {department.name}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="no-departments" disabled>
+                          Không có phòng ban nào
+                        </SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
+
+          {!isProfileEdit && (
+            <FormField
+              control={form.control}
+              name="isActive"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Trạng thái tài khoản</FormLabel>
+                  <Select 
+                    onValueChange={(value) => field.onChange(value === "true")} 
+                    value={field.value ? "true" : "false"}
+                    defaultValue={field.value ? "true" : "false"}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Chọn trạng thái" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="true">
+                        <span className="flex items-center gap-2">
+                          <span className="h-2 w-2 rounded-full bg-green-500"></span>
+                          Đang hoạt động
+                        </span>
+                      </SelectItem>
+                      <SelectItem value="false">
+                        <span className="flex items-center gap-2">
+                          <span className="h-2 w-2 rounded-full bg-red-500"></span>
+                          Vô hiệu hóa
+                        </span>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
         </div>
 
         <div className="flex justify-end">

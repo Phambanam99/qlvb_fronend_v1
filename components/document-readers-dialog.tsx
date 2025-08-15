@@ -63,6 +63,13 @@ export function DocumentReadersDialog({
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("all");
 
+  // Auto-load data when dialog opens or documentId changes
+  useEffect(() => {
+    if (documentId) {
+      loadData();
+    }
+  }, [documentId]);
+
   const loadData = async () => {
     try {
       setLoading(true);
@@ -153,7 +160,7 @@ export function DocumentReadersDialog({
       <DialogTrigger asChild>
         {trigger || defaultTrigger}
       </DialogTrigger>
-      <DialogContent className="max-w-4xl h-[80vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-6xl h-[80vh] overflow-hidden flex flex-col">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />

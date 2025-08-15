@@ -20,6 +20,7 @@ import { DocumentPagination } from "./components/DocumentPagination";
 // Import new custom hooks
 import { useInternalIncomingDocuments } from "./hooks/use-internal-incoming-documents";
 import { useExternalIncomingDocuments } from "./hooks/use-external-incoming-documents";
+import { PrintInternalDocumentsButton } from "@/components/print/print-internal-documents-button";
 
 // Custom hooks (keep existing)
 import { useDocumentHandlers } from "./hooks/useDocumentHandlers";
@@ -184,6 +185,51 @@ export default function IncomingDocumentsPage() {
     }
   }, [internalDocsHook.documents, activeTab, universalReadStatus]);
 
+  // Listen for read status updates from detail page or other components
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "documentReadStatusUpdate" && e.newValue) {
+        try {
+          const update = JSON.parse(e.newValue);
+          if (update.documentType === "INCOMING_INTERNAL" && activeTab === "internal") {
+            // Refresh read status for internal documents
+            if (internalDocsHook.documents?.length > 0) {
+              const documentIds = internalDocsHook.documents.map((doc: any) => doc.id);
+              universalReadStatus.loadBatchReadStatus(
+                documentIds,
+                "INCOMING_INTERNAL"
+              );
+            }
+          }
+        } catch (error) {
+          console.error("Error parsing storage update:", error);
+        }
+      }
+    };
+
+    const handleCustomUpdate = () => {
+      // Handle custom document read status update event
+      if (activeTab === "internal" && internalDocsHook.documents?.length > 0) {
+        const documentIds = internalDocsHook.documents.map((doc: any) => doc.id);
+        universalReadStatus.loadBatchReadStatus(
+          documentIds,
+          "INCOMING_INTERNAL"
+        );
+      }
+    };
+
+    // Listen for storage events (cross-tab communication)
+    window.addEventListener("storage", handleStorageChange);
+    
+    // Listen for custom events (same-tab communication)
+    window.addEventListener("documentReadStatusUpdate", handleCustomUpdate);
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("documentReadStatusUpdate", handleCustomUpdate);
+    };
+  }, [internalDocsHook.documents, activeTab, universalReadStatus]);
+
   // Main fetch function
   const fetchDocuments = async (page = currentPage, size = pageSize) => {
     if (activeTab === "internal") {
@@ -321,14 +367,31 @@ export default function IncomingDocumentsPage() {
       if (!currentReadStatus) {
         try {
           await universalReadStatus.markAsRead(doc.id, "INCOMING_INTERNAL");
+          
+          // Trigger storage event to notify other tabs/components
+          if (typeof window !== "undefined") {
+            localStorage.setItem(
+              "documentReadStatusUpdate",
+              JSON.stringify({
+                documentId: doc.id,
+                documentType: "INCOMING_INTERNAL",
+                timestamp: Date.now()
+              })
+            );
+            setTimeout(() => {
+              localStorage.removeItem("documentReadStatusUpdate");
+            }, 100);
+          }
         } catch (markError) {
           // Continue even if marking fails
+          console.error("Error marking as read:", markError);
         }
       }
 
       // Navigate to internal document detail
       window.location.href = `/van-ban-den/noi-bo/${doc.id}`;
     } catch (error) {
+      console.error("Navigation error:", error);
       window.location.href = `/van-ban-den/noi-bo/${doc.id}`;
     }
   };
@@ -337,8 +400,28 @@ export default function IncomingDocumentsPage() {
   const handleInternalReadStatusToggle = async (docId: number) => {
     try {
       await universalReadStatus.toggleReadStatus(docId, "INCOMING_INTERNAL");
+      
+      // Trigger storage event to notify other tabs/components
+      if (typeof window !== "undefined") {
+        localStorage.setItem(
+          "documentReadStatusUpdate",
+          JSON.stringify({
+            documentId: docId,
+            documentType: "INCOMING_INTERNAL",
+            timestamp: Date.now()
+          })
+        );
+        setTimeout(() => {
+          localStorage.removeItem("documentReadStatusUpdate");
+        }, 100);
+      }
     } catch (error) {
       console.error("Error toggling internal read status:", error);
+      toast({
+        title: "Lỗi",
+        description: "Không thể cập nhật trạng thái đọc. Vui lòng thử lại.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -466,6 +549,22 @@ export default function IncomingDocumentsPage() {
 
         {/* Internal Documents Tab */}
         <TabsContent value="internal" className="mt-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <h3 className="text-lg font-medium">Danh sách văn bản nội bộ đến</h3>
+              {/* <PrintInternalDocumentsButton
+                documents={currentDocuments}
+                documentType="received"
+                additionalFilters={{
+                  yearFilter: activeYearFilter,
+                  monthFilter: activeMonthFilter,
+                  searchQuery: internalActiveSearchQuery,
+                }}
+                size="sm"
+                variant="outline"
+              /> */}
+            </div>
+          </div>
           <InternalDocumentsTable
             documents={currentDocuments}
             onDocumentClick={handleInternalDocumentClick}
@@ -473,7 +572,7 @@ export default function IncomingDocumentsPage() {
             universalReadStatus={universalReadStatus}
             onReadStatusToggle={handleInternalReadStatusToggle}
             getReadStatus={(docId: number) => 
-              universalReadStatus.getReadStatus(docId, "INCOMING_INTERNAL")
+              universalReadStatus.getReadStatus(docId, "INCOMING_INTERNAL") || false
             }
           />
         </TabsContent>

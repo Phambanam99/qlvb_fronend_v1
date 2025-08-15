@@ -21,6 +21,7 @@ import { PaginationControls } from "./components/pagination-controls";
 // Import hooks cho documents
 import { useInternalDocuments } from "./hooks/use-internal-documents";
 import { useExternalDocuments } from "./hooks/use-external-documents";
+import { PrintInternalDocumentsButton } from "@/components/print/print-internal-documents-button";
 
 // Import types
 import { InternalDocument } from "@/lib/api/internalDocumentApi";
@@ -277,6 +278,54 @@ export default function OutgoingDocumentsPage() {
     setCurrentPage(0);
   };
 
+  // Cross-tab read status synchronization
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "universalReadStatusUpdate" && e.newValue) {
+        try {
+          const update = JSON.parse(e.newValue);
+          if (update.documentType === "OUTGOING_INTERNAL" || update.documentType === "OUTGOING_EXTERNAL") {
+            // Force refresh of documents to update read status
+            if (activeTab === "internal" && update.documentType === "OUTGOING_INTERNAL") {
+              // Re-trigger internal documents hook
+              setCurrentPage(currentPage);
+            } else if (activeTab === "external" && update.documentType === "OUTGOING_EXTERNAL") {
+              // Re-trigger external documents hook  
+              setCurrentPage(currentPage);
+            }
+          }
+        } catch (error) {
+          // Ignore invalid JSON
+        }
+      }
+    };
+
+    const handleCustomEvent = (e: CustomEvent) => {
+      const update = e.detail;
+      if (update.documentType === "OUTGOING_INTERNAL" || update.documentType === "OUTGOING_EXTERNAL") {
+        // Force refresh of documents to update read status
+        if (activeTab === "internal" && update.documentType === "OUTGOING_INTERNAL") {
+          // Re-trigger internal documents hook
+          setCurrentPage(currentPage);
+        } else if (activeTab === "external" && update.documentType === "OUTGOING_EXTERNAL") {
+          // Re-trigger external documents hook
+          setCurrentPage(currentPage);
+        }
+      }
+    };
+
+    // Listen for storage events (cross-tab)
+    window.addEventListener("storage", handleStorageChange);
+    
+    // Listen for custom events (same tab) 
+    window.addEventListener("documentReadStatusChanged", handleCustomEvent as EventListener);
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("documentReadStatusChanged", handleCustomEvent as EventListener);
+    };
+  }, [activeTab, currentPage]);
+
   // Document click handlers
   const handleInternalDocumentClick = async (doc: InternalDocument) => {
     try {
@@ -288,6 +337,27 @@ export default function OutgoingDocumentsPage() {
       if (!currentReadStatus) {
         try {
           await universalReadStatus.markAsRead(doc.id, "OUTGOING_INTERNAL");
+          
+          // Trigger cross-tab sync
+          if (typeof window !== "undefined") {
+            const eventData = {
+              documentId: doc.id,
+              documentType: "OUTGOING_INTERNAL",
+              isRead: true,
+              timestamp: Date.now(),
+              source: 'list-page-click'
+            };
+            
+            localStorage.setItem("universalReadStatusUpdate", JSON.stringify(eventData));
+            setTimeout(() => {
+              localStorage.removeItem("universalReadStatusUpdate");
+            }, 100);
+            
+            // Also dispatch custom event for immediate sync
+            window.dispatchEvent(new CustomEvent("documentReadStatusChanged", {
+              detail: eventData
+            }));
+          }
         } catch (markError) {
           // Continue even if marking fails
         }
@@ -312,6 +382,27 @@ export default function OutgoingDocumentsPage() {
             Number(doc.id),
             "OUTGOING_EXTERNAL"
           );
+          
+          // Trigger cross-tab sync
+          if (typeof window !== "undefined") {
+            const eventData = {
+              documentId: Number(doc.id),
+              documentType: "OUTGOING_EXTERNAL",
+              isRead: true,
+              timestamp: Date.now(),
+              source: 'list-page-click'
+            };
+            
+            localStorage.setItem("universalReadStatusUpdate", JSON.stringify(eventData));
+            setTimeout(() => {
+              localStorage.removeItem("universalReadStatusUpdate");
+            }, 100);
+            
+            // Also dispatch custom event for immediate sync
+            window.dispatchEvent(new CustomEvent("documentReadStatusChanged", {
+              detail: eventData
+            }));
+          }
         } catch (markError) {
           // Continue even if marking fails
         }
@@ -402,6 +493,22 @@ export default function OutgoingDocumentsPage() {
         </TabsList>
 
         <TabsContent value="internal" className="mt-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <h3 className="text-lg font-medium">Danh sách văn bản nội bộ đi</h3>
+              {/* <PrintInternalDocumentsButton
+                documents={internalDocsHook.documents}
+                documentType="sent"
+                additionalFilters={{
+                  yearFilter: activeYearFilter,
+                  monthFilter: activeMonthFilter,
+                  searchQuery: internalActiveSearchQuery,
+                }}
+                size="sm"
+                variant="outline"
+              /> */}
+            </div>
+          </div>
           <InternalDocumentsTable
             documents={internalDocsHook.documents}
             isLoading={internalDocsHook.loading}

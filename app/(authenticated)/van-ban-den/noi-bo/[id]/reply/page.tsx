@@ -212,8 +212,8 @@ export default function ReplyInternalDocumentPage() {
 
         // Fetch document types
         setIsLoadingDocumentTypes(true);
-        const types_ = await documentTypesAPI.getAllDocumentTypes();
-        const types = types_.data;
+        const types = await documentTypesAPI.getAllDocumentTypes();
+       
         setDocumentTypes(types);
 
         // Fetch departments

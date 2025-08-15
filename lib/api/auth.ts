@@ -34,8 +34,6 @@ export interface RegisterRequest {
   password: string;
   fullName: string;
   email?: string;
-  departmentId: number;
-  roles: string[];
 }
 
 export const authAPI = {

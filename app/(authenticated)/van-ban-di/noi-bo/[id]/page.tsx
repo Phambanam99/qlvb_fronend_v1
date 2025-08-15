@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -53,11 +53,12 @@ import {
   DocumentStats,
 } from "@/lib/api/internalDocumentApi";
 import { useDocumentReadStatus } from "@/hooks/use-document-read-status";
+import { useUniversalReadStatus } from "@/hooks/use-universal-read-status";
 import { downloadPdfWithWatermark, isPdfFile } from "@/lib/utils/pdf-watermark";
+import { useUserDepartmentInfo } from "@/hooks/use-user-department-info";
 import { createPDFBlobUrl, cleanupBlobUrl } from "@/lib/utils/pdf-viewer";
 import { DocumentReadersDialog } from "@/components/document-readers-dialog";
 import { DocumentReadStats } from "@/components/document-read-stats";
-import { outgoingInternalReadStatus } from "@/lib/api/documentReadStatus";
 import { InternalDocumentDetail } from "@/lib/api/internalDocumentApi";
 import { UrgencyBadge } from "@/components/urgency-badge";
 
@@ -66,7 +67,9 @@ export default function InternalDocumentDetailPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { user } = useAuth();
+  const { departmentName } = useUserDepartmentInfo();
   const { markAsRead: globalMarkAsRead } = useDocumentReadStatus();
+  const universalReadStatus = useUniversalReadStatus();
   const [_document, setDocument] = useState<InternalDocumentDetail | null>(
     null
   );
@@ -97,76 +100,143 @@ export default function InternalDocumentDetailPage() {
       cleanupBlobUrl(pdfPreviewUrl);
       setPdfPreviewUrl(null);
     }
-  }, [pdfPreviewOpen, pdfPreviewUrl]);
+  }, [pdfPreviewOpen]);
 
   const documentId = params.id as string;
 
-  useEffect(() => {
-    const fetchDocument = async () => {
-      try {
-        setLoading(true);
-        const response_ = await getDocumentById(Number(documentId));
-        const response = response_.data;
-        setDocument(response);
-    
-        if (response && response.isRead) {
-          globalMarkAsRead(Number(documentId));
-        }
-      } catch (error) {
-        toast({
-          title: "Lỗi",
-          description: "Không thể tải thông tin văn bản. Vui lòng thử lại sau.",
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
+  // Memoize documentId to prevent unnecessary re-renders
+  const memoizedDocumentId = useMemo(() => documentId, [documentId]);
 
-    if (documentId) {
+  const fetchDocument = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response_ = await getDocumentById(Number(memoizedDocumentId));
+      const response = response_.data;
+      setDocument(response);
+  
+      // Mark as read using universal read status for OUTGOING_INTERNAL
+      try {
+        await universalReadStatus.markAsRead(Number(memoizedDocumentId), "OUTGOING_INTERNAL");
+        
+        // Trigger cross-tab sync using storage event
+        if (typeof window !== "undefined") {
+          const eventData = {
+            documentId: Number(memoizedDocumentId),
+            documentType: "OUTGOING_INTERNAL",
+            isRead: true,
+            timestamp: Date.now(),
+            source: 'detail-page-auto-read'
+          };
+          
+          localStorage.setItem("universalReadStatusUpdate", JSON.stringify(eventData));
+          setTimeout(() => {
+            localStorage.removeItem("universalReadStatusUpdate");
+          }, 100);
+          
+          // Also dispatch custom event for immediate sync
+          window.dispatchEvent(new CustomEvent("documentReadStatusChanged", {
+            detail: eventData
+          }));
+        }
+      } catch (readError) {
+        console.warn("Failed to mark document as read:", readError);
+      }
+    } catch (error: any) {
+      // Don't show error toast for 404 - document might not exist
+      if (error?.response?.status !== 404) {
+        console.error("Failed to fetch document:", error);
+        // Only show error for non-404 cases
+      }
+      console.error("Failed to fetch document:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [memoizedDocumentId, universalReadStatus]); // Removed toast dependency
+
+  useEffect(() => {
+    if (memoizedDocumentId) {
       fetchDocument();
     }
-  }, [documentId, toast, globalMarkAsRead]);
+  }, [memoizedDocumentId]); // Removed fetchDocument dependency
 
   // Fetch history, stats, and replies data
+  const fetchHistoryAndStats = useCallback(async () => {
+    if (!memoizedDocumentId) return;
+
+    try {
+      // Fetch history
+      setLoadingHistory(true);
+      const historyResponse_ = await getInternalDocumentHistory(
+        Number(memoizedDocumentId)
+      );
+      // Handle ResponseDTO format: extract data from response
+      const historyResponse = historyResponse_?.data?.data || historyResponse_?.data || [];
+      setDocumentHistory(historyResponse || []);
+
+      // Fetch stats
+      setLoadingStats(true);
+      const statsResponse_ = await getDocumentStats(Number(memoizedDocumentId));
+      // Handle ResponseDTO format: extract data from response
+      const statsResponse = statsResponse_?.data?.data || statsResponse_?.data || null;
+      setDocumentStats(statsResponse);
+
+      // Fetch replies
+      const repliesResponse_ = await getDocumentReplies(Number(memoizedDocumentId));
+      // Handle ResponseDTO format: extract data from response
+      const repliesResponse = repliesResponse_?.data?.data || repliesResponse_?.data || [];
+      setDocumentReplies(repliesResponse || []);
+    } catch (error) {
+      setDocumentHistory([]);
+      setDocumentStats(null);
+      setDocumentReplies([]);
+    } finally {
+      setLoadingHistory(false);
+      setLoadingStats(false);
+    }
+  }, [memoizedDocumentId]);
+
   useEffect(() => {
-    const fetchHistoryAndStats = async () => {
-      if (!documentId || !_document) return;
+    // Only fetch if we have a valid documentId
+    if (memoizedDocumentId) {
+      fetchHistoryAndStats();
+    }
+  }, [memoizedDocumentId]); // Removed fetchHistoryAndStats dependency
 
-      try {
-        // Fetch history
-        setLoadingHistory(true);
-        const historyResponse_ = await getInternalDocumentHistory(
-          Number(documentId)
-        );
-        // Handle ResponseDTO format: extract data from response
-        const historyResponse = historyResponse_?.data?.data || historyResponse_?.data || [];
-        setDocumentHistory(historyResponse || []);
-
-        // Fetch stats
-        setLoadingStats(true);
-        const statsResponse_ = await getDocumentStats(Number(documentId));
-        // Handle ResponseDTO format: extract data from response
-        const statsResponse = statsResponse_?.data?.data || statsResponse_?.data || null;
-        setDocumentStats(statsResponse);
-
-        // Fetch replies
-        const repliesResponse_ = await getDocumentReplies(Number(documentId));
-        // Handle ResponseDTO format: extract data from response
-        const repliesResponse = repliesResponse_?.data?.data || repliesResponse_?.data || [];
-        setDocumentReplies(repliesResponse || []);
-      } catch (error) {
-        setDocumentHistory([]);
-        setDocumentStats(null);
-        setDocumentReplies([]);
-      } finally {
-        setLoadingHistory(false);
-        setLoadingStats(false);
+  // Listen for cross-tab read status updates
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "universalReadStatusUpdate" && e.newValue) {
+        try {
+          const update = JSON.parse(e.newValue);
+          if (update.documentId === Number(memoizedDocumentId) && update.documentType === "OUTGOING_INTERNAL") {
+            // Force re-render to update UI
+            setDocument(prev => prev ? { ...prev, isRead: update.isRead } : prev);
+          }
+        } catch (error) {
+          // Ignore invalid JSON
+        }
       }
     };
 
-         fetchHistoryAndStats();
-   }, [documentId, _document]);
+    const handleCustomEvent = (e: CustomEvent) => {
+      const update = e.detail;
+      if (update.documentId === Number(memoizedDocumentId) && update.documentType === "OUTGOING_INTERNAL") {
+        // Force re-render to update UI
+        setDocument(prev => prev ? { ...prev, isRead: update.isRead } : prev);
+      }
+    };
+
+    // Listen for storage events (cross-tab)
+    window.addEventListener("storage", handleStorageChange);
+    
+    // Listen for custom events (same tab)
+    window.addEventListener("documentReadStatusChanged", handleCustomEvent as EventListener);
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("documentReadStatusChanged", handleCustomEvent as EventListener);
+    };
+  }, [memoizedDocumentId]);
 
    const formatDate = (dateString: string) => {
      try {
@@ -218,6 +288,27 @@ export default function InternalDocumentDetailPage() {
     };
     const info = variants[status as keyof typeof variants] || variants.DRAFT;
     return <Badge variant={info.variant}>{info.text}</Badge>;
+  };
+
+  // Helper function to get unique recipients (remove duplicates)
+  const getUniqueRecipients = (recipients: any[]) => {
+    if (!recipients || !Array.isArray(recipients)) return [];
+    
+    const uniqueMap = new Map();
+    
+    recipients.forEach((recipient) => {
+      if (recipient.userId) {
+        // Individual user: use composite key (departmentId-userId)
+        const key = `${recipient.departmentId}-${recipient.userId}`;
+        uniqueMap.set(key, recipient);
+      } else {
+        // Department: use department ID as key
+        const key = `dept-${recipient.departmentId}`;
+        uniqueMap.set(key, recipient);
+      }
+    });
+    
+    return Array.from(uniqueMap.values());
   };
 
   const getPriorityBadge = (priority: string) => {
@@ -276,9 +367,9 @@ export default function InternalDocumentDetailPage() {
       }
 
       const blob = new Blob([response.data], { type: contentType || 'application/octet-stream' });
-      if (isPdfFile(filename, contentType) && user?.fullName) {
+      if (isPdfFile(filename, contentType) && user?.fullName && departmentName) {
         try {
-          await downloadPdfWithWatermark(blob, filename, user.fullName);
+          await downloadPdfWithWatermark(blob, filename, user.fullName, departmentName);
 
           toast({
             title: "Thành công",
@@ -926,49 +1017,22 @@ export default function InternalDocumentDetailPage() {
             </CardContent>
           </Card>
 
-          {/* Actions */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Thao tác</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Button className="w-full" variant="outline">
-                <Eye className="h-4 w-4 mr-2" />
-                Đánh dấu đã đọc
-              </Button>
-
-              {_document.replyToId && (
-                <Button className="w-full" variant="outline" asChild>
-                  <Link href={`/van-ban-di/noi-bo/${_document.replyToId}`}>
-                    <MessageSquare className="h-4 w-4 mr-2" />
-                    Xem văn bản gốc
-                  </Link>
-                </Button>
-              )}
-
-              <Button className="w-full" variant="outline" asChild>
-                <Link href={`/van-ban-di/noi-bo/${_document.id}/reply`}>
-                  <MessageSquare className="h-4 w-4 mr-2" />
-                  Trả lời văn bản
-                </Link>
-              </Button>
-            </CardContent>
-          </Card>
+         
           {/* Recipients */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Users className="h-5 w-5" />
-                  Danh sách người nhận ({_document.recipients.length})
+                  Danh sách người nhận ({getUniqueRecipients(_document.recipients).length})
                 </div>
-                {_document.recipients.length > RECIPIENTS_PREVIEW_COUNT && (
+                {getUniqueRecipients(_document.recipients).length > RECIPIENTS_PREVIEW_COUNT && (
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => setShowAllRecipients(!showAllRecipients)}
                   >
-                    {showAllRecipients ? "Thu gọn" : `Xem tất cả (${_document.recipients.length})`}
+                    {showAllRecipients ? "Thu gọn" : `Xem tất cả (${getUniqueRecipients(_document.recipients).length})`}
                   </Button>
                 )}
               </CardTitle>
@@ -984,10 +1048,10 @@ export default function InternalDocumentDetailPage() {
                 </TableHeader>
                 <TableBody>
                   {(showAllRecipients 
-                    ? _document.recipients 
-                    : _document.recipients.slice(0, RECIPIENTS_PREVIEW_COUNT)
+                    ? getUniqueRecipients(_document.recipients)
+                    : getUniqueRecipients(_document.recipients).slice(0, RECIPIENTS_PREVIEW_COUNT)
                   ).map((recipient) => (
-                    <TableRow key={recipient.id}>
+                    <TableRow key={`${recipient.departmentId}-${recipient.userId || 'dept'}-${recipient.id}`}>
                       <TableCell className="font-medium">
                         {recipient.departmentName}
                       </TableCell>
@@ -1001,7 +1065,7 @@ export default function InternalDocumentDetailPage() {
               </Table>
               
               {/* Show hidden count when collapsed */}
-              {!showAllRecipients && _document.recipients.length > RECIPIENTS_PREVIEW_COUNT && (
+              {!showAllRecipients && getUniqueRecipients(_document.recipients).length > RECIPIENTS_PREVIEW_COUNT && (
                 <div className="mt-4 text-center">
                   <Button
                     variant="ghost"
@@ -1009,7 +1073,7 @@ export default function InternalDocumentDetailPage() {
                     onClick={() => setShowAllRecipients(true)}
                     className="text-muted-foreground hover:text-foreground"
                   >
-                    + {_document.recipients.length - RECIPIENTS_PREVIEW_COUNT} người nhận khác
+                    + {getUniqueRecipients(_document.recipients).length - RECIPIENTS_PREVIEW_COUNT} người nhận khác
                   </Button>
                 </div>
               )}

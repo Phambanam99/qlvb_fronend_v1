@@ -106,11 +106,10 @@ export default function CreateExternalOutgoingDocumentPage() {
         setIsLoadingApprovers(true);
         const leaderUsers_ = await usersAPI.getUserForApproval(user.id);
         const leaderUsers = leaderUsers_.data;
-        const seniorLeadersResponse_ =  await usersAPI.getUsersByRoleAndDepartment(
+        const seniorLeadersResponse =  await usersAPI.getUsersByRoleAndDepartment(
             ["ROLE_SENIOR_LEADER"],
             0 // 0 to get from all departments
           );
-        const seniorLeadersResponse = seniorLeadersResponse_.data;
         const allApprovers = [...leaderUsers, ...seniorLeadersResponse];
         const uniqueApprovers = allApprovers.filter(
           (approver, index, self) =>

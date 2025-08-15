@@ -45,8 +45,8 @@ export function useDocumentTypeManagement() {
       });
 
       // Refresh the list
-      const updatedTypes_ = await documentTypesAPI.getAllDocumentTypes();
-      const updatedTypes = updatedTypes_.data;
+      const updatedTypes = await documentTypesAPI.getAllDocumentTypes();
+     
 
       // Reset and close dialog
       setNewDocumentType("");

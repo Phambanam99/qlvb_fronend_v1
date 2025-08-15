@@ -48,8 +48,7 @@ export function DocumentTypeManager({
     const fetchDocumentTypes = async () => {
       try {
         setIsLoadingDocumentTypes(true);
-        const types_ = await documentTypesAPI.getAllDocumentTypes();
-        const types = types_.data;
+        const types = await documentTypesAPI.getAllDocumentTypes();
         setDocumentTypes(types);
       } catch (error) {
         addNotification({

@@ -65,7 +65,10 @@ export const usersAPI = {
     const response = await api.post("/auth/register", userData);
     return response.data;
   },
-
+ createUser_: async (userData: Partial<UserDTO>): Promise<UserDTO> => {
+    const response = await api.post("/users", userData);
+    return response.data;
+  },
   /**
    * Update user
    * @param id User ID
@@ -122,7 +125,7 @@ export const usersAPI = {
     const response = await api.post(`/users/${id}/check-password`, {
       password,
     });
-    return response.data;
+    return response.data.data;
   },
 
   // Thêm phương thức mới để tương thích với code hiện tại
@@ -145,7 +148,7 @@ export const usersAPI = {
         indexes: null, // <- điểm mấu chốt: bỏ [] khi serialize array
       },
     });
-    return response.data;
+    return response.data.data;
   },
 
   // approve user
