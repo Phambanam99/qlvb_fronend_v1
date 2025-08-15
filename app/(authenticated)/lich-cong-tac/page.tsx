@@ -1,11 +1,13 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useScheduleData } from "@/hooks/use-schedule-data";
 import { useScheduleFilters } from "@/hooks/use-schedule-filters";
 import { ScheduleHeader } from "@/components/schedule/schedule-header";
 import { ScheduleFilters } from "@/components/schedule/schedule-filters";
 import { ScheduleTabs } from "@/components/schedule/schedule-tabs";
+import { useState } from "react";
 
 export default function SchedulesPage() {
   // Custom hooks for data management
@@ -42,8 +44,6 @@ export default function SchedulesPage() {
     
     // Existing filters
     departmentFilter,
-    statusFilter,
-    setStatusFilter,
     setDepartmentFilter,
     handleApplyFilters,
     isFiltering,
@@ -80,6 +80,25 @@ export default function SchedulesPage() {
     );
   };
 
+  // View mode and computed date from filters
+  const [viewMode, setViewMode] = useState<"week" | "month" | "table">("week");
+  const computeDateFromFilters = () => {
+    const yearNum = parseInt(yearFilter || "" + new Date().getFullYear());
+    if (viewMode === "week" && weekFilter && weekFilter !== "all") {
+      const weekNum = parseInt(weekFilter);
+      const jan1 = new Date(yearNum, 0, 1);
+      const jan1Day = jan1.getDay() || 7;
+      const daysOffset = (weekNum - 1) * 7 - (jan1Day - 1);
+      return new Date(yearNum, 0, 1 + daysOffset);
+    }
+    if (viewMode === "month" && monthFilter && monthFilter !== "all") {
+      const monthNum = parseInt(monthFilter);
+      return new Date(yearNum, monthNum - 1, 1);
+    }
+    return new Date();
+  };
+  const selectedDate = computeDateFromFilters();
+
   return (
     <div className="space-y-6">
       <ScheduleHeader
@@ -105,8 +124,6 @@ export default function SchedulesPage() {
         onYearFilterChange={setYearFilter}
         
         // Existing filters
-        statusFilter={statusFilter}
-        onStatusFilterChange={setStatusFilter}
         departmentFilter={departmentFilter}
         onDepartmentFilterChange={setDepartmentFilter}
         visibleDepartments={visibleDepartments}
@@ -115,13 +132,21 @@ export default function SchedulesPage() {
         isFiltering={isFiltering}
       />
 
-      {/* Chỉ sử dụng bảng - không cần ViewModeSelector */}
+      {/* View mode toggler for Week/Month */}
+      <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as any)}>
+        <TabsList>
+          <TabsTrigger value="week">Tuần</TabsTrigger>
+          <TabsTrigger value="month">Tháng</TabsTrigger>
+          <TabsTrigger value="table">Danh sách</TabsTrigger>
+        </TabsList>
+      </Tabs>
+
       <ScheduleTabs
         schedules={schedules}
         isLoading={loading}
-        viewMode="table"
+        viewMode={viewMode}
+        date={selectedDate}
         departmentFilter={departmentFilter}
-        getSchedulesByStatus={getSchedulesByStatus}
         currentPage={currentPage}
         pageSize={pageSize}
         totalElements={totalElements}

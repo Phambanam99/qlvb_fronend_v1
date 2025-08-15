@@ -17,6 +17,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { constructFromSymbol } from "date-fns/constants";
 
 interface ScheduleWeekViewProps {
@@ -119,6 +120,7 @@ export default function ScheduleWeekView({
           departmentId: schedule.departmentId, // Thêm departmentId để lọc theo ID
           type: event.type || "internal",
           description: event.description || "",
+          participants: event.participantNames || [],
           status: schedule.status,
         });
       });
@@ -180,86 +182,97 @@ export default function ScheduleWeekView({
 
   return (
     <TooltipProvider>
-      <div className="space-y-6">
-        <div className="grid grid-cols-7 gap-2">
-          {weekDays.map((day, index) => (
-            <div
-              key={index}
-              className={cn(
-                "flex flex-col items-center p-2 rounded-md",
-                isToday(day) ? "bg-primary/10 font-bold" : ""
-              )}
-            >
-              <div className="text-sm font-medium">{dayNames[index]}</div>
-              <div className="text-sm">
-                {day.getDate()}/{day.getMonth() + 1}
+      <div className="space-y-4">
+        {weekDays.map((day, index) => {
+          const dayEvents = getDayEvents(day);
+          const labelClasses = cn(
+            "w-28 shrink-0 text-sm text-right pr-3",
+            isToday(day) ? "font-bold text-primary" : "text-muted-foreground"
+          );
+          return (
+            <div key={index} className="flex items-start gap-2">
+              <div className={labelClasses}>
+                <div>{dayNames[index]}</div>
+                <div>
+                  {day.getDate()}/{day.getMonth() + 1}
+                </div>
+              </div>
+              <div className="flex-1">
+                <div className={cn(
+                  "border rounded-lg bg-card/50 hover:bg-card transition-colors",
+                  "p-2"
+                )}>
+                  {dayEvents.length === 0 ? (
+                    <div className="h-[52px] flex items-center text-sm text-muted-foreground">
+                      Không có lịch
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <div className="flex gap-2 min-h-[52px]">
+                        {dayEvents.map((event) => {
+                          const participantNames: string[] = event.participants || [];
+                          const shown = participantNames.slice(0, 2).join(", ");
+                          const extra = participantNames.length - 2;
+                          return (
+                            <Tooltip key={event.id}>
+                              <TooltipTrigger asChild>
+                                <Card className="min-w-[240px] max-w-[320px] overflow-hidden shadow-sm hover:shadow transition-shadow">
+                                  <CardContent className="p-2 space-y-1">
+                                    <div className="text-xs font-medium text-primary">
+                                      {event.startTime} - {event.endTime}
+                                    </div>
+                                    <div className="text-sm font-medium truncate">
+                                      {event.title}
+                                    </div>
+                                    <div className="text-xs text-muted-foreground truncate">
+                                      {event.location}
+                                    </div>
+                                    <div className="text-xs truncate">
+                                      {participantNames.length > 0 ? (
+                                        <span>
+                                          {shown}
+                                          {extra > 0 ? ` +${extra}` : ""}
+                                        </span>
+                                      ) : (
+                                        <span className="text-muted-foreground">Không có người tham dự</span>
+                                      )}
+                                    </div>
+                                    <div className="flex justify-between items-center pt-1">
+                                      {getEventTypeBadge(event.type)}
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-6 px-2 rounded-full"
+                                        asChild
+                                      >
+                                        <Link href={`/lich-cong-tac/su-kien/${event.id}`}>
+                                          Chi tiết
+                                        </Link>
+                                      </Button>
+                                    </div>
+                                  </CardContent>
+                                </Card>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <div className="text-sm font-medium">{event.title}</div>
+                                <div className="text-xs text-muted-foreground">{event.description}</div>
+                                {participantNames.length > 0 && (
+                                  <div className="mt-1 text-xs">
+                                    Người tham dự: {participantNames.join(", ")}
+                                  </div>
+                                )}
+                              </TooltipContent>
+                            </Tooltip>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-7 gap-2">
-          {weekDays.map((day, index) => {
-            const dayEvents = getDayEvents(day);
-            return (
-              <div
-                key={index}
-                className="min-h-[200px] border rounded-lg p-2 bg-card/50 hover:bg-card transition-colors"
-              >
-                {dayEvents.length === 0 ? (
-                  <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
-                    Không có lịch
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {dayEvents.map((event) => (
-                      <Tooltip key={event.id}>
-                        <TooltipTrigger asChild>
-                          <Card className="overflow-hidden shadow-sm hover:shadow transition-shadow">
-                            <CardContent className="p-2">
-                              <div className="text-xs font-medium text-primary">
-                                {event.startTime} - {event.endTime}
-                              </div>
-                              <div className="text-sm font-medium truncate">
-                                {event.title}
-                              </div>
-                              <div className="text-xs text-muted-foreground truncate">
-                                {event.location}
-                              </div>
-                              <div className="mt-1 flex justify-between items-center">
-                                {getEventTypeBadge(event.type)}
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-6 px-2 rounded-full"
-                                  asChild
-                                >
-                                  <Link
-                                    href={`/lich-cong-tac/su-kien/${event.id}`}
-                                  >
-                                    Chi tiết
-                                  </Link>
-                                </Button>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <div className="text-sm font-medium">
-                            {event.title}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {event.description}
-                          </div>
-                        </TooltipContent>
-                      </Tooltip>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
+          );
+        })}
       </div>
     </TooltipProvider>
   );

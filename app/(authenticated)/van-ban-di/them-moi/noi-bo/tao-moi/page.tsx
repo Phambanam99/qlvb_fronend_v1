@@ -827,12 +827,12 @@ export default function CreateInternalOutgoingDocumentPage() {
               <Card className="h-full">
                 <CardContent className="pt-6 h-full">
                   <div className="space-y-2 h-full flex flex-col">
-                    <Label htmlFor="content">Nội dung văn bản</Label>
+                    <Label htmlFor="content">Ý kiến chỉ đạo/Ghi chú</Label>
                     <div className="flex-1">
                       <RichTextEditor
                         content={formData.summary}
                         onChange={handleRichTextChange("content")}
-                        placeholder="Nhập nội dung văn bản"
+                        placeholder="Nhập ý kiến chỉ đạo/Ghi chú" 
                         minHeight="500px"
                       />
                     </div>
@@ -952,7 +952,7 @@ export default function CreateInternalOutgoingDocumentPage() {
           </div>
 
           {/* Notes Section */}
-          <Card>
+          {/* <Card>
             <CardContent className="pt-6">
               <div className="space-y-2">
                 <Label htmlFor="note">Ghi chú</Label>
@@ -964,7 +964,7 @@ export default function CreateInternalOutgoingDocumentPage() {
                 />
               </div>
             </CardContent>
-          </Card>
+          </Card> */}
 
           {/* File Attachments Section */}
           <Card>

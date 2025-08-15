@@ -11,6 +11,9 @@ body {
     text-wrap: balance;
   }
 }
+@import "@fullcalendar/core/index.css";
+@import "@fullcalendar/daygrid/index.css";
+@import "@fullcalendar/timegrid/index.css";
 
 @layer base {
   :root {

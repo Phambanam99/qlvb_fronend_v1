@@ -2,6 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
+
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -257,4 +258,11 @@
 .ProseMirror {
   word-wrap: break-word;
   overflow-wrap: break-word;
+}
+
+/* FullCalendar: show pointer cursor on events */
+.fc .fc-event,
+.fc .fc-daygrid-event,
+.fc .fc-timegrid-event {
+	cursor: pointer;
 }

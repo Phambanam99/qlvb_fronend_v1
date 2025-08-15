@@ -323,24 +323,26 @@ function DepartmentNode({
                 // Sort users by leadership role priority
                 .sort((a, b) => {
                   const getRolePriority = (user: UserDTO): number => {
-                    const role = user.roles[0];
-                    if (!role) return 999; // Non-leadership roles go last
-                   
-                    switch (role) {
-                      case 'ROLE_CUC_TRUONG': return 1;
-                      case 'ROLE_CHINH_UY': return 2;
-                      case 'ROLE_PHO_CUC_TRUONG': return 3;
-                      case 'ROLE_PHO_CHINH_UY': return 4;
-                      case 'ROLE_TRUONG_PHONG': return 5;
-                      case 'ROLE_CUM_TRUONG': return 5;
-                      case 'ROLE_PHO_PHONG': return 6;
-                      case 'ROLE_CUM_PHO': return 6;
-                      
+                    const rolePriorityMap: Record<string, number> = {
+                      ROLE_CUC_TRUONG: 1,
+                      ROLE_CHINH_UY: 2,
+                      ROLE_PHO_CUC_TRUONG: 3,
+                      ROLE_PHO_CHINH_UY: 3,
+                      ROLE_TRUONG_PHONG: 5,
+                      ROLE_CUM_TRUONG: 5,
+                      ROLE_PHO_PHONG: 6,
+                      ROLE_CUM_PHO: 6,
+                      ROLE_TRAM_TRUONG: 7,
+                      ROLE_PHO_TRAM_TRUONG: 8,
+                    };
 
-                      default: return 999;
-                    }
+                    if (!user.roles || user.roles.length === 0) return 999;
+
+                    // Tính tổng điểm tất cả các role
+                    return user.roles.reduce((sum, role) => {
+                      return sum + (rolePriorityMap[role] ?? 999);
+                    }, 0);
                   };
-                  
                   return getRolePriority(a) - getRolePriority(b);
                 })
                 .map((user) => {
