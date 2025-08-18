@@ -18,6 +18,7 @@ export interface UserDTO {
   updatedAt: string;
   roleDisplayNames?: string[];
   status?: number;
+  isCommanderOfUnit?: boolean;
 }
 
 export const usersAPI = {
@@ -171,7 +172,10 @@ export const usersAPI = {
    * @param userData User data to update
    * @returns Updated user data
    */
-  updateProfile: async (id: string | number, userData: Partial<UserDTO>): Promise<UserDTO> => {
+  updateProfile: async (
+    id: string | number,
+    userData: Partial<UserDTO>
+  ): Promise<UserDTO> => {
     const response = await api.put(`/users/${id}/update`, userData);
     return response.data.data; // Handle ResponseDTO wrapper
   },

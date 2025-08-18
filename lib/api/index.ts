@@ -21,6 +21,7 @@ export * from "./permissions";
 export * from "./types";
 export * from "./senders";
 export * from "./document-types";
+export * from "./equipment";
 
 // Re-export the API config
 export { default as apiConfig } from "./config";
