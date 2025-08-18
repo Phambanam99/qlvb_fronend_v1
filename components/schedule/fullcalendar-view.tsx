@@ -103,24 +103,26 @@ export default function FullCalendarView({ mode, date, schedules, onEventClick }
 					const endStr = ev.end
 						? ev.end.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", hour12: false })
 						: "";
-					return {
-						domNodes: [
-							(() => {
-								const container = document.createElement("div");
-								container.className = "space-y-1";
-								container.innerHTML = `
-									<div class="text-[11px] font-semibold text-primary">${startStr}${endStr ? " - " + endStr : ""}</div>
-									<div class="text-sm font-medium">${ev.title || "(Không tiêu đề)"}</div>
-									${ext.location ? `<div class="text-xs text-muted-foreground">Địa điểm: ${ext.location}</div>` : ""}
-									${participants.length ? `<div class="text-xs">Thành phần: ${participants.join(", ")}</div>` : ""}
-									${ext.description ? `<div class="text-xs whitespace-pre-wrap">${ext.description}</div>` : ""}
-								`;
-								return container;
-							})(),
-						],
-					};
+					return (
+						<div className="space-y-1">
+							<div className="text-[11px] font-semibold text-primary">
+								{startStr}
+								{endStr ? ` - ${endStr}` : ""}
+							</div>
+							<div className="text-sm font-medium">{ev.title || "(Không tiêu đề)"}</div>
+							{ext.location ? (
+								<div className="text-xs text-muted-foreground">Địa điểm: {ext.location}</div>
+							) : null}
+							{participants.length ? (
+								<div className="text-xs">Thành phần: {participants.join(", ")}</div>
+							) : null}
+							{ext.description ? (
+								<div className="text-xs whitespace-pre-wrap">{ext.description}</div>
+							) : null}
+						</div>
+					);
 				}
-				return {};
+				return undefined;
 			}}
 			eventDidMount={(info: any) => {
 				const { extendedProps } = info.event;

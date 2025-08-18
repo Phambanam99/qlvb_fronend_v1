@@ -157,13 +157,13 @@ export const Header = () => {
   );
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur-sm supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
       <div className="flex h-16 items-center px-4">
         {/* Logo */}
         <div className="mr-6">
           <Link href="/" className="flex items-center space-x-2">
-            <FileText className="h-6 w-6 text-primary" />
-            <span className="font-bold text-lg text-primary hidden md:block">
+            <FileText className="h-6 w-6 text-primary drop-shadow-sm" />
+            <span className="font-bold text-lg text-primary hidden md:block tracking-tight">
               Quản lý Văn bản
             </span>
           </Link>
@@ -200,7 +200,7 @@ export const Header = () => {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-colors hover:bg-accent hover:text-accent-foreground",
+                  "flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-all hover:bg-accent hover:text-accent-foreground hover:shadow-sm",
                   isActive
                     ? "bg-accent text-accent-foreground"
                     : "text-muted-foreground"
@@ -222,7 +222,7 @@ export const Header = () => {
                 <Button
                   variant="ghost"
                   className={cn(
-                    "flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-colors hover:bg-accent hover:text-accent-foreground",
+                    "flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-all hover:bg-accent hover:text-accent-foreground hover:shadow-sm",
                     isDataLibraryActive
                       ? "bg-accent text-accent-foreground"
                       : "text-muted-foreground"
@@ -361,7 +361,7 @@ export const Header = () => {
                 variant="ghost"
                 className="relative h-9 w-9 rounded-full hover:bg-primary/10"
               >
-                <Avatar className="h-9 w-9 border border-primary/20">
+                <Avatar className="h-9 w-9 border border-primary/20 shadow-sm">
                   <AvatarImage
                     src="/placeholder.svg?height=36&width=36"
                     alt="Avatar"
