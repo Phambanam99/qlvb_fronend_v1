@@ -65,38 +65,7 @@ export const Header = () => {
       href: "/van-ban-di",
       icon: Send,
       permission: null, // Tất cả người dùng đều có thể xem
-    },
-    {
-      title: "Kế hoạch",
-      href: "/ke-hoach",
-      icon: ClipboardList,
-      permission: null, // Tất cả người dùng đều có thể xem
-    },
-    {
-      title: "Lịch công tác",
-      href: "/lich-cong-tac",
-      icon: Calendar,
-      permission: null, // Tất cả người dùng đều có thể xem
-    },
-      {
-      title: "Tiện ích",
-      href: "/tien-ich",
-      icon: Wrench,
-      permission: null, // Tất cả người dùng đều có thể xem
-    },
-     {
-      title: "Web cũ",
-      href: "http://192.168.88.130/dnn",
-      icon: Wrench,
-      permission: null, // Tất cả người dùng đều có thể xem
-      external: true, // Đánh dấu là external link
-    },
-    // {
-    //   title: "Cài đặt",
-    //   href: "/cai-dat",
-    //   icon: Settings,
-    //   permission: "ROLE_ADMIN",
-    // },
+    }
   ];
 
   // Định nghĩa các mục trong Thư viện dữ liệu
@@ -134,6 +103,11 @@ export const Header = () => {
     {
       title: "Quản lý hướng dẫn",
       href: "/admin/guide-files",
+      icon: HelpCircle,
+      permission: "ROLE_ADMIN",
+    },{
+      title: "Quản lý vũ khí trang bị",
+      href: "/vu-khi-trang-bi",
       icon: HelpCircle,
       permission: "ROLE_ADMIN",
     },
