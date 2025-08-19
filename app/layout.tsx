@@ -38,7 +38,7 @@ export default function RootLayout({
                   </div>
 
                   {/* Content container */}
-                  <main className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4">
+                  <main className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-4 pt-0">
                     {children}
                   </main>
                   <Toaster />

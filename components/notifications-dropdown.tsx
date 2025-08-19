@@ -53,11 +53,11 @@ export default function NotificationsDropdown() {
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
         <Button
-          variant="outline"
+          variant="ghost"
           size="icon"
-          className="relative rounded-full border-primary/20 hover:bg-primary/10 hover:text-primary"
+          className="relative rounded-full border border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white"
         >
-          <Bell className="h-4 w-4" />
+          <Bell className="h-4 w-4 text-white" />
           {unreadCount > 0 && (
             <Badge
               className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 p-0 text-[10px] text-white"

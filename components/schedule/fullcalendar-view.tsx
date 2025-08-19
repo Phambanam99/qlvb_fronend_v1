@@ -48,11 +48,30 @@ export default function FullCalendarView({ mode, date, schedules, onEventClick }
 	const initialView = mode === "week" ? "timeGridWeek" : "dayGridMonth";
 	const initialDate = useMemo(() => date.toISOString().split("T")[0], [date]);
 
+	// Vibrant color palette for distinct schedules
+	const colorPalette = useMemo(
+		() => [
+			"#2563eb", // blue-600
+			"#16a34a", // green-600
+			"#d97706", // amber-600
+			"#dc2626", // red-600
+			"#7c3aed", // violet-600
+			"#0891b2", // cyan-600
+			"#9333ea", // purple-600
+			"#059669", // emerald-600
+			"#f59e0b", // amber-500
+			"#ea580c", // orange-600
+		],
+		[]
+	);
+
 	const events = useMemo(() => {
 		const list: any[] = [];
 		if (!Array.isArray(schedules)) return list;
 		schedules.forEach((schedule: any) => {
 			if (!Array.isArray(schedule.events)) return;
+			const colorIndex = Math.abs(parseInt(String(schedule?.id ?? 0), 10)) % colorPalette.length;
+			const backgroundColor = colorPalette[colorIndex];
 			schedule.events.forEach((ev: any) => {
 				if (!ev?.date) return;
 				const start = `${ev.date}T${(ev.startTime || "08:00").substring(0,5)}`;
@@ -62,6 +81,9 @@ export default function FullCalendarView({ mode, date, schedules, onEventClick }
 					title: ev.title || "(Không tiêu đề)",
 					start,
 					end,
+					backgroundColor,
+					borderColor: backgroundColor,
+					textColor: "#ffffff",
 					extendedProps: {
 						scheduleId: schedule.id,
 						location: ev.location,
@@ -73,7 +95,7 @@ export default function FullCalendarView({ mode, date, schedules, onEventClick }
 			});
 		});
 		return list;
-	}, [schedules]);
+	}, [schedules, colorPalette]);
 
 	return (
 		<>
@@ -91,27 +113,30 @@ export default function FullCalendarView({ mode, date, schedules, onEventClick }
 			dayHeaderFormat={{ weekday: "short", day: "2-digit", month: "2-digit" }}
 			slotLabelFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
 			eventTimeFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
+			eventClassNames={() => ["!rounded-md", "!border-0"]}
 			eventContent={(arg: any) => {
-				// Hiển thị đầy đủ nội dung trên view ngày
-				if (arg?.view?.type === "timeGridDay") {
-					const ev = arg.event;
-					const ext = ev.extendedProps || {};
+				const viewType = arg?.view?.type;
+				const ev = arg.event;
+				const ext = ev.extendedProps || {};
+				const startStr = ev.start
+					? ev.start.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", hour12: false })
+					: "";
+				const endStr = ev.end
+					? ev.end.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", hour12: false })
+					: "";
+
+				// Day view: show full details
+				if (viewType === "timeGridDay") {
 					const participants: string[] = Array.isArray(ext.participants) ? ext.participants : [];
-					const startStr = ev.start
-						? ev.start.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", hour12: false })
-						: "";
-					const endStr = ev.end
-						? ev.end.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", hour12: false })
-						: "";
 					return (
 						<div className="space-y-1">
-							<div className="text-[11px] font-semibold text-primary">
+							<div className="text-[11px] font-semibold opacity-90">
 								{startStr}
 								{endStr ? ` - ${endStr}` : ""}
 							</div>
 							<div className="text-sm font-medium">{ev.title || "(Không tiêu đề)"}</div>
 							{ext.location ? (
-								<div className="text-xs text-muted-foreground">Địa điểm: {ext.location}</div>
+								<div className="text-xs opacity-90">Địa điểm: {ext.location}</div>
 							) : null}
 							{participants.length ? (
 								<div className="text-xs">Thành phần: {participants.join(", ")}</div>
@@ -122,26 +147,33 @@ export default function FullCalendarView({ mode, date, schedules, onEventClick }
 						</div>
 					);
 				}
+
+				// Week view: show time + title
+				if (viewType === "timeGridWeek") {
+					return (
+						<div className="leading-tight">
+							<div className="text-[11px] font-semibold opacity-90">
+								{startStr}
+								{endStr ? ` - ${endStr}` : ""}
+							</div>
+							<div className="text-[12px] font-medium truncate">{ev.title || "(Không tiêu đề)"}</div>
+						</div>
+					);
+				}
+
+				// Month view: compact title (and time if fits)
+				if (viewType === "dayGridMonth") {
+					return (
+						<div className="text-[12px] font-medium truncate">
+							{ev.title || "(Không tiêu đề)"}
+						</div>
+					);
+				}
+
 				return undefined;
 			}}
-			eventDidMount={(info: any) => {
-				const { extendedProps } = info.event;
-				const participants = Array.isArray(extendedProps?.participants)
-					? extendedProps.participants.join(", ")
-					: "";
-				const details = [
-					`Tiêu đề: ${info.event.title || "(Không tiêu đề)"}`,
-					`Thời gian: ${info.event.startStr?.slice(11,16)} - ${info.event.endStr?.slice(11,16)}`,
-					`Địa điểm: ${extendedProps?.location || "-"}`,
-					participants ? `Thành phần: ${participants}` : undefined,
-					extendedProps?.description ? `Mô tả: ${extendedProps.description}` : undefined,
-				]
-					.filter(Boolean)
-					.join("\n");
-				if (details) {
-					info.el.setAttribute("title", details);
-				}
-			}}
+			// Remove native title attribute to avoid double tooltips with our custom hover
+			eventDidMount={() => {}}
 			eventMouseEnter={(arg: any) => {
 				// Ở view ngày, đã hiện đầy đủ nội dung nên không cần tooltip hover
 				if (arg?.view?.type === "timeGridDay") {

@@ -123,6 +123,28 @@ const LEADERSHIP_ROLES = [
   "ROLE_TRAM_TRUONG"
 ];
 
+type FormDataState = {
+  documentNumber: string;
+  signingDate: Date;
+  documentType: string;
+  title: string;
+  summary: string;
+  urgencyLevel: UrgencyLevel;
+  notes: string;
+  signer: string;
+  draftingDepartmentId: number | undefined;
+  securityLevel: 'NORMAL' | 'CONFIDENTIAL' | 'SECRET' | 'TOP_SECRET';
+  documentSignerId: number | undefined;
+  isSecureTransmission: boolean;
+  processingDeadline: Date | undefined;
+  issuingAgency: string;
+  distributionType: 'REGULAR' | 'CONFIDENTIAL' | 'COPY_BOOK' | 'PARTY' | 'STEERING_COMMITTEE';
+  numberOfCopies: number | undefined;
+  numberOfPages: number | undefined;
+  noPaperCopy: boolean;
+  scheduledTime: string;
+};
+
 export default function CreateInternalOutgoingDocumentPage() {
   const router = useRouter();
   const { user } = useAuth();
@@ -156,13 +178,14 @@ export default function CreateInternalOutgoingDocumentPage() {
   const [isLoadingLeadershipUsers, setIsLoadingLeadershipUsers] = useState(false);
 
   // State for form data
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormDataState>({
     documentNumber: "",
     signingDate: new Date(),
     documentType: "",
     title: "",
     summary: "",
     urgencyLevel: URGENCY_LEVELS.KHAN,
+    scheduledTime: "",
     notes: "",
     signer: "",
     draftingDepartmentId: undefined as number | undefined,
@@ -288,6 +311,11 @@ export default function CreateInternalOutgoingDocumentPage() {
     setFormData((prev) => ({ ...prev, [name]: numValue }));
   };
 
+  const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { value } = e.target; // expected format HH:MM
+    setFormData((prev) => ({ ...prev, scheduledTime: value }));
+  };
+
   const handleCheckboxChange = (name: string) => (checked: boolean) => {
     setFormData((prev) => ({ ...prev, [name]: checked }));
   };
@@ -391,6 +419,23 @@ export default function CreateInternalOutgoingDocumentPage() {
       fileUpload.setUploading(true);
       fileUpload.resetUpload();
 
+      // Combine processing deadline date with scheduled time if needed
+      let combinedProcessingDeadline: string | undefined = formData.processingDeadline?.toISOString();
+      if (formData.urgencyLevel === URGENCY_LEVELS.HOA_TOC_HEN_GIO && formData.scheduledTime) {
+        const baseDate = formData.processingDeadline || formData.signingDate || new Date();
+        const [hh, mm] = formData.scheduledTime.split(":");
+        const withTime = new Date(
+          baseDate.getFullYear(),
+          baseDate.getMonth(),
+          baseDate.getDate(),
+          Number(hh || 0),
+          Number(mm || 0),
+          0,
+          0
+        );
+        combinedProcessingDeadline = withTime.toISOString();
+      }
+
       const documentData: CreateInternalDocumentDTO =  {
         documentNumber: formData.documentNumber,
         title: formData.title,
@@ -404,7 +449,7 @@ export default function CreateInternalOutgoingDocumentPage() {
         securityLevel: formData.securityLevel,
         documentSignerId: formData.documentSignerId,
         isSecureTransmission: formData.isSecureTransmission,
-        processingDeadline: formData.processingDeadline?.toISOString(),
+        processingDeadline: combinedProcessingDeadline,
         issuingAgency: formData.issuingAgency,
         distributionType: formData.distributionType,
         numberOfCopies: formData.numberOfCopies,
@@ -619,7 +664,7 @@ export default function CreateInternalOutgoingDocumentPage() {
                       <SelectValue placeholder="Chọn độ ưu tiên" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value={URGENCY_LEVELS.KHAN}>Khẩn</SelectItem>
+                      <SelectItem value={URGENCY_LEVELS.KHAN}>Thường</SelectItem>
                       <SelectItem value={URGENCY_LEVELS.THUONG_KHAN}>
                         Thượng khẩn
                       </SelectItem>
@@ -631,7 +676,21 @@ export default function CreateInternalOutgoingDocumentPage() {
                       </SelectItem>
                     </SelectContent>
                   </Select>
+                 
                 </div>
+                 {formData.urgencyLevel === URGENCY_LEVELS.HOA_TOC_HEN_GIO && (
+                    <div className="space-y-2">
+                      <Label htmlFor="scheduledTime">Thời gian</Label>
+                      <Input
+                        id="scheduledTime"
+                        name="scheduledTime"
+                        type="time"
+                        value={formData.scheduledTime}
+                        onChange={handleTimeChange}
+                      />
+                  
+                    </div>
+                  )}
               </div>
 
               {/* Additional Information - Merged */}
@@ -881,6 +940,7 @@ export default function CreateInternalOutgoingDocumentPage() {
                             selectionMode="secondary"
                             maxHeight="300px"
                             secondaryButtonText="Chọn"
+                            secondarySelectionStyle="checkbox"
                           />
                         </div>
                       </div>

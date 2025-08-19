@@ -78,7 +78,7 @@ export default function AuthenticatedLayout({
     <NotificationsProvider>
       <div className="flex min-h-screen flex-col">
         <Header />
-        <main className="flex-1 overflow-auto p-6 bg-gray-100 dark:bg-gray-900">
+        <main className="flex-1 overflow-auto px-6 pb-6 pt-0 bg-gray-100 dark:bg-gray-900">
           {children}
         </main>
       </div>
