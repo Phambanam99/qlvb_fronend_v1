@@ -265,7 +265,7 @@ function DepartmentNode({
           isPrimary
             ? "bg-red-50 border-red-200 shadow-sm ring-1 ring-red-200"
             : isSecondary
-            ? "bg-blue-50 border-blue-200 shadow-sm ring-1 ring-blue-200"
+            ? "bg-orange-50 border-orange-200 shadow-sm ring-1 ring-orange-200"
             : "border-transparent hover:bg-accent hover:border-border hover:shadow-sm"
         )}
         style={{ marginLeft: `${level * 16}px` }}
@@ -295,7 +295,7 @@ function DepartmentNode({
                 isPrimary
                   ? "text-red-800"
                   : isSecondary
-                  ? "text-blue-800"
+                  ? "text-orange-800"
                   : "text-foreground"
               )}
             >
@@ -310,7 +310,7 @@ function DepartmentNode({
                   isPrimary
                     ? "bg-red-100 text-red-700 border-red-200"
                     : isSecondary
-                    ? "bg-blue-100 text-blue-700 border-blue-200"
+                    ? "bg-orange-100 text-orange-700 border-orange-200"
                     : "bg-muted text-muted-foreground"
                 )}
               >
@@ -353,8 +353,8 @@ function DepartmentNode({
               className={cn(
                 "h-7 px-3 text-xs font-medium transition-all duration-200",
                 isSecondary
-                  ? "bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
-                  : "hover:bg-blue-50 hover:text-blue-700 opacity-0 group-hover:opacity-100",
+                  ? "bg-orange-600 hover:bg-orange-700 text-white shadow-sm"
+                  : "hover:bg-orange-50 hover:text-orange-700 opacity-0 group-hover:opacity-100",
                 isPrimary && "opacity-50 cursor-not-allowed"
               )}
               onClick={handleSelectSecondary}
@@ -441,7 +441,7 @@ function DepartmentNode({
                         isPrimaryUser
                           ? "bg-red-50 border-red-200 ring-1 ring-red-200"
                           : isSecondaryUser
-                          ? "bg-blue-50 border-blue-200 ring-1 ring-blue-200"
+                          ? "bg-orange-50 border-orange-200 ring-1 ring-orange-200"
                           : "border-transparent hover:bg-accent hover:border-border"
                       )}
                       style={{ marginLeft: `${level * 12}px` }}
@@ -455,7 +455,7 @@ function DepartmentNode({
                               isPrimaryUser
                                 ? "text-red-800"
                                 : isSecondaryUser
-                                ? "text-blue-800"
+                                ? "text-orange-800"
                                 : "text-foreground"
                             )}
                           >
@@ -468,7 +468,7 @@ function DepartmentNode({
                                 isPrimaryUser
                                   ? "text-red-600"
                                   : isSecondaryUser
-                                  ? "text-blue-600"
+                                  ? "text-orange-600"
                                   : "text-muted-foreground"
                               )}
                             >
@@ -514,8 +514,8 @@ function DepartmentNode({
                             className={cn(
                               "h-6 px-2 text-xs transition-all duration-200",
                               isSecondaryUser
-                                ? "bg-blue-600 hover:bg-blue-700 text-white"
-                                : "hover:bg-blue-50 hover:text-blue-700 opacity-0 group-hover:opacity-100",
+                                ? "bg-orange-600 hover:bg-orange-700 text-white"
+                                : "hover:bg-orange-50 hover:text-orange-700 opacity-0 group-hover:opacity-100",
                               isPrimaryUser && "opacity-50 cursor-not-allowed"
                             )}
                             onClick={() =>

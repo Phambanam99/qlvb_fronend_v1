@@ -30,6 +30,7 @@ import { UrgencyLevel, URGENCY_LEVELS } from "@/lib/types/urgency";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
   Select,
   SelectContent,
@@ -142,7 +143,6 @@ type FormDataState = {
   numberOfCopies: number | undefined;
   numberOfPages: number | undefined;
   noPaperCopy: boolean;
-  scheduledTime: string;
 };
 
 export default function CreateInternalOutgoingDocumentPage() {
@@ -185,7 +185,6 @@ export default function CreateInternalOutgoingDocumentPage() {
     title: "",
     summary: "",
     urgencyLevel: URGENCY_LEVELS.KHAN,
-    scheduledTime: "",
     notes: "",
     signer: "",
     draftingDepartmentId: undefined as number | undefined,
@@ -311,10 +310,7 @@ export default function CreateInternalOutgoingDocumentPage() {
     setFormData((prev) => ({ ...prev, [name]: numValue }));
   };
 
-  const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { value } = e.target; // expected format HH:MM
-    setFormData((prev) => ({ ...prev, scheduledTime: value }));
-  };
+  // Time selection integrated in DateTimePicker when urgency is HOA_TOC_HEN_GIO
 
   const handleCheckboxChange = (name: string) => (checked: boolean) => {
     setFormData((prev) => ({ ...prev, [name]: checked }));
@@ -420,21 +416,7 @@ export default function CreateInternalOutgoingDocumentPage() {
       fileUpload.resetUpload();
 
       // Combine processing deadline date with scheduled time if needed
-      let combinedProcessingDeadline: string | undefined = formData.processingDeadline?.toISOString();
-      if (formData.urgencyLevel === URGENCY_LEVELS.HOA_TOC_HEN_GIO && formData.scheduledTime) {
-        const baseDate = formData.processingDeadline || formData.signingDate || new Date();
-        const [hh, mm] = formData.scheduledTime.split(":");
-        const withTime = new Date(
-          baseDate.getFullYear(),
-          baseDate.getMonth(),
-          baseDate.getDate(),
-          Number(hh || 0),
-          Number(mm || 0),
-          0,
-          0
-        );
-        combinedProcessingDeadline = withTime.toISOString();
-      }
+  let combinedProcessingDeadline: string | undefined = formData.processingDeadline?.toISOString();
 
       const documentData: CreateInternalDocumentDTO =  {
         documentNumber: formData.documentNumber,
@@ -537,7 +519,7 @@ export default function CreateInternalOutgoingDocumentPage() {
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
       <div className="max-w-[1536px] mx-auto py-6 max-w-5xl px-4">
         {/* Header with clear mode indication */}
-        <div className="mb-6 p-4 rounded-lg border-l-4 bg-blue-50 border-l-blue-500 dark:bg-blue-900/20">
+        <div className="mb-6 p-4 rounded-lg border-l-4 bg-orange-50 border-l-orange-500 dark:bg-orange-900/20">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <Button variant="outline" size="icon" asChild>
@@ -546,10 +528,10 @@ export default function CreateInternalOutgoingDocumentPage() {
                 </Link>
               </Button>
               <div>
-                <h1 className="text-2xl font-bold tracking-tight text-blue-700 dark:text-blue-300">
+                <h1 className="text-2xl font-bold tracking-tight text-orange-700 dark:text-orange-300">
                   Tạo văn bản đi mới - Nội bộ
                 </h1>
-                <p className="text-sm mt-1 text-blue-600 dark:text-blue-400">
+                <p className="text-sm mt-1 text-orange-600 dark:text-orange-400">
                   Tạo mới một văn bản nội bộ trong hệ thống
                 </p>
               </div>
@@ -559,7 +541,7 @@ export default function CreateInternalOutgoingDocumentPage() {
                 type="submit"
                 form="document-form"
                 disabled={isSubmitting}
-                className="bg-blue-600 hover:bg-blue-700 text-white"
+                className="bg-primary hover:bg-orange-700 text-white dark:bg-orange-600 dark:hover:bg-orange-500"
               >
                 {isSubmitting ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -678,19 +660,7 @@ export default function CreateInternalOutgoingDocumentPage() {
                   </Select>
                  
                 </div>
-                 {formData.urgencyLevel === URGENCY_LEVELS.HOA_TOC_HEN_GIO && (
-                    <div className="space-y-2">
-                      <Label htmlFor="scheduledTime">Thời gian</Label>
-                      <Input
-                        id="scheduledTime"
-                        name="scheduledTime"
-                        type="time"
-                        value={formData.scheduledTime}
-                        onChange={handleTimeChange}
-                      />
-                  
-                    </div>
-                  )}
+                {/* If HOA_TOC_HEN_GIO selected, full datetime will be chosen below */}
               </div>
 
               {/* Additional Information - Merged */}
@@ -788,11 +758,21 @@ export default function CreateInternalOutgoingDocumentPage() {
 
               <div className="grid gap-6 md:grid-cols-3 mt-6">
                 <div className="space-y-2">
-                  <Label htmlFor="processingDeadline">Hạn xử lý</Label>
-                  <DatePicker
-                    date={formData.processingDeadline}
-                    setDate={handleProcessingDeadlineChange}
-                  />
+                  <Label htmlFor="processingDeadline">
+                    {formData.urgencyLevel === URGENCY_LEVELS.HOA_TOC_HEN_GIO ? "Thời gian hẹn" : "Hạn xử lý"}
+                  </Label>
+                  {formData.urgencyLevel === URGENCY_LEVELS.HOA_TOC_HEN_GIO ? (
+                    <DateTimePicker
+                      date={formData.processingDeadline}
+                      onChange={handleProcessingDeadlineChange}
+                      placeholder="Chọn ngày & giờ hẹn"
+                    />
+                  ) : (
+                    <DatePicker
+                      date={formData.processingDeadline}
+                      setDate={handleProcessingDeadlineChange}
+                    />
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -954,7 +934,7 @@ export default function CreateInternalOutgoingDocumentPage() {
                     {/* Selected Recipients Display */}
                     {secondaryDepartments.length > 0 && (
                       <div className="space-y-2">
-                        <Label className="text-sm font-medium text-blue-600">
+                        <Label className="text-sm font-medium text-orange-600">
                           Đã chọn ({secondaryDepartments.length})
                         </Label>
                         <div className="space-y-1 max-h-32 overflow-y-auto">
@@ -963,20 +943,20 @@ export default function CreateInternalOutgoingDocumentPage() {
                             return (
                               <div
                                 key={recipientId}
-                                className="flex items-center justify-between p-2 bg-blue-50 border border-blue-200 rounded-md text-sm"
+                                className="flex items-center justify-between p-2 bg-orange-50 border border-orange-200 rounded-md text-sm"
                               >
                                 <div className="flex items-center gap-2">
                                   {recipientInfo.type === "user" ? (
-                                    <Users className="h-3 w-3 text-blue-600" />
+                                    <Users className="h-3 w-3 text-orange-600" />
                                   ) : (
-                                    <Building className="h-3 w-3 text-blue-600" />
+                                    <Building className="h-3 w-3 text-orange-600" />
                                   )}
-                                  <span className="text-blue-800">{recipientInfo.displayName}</span>
+                                  <span className="text-orange-800">{recipientInfo.displayName}</span>
                                 </div>
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  className="h-6 w-6 p-0 text-blue-600 hover:bg-blue-100"
+                                  className="h-6 w-6 p-0 text-orange-600 hover:bg-orange-100"
                                   onClick={() => handleSelectSecondaryDepartment(recipientId)}
                                   type="button"
                                 >
@@ -991,7 +971,7 @@ export default function CreateInternalOutgoingDocumentPage() {
 
                     <div className="flex flex-wrap items-center gap-2 text-xs">
                       <div className="flex items-center gap-1">
-                        <div className="w-2 h-2 rounded-sm border border-blue-500 bg-white"></div>
+                        <div className="w-2 h-2 rounded-sm border border-orange-500 bg-white"></div>
                         <span>Người nhận</span>
                       </div>
                       <div className="flex items-center gap-1">

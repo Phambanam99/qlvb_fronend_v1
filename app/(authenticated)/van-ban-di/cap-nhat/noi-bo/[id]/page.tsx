@@ -1123,7 +1123,7 @@ export default function UpdateInternalOutgoingDocumentPage() {
                     {/* Selected Recipients Display */}
                     {secondaryDepartments.length > 0 && (
                       <div className="space-y-2">
-                        <Label className="text-sm font-medium text-blue-600">
+                        <Label className="text-sm font-medium text-orange-600">
                           Đã chọn ({getUniqueRecipients().length})
                         </Label>
                         <div className="space-y-1 max-h-32 overflow-y-auto">
@@ -1132,20 +1132,20 @@ export default function UpdateInternalOutgoingDocumentPage() {
                             return (
                               <div
                                 key={recipientId}
-                                className="flex items-center justify-between p-2 bg-blue-50 border border-blue-200 rounded-md text-sm"
+                                className="flex items-center justify-between p-2 bg-orange-50 border border-orange-200 rounded-md text-sm"
                               >
                                 <div className="flex items-center gap-2">
                                   {recipientInfo.type === "user" ? (
-                                    <Users className="h-3 w-3 text-blue-600" />
+                                    <Users className="h-3 w-3 text-orange-600" />
                                   ) : (
-                                    <Building className="h-3 w-3 text-blue-600" />
+                                    <Building className="h-3 w-3 text-orange-600" />
                                   )}
-                                  <span className="text-blue-800">{recipientInfo.displayName}</span>
+                                  <span className="text-orange-800">{recipientInfo.displayName}</span>
                                 </div>
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  className="h-6 w-6 p-0 text-blue-600 hover:bg-blue-100"
+                                  className="h-6 w-6 p-0 text-orange-600 hover:bg-orange-100"
                                   onClick={() => handleSelectSecondaryDepartment(recipientId)}
                                   type="button"
                                 >
@@ -1160,7 +1160,7 @@ export default function UpdateInternalOutgoingDocumentPage() {
 
                     <div className="flex flex-wrap items-center gap-2 text-xs">
                       <div className="flex items-center gap-1">
-                        <div className="w-2 h-2 rounded-sm border border-blue-500 bg-white"></div>
+                        <div className="w-2 h-2 rounded-sm border border-orange-500 bg-white"></div>
                         <span>Người nhận</span>
                       </div>
                       <div className="flex items-center gap-1">

@@ -158,8 +158,9 @@ export const Header = () => {
   );
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-gradient-to-r from-sky-500 via-green-600 via-blue-500 to-sky-700 text-white shadow-md">
-      <div className="flex h-16 items-center px-4">
+    <header className="sticky top-0 z-50 w-full  bg-gradient-to-r from-orange-400 via-orange-600 to-red-500 text-white shadow-md ">
+      <div className="bg-[url('/header.png')]  bg-cover bg-center h-32 ">
+          <div className="absolute bottom-0 flex h-13 items-center px-2 mb-1 w-full">
         {/* Logo */}
         <div className="mr-6">
           <Link href="/" className="flex items-center space-x-2">
@@ -230,7 +231,7 @@ export const Header = () => {
                   )}
                 >
                   <Database className="h-4 w-4" />
-                  Thư viện dữ liệu
+                  Thư viện
                   <ChevronDown className="h-3 w-3" />
                 </Button>
               </DropdownMenuTrigger>
@@ -409,6 +410,8 @@ export const Header = () => {
           </DropdownMenu>
         </div>
       </div>
+      </div>
+    
     </header>
   );
 };

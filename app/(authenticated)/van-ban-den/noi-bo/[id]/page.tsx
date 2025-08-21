@@ -576,7 +576,7 @@ export default function InternalDocumentReceivedDetailPage() {
                   <label className="text-sm font-medium text-muted-foreground">
                     Số văn bản
                   </label>
-                  <p className="font-medium">{documentDetail.documentNumber}</p>
+                  <p className="font-medium text-red-700">{documentDetail.documentNumber}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">
@@ -588,7 +588,7 @@ export default function InternalDocumentReceivedDetailPage() {
                   <label className="text-sm font-medium text-muted-foreground">
                     Ngày ký
                   </label>
-                  <p className="font-medium">
+                  <p className="font-medium text-primary">
                     {formatDateOnly(documentDetail.signingDate)}
                   </p>
                 </div>
@@ -644,7 +644,7 @@ export default function InternalDocumentReceivedDetailPage() {
                   <label className="text-sm font-medium text-muted-foreground">
                     Người ký duyệt
                   </label>
-                  <p className="font-medium">
+                  <p className="font-medium text-primary">
                     {documentDetail.documentSigner?.fullName || "Chưa xác định"}
                   </p>
                 </div>
@@ -1004,15 +1004,6 @@ export default function InternalDocumentReceivedDetailPage() {
                 </div>
               </div>
 
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">
-                  Trạng thái văn bản
-                </label>
-                <div className="mt-1">
-                  {getStatusBadge(documentDetail.status)}
-                </div>
-              </div>
-
               <Separator />
 
               <div className="space-y-3">
@@ -1020,7 +1011,7 @@ export default function InternalDocumentReceivedDetailPage() {
                   <User className="h-4 w-4 text-muted-foreground" />
                   <div>
                     <p className="text-sm font-medium">Người gửi</p>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-primary">
                       {documentDetail.senderName}
                     </p>
                   </div>
