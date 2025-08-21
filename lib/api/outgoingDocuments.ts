@@ -78,18 +78,19 @@ export const outgoingDocumentsAPI = {
     id: string | number
   ): Promise<{ data: OutgoingDocumentDTO }> => {
     try {
-      const response = await api.get(`/documents/outgoing/${id}`);
-
+      let response = await api.get(`/documents/outgoing/${id}`);
+      console.log("response", response.data);
       // Map backend response to frontend expected format
+      
       const document = {
         ...response.data,
-        number: response.data.documentNumber.toString(),
-        recipient: response.data.receivingDepartmentText || "N/A",
-        sentDate: response.data.signingDate,
+        number: response.data.data.documentNumber.toString(),
+        recipient: response.data.data.receivingDepartmentText || "N/A",
+        sentDate: response.data.data.signingDate,
         attachments: [],
         history: [],
       };
-      // console.log(document);
+      console.log(document);
       return { data: document };
     } catch (error) {
       console.error("Error fetching outgoing document:", error);
@@ -230,10 +231,9 @@ export const outgoingDocumentsAPI = {
 
       // Try alternative endpoint if primary fails
       try {
-        const response = await api.put(`/workflow/${id}/reject`, {
+        const response = await api.put(`/workflow/${id}/header-department-comment`, {
           documentId: id,
-          status: "rejected",
-          comments: data.comment,
+          workflowDTO: { comments: data.comment },
         });
         return response.data;
       } catch (altError: any) {

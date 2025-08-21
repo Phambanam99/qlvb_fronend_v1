@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, Building2, Globe } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
@@ -564,6 +565,18 @@ export default function IncomingDocumentsPage() {
                 variant="outline"
               /> */}
             </div>
+            {hasVanThuRole && (
+              <Button
+                size="sm"
+                onClick={handleAddDocument}
+                disabled={isAddLoading}
+              >
+                {isAddLoading && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
+                Thêm mới
+              </Button>
+            )}
           </div>
           <InternalDocumentsTable
             documents={currentDocuments}
@@ -579,6 +592,21 @@ export default function IncomingDocumentsPage() {
 
         {/* External Documents Tab */}
         <TabsContent value="external" className="mt-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-medium">Danh sách văn bản bên ngoài đến</h3>
+            {hasVanThuRole && (
+              <Button
+                size="sm"
+                onClick={handleAddDocument}
+                disabled={isAddLoading}
+              >
+                {isAddLoading && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
+                Thêm mới
+              </Button>
+            )}
+          </div>
           <ExternalDocumentsTable
             documents={currentDocuments}
             allDocuments={currentDocuments}

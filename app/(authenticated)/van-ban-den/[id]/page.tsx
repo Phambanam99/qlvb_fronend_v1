@@ -186,7 +186,7 @@ export default function DocumentDetailPage({
         relatedDocuments: [],
         responses: [],
       };
-    
+      console.log("Fetched document data:", documentData);
       setDocument(documentData);
       setError(null);
     } catch (err: any) {
@@ -913,12 +913,12 @@ export default function DocumentDetailPage({
                   </p>
                   <p>{_document.receiptNumber || "Chưa có"}</p>
                 </div>
-                <div>
+                {/* <div>
                   <p className="text-sm font-medium text-muted-foreground">
                     Cán bộ xử lý
                   </p>
                   <p>{_document.processingOfficer?.fullName || "Chưa phân công"}</p>
-                </div>
+                </div> */}
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">
                     Độ mật
@@ -1124,13 +1124,8 @@ export default function DocumentDetailPage({
                   Trạng thái
                 </p>
                 <div className="mt-1">
-                  <DocumentStatusBadge
-                    documentId={documentId!}
-                    fallbackStatus={_document.status}
-                    fallbackDisplayStatus={
-                      getStatusByCode(_document.status)?.displayName
-                    }
-                  />
+                  
+                  {getStatusByCode(_document.status)?.displayName}
                 </div>
               </div>
               <Separator className="bg-primary/10" />

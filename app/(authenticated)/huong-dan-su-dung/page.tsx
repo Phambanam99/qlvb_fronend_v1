@@ -118,14 +118,6 @@ export default function UserGuidePage() {
               <span className="w-2 h-2 bg-green-500 rounded-full"></span>
               Tạo lịch công tác hàng tuần/tháng
             </li>
-            <li className="flex items-center gap-2">
-              <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-              Phê duyệt và theo dõi thực hiện
-            </li>
-            <li className="flex items-center gap-2">
-              <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-              Báo cáo kết quả công tác
-            </li>
           </ul>
           <h3 className="text-lg font-semibold mt-6">Quản lý kế hoạch</h3>
           <ul className="space-y-2">

@@ -145,9 +145,6 @@ export default function LoginPage() {
                     Ghi nhớ đăng nhập
                   </Label>
                 </div>
-                <Button variant="link" className="p-0 h-auto text-sm" asChild>
-                  <a href="/quen-mat-khau">Quên mật khẩu?</a>
-                </Button>
               </div>
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? (

@@ -98,7 +98,7 @@ export function DocumentStatusBadge({
 /**
  * Get badge variant and styling based on status
  */
-function getBadgeForStatus(status: string, displayText: string) {
+function getBadgeForStatus(status: string | undefined, displayText: string) {
   // Define status groups and their styling
   const statusConfig = getStatusConfig(status);
 
@@ -112,11 +112,18 @@ function getBadgeForStatus(status: string, displayText: string) {
 /**
  * Get badge configuration based on status
  */
-function getStatusConfig(status: string): {
+function getStatusConfig(status: string | undefined): {
   variant: "default" | "outline" | "secondary" | "destructive";
   className?: string;
 } {
-  const statusLower = status.toLowerCase();
+  if (!status) {
+    return {
+      variant: "outline",
+      className: "bg-gray-100 text-gray-700 border-gray-300",
+    };
+  }
+
+  const statusLower = status.toString().toLowerCase();
 
   // Completed/Success statuses
   if (
