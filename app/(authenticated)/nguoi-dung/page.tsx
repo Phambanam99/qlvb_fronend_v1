@@ -224,9 +224,10 @@ export default function UsersPage() {
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
-        const rolesData_ = await rolesAPI.getAllRoles();
-        const rolesData = rolesData_.data;
-        setRoles(rolesData);
+  // getAllRoles() returns an array, not { data }
+  const rolesData_ = await rolesAPI.getAllRoles();
+  const rolesData = (rolesData_ as any).data;
+  setRoles(Array.isArray(rolesData) ? rolesData : []);
       } catch (error) {
         toast({
           title: "Lỗi",
@@ -246,7 +247,7 @@ export default function UsersPage() {
   // Refetch users when applied filters or pagination changes
   useEffect(() => {
     // Skip if user data or roles/departments haven't loaded yet
-    if (!user || !roles.length || loadingDepartments) {
+  if (!user || !Array.isArray(roles) || roles.length === 0 || loadingDepartments) {
       return;
     }
 
@@ -306,7 +307,7 @@ export default function UsersPage() {
   };
 
   const getRoleName = (roleId: string) => {
-    const role = roles.find((r) => r.id === roleId);
+  const role = (Array.isArray(roles) ? roles : []).find((r) => r.id === roleId);
     return role ? role.name : "Không xác định";
   };
 
@@ -378,7 +379,7 @@ export default function UsersPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tất cả vai trò</SelectItem>
-                  {roles.map((role) => (
+                  {(Array.isArray(roles) ? roles : []).map((role) => (
                     <SelectItem key={role.id} value={role.id}>
                       {role.displayName}
                     </SelectItem>

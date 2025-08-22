@@ -215,8 +215,11 @@ class NotificationsRealtimeClient {
     // console.log('🔑 Token (first 30 chars):', token.substring(0, 30) + '...')
     
     this.token = token
+    // Ensure WebSocket base does not include trailing /api used by REST
+    const wsHttpBase = this.baseUrl.replace(/\/?api\/?$/i, '')
+    const wsSchemeBase = wsHttpBase.replace(/^http(s?):/, 'ws$1:')
     this.stompClient = new Client({
-      brokerURL: `${this.baseUrl.replace('http', 'ws')}/ws`,
+      brokerURL: `${wsSchemeBase}/ws`,
       connectHeaders: {
         Authorization: `Bearer ${token}`
       },
@@ -226,12 +229,13 @@ class NotificationsRealtimeClient {
       heartbeatOutgoing: 4000,
     })
 
-    // console.log('🌐 WebSocket URL:', `${this.baseUrl.replace('http', 'ws')}/ws`)
+  // console.log('🌐 WebSocket URL:', `${wsSchemeBase}/ws`)
 
     // Use SockJS for better compatibility
     this.stompClient.webSocketFactory = () => {
       // console.log('🔌 Creating SockJS connection...')
-      return new SockJS(`${this.baseUrl}/ws`, null, {
+      // Use HTTP(S) base for SockJS constructor
+      return new SockJS(`${wsHttpBase}/ws`, null, {
         transports: ['websocket', 'xhr-polling'], // Fallback transports
         timeout: 10000,
       }) as any

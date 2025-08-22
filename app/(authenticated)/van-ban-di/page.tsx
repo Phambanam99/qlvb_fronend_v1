@@ -434,9 +434,22 @@ export default function OutgoingDocumentsPage() {
     internalDocsHook.documents : 
     externalDocsHook.documents;
 
+  // Determine department filter visibility for external outgoing documents
+  const isLeaderRole = hasRole(["ROLE_CUC_TRUONG","ROLE_CUC_PHO","ROLE_CHINH_UY","ROLE_PHO_CHINH_UY"]);
+  const hasChildUnits = (visibleDepartments || []).some((d: any) => d.parentId === user?.departmentId);
+  const showExternalDepartmentFilter = isLeaderRole || hasChildUnits;
+
+  const filteredExternalDocuments = activeTab === "external" && departmentFilter !== "all" && showExternalDepartmentFilter
+    ? externalDocsHook.documents.filter((doc: any) => doc.departmentId?.toString() === departmentFilter)
+    : externalDocsHook.documents;
+
+  const displayedDocuments = activeTab === "external" ? filteredExternalDocuments : internalDocsHook.documents;
+
   const totalItems = activeTab === "internal" ? 
     internalDocsHook.totalItems : 
-    externalDocsHook.totalItems;
+    (activeTab === "external" && departmentFilter !== "all" && showExternalDepartmentFilter
+      ? filteredExternalDocuments.length
+      : externalDocsHook.totalItems);
 
   const totalPages = activeTab === "internal" ? 
     internalDocsHook.totalPages : 
@@ -478,6 +491,7 @@ export default function OutgoingDocumentsPage() {
         onStatusFilterChange={handleStatusFilterChange}
         onClearFilters={handleClearFilters}
         onTabChange={handleTabChange}
+        // pass through show condition implicitly; component already checks hasFullAccess & activeTab
       />
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
@@ -519,7 +533,7 @@ export default function OutgoingDocumentsPage() {
 
         <TabsContent value="external" className="mt-6">
           <ExternalDocumentsTable
-            documents={externalDocsHook.documents}
+            documents={displayedDocuments}
             isLoading={externalDocsHook.loading}
             hasFullAccess={hasFullAccess}
             universalReadStatus={universalReadStatus}
@@ -533,7 +547,7 @@ export default function OutgoingDocumentsPage() {
         totalPages={totalPages}
         pageSize={pageSize}
         totalItems={totalItems}
-        documentsLength={currentDocuments.length}
+        documentsLength={displayedDocuments.length}
         isLoading={isLoading}
         onPageChange={handlePageChange}
         onPageSizeChange={handlePageSizeChange}

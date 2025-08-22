@@ -1453,7 +1453,7 @@ export default function OutgoingDocumentDetailPage({
                 </p>
                 <div
                   className="rounded-md border p-4 bg-accent/30 whitespace-pre-line"
-                  dangerouslySetInnerHTML={{ __html: _document.summary }}
+                  dangerouslySetInnerHTML={{ __html: _document.summary as any }}
                 ></div>
               </div>
               <Separator className="bg-primary/10" />

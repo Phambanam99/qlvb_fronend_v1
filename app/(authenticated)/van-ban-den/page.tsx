@@ -476,13 +476,30 @@ export default function IncomingDocumentsPage() {
     internalDocsHook.documents : 
     externalDocsHook.documents;
 
+  // Determine if department filter should be shown for external docs (leaders or units with children)
+  const isLeaderRole = hasRole("ROLE_CUC_TRUONG") || hasRole("ROLE_CUC_PHO") || hasRole("ROLE_CHINH_UY") || hasRole("ROLE_PHO_CHINH_UY");
+  const hasChildUnits = (visibleDepartments || []).some((d: any) => d.parentId === user?.departmentId);
+  const showExternalDepartmentFilter = isLeaderRole || hasChildUnits;
+
+  // Apply client-side department filtering for external documents if needed
+  const filteredExternalDocuments = activeTab === "external" && departmentFilter !== "all" && showExternalDepartmentFilter
+    ? (externalDocsHook.documents || []).filter((doc: any) => {
+        const deptId = doc?.primaryProcessDepartmentId || doc?.sendingDepartmentId || doc?.departmentId;
+        return deptId?.toString() === departmentFilter;
+      })
+    : externalDocsHook.documents;
+
+  const displayedDocuments = activeTab === "external" ? filteredExternalDocuments : internalDocsHook.documents;
+
   const totalItems = activeTab === "internal" ? 
     internalDocsHook.totalItems : 
-    externalDocsHook.totalItems;
+    (activeTab === "external" && departmentFilter !== "all" && showExternalDepartmentFilter
+      ? filteredExternalDocuments.length
+      : externalDocsHook.totalItems);
 
   const totalPages = activeTab === "internal" ? 
     internalDocsHook.totalPages : 
-    externalDocsHook.totalPages;
+    externalDocsHook.totalPages; // External currently single page; client filter keeps same
 
   // Loading state
   if (isLoading || loadingDepartments) {
@@ -502,7 +519,7 @@ export default function IncomingDocumentsPage() {
     <div className="space-y-8">
       {/* Search Filters */}
       <SearchFilters
-        searchQuery={activeTab === "internal" ? internalSearchQuery : externalSearchQuery}
+  searchQuery={activeTab === "internal" ? internalSearchQuery : externalSearchQuery}
         setSearchQuery={activeTab === "internal" ? setInternalSearchQuery : setExternalSearchQuery}
         activeSearchQuery={activeTab === "internal" ? internalActiveSearchQuery : externalActiveSearchQuery}
         yearFilter={activeTab === "internal" ? yearFilter : undefined}
@@ -529,6 +546,7 @@ export default function IncomingDocumentsPage() {
         onIssuingAuthorityChange={handleIssuingAuthorityChange}
         onClearFilters={handleClearFilters}
         onRefresh={handleRefresh}
+  showDepartmentFilter={showExternalDepartmentFilter}
       />
 
       {/* Document Tabs */}
@@ -608,7 +626,7 @@ export default function IncomingDocumentsPage() {
             )}
           </div>
           <ExternalDocumentsTable
-            documents={currentDocuments}
+            documents={displayedDocuments}
             allDocuments={currentDocuments}
             processingStatusTab="all"
             onProcessingStatusTabChange={() => {}}
@@ -620,7 +638,7 @@ export default function IncomingDocumentsPage() {
               return externalReadStatus.getReadStatus(docId);
             }}
             getDocumentCountByStatus={(statusKey) =>
-              getDocumentCountByStatus(currentDocuments || [], statusKey, activeTab)
+              getDocumentCountByStatus(displayedDocuments || [], statusKey, activeTab)
             }
             formatDate={formatDate}
           />
@@ -629,7 +647,7 @@ export default function IncomingDocumentsPage() {
 
       {/* Pagination */}
       <DocumentPagination
-        currentDocumentsLength={currentDocuments?.length || 0}
+        currentDocumentsLength={displayedDocuments?.length || 0}
         totalItems={totalItems}
         currentPage={currentPage}
         pageSize={pageSize}
