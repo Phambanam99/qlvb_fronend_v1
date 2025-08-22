@@ -1,13 +1,15 @@
 import axios from "axios";
+import { tr } from "date-fns/locale";
 
 // API base URL
-export const API_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://192.168.0.103:8080/api";
+// Default to "/api" so Next.js rewrites proxy REST calls to the backend
+export const API_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
 
 // Create axios instance with common configuration
 const api = axios.create({
   baseURL: API_URL,
   headers: {
+   "ngrok-skip-browser-warning": "true",
     "Content-Type": "application/json",
   },
 });

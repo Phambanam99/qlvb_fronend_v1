@@ -193,8 +193,8 @@ class NotificationsRealtimeClient {
   private static instance: NotificationsRealtimeClient
 
   private constructor() {
-    // Lấy base URL từ biến môi trường
-    this.baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
+  // REST base (can be '/api' for Next rewrites). For WebSocket, prefer NEXT_PUBLIC_WS_BASE.
+  this.baseUrl = process.env.NEXT_PUBLIC_API_URL || '/api'
   }
 
   public static getInstance() {
@@ -215,8 +215,26 @@ class NotificationsRealtimeClient {
     // console.log('🔑 Token (first 30 chars):', token.substring(0, 30) + '...')
     
     this.token = token
+    // Prefer explicit WS base, else derive from REST base (strip trailing /api)
+    const explicitWsBaseRaw = process.env.NEXT_PUBLIC_WS_BASE || ''
+    const explicitWsBase = explicitWsBaseRaw.trim().replace(/\/$/, '')
+    const derivedBase = this.baseUrl.replace(/\/?api\/?$/i, '') // '' when baseUrl is '/api'
+
+    // If running on an HTTPS page and the configured base is insecure (http),
+    // prefer same-origin relative path so Next.js rewrite proxies to backend securely.
+    const isBrowser = typeof window !== 'undefined'
+    const pageIsHttps = isBrowser && window.location.protocol === 'https:'
+
+    let wsHttpBase = explicitWsBase || derivedBase
+    if (pageIsHttps && /^http:\/\//i.test(wsHttpBase)) {
+      // Use same-origin relative path instead of forcing https to localhost
+      wsHttpBase = ''
+    }
+
+    // Build the SockJS HTTP(S) URL (SockJS expects http/https here)
+    const sockHttpUrl = `${wsHttpBase}/ws`.replace(/([^:]\/)\/+/g, '$1/') // collapse double slashes except scheme
+
     this.stompClient = new Client({
-      brokerURL: `${this.baseUrl.replace('http', 'ws')}/ws`,
       connectHeaders: {
         Authorization: `Bearer ${token}`
       },
@@ -226,30 +244,34 @@ class NotificationsRealtimeClient {
       heartbeatOutgoing: 4000,
     })
 
-    // console.log('🌐 WebSocket URL:', `${this.baseUrl.replace('http', 'ws')}/ws`)
+  // console.log('🌐 WebSocket URL:', `${wsSchemeBase}/ws`)
 
     // Use SockJS for better compatibility
     this.stompClient.webSocketFactory = () => {
       // console.log('🔌 Creating SockJS connection...')
-      return new SockJS(`${this.baseUrl}/ws`, null, {
-        transports: ['websocket', 'xhr-polling'], // Fallback transports
+      // Use HTTP(S) URL for SockJS constructor; relative when wsHttpBase is ''
+      return new SockJS(sockHttpUrl, null, {
+        // Prefer native websocket; avoid XHR polling to reduce CORS noise
+        transports: ['websocket'],
         timeout: 10000,
+        // Ensure no credentials are sent by XHR fallback (if any)
+        // SockJS doesn't expose withCredentials here in browser; limiting to websocket skips it.
       }) as any
     }
 
     this.stompClient.onConnect = (frame: Frame) => {
-      console.log('✅ WebSocket connected successfully!', frame)
+      // console.log('✅ WebSocket connected successfully!', frame)
       this.reconnectAttempts = 0
       this.setupSubscriptions()
     }
 
     this.stompClient.onStompError = (frame: Frame) => {
-      console.warn('WebSocket STOMP error:', frame)
+      // console.warn('WebSocket STOMP error:', frame)
       this.handleConnectionError()
     }
 
     this.stompClient.onWebSocketError = (error: any) => {
-      console.warn('WebSocket connection error:', error)
+      // console.warn('WebSocket connection error:', error)
       this.handleConnectionError()
     }
 
@@ -267,7 +289,7 @@ class NotificationsRealtimeClient {
 
   public disconnect() {
     if (this.stompClient?.connected) {
-      console.log('Disconnecting WebSocket...')
+      // console.log('Disconnecting WebSocket...')
       this.stompClient.deactivate()
     }
     this.cleanup()
@@ -275,7 +297,7 @@ class NotificationsRealtimeClient {
 
   private setupSubscriptions() {
     if (!this.stompClient?.connected) {
-      console.warn('❌ Cannot setup subscriptions - STOMP client not connected')
+      // console.warn('❌ Cannot setup subscriptions - STOMP client not connected')
       return
     }
 
@@ -284,15 +306,15 @@ class NotificationsRealtimeClient {
     // Subscribe to personal notification queue
     this.stompClient.subscribe('/user/queue/notifications', (message) => {
       try {
-        console.log('📨 Raw WebSocket message received!')
-        console.log('📄 Message body:', message.body)
-        console.log('📋 Message headers:', message.headers)
+        // console.log('📨 Raw WebSocket message received!')
+        // console.log('📄 Message body:', message.body)
+        // console.log('📋 Message headers:', message.headers)
         
         const backendNotification: BackendNotification = JSON.parse(message.body)
-        console.log('🔍 Parsed backend notification:', backendNotification)
+        // console.log('🔍 Parsed backend notification:', backendNotification)
         
         const notification: RealTimeNotification = mapBackendNotification(backendNotification)
-        console.log('✅ Mapped frontend notification:', notification)
+        // console.log('✅ Mapped frontend notification:', notification)
         
         this.handleMessage(notification)
       } catch (error) {
@@ -301,19 +323,19 @@ class NotificationsRealtimeClient {
       }
     })
     
-    console.log('✅ Successfully subscribed to /user/queue/notifications')
+    // console.log('✅ Successfully subscribed to /user/queue/notifications')
   }
 
   private handleMessage(notification: RealTimeNotification) {
-    console.log('🔔 Received notification:', notification)
+    // console.log('🔔 Received notification:', notification)
     
     // Handle general notification handlers
     const handlers = this.handlers.get(notification.type)
     if (handlers && handlers.length > 0) {
-      console.log(`✅ Found ${handlers.length} handlers for type: ${notification.type}`)
+      // console.log(`✅ Found ${handlers.length} handlers for type: ${notification.type}`)
       handlers.forEach(handler => handler(notification))
     } else {
-      console.log(`⚠️ No handlers found for notification type: ${notification.type}`)
+      // console.log(`⚠️ No handlers found for notification type: ${notification.type}`)
     }
 
     // Handle Internal Document specific notifications
@@ -352,7 +374,13 @@ class NotificationsRealtimeClient {
   }
 
   private cleanup() {
-    this.stompClient = null
+  // Drop STOMP instance
+  this.stompClient = null
+  // Clear all registered handlers to avoid duplicate callbacks after reconnects
+  this.handlers.clear()
+  this.internalDocHandlers.clear()
+  // Reset reconnect attempts
+  this.reconnectAttempts = 0
   }
 
   // General notification handlers

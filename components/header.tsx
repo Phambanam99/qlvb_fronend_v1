@@ -65,6 +65,12 @@ export const Header = () => {
       href: "/van-ban-di",
       icon: Send,
       permission: null, // Tất cả người dùng đều có thể xem
+    },
+    {
+      title: "Văn bản chung",
+      href: "/van-ban-chung",
+      icon: FileText,
+      permission: null, // Tất cả người dùng đều có thể xem
     }
   ];
 
