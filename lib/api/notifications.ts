@@ -177,7 +177,6 @@ export function mapBackendNotification(backendNotification: BackendNotification)
   }
 }
 
-import SockJS from 'sockjs-client'
 import { Client, Frame } from '@stomp/stompjs'
 
 type NotificationHandler = (notification: RealTimeNotification) => void
@@ -187,14 +186,19 @@ class NotificationsRealtimeClient {
   private stompClient: Client | null = null
   private handlers: Map<string, NotificationHandler[]> = new Map()
   private internalDocHandlers: Map<InternalDocumentNotificationType, InternalDocumentHandler[]> = new Map()
-  private reconnectAttempts = 0
   private token: string | null = null
-  private baseUrl: string
   private static instance: NotificationsRealtimeClient
+  private wsBaseUrl: string
+  private wsPath: string
 
   private constructor() {
-    // Lấy base URL từ biến môi trường
-    this.baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
+    const envWs = process.env.NEXT_PUBLIC_WS_URL
+    const envApi = process.env.NEXT_PUBLIC_API_URL
+    const envPath = process.env.NEXT_PUBLIC_WS_PATH || '/ws'
+    // Prefer explicit WS base; else derive from API URL by removing trailing /api; else default
+    const derived = envApi ? envApi.replace(/\/?api\/?$/i, '') : undefined
+    this.wsBaseUrl = envWs || derived || 'http://localhost:8080'
+    this.wsPath = envPath.startsWith('/') ? envPath : `/${envPath}`
   }
 
   public static getInstance() {
@@ -205,7 +209,7 @@ class NotificationsRealtimeClient {
   }
 
   public connect(token: string) {
-    if (this.stompClient?.connected) {
+  if (this.stompClient?.connected) {
       // console.log('🔗 STOMP client already connected')
       return
     }
@@ -215,55 +219,52 @@ class NotificationsRealtimeClient {
     // console.log('🔑 Token (first 30 chars):', token.substring(0, 30) + '...')
     
     this.token = token
-    // Ensure WebSocket base does not include trailing /api used by REST
-    const wsHttpBase = this.baseUrl.replace(/\/?api\/?$/i, '')
-    const wsSchemeBase = wsHttpBase.replace(/^http(s?):/, 'ws$1:')
+
+    // Prefer native WebSocket STOMP directly to backend; no SockJS (avoids /ws/info 404)
+  const qp = '' // append query only if backend requires; headers are preferred
+  const wsSchemeBase = this.wsBaseUrl.replace(/^http(s?):/, 'ws$1:')
+  const brokerURL = `${wsSchemeBase}${this.wsPath}${qp}`
+
+    const debugEnabled = process.env.NEXT_PUBLIC_WS_DEBUG === 'true'
+    if (debugEnabled) {
+      // Minimal, safe client-side logs
+      console.log('[WS] Connecting to:', brokerURL)
+    }
+
     this.stompClient = new Client({
-      brokerURL: `${wsSchemeBase}/ws`,
+      brokerURL,
       connectHeaders: {
-        Authorization: `Bearer ${token}`
+        Authorization: `Bearer ${token}`,
       },
-      // debug: (str) => console.log('🔵 STOMP Debug:', str),
+      debug: (str) => { if (debugEnabled) console.log('[STOMP]', str) },
+      // Use built-in reconnect to avoid overlapping manual backoff
       reconnectDelay: 5000,
       heartbeatIncoming: 4000,
       heartbeatOutgoing: 4000,
     })
 
-  // console.log('🌐 WebSocket URL:', `${wsSchemeBase}/ws`)
-
-    // Use SockJS for better compatibility
-    this.stompClient.webSocketFactory = () => {
-      // console.log('🔌 Creating SockJS connection...')
-      // Use HTTP(S) base for SockJS constructor
-      return new SockJS(`${wsHttpBase}/ws`, null, {
-        transports: ['websocket', 'xhr-polling'], // Fallback transports
-        timeout: 10000,
-      }) as any
-    }
+  // No SockJS fallback: enforcing native WebSocket only to avoid /ws/info
 
     this.stompClient.onConnect = (frame: Frame) => {
-      console.log('✅ WebSocket connected successfully!', frame)
-      this.reconnectAttempts = 0
+  console.log('✅ WebSocket connected successfully!', frame)
       this.setupSubscriptions()
     }
 
-    this.stompClient.onStompError = (frame: Frame) => {
-      console.warn('WebSocket STOMP error:', frame)
-      this.handleConnectionError()
+    const onAnySocketIssue = (errOrEvt: any) => {
+      try {
+        if (errOrEvt?.type === 'close') {
+          const { code, reason, wasClean } = errOrEvt
+          console.warn('WebSocket closed', { code, reason, wasClean })
+        } else {
+          console.warn('WebSocket/STOMP issue:', errOrEvt)
+        }
+      } catch {}
+      // no manual backoff here; rely on STOMP reconnectDelay
     }
 
-    this.stompClient.onWebSocketError = (error: any) => {
-      console.warn('WebSocket connection error:', error)
-      this.handleConnectionError()
-    }
-
-    this.stompClient.onWebSocketClose = () => {
-      this.handleConnectionError()
-    }
-
-    this.stompClient.onWebSocketError = (error) => {
-      console.error('❌ WebSocket error:', error)
-    }
+    this.stompClient.onStompError = onAnySocketIssue
+    this.stompClient.onWebSocketError = onAnySocketIssue
+    this.stompClient.onWebSocketClose = onAnySocketIssue
 
     console.log('🚀 Activating STOMP client...')
     this.stompClient.activate()
@@ -339,21 +340,7 @@ class NotificationsRealtimeClient {
     }
   }
 
-  private handleConnectionError() {
-    this.cleanup()
-    
-    if (this.reconnectAttempts < 10 && this.token) {
-      const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000)
-      console.log(`🔄 Attempting to reconnect WebSocket in ${delay}ms (attempt ${this.reconnectAttempts + 1}/10)`)
-      
-      setTimeout(() => {
-        this.reconnectAttempts++
-        this.connect(this.token!)
-      }, delay)
-    } else {
-      // console.warn('❌ Max reconnection attempts reached or no token available')
-    }
-  }
+  // Removed manual backoff; STOMP handles reconnection via reconnectDelay
 
   private cleanup() {
     this.stompClient = null
