@@ -52,7 +52,7 @@ export function InternalDocumentsTable({
           <TableBody>
             {documents && documents.length > 0 ? (
               documents.map((doc: any, index: number) => {
-                console.log("Document:", doc);
+                // console.log("Document:", doc);
                 // FIX: Use backend data as primary source, frontend state for real-time updates
                 const frontendStatus = getReadStatus ? getReadStatus(doc.id) : undefined;
                 const isRead = frontendStatus !== undefined ? frontendStatus : doc.isRead;
