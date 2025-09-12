@@ -191,7 +191,7 @@ export const useUniversalReadStatus = () => {
 
       const results = await Promise.all(promises);
       
-      console.log("✅ loadBatchReadStatus individual results:", results);
+      // console.log("✅ loadBatchReadStatus individual results:", results);
       
       // Check if any read status actually changed before notifying
       let hasChanges = false;
