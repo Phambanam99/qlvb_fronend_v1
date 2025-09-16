@@ -25,7 +25,7 @@ export default function NotificationsPage() {
   // Tích hợp realtime notifications
   const { isConnected } = useInternalDocumentNotifications({
     onReceived: (notification) => {
-      console.log('📨 New notification received on thong-bao page:', notification)
+      // console.log('📨 New notification received on thong-bao page:', notification)
       
       // Show toast
       toast({
@@ -61,7 +61,7 @@ export default function NotificationsPage() {
       })
     },
     onRead: (notification) => {
-      console.log('👁️ Document read notification:', notification)
+      // console.log('👁️ Document read notification:', notification)
       
       // Thêm notification đã đọc
       setNotifications(prev => {
@@ -90,7 +90,7 @@ export default function NotificationsPage() {
       })
     },
     onSent: (notification) => {
-      console.log('📤 Document sent notification:', notification)
+      // console.log('📤 Document sent notification:', notification)
       
       toast({
         title: "📤 Đã gửi văn bản",
@@ -99,7 +99,7 @@ export default function NotificationsPage() {
       })
     },
     onUpdated: (notification) => {
-      console.log('📝 Document updated notification:', notification)
+      // console.log('📝 Document updated notification:', notification)
       
       toast({
         title: "📝 Văn bản đã cập nhật", 
@@ -114,7 +114,7 @@ export default function NotificationsPage() {
     try {
       setLoading(true)
       const response = await notificationsAPI.getAllNotifications(0, 50)
-      console.log('Loaded notifications:', response)
+      // console.log('Loaded notifications:', response)
       
       // Sắp xếp theo thời gian mới nhất trước
       const sortedNotifications = (response.content || []).sort((a, b) => 

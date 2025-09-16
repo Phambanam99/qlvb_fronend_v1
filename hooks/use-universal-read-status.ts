@@ -136,12 +136,12 @@ export const useUniversalReadStatus = () => {
     try {
       // Validate input parameters
       if (!Array.isArray(documentIds) || documentIds.length === 0) {
-        console.log("⚠️ loadBatchReadStatus: Invalid or empty documentIds array");
+        // console.log("⚠️ loadBatchReadStatus: Invalid or empty documentIds array");
         return;
       }
 
       if (!documentType) {
-        console.log("⚠️ loadBatchReadStatus: Missing documentType");
+        // console.log("⚠️ loadBatchReadStatus: Missing documentType");
         return;
       }
 
@@ -150,7 +150,7 @@ export const useUniversalReadStatus = () => {
       
       // Check if this batch is already loading
       if (loadingDocuments.has(loadingKey)) {
-        console.log("⚠️ loadBatchReadStatus: Already loading this batch, skipping");
+        // console.log("⚠️ loadBatchReadStatus: Already loading this batch, skipping");
         return;
       }
 
@@ -161,11 +161,11 @@ export const useUniversalReadStatus = () => {
       });
 
       if (documentsToLoad.length === 0) {
-        console.log("✅ loadBatchReadStatus: All documents already have read status loaded");
+        // console.log("✅ loadBatchReadStatus: All documents already have read status loaded");
         return;
       }
 
-      console.log("🔍 loadBatchReadStatus called with:", { documentsToLoad, documentType });
+      // console.log("🔍 loadBatchReadStatus called with:", { documentsToLoad, documentType });
 
       // Mark as loading
       loadingDocuments.add(loadingKey);

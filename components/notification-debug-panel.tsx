@@ -29,19 +29,17 @@ export function NotificationDebugPanel() {
   // Use the hook to test notification handling
   useInternalDocumentNotifications({
     onReceived: (notification) => {
-      console.log('🔔 Hook received RECEIVED notification:', notification)
+      
       setDebugInfo(prev => ({ ...prev, lastMessage: notification }))
     },
     onRead: (notification) => {
-      console.log('🔔 Hook received READ notification:', notification)
+    
       setDebugInfo(prev => ({ ...prev, lastMessage: notification }))
     },
     onSent: (notification) => {
-      console.log('🔔 Hook received SENT notification:', notification)
       setDebugInfo(prev => ({ ...prev, lastMessage: notification }))
     },
     onUpdated: (notification) => {
-      console.log('🔔 Hook received UPDATED notification:', notification)
       setDebugInfo(prev => ({ ...prev, lastMessage: notification }))
     }
   })
@@ -67,7 +65,7 @@ export function NotificationDebugPanel() {
 
   const handleConnect = () => {
     if (token) {
-      console.log('🚀 Manual connection attempt with token:', token.substring(0, 20) + '...')
+      // console.log('🚀 Manual connection attempt with token:', token.substring(0, 20) + '...')
       notificationsRealtime.connect(token)
       setDebugInfo(prev => ({ 
         ...prev, 
@@ -80,7 +78,7 @@ export function NotificationDebugPanel() {
   }
 
   const handleDisconnect = () => {
-    console.log('🔌 Manual disconnect')
+    // console.log('🔌 Manual disconnect')
     notificationsRealtime.disconnect()
     setDebugInfo(prev => ({ 
       ...prev, 
@@ -104,8 +102,8 @@ export function NotificationDebugPanel() {
         fullName: 'Test User'
       }
     }
-    
-    console.log('🧪 Simulating test notification:', testNotification)
+
+    // console.log('🧪 Simulating test notification:', testNotification)
     setDebugInfo(prev => ({ ...prev, lastMessage: testNotification }))
   }
 

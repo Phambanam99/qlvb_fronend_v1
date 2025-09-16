@@ -31,7 +31,7 @@ export function useDepartmentUsers(
       if (responseData.length > 0) { 
         response = responseData.filter((user: UserDTO) => user.status === 1);
       }
-      console.log(`Fetched users for department ${departmentId}:`, response);
+      // console.log(`Fetched users for department ${departmentId}:`, response);
       // Sort users by leadership roles
       const sortedUsers = sortUsersByLeadershipRole(response || []);
 

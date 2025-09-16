@@ -501,19 +501,8 @@ export default function IncomingDocumentsPage() {
     internalDocsHook.totalPages : 
     externalDocsHook.totalPages; // External currently single page; client filter keeps same
 
-  // Loading state
-  if (isLoading || loadingDepartments) {
-    return (
-      <div className="flex h-[80vh] items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
-          <p className="mt-2 text-sm text-muted-foreground">
-            Đang tải dữ liệu...
-          </p>
-        </div>
-      </div>
-    );
-  }
+  // NOTE: Previously returned early with a full-page loader. Requirement: only table shows loading.
+  // Keep page layout mounted so filters & tabs are visible immediately.
 
   return (
     <div className="space-y-8">
@@ -571,17 +560,6 @@ export default function IncomingDocumentsPage() {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <h3 className="text-lg font-medium">Danh sách văn bản nội bộ đến</h3>
-              {/* <PrintInternalDocumentsButton
-                documents={currentDocuments}
-                documentType="received"
-                additionalFilters={{
-                  yearFilter: activeYearFilter,
-                  monthFilter: activeMonthFilter,
-                  searchQuery: internalActiveSearchQuery,
-                }}
-                size="sm"
-                variant="outline"
-              /> */}
             </div>
             {hasVanThuRole && (
               <Button
@@ -596,16 +574,25 @@ export default function IncomingDocumentsPage() {
               </Button>
             )}
           </div>
-          <InternalDocumentsTable
-            documents={currentDocuments}
-            onDocumentClick={handleInternalDocumentClick}
-            formatDate={formatDate}
-            universalReadStatus={universalReadStatus}
-            onReadStatusToggle={handleInternalReadStatusToggle}
-            getReadStatus={(docId: number) => 
-              universalReadStatus.getReadStatus(docId, "INCOMING_INTERNAL") || false
-            }
-          />
+          {isLoading || loadingDepartments ? (
+            <div className="flex h-40 items-center justify-center border rounded-md">
+              <div className="flex flex-col items-center text-center py-4">
+                <Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" />
+                <p className="mt-2 text-xs text-muted-foreground">Đang tải danh sách...</p>
+              </div>
+            </div>
+          ) : (
+            <InternalDocumentsTable
+              documents={currentDocuments}
+              onDocumentClick={handleInternalDocumentClick}
+              formatDate={formatDate}
+              universalReadStatus={universalReadStatus}
+              onReadStatusToggle={handleInternalReadStatusToggle}
+              getReadStatus={(docId: number) => 
+                universalReadStatus.getReadStatus(docId, "INCOMING_INTERNAL") || false
+              }
+            />
+          )}
         </TabsContent>
 
         {/* External Documents Tab */}
@@ -625,23 +612,32 @@ export default function IncomingDocumentsPage() {
               </Button>
             )}
           </div>
-          <ExternalDocumentsTable
-            documents={displayedDocuments}
-            allDocuments={currentDocuments}
-            processingStatusTab="all"
-            onProcessingStatusTabChange={() => {}}
-            onDocumentClick={handleExternalDocumentClick}
-            onReadStatusToggle={async (docId: number) => {
-              await externalReadStatus.toggleReadStatus(docId);
-            }}
-            getReadStatus={(docId: number) => {
-              return externalReadStatus.getReadStatus(docId);
-            }}
-            getDocumentCountByStatus={(statusKey) =>
-              getDocumentCountByStatus(displayedDocuments || [], statusKey, activeTab)
-            }
-            formatDate={formatDate}
-          />
+          {isLoading || loadingDepartments ? (
+            <div className="flex h-40 items-center justify-center border rounded-md">
+              <div className="flex flex-col items-center text-center py-4">
+                <Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" />
+                <p className="mt-2 text-xs text-muted-foreground">Đang tải danh sách...</p>
+              </div>
+            </div>
+          ) : (
+            <ExternalDocumentsTable
+              documents={displayedDocuments}
+              allDocuments={currentDocuments}
+              processingStatusTab="all"
+              onProcessingStatusTabChange={() => {}}
+              onDocumentClick={handleExternalDocumentClick}
+              onReadStatusToggle={async (docId: number) => {
+                await externalReadStatus.toggleReadStatus(docId);
+              }}
+              getReadStatus={(docId: number) => {
+                return externalReadStatus.getReadStatus(docId);
+              }}
+              getDocumentCountByStatus={(statusKey) =>
+                getDocumentCountByStatus(displayedDocuments || [], statusKey, activeTab)
+              }
+              formatDate={formatDate}
+            />
+          )}
         </TabsContent>
       </Tabs>
 

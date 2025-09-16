@@ -455,18 +455,7 @@ export default function OutgoingDocumentsPage() {
     internalDocsHook.totalPages : 
     externalDocsHook.totalPages;
 
-  if (isLoading || loadingDepartments) {
-    return (
-      <div className="flex h-[80vh] items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
-          <p className="mt-2 text-sm text-muted-foreground">
-            Đang tải dữ liệu...
-          </p>
-        </div>
-      </div>
-    );
-  }
+  // NOTE: Removed full-page blocking loader. Show loading only inside table panels.
 
   return (
     <div className="space-y-8">
@@ -510,35 +499,42 @@ export default function OutgoingDocumentsPage() {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <h3 className="text-lg font-medium">Danh sách văn bản nội bộ đi</h3>
-              {/* <PrintInternalDocumentsButton
-                documents={internalDocsHook.documents}
-                documentType="sent"
-                additionalFilters={{
-                  yearFilter: activeYearFilter,
-                  monthFilter: activeMonthFilter,
-                  searchQuery: internalActiveSearchQuery,
-                }}
-                size="sm"
-                variant="outline"
-              /> */}
             </div>
           </div>
-          <InternalDocumentsTable
-            documents={internalDocsHook.documents}
-            isLoading={internalDocsHook.loading}
-            universalReadStatus={universalReadStatus}
-            onDocumentClick={handleInternalDocumentClick}
-          />
+          {isLoading || loadingDepartments ? (
+            <div className="flex h-40 items-center justify-center border rounded-md">
+              <div className="flex flex-col items-center text-center py-4">
+                <Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" />
+                <p className="mt-2 text-xs text-muted-foreground">Đang tải danh sách...</p>
+              </div>
+            </div>
+          ) : (
+            <InternalDocumentsTable
+              documents={internalDocsHook.documents}
+              isLoading={false}
+              universalReadStatus={universalReadStatus}
+              onDocumentClick={handleInternalDocumentClick}
+            />
+          )}
         </TabsContent>
 
         <TabsContent value="external" className="mt-6">
-          <ExternalDocumentsTable
-            documents={displayedDocuments}
-            isLoading={externalDocsHook.loading}
-            hasFullAccess={hasFullAccess}
-            universalReadStatus={universalReadStatus}
-            onDocumentClick={handleExternalDocumentClick}
-          />
+          {isLoading || loadingDepartments ? (
+            <div className="flex h-40 items-center justify-center border rounded-md">
+              <div className="flex flex-col items-center text-center py-4">
+                <Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" />
+                <p className="mt-2 text-xs text-muted-foreground">Đang tải danh sách...</p>
+              </div>
+            </div>
+          ) : (
+            <ExternalDocumentsTable
+              documents={displayedDocuments}
+              isLoading={false}
+              hasFullAccess={hasFullAccess}
+              universalReadStatus={universalReadStatus}
+              onDocumentClick={handleExternalDocumentClick}
+            />
+          )}
         </TabsContent>
       </Tabs>
 

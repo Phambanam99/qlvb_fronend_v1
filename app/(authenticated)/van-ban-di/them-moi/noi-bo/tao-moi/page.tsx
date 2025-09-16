@@ -250,7 +250,7 @@ export default function CreateInternalOutgoingDocumentPage() {
             user.departmentId!
           );
 
-          console.log('Leadership users loaded:', leaders_);
+          // console.log('Leadership users loaded:', leaders_);
           setLeadershipUsers(Array.isArray(leaders_) ? leaders_ : []);
         } catch (error) {
           console.error('Error loading leadership users:', error);
@@ -455,11 +455,7 @@ export default function CreateInternalOutgoingDocumentPage() {
 
       // Filter out existing files - only send new files
       const newFilesToUpload = fileUpload.files.filter(file => !(file as any).isExisting);
-      console.log('Files to upload:', { 
-        total: fileUpload.files.length, 
-        existing: fileUpload.files.filter(f => (f as any).isExisting).length,
-        new: newFilesToUpload.length 
-      });
+    
 
       // Create new document
       const response_ = await createInternalDocument(

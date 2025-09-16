@@ -57,7 +57,7 @@
     "cmdk": "1.0.4",
     "cors": "latest",
     "date-fns": "latest",
-    "dotenv": "latest",
+    "dotenv": "^17.2.2",
     "embla-carousel-react": "8.5.1",
     "express": "latest",
     "express-validator": "latest",

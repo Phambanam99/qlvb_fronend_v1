@@ -187,7 +187,7 @@ export function useScheduleData() {
         size: pageSize,
       };
 
-      console.log("Schedule filters received:", filters);
+      // console.log("Schedule filters received:", filters);
 
       // Helper functions để convert date filters thành date ranges
       const getWeekDateRange = (year: number, week: number) => {
@@ -240,16 +240,7 @@ export function useScheduleData() {
         const { fromDate, toDate } = getWeekDateRange(year, week);
         params.fromDate = fromDate;
         params.toDate = toDate;
-        console.log(
-          "Applied week filter:",
-          week,
-          "year:",
-          year,
-          "range:",
-          fromDate,
-          "to",
-          toDate
-        );
+        
       } else if (
         filters?.monthFilter &&
         filters.monthFilter !== "all" &&
@@ -262,30 +253,14 @@ export function useScheduleData() {
         const { fromDate, toDate } = getMonthDateRange(year, month);
         params.fromDate = fromDate;
         params.toDate = toDate;
-        console.log(
-          "Applied month filter:",
-          month,
-          "year:",
-          year,
-          "range:",
-          fromDate,
-          "to",
-          toDate
-        );
+        
       } else if (filters?.yearFilter && filters.yearFilter !== "all") {
         // Add year range to params
         const year = parseInt(filters.yearFilter);
         const { fromDate, toDate } = getYearDateRange(year);
         params.fromDate = fromDate;
         params.toDate = toDate;
-        console.log(
-          "Applied year filter:",
-          year,
-          "range:",
-          fromDate,
-          "to",
-          toDate
-        );
+        
       }
 
       // Apply department filter with same logic as work plans
@@ -296,7 +271,7 @@ export function useScheduleData() {
         params.departmentId = userDepartmentIds[0];
       }
 
-      console.log("Final schedule params:", params);
+      // console.log("Final schedule params:", params);
       fetchSchedulesWithDebounce(params);
     },
     [fetchSchedulesWithDebounce, pageSize, hasFullAccess, userDepartmentIds]

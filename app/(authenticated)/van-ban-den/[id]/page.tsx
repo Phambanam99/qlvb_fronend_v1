@@ -186,7 +186,7 @@ export default function DocumentDetailPage({
         relatedDocuments: [],
         responses: [],
       };
-      console.log("Fetched document data:", documentData);
+      // console.log("Fetched document data:", documentData);
       setDocument(documentData);
       setError(null);
     } catch (err: any) {

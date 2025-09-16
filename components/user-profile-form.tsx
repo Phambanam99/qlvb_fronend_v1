@@ -96,7 +96,7 @@ export default function UserProfileForm({
 
   // Reset form when user data changes
   useEffect(() => {
-    console.log("UserProfileForm - user data changed:", user);
+  
     if (user && user.id) { // Make sure user is fully loaded
       // Handle current role - check multiple sources
       let currentRole = "";

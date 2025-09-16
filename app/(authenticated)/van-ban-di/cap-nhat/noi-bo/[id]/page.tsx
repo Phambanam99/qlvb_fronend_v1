@@ -236,18 +236,10 @@ export default function UpdateInternalOutgoingDocumentPage() {
       // In update mode, also check if document data is loaded
       // Note: Leadership users will be loaded after drafting department is set, so we don't wait for them here
       const allDataReady = isDocumentTypesReady && isDepartmentsReady && isDocumentDataReady;
-      
-      console.log('🔍 Checking initial data loaded:', {
-        isDocumentTypesReady,
-        isDepartmentsReady,
-        isDocumentDataReady,
-        allDataReady,
-        documentTypesCount: documentTypes.length,
-        departmentsCount: departments.length
-      });
+    
       
       if (allDataReady && !isInitialDataLoaded) {
-        console.log('✅ All initial data loaded successfully');
+        
         setIsInitialDataLoaded(true);
       }
     };
@@ -269,18 +261,8 @@ export default function UpdateInternalOutgoingDocumentPage() {
         try {
           setIsLoadingDocumentData(true);
           const response = await getDocumentById(parseInt(documentId));
-          const document = response.data;
-          console.log('Document loaded for update:', document);
-          console.log('🔍 Document Signer Details:', {
-            documentSigner: document.documentSigner,
-            hasDocumentSigner: !!document.documentSigner,
-            documentSignerKeys: document.documentSigner ? Object.keys(document.documentSigner) : 'No signer'
-          });
-          console.log('🔍 Drafting Department Details:', {
-            draftingDepartment: document.draftingDepartment,
-            hasDraftingDepartment: !!document.draftingDepartment,
-            draftingDepartmentKeys: document.draftingDepartment ? Object.keys(document.draftingDepartment) : 'No drafting dept'
-          });
+          const document = response.data; 
+        
 
           // Fill form with existing document data
           setFormData({
@@ -304,16 +286,11 @@ export default function UpdateInternalOutgoingDocumentPage() {
             noPaperCopy: document.noPaperCopy || false,
           });
 
-          console.log('📋 Document form data set:', {
-            draftingDepartmentId: document.draftingDepartment?.id,
-            draftingDepartmentName: document.draftingDepartment?.name,
-            documentSignerId: document.documentSigner?.id,
-            documentSignerName: document.documentSigner?.fullName
-          });
+         
 
           // Store recipients data to be processed after departments are loaded
           if (document.recipients && document.recipients.length > 0) {
-            console.log('Storing recipients for later processing:', document.recipients);
+            // console.log('Storing recipients for later processing:', document.recipients);
             setStoredRecipients(document.recipients);
           }
 
@@ -350,19 +327,15 @@ export default function UpdateInternalOutgoingDocumentPage() {
   // Process stored recipients after departments are loaded
   useEffect(() => {
     if (storedRecipients && storedRecipients.length > 0 && departments && departments.length > 0 && !isLoadingDepartmentList) {
-      console.log('🔍 Processing stored recipients now that departments are loaded:', {
-        storedRecipients,
-        departmentsLength: departments.length,
-        currentSecondaryDepartments: secondaryDepartments
-      });
+     
 
       storedRecipients.forEach((recipient: any, index: number) => {
-        console.log(`📋 Processing recipient ${index + 1}/${storedRecipients.length}:`, recipient);
+        // console.log(`📋 Processing recipient ${index + 1}/${storedRecipients.length}:`, recipient);
         if (recipient.departmentId) {
           // Check if this is an individual user (has userId) or department
           if (recipient.userId) {
             // Individual user: need to expand department and fetch users first
-            console.log('👤 Processing individual user:', recipient.userName, 'in department:', recipient.departmentName);
+            // console.log('👤 Processing individual user:', recipient.userName, 'in department:', recipient.departmentName);
             
             // 1. Expand the department to show users
             expandDepartment(recipient.departmentId);
@@ -372,14 +345,14 @@ export default function UpdateInternalOutgoingDocumentPage() {
             
             // 3. Select the composite ID (departmentId-userId) with forceAdd to prevent removal
             const compositeId = `${recipient.departmentId}-${recipient.userId}`;
-            console.log('👤 Selecting individual user:', compositeId, recipient.userName);
+            // console.log('👤 Selecting individual user:', compositeId, recipient.userName);
             selectSecondaryDepartment(compositeId, true); // forceAdd = true
           } else {
             // Department: use departmentId directly with forceAdd to prevent removal
             const dept = findDepartmentById(recipient.departmentId);
-            console.log('🏢 Found department:', dept);
+            // console.log('🏢 Found department:', dept);
             if (dept) {
-              console.log('🏢 Selecting department:', recipient.departmentId, recipient.departmentName);
+            // /  console.log('🏢 Selecting department:', recipient.departmentId, recipient.departmentName);
               selectSecondaryDepartment(recipient.departmentId, true); // forceAdd = true
             } else {
               console.warn('⚠️ Department not found:', recipient.departmentId, recipient.departmentName);
@@ -388,7 +361,7 @@ export default function UpdateInternalOutgoingDocumentPage() {
         }
       });
 
-      console.log('✅ Recipients processing completed. Current selections:', secondaryDepartments);
+      // console.log('✅ Recipients processing completed. Current selections:', secondaryDepartments);
       // Clear stored recipients after processing
       setStoredRecipients(null);
     }
@@ -396,7 +369,7 @@ export default function UpdateInternalOutgoingDocumentPage() {
 
   // Monitor secondaryDepartments changes
   useEffect(() => {
-    console.log('📊 Secondary departments changed:', secondaryDepartments);
+    // console.log('📊 Secondary departments changed:', secondaryDepartments);
   }, [secondaryDepartments]);
 
   // Load leadership users for drafting department
@@ -407,20 +380,20 @@ export default function UpdateInternalOutgoingDocumentPage() {
       
       // If no drafting department, try to use user's department as fallback
       if (!departmentIdToUse && user?.departmentId) {
-        console.log('⚠️ No drafting department found, using user department as fallback. User department ID:', user.departmentId);
+        // console.log('⚠️ No drafting department found, using user department as fallback. User department ID:', user.departmentId);
         departmentIdToUse = user.departmentId;
       }
       
       if (departmentIdToUse) {
         try {
           setIsLoadingLeadershipUsers(true);
-          console.log('🔍 Loading leadership users for department ID:', departmentIdToUse);
+          // console.log('🔍 Loading leadership users for department ID:', departmentIdToUse);
           
           const leaders = await usersAPI.getUsersByRoleAndDepartment(
             LEADERSHIP_ROLES,
             departmentIdToUse
           );
-          console.log('👥 Leadership users loaded:', leaders);
+          // console.log('👥 Leadership users loaded:', leaders);
           setLeadershipUsers(Array.isArray(leaders) ? leaders : []);
         } catch (error) {
           console.error('❌ Error loading leadership users:', error);
@@ -434,7 +407,7 @@ export default function UpdateInternalOutgoingDocumentPage() {
           setIsLoadingLeadershipUsers(false);
         }
       } else {
-        console.log('⚠️ No department available for loading leadership users');
+        // console.log('⚠️ No department available for loading leadership users');
         setLeadershipUsers([]);
         setIsLoadingLeadershipUsers(false);
       }
@@ -452,16 +425,16 @@ export default function UpdateInternalOutgoingDocumentPage() {
           const document = response.data;
           
           if (document.documentSigner) {
-            console.log('🔍 Checking if document signer exists in current leadership list...');
+            // console.log('🔍 Checking if document signer exists in current leadership list...');
             
             setLeadershipUsers(prevList => {
               const signerExists = prevList.some(user => user.id === formData.documentSignerId);
               
               if (!signerExists) {
-                console.log('➕ Adding document signer to leadership list:', document.documentSigner.fullName);
+                // console.log('➕ Adding document signer to leadership list:', document.documentSigner.fullName);
                 return [...prevList, document.documentSigner];
               } else {
-                console.log('✅ Document signer already exists in leadership list');
+                // console.log('✅ Document signer already exists in leadership list');
                 return prevList;
               }
             });
@@ -656,11 +629,7 @@ export default function UpdateInternalOutgoingDocumentPage() {
 
       // Filter out existing files - only send new files
       const newFilesToUpload = fileUpload.files.filter(file => !(file as any).isExisting);
-      console.log('Files to upload:', { 
-        total: fileUpload.files.length, 
-        existing: fileUpload.files.filter(f => (f as any).isExisting).length,
-        new: newFilesToUpload.length 
-      });
+    
 
       // Update existing document
       const response = await updateInternalDocument(

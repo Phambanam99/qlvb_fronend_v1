@@ -139,7 +139,7 @@ export default function UsersPage() {
         if (appliedDepartmentFilter !== "all") {
           params.departmentId = appliedDepartmentFilter;
         }
-        console.log("Fetching all users with params:", params);
+        
         const usersData_ = await usersAPI.getPaginatedUsers(params);
         usersData = usersData_.data;
       } else if (isDepartmentHead && userDepartmentId) {
