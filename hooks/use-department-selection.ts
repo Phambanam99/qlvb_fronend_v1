@@ -77,10 +77,12 @@ export function useDepartmentSelection() {
     try {
       const response_ = await departmentsAPI.getAllDepartments();
       const response = response_.data;
+      console.log("Fetched departments:", response);
       const departmentData = response.content || [];
+      const departmentFilter = departmentData.filter(dept => dept.group == "ACTIVE"); // Loại bỏ phòng ban có id = 1
       // console.log("Loaded departments:", departmentData);
       // Transform flat list to hierarchical structure
-      const hierarchicalData = buildDepartmentTree(departmentData);
+      const hierarchicalData = buildDepartmentTree(departmentFilter);
       setDepartments(hierarchicalData);
     } catch (error) {
       console.error("Error loading departments:", error);

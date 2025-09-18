@@ -187,10 +187,55 @@ export const guideFilesAPI = {
    */
   downloadGuideFile: async (id: string | number): Promise<Blob> => {
     try {
+      // We first try to get raw blob. However backend wraps Resource inside ResponseDTO
+      // which causes axios to treat it as JSON (application/json) when not actually streaming file bytes.
+      // So we attempt two strategies:
+      // 1. Request as blob. If the blob is JSON (small size / type application/json), parse it.
+      // 2. If JSON contains base64 under data.contentAsByteArray OR data (string), decode to binary.
       const response = await api.get(`/guide-files/${id}/download`, {
         responseType: "blob",
+        // prevent caching issues
+        headers: { Accept: "*/*" },
       });
-      return response.data;
+
+      let blob: Blob = response.data;
+
+      // If server actually returned JSON (content-type may still be application/json) the blob needs parsing
+      const contentType = (response as any).headers?.["content-type"] || blob.type;
+      const isLikelyJSON = contentType?.includes("application/json");
+
+      if (isLikelyJSON) {
+        const text = await blob.text();
+        try {
+          const json = JSON.parse(text);
+          // Expect structure { message, data: { contentAsByteArray: base64, fileName?, fileType? } }
+          const data = json.data || json;
+          const base64 = data.contentAsByteArray || data.base64 || data.bytes || null;
+          if (base64) {
+            const byteChars = atob(base64);
+            const byteNumbers = new Array(byteChars.length);
+            for (let i = 0; i < byteChars.length; i++) {
+              byteNumbers[i] = byteChars.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            const detectedType = data.fileType || "application/pdf";
+            blob = new Blob([byteArray], { type: detectedType });
+          } else if (data.uri || data.url || data.file) {
+            // Fallback: attempt direct fetch of file:// is not allowed in browser; need backend to stream.
+            // We throw explicit error to signal backend adjustment required.
+            throw new Error("Phản hồi JSON không chứa dữ liệu base64 file. Cần backend trả về bytes hoặc base64.");
+          } else {
+            throw new Error("Không tìm thấy dữ liệu file trong phản hồi JSON");
+          }
+        } catch (e) {
+          // If JSON parse fails, we keep original blob
+          if (e instanceof Error) {
+            console.warn("Không thể parse JSON blob tải xuống, trả về blob gốc:", e.message);
+          }
+        }
+      }
+
+      return blob;
     } catch (error) {
       throw error;
     }
