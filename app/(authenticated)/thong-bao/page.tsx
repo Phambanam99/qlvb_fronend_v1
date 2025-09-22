@@ -123,7 +123,7 @@ export default function NotificationsPage() {
       
       setNotifications(sortedNotifications)
     } catch (error) {
-      console.error('Error loading notifications:', error)
+      // console.error('Error loading notifications:', error)
       toast({
         title: "Lỗi",
         description: "Không thể tải danh sách thông báo",
@@ -161,7 +161,7 @@ export default function NotificationsPage() {
         )
       )
     } catch (error) {
-      console.error('Error marking as read:', error)
+      // console.error('Error marking as read:', error)
       toast({
         title: "Lỗi",
         description: "Không thể đánh dấu thông báo đã đọc",
@@ -183,7 +183,7 @@ export default function NotificationsPage() {
         variant: "default",
       })
     } catch (error) {
-      console.error('Error marking all as read:', error)
+      // console.error('Error marking all as read:', error)
       toast({
         title: "Lỗi",
         description: "Không thể đánh dấu tất cả thông báo đã đọc",
@@ -203,7 +203,7 @@ export default function NotificationsPage() {
         variant: "default",
       })
     } catch (error) {
-      console.error('Error clearing notifications:', error)
+      // console.error('Error clearing notifications:', error)
       toast({
         title: "Lỗi",
         description: "Không thể xóa thông báo",

@@ -4,8 +4,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { WorkPlanTable } from "./work-plan-table";
 import type { WorkPlanDTO } from "@/lib/api/workPlans";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
 
 interface WorkPlanTabsProps {
   workPlans?: WorkPlanDTO[]; // Make optional để handle undefined case
@@ -38,19 +36,7 @@ export function WorkPlanTabs({
   onStart,
   onComplete,
 }: WorkPlanTabsProps) {
-  const renderEmptyState = () => (
-    <div className="flex flex-col items-center justify-center py-12">
-      <p className="text-muted-foreground mb-4">
-        Không tìm thấy kế hoạch nào phù hợp
-      </p>
-      <Button asChild>
-        <Link href="/ke-hoach/tao-moi">
-          <Plus className="mr-2 h-4 w-4" />
-          Tạo kế hoạch mới
-        </Link>
-      </Button>
-    </div>
-  );
+  // Đã bỏ empty state riêng ở đây để luôn hiển thị bảng (bảng tự xử lý trạng thái rỗng + nút tạo mới)
 
   return (
     <Tabs value={activeTab} onValueChange={onTabChange}>
@@ -62,35 +48,18 @@ export function WorkPlanTabs({
       </TabsList>
       
       <TabsContent value={activeTab} className="mt-4">
-        {isLoading ? (
-          <WorkPlanTable
-            workPlans={[]}
-            isLoading={true}
-            currentPage={currentPage}
-            pageSize={pageSize}
-            totalElements={totalElements}
-            totalPages={totalPages}
-            onPageChange={onPageChange}
-            onPageSizeChange={onPageSizeChange}
-            onStart={onStart}
-            onComplete={onComplete}
-          />
-        ) : workPlans && workPlans.length > 0 ? (
-          <WorkPlanTable
-            workPlans={workPlans}
-            isLoading={false}
-            currentPage={currentPage}
-            pageSize={pageSize}
-            totalElements={totalElements}
-            totalPages={totalPages}
-            onPageChange={onPageChange}
-            onPageSizeChange={onPageSizeChange}
-            onStart={onStart}
-            onComplete={onComplete}
-          />
-        ) : (
-          renderEmptyState()
-        )}
+        <WorkPlanTable
+          workPlans={workPlans}
+          isLoading={isLoading}
+          currentPage={currentPage}
+          pageSize={pageSize}
+          totalElements={totalElements}
+          totalPages={totalPages}
+          onPageChange={onPageChange}
+          onPageSizeChange={onPageSizeChange}
+          onStart={onStart}
+          onComplete={onComplete}
+        />
       </TabsContent>
     </Tabs>
   );

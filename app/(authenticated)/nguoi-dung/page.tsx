@@ -52,6 +52,7 @@ import {
   hasRoleInGroup,
 } from "@/lib/role-utils";
 import { useHierarchicalDepartments } from "@/hooks/use-hierarchical-departments";
+import { useListStatePersistence } from "@/hooks/use-list-state-persistence";
 
 export default function UsersPage() {
   // User data states
@@ -244,17 +245,19 @@ export default function UsersPage() {
     }
   }, [user, toast]);
 
-  // Refetch users when applied filters or pagination changes
+  // Hydration lifecycle control (declared early to avoid TDZ in effects)
+  const [hydrated, setHydrated] = useState(false);
+
+  // Refetch users when applied filters or pagination changes (after hydration)
   useEffect(() => {
-    // Skip if user data or roles/departments haven't loaded yet
-  if (!user || !Array.isArray(roles) || roles.length === 0 || loadingDepartments) {
+    // Wait for hydration to complete to avoid fetching with default blank filters
+    if (!hydrated) return;
+    if (!user || !Array.isArray(roles) || roles.length === 0 || loadingDepartments) {
       return;
     }
-
-   
-
     fetchUsers(currentPage, itemsPerPage);
   }, [
+    hydrated,
     currentPage,
     itemsPerPage,
     fetchUsers,
@@ -305,6 +308,77 @@ export default function UsersPage() {
     setAppliedStatusFilter("all");
     setCurrentPage(0);
   };
+
+  // Persist + restore list state. Use autoSave=false to avoid overwriting stored values with defaults before hydration.
+  const { restore: restoreUsersState, restored: usersStateRestored, save: saveUsersState } = useListStatePersistence({
+    storageKey: "users-list-state",
+    state: {
+      searchTerm,
+      roleFilter,
+      departmentFilter,
+      statusFilter,
+      appliedSearchTerm,
+      appliedRoleFilter,
+      appliedDepartmentFilter,
+      appliedStatusFilter,
+      currentPage,
+      itemsPerPage,
+    },
+    persistKeys: [
+      "searchTerm",
+      "roleFilter",
+      "departmentFilter",
+      "statusFilter",
+      "appliedSearchTerm",
+      "appliedRoleFilter",
+      "appliedDepartmentFilter",
+      "appliedStatusFilter",
+      "currentPage",
+      "itemsPerPage",
+    ],
+    saveDeps: [
+      searchTerm,
+      roleFilter,
+      departmentFilter,
+      statusFilter,
+      appliedSearchTerm,
+      appliedRoleFilter,
+      appliedDepartmentFilter,
+      appliedStatusFilter,
+      currentPage,
+      itemsPerPage,
+    ],
+    version: 1,
+    skipIfHasQueryParams: false,
+    autoSave: false,
+  });
+
+  // (moved hydrated state declaration above)
+
+  // One-time hydration of state before first data fetch
+  useEffect(() => {
+    if (!usersStateRestored || hydrated) return;
+    const restored = restoreUsersState() as any;
+    if (restored) {
+      if (restored.searchTerm !== undefined) setSearchTerm(restored.searchTerm);
+      if (restored.roleFilter !== undefined) setRoleFilter(restored.roleFilter);
+      if (restored.departmentFilter !== undefined) setDepartmentFilter(restored.departmentFilter);
+      if (restored.statusFilter !== undefined) setStatusFilter(restored.statusFilter);
+      if (restored.appliedSearchTerm !== undefined) setAppliedSearchTerm(restored.appliedSearchTerm);
+      if (restored.appliedRoleFilter !== undefined) setAppliedRoleFilter(restored.appliedRoleFilter);
+      if (restored.appliedDepartmentFilter !== undefined) setAppliedDepartmentFilter(restored.appliedDepartmentFilter);
+      if (restored.appliedStatusFilter !== undefined) setAppliedStatusFilter(restored.appliedStatusFilter);
+      if (restored.currentPage !== undefined) setCurrentPage(restored.currentPage);
+      if (restored.itemsPerPage !== undefined) setItemsPerPage(restored.itemsPerPage);
+    }
+    setHydrated(true);
+  }, [usersStateRestored, hydrated, restoreUsersState]);
+
+  // Manual save after any dependency changes post-hydration
+  useEffect(() => {
+    if (!hydrated) return;
+    saveUsersState();
+  }, [hydrated, searchTerm, roleFilter, departmentFilter, statusFilter, appliedSearchTerm, appliedRoleFilter, appliedDepartmentFilter, appliedStatusFilter, currentPage, itemsPerPage, saveUsersState]);
 
   const getRoleName = (roleId: string) => {
   const role = (Array.isArray(roles) ? roles : []).find((r) => r.id === roleId);

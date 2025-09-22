@@ -115,11 +115,6 @@ export default function OutgoingDocumentReviewPage({
         <p className="text-center text-red-500">
           Bạn không có quyền truy cập trang này.
         </p>
-        <div className="flex justify-center">
-          <Button asChild>
-            <Link href="/van-ban-di">Quay lại danh sách văn bản đi</Link>
-          </Button>
-        </div>
       </div>
     );
   }

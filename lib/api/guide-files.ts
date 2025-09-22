@@ -39,7 +39,7 @@ export const guideFilesAPI = {
   getAllGuideFiles: async (): Promise<GuideFileDTO[]> => {
     try {
       const response = await api.get("/guide-files");
-      return response.data;
+      return response.data.data;
     } catch (error) {
       throw error;
     }
@@ -52,7 +52,7 @@ export const guideFilesAPI = {
   getActiveGuideFiles: async (): Promise<GuideFileDTO[]> => {
     try {
       const response = await api.get("/guide-files/active");
-      return response.data;
+      return response.data.data;
     } catch (error) {
       throw error;
     }

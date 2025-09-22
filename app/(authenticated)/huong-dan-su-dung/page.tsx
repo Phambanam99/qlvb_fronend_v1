@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { usePersistentState } from "@/hooks/usePersistentState";
 import {
   Card,
   CardContent,
@@ -34,7 +35,14 @@ import PDFViewerModal from "@/components/ui/pdf-viewer-modal";
 import { isPDFFile } from "@/lib/utils/pdf-viewer";
 
 export default function UserGuidePage() {
-  const [activeSection, setActiveSection] = useState("overview");
+  // Persist the active section so when user navigates away & back, their position is restored
+  const [activeSection, setActiveSection] = usePersistentState<string>(
+    "overview",
+    {
+      queryParam: "section",
+      validate: (val): val is string => typeof val === "string",
+    }
+  );
   const [guideFiles, setGuideFiles] = useState<GuideFileDTO[]>([]);
   const [loadingFiles, setLoadingFiles] = useState(true);
   const [pdfViewerOpen, setPdfViewerOpen] = useState(false);
@@ -167,12 +175,11 @@ export default function UserGuidePage() {
     const fetchGuideFiles = async () => {
       try {
         setLoadingFiles(true);
-        const files_ = await guideFilesAPI.getActiveGuideFiles();
-        const files = files_.data || [];
-        console.log("Fetched guide files:", files);
-        setGuideFiles(Array.isArray(files) ? files : []);
+  const files = await guideFilesAPI.getActiveGuideFiles();
+  // console.log("Fetched guide files:", files);
+  setGuideFiles(Array.isArray(files) ? files : []);
       } catch (error) {
-        console.error("Failed to load guide files", error);
+        // console.error("Failed to load guide files", error);
         toast({
           title: "Lỗi",
           description: "Không thể tải danh sách file hướng dẫn",
@@ -202,7 +209,7 @@ export default function UserGuidePage() {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
     } catch (error) {
-      console.error("Download file error", error);
+      // console.error("Download file error", error);
       toast({
         title: "Lỗi",
         description: "Không thể tải file",
@@ -226,16 +233,16 @@ export default function UserGuidePage() {
         throw new Error("Kết quả tải về không phải Blob");
       }
       if (blob.size === 0) {
-        console.warn("PDF blob size is 0");
+        // console.warn("PDF blob size is 0");
       }
-      console.log("Downloaded PDF file blob:", {
-        size: blob.size,
-        type: blob.type,
-        name: selectedFile.fileName,
-      });
+      // console.log("Downloaded PDF file blob:", {
+      //   size: blob.size,
+      //   type: blob.type,
+      //   name: selectedFile.fileName,
+      // });
       return blob;
     } catch (error) {
-      console.error("PDF download error", error);
+      // console.error("PDF download error", error);
       toast({
         title: "Lỗi",
         description: `Không thể tải file PDF` ,

@@ -460,11 +460,6 @@ export default function InternalDocumentDetailPage() {
           <p className="mt-2 text-sm text-muted-foreground">
             Văn bản nội bộ không tồn tại hoặc đã bị xóa
           </p>
-          <Button asChild className="mt-4">
-            <Link href="/van-ban-di">
-              <ArrowLeft className="mr-2 h-4 w-4" /> Quay lại danh sách
-            </Link>
-          </Button>
         </div>
       </div>
     );
@@ -475,12 +470,6 @@ export default function InternalDocumentDetailPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="outline" asChild>
-            <Link href="/van-ban-di">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Quay lại danh sách
-            </Link>
-          </Button>
 
           <div className="flex items-center space-x-4">
             <h1 className="text-2xl font-bold">Chi tiết văn bản nội bộ</h1>

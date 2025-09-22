@@ -503,9 +503,7 @@ export default function InternalDocumentReceivedDetailPage() {
             Văn bản nội bộ không tồn tại hoặc đã bị xóa
           </p>
           <Button asChild className="mt-4">
-            <Link href="/van-ban-den">
-              <ArrowLeft className="mr-2 h-4 w-4" /> Quay lại danh sách
-            </Link>
+            
           </Button>
         </div>
       </div>

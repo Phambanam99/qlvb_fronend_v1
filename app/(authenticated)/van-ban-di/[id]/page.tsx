@@ -1265,9 +1265,7 @@ export default function OutgoingDocumentDetailPage({
     return (
       <div className="flex flex-col items-center justify-center h-[calc(100vh-200px)]">
         <p className="text-red-500 mb-4">{error || "Không tìm thấy văn bản"}</p>
-        <Button asChild>
-          <Link href="/van-ban-di">Quay lại danh sách</Link>
-        </Button>
+       
       </div>
     );
   }

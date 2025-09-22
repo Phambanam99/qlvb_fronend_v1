@@ -457,12 +457,7 @@ function EditOutgoingDocumentPage() {
         <p className="text-muted-foreground">
           Văn bản không tồn tại hoặc đã bị xóa
         </p>
-        <Button variant="outline" asChild>
-          <Link href="/van-ban-di">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Quay lại danh sách
-          </Link>
-        </Button>
+        
       </div>
     );
   }

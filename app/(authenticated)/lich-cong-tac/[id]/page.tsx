@@ -51,7 +51,7 @@ export default function ScheduleDetailPage({
       
       setUserNames(prevNames => ({ ...prevNames, ...nameMap }));
     } catch (error) {
-      console.error("Error fetching user names:", error);
+      // console.error("Error fetching user names:", error);
     }
   };
 
@@ -189,9 +189,7 @@ export default function ScheduleDetailPage({
         <p className="text-red-500 mb-4">
           {error || "Không tìm thấy lịch công tác"}
         </p>
-        <Button asChild>
-          <Link href="/lich-cong-tac">Quay lại danh sách</Link>
-        </Button>
+       
       </div>
     );
   }

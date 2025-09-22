@@ -55,7 +55,7 @@ export function InternalDocumentsTable({
                 // console.log("Document:", doc);
                 // FIX: Use backend data as primary source, frontend state for real-time updates
                 const frontendStatus = getReadStatus ? getReadStatus(doc.id) : undefined;
-                const isRead = frontendStatus !== undefined ? frontendStatus : doc.isRead;
+                const isRead =  doc.isRead;
                   
                 return (
                   <TableRow 
@@ -97,12 +97,12 @@ export function InternalDocumentsTable({
                             ? "text-green-600 hover:text-green-700"
                             : "text-blue-600 hover:text-blue-700"
                         }`}
-                        onClick={(e: React.MouseEvent) => {
-                          e.stopPropagation();
-                          if (onReadStatusToggle) {
-                            onReadStatusToggle(doc.id);
-                          }
-                        }}
+                        // onClick={(e: React.MouseEvent) => {
+                        //   e.stopPropagation();
+                        //   if (onReadStatusToggle) {
+                        //     onReadStatusToggle(doc.id);
+                        //   }
+                        // }}
                       >
                         {isRead ? "Đã đọc" : "Chưa đọc"}
                       </Button>

@@ -9,6 +9,7 @@ import { WorkPlanFilters } from "@/components/work-plans/work-plan-filters";
 import { WorkPlanTabs } from "@/components/work-plans/work-plan-tabs";
 import { useWorkPlanData } from "@/hooks/use-work-plan-data";
 import { useWorkPlanFilters } from "@/hooks/use-work-plan-filters";
+import { useListStatePersistence } from "@/hooks/use-list-state-persistence";
 
 export default function WorkPlansPage() {
   const { toast } = useToast();
@@ -109,6 +110,42 @@ export default function WorkPlansPage() {
       });
     }
   };
+
+  // Persist list state (filters, pagination, tab)
+  useListStatePersistence({
+    storageKey: "work-plans-state",
+    state: {
+      weekFilter,
+      monthFilter,
+      yearFilter,
+      statusFilter,
+      departmentFilter,
+      activeTab,
+      currentPage,
+      pageSize,
+    },
+    persistKeys: [
+      "weekFilter",
+      "monthFilter",
+      "yearFilter",
+      "statusFilter",
+      "departmentFilter",
+      "activeTab",
+      "currentPage",
+      "pageSize",
+    ],
+    saveDeps: [
+      weekFilter,
+      monthFilter,
+      yearFilter,
+      statusFilter,
+      departmentFilter,
+      activeTab,
+      currentPage,
+      pageSize,
+    ],
+    version: 1,
+  });
 
   return (
     <div className="space-y-6">

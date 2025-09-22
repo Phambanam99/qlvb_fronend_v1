@@ -45,7 +45,11 @@ export function ScheduleTabs({
       return <ScheduleSkeleton viewMode={viewMode} />;
     }
 
-    if (scheduleList.length === 0) {
+    // Khi không có dữ liệu: vẫn hiển thị lịch đối với chế độ tuần/tháng
+    const isEmpty = scheduleList.length === 0;
+    const showCalendarWhenEmpty = isEmpty && (viewMode === "week" || viewMode === "month");
+    if (isEmpty && !showCalendarWhenEmpty) {
+      // list/table view vẫn dùng empty state cũ
       return <EmptyState />;
     }
 
@@ -70,10 +74,24 @@ export function ScheduleTabs({
         <Card>
           <CardContent className="p-0">
             {viewMode === "week" && (
-              <FullCalendarView mode="week" date={date} schedules={scheduleList} />
+              <div className="relative">
+                <FullCalendarView mode="week" date={date} schedules={scheduleList} />
+                {isEmpty && (
+                  <div className="absolute inset-0 pointer-events-none flex items-center justify-center text-sm text-muted-foreground">
+                    Không có lịch công tác trong tuần này
+                  </div>
+                )}
+              </div>
             )}
             {viewMode === "month" && (
-              <FullCalendarView mode="month" date={date} schedules={scheduleList} />
+              <div className="relative">
+                <FullCalendarView mode="month" date={date} schedules={scheduleList} />
+                {isEmpty && (
+                  <div className="absolute inset-0 pointer-events-none flex items-center justify-center text-sm text-muted-foreground">
+                    Không có lịch công tác trong tháng này
+                  </div>
+                )}
+              </div>
             )}
             {viewMode === "list" && (
               <ScheduleList

@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Loader2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Building2, Globe } from "lucide-react";
+import { useQuerySync } from "@/hooks/useQuerySync";
+import { useSearchParams, useRouter } from "next/navigation";
+import { useListStatePersistence } from "@/hooks/use-list-state-persistence";
 
 // Import hooks và context
 import { useAuth } from "@/lib/auth-context";
@@ -39,7 +42,13 @@ interface OutgoingDocument {
 }
 
 export default function OutgoingDocumentsPage() {
-  // Search và filter states - riêng biệt cho từng tab
+  // --- URL SYNCHRONIZED STATE ---
+  // Query params mapping (see useQuerySync):
+  // q, tab, page (1-based in URL), size, status, dept, year, month
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  // Search và filter states - riêng biệt cho từng tab (activeSearchQuery = already applied)
   const [internalSearchQuery, setInternalSearchQuery] = useState("");
   const [externalSearchQuery, setExternalSearchQuery] = useState("");
   const [internalActiveSearchQuery, setInternalActiveSearchQuery] = useState("");
@@ -55,7 +64,7 @@ export default function OutgoingDocumentsPage() {
   const [activeMonthFilter, setActiveMonthFilter] = useState<number | undefined>(undefined);
 
   // Pagination states
-  const [currentPage, setCurrentPage] = useState(0);
+  const [currentPage, setCurrentPage] = useState(0); // 0-based internal
   const [pageSize, setPageSize] = useState(10);
   const [activeTab, setActiveTab] = useState("internal");
 
@@ -98,71 +107,171 @@ export default function OutgoingDocumentsPage() {
     "ROLE_PHO_CHINH_UY",
   ]);
 
-  // Effects
+  // ---------------- URL INITIAL APPLY (only once) ----------------
+  const applyInitialFromURL = useCallback((parsed: any) => {
+    if (parsed.tab === "internal" || parsed.tab === "external") {
+      setActiveTab(parsed.tab);
+    }
+    if (typeof parsed.page === "number" && parsed.page >= 0) {
+      setCurrentPage(parsed.page);
+    }
+    if (typeof parsed.size === "number" && [5,10,20,50].includes(parsed.size)) {
+      setPageSize(parsed.size);
+    }
+    if (parsed.status) setStatusFilter(parsed.status);
+    if (parsed.dept) setDepartmentFilter(parsed.dept);
+    if (parsed.year) {
+      setYearFilter(parsed.year);
+      setActiveYearFilter(parsed.year);
+    }
+    if (parsed.month) {
+      setMonthFilter(parsed.month);
+      setActiveMonthFilter(parsed.month);
+    }
+    if (parsed.q) {
+      // Apply to correct tab
+      if (parsed.tab === "external") {
+        setExternalSearchQuery(parsed.q);
+        setExternalActiveSearchQuery(parsed.q);
+      } else {
+        setInternalSearchQuery(parsed.q);
+        setInternalActiveSearchQuery(parsed.q);
+      }
+    }
+  }, []);
+
+  // Unified persistence hook
+  useListStatePersistence({
+    storageKey: "outgoing-docs-state",
+    state: {
+      activeTab,
+      currentPage,
+      pageSize,
+      statusFilter,
+      departmentFilter,
+      internalSearchQuery,
+      internalActiveSearchQuery,
+      externalSearchQuery,
+      externalActiveSearchQuery,
+      yearFilter,
+      monthFilter,
+      activeYearFilter,
+      activeMonthFilter,
+    },
+    persistKeys: [
+      "activeTab",
+      "currentPage",
+      "pageSize",
+      "statusFilter",
+      "departmentFilter",
+      "internalSearchQuery",
+      "internalActiveSearchQuery",
+      "externalSearchQuery",
+      "externalActiveSearchQuery",
+      "yearFilter",
+      "monthFilter",
+      "activeYearFilter",
+      "activeMonthFilter",
+    ],
+    saveDeps: [
+      activeTab,
+      currentPage,
+      pageSize,
+      statusFilter,
+      departmentFilter,
+      internalSearchQuery,
+      internalActiveSearchQuery,
+      externalSearchQuery,
+      externalActiveSearchQuery,
+      yearFilter,
+      monthFilter,
+      activeYearFilter,
+      activeMonthFilter,
+    ],
+    skipIfHasQueryParams: true,
+    version: 1,
+  });
+
+  const { ready: queryReady } = useQuerySync({
+    select: () => ({
+      // Prefer live input (immediate feedback) then fallback to applied search
+      q: (activeTab === "internal" ? internalSearchQuery : externalSearchQuery) || (activeTab === "internal" ? internalActiveSearchQuery : externalActiveSearchQuery) || undefined,
+      tab: activeTab !== "internal" ? activeTab : undefined,
+      page: currentPage || 0,
+      size: pageSize !== 10 ? pageSize : undefined,
+      status: statusFilter !== "all" ? statusFilter : undefined,
+      dept: departmentFilter !== "all" ? departmentFilter : undefined,
+      year: activeTab === "internal" && activeYearFilter !== new Date().getFullYear() ? activeYearFilter : undefined,
+      month: activeTab === "internal" && activeMonthFilter ? activeMonthFilter : undefined,
+    }),
+    apply: applyInitialFromURL,
+    defaults: { page: 0, size: 10, status: "all" },
+  });
+
+  // Add a refresh nonce similar to incoming documents page
+  const [refreshNonce, setRefreshNonce] = useState(0);
+
+  // Effects (will respond to state + URL) – unified fetching approach
   useEffect(() => {
     const unsubscribe = subscribe();
     return unsubscribe;
   }, []);
 
-  // Refresh data when page becomes visible again
+  // Unified effect: handles filters, pagination, visibility, manual refresh
   useEffect(() => {
-    if (isPageVisible && user && !loadingDepartments) {
-      setTimeout(() => {
-        fetchDocuments(currentPage, pageSize);
-      }, 100);
-    }
-  }, [isPageVisible]);
-
-  // Main fetch function
-  const fetchDocuments = async (page = currentPage, size = pageSize) => {
-    if (activeTab === "internal") {
-      await internalDocsHook.fetchInternalDocuments(page, size);
-    } else {
-      await externalDocsHook.fetchExternalDocuments(page, size);
-    }
-  };
-
-  // Effects để load data - sử dụng activeSearchQuery phù hợp với tab
-  useEffect(() => {
-    if (!user || loadingDepartments) return;
-    setCurrentPage(0);
-    setTimeout(() => {
-      fetchDocuments(0, pageSize);
-    }, 50);
-  }, [user?.id, statusFilter, activeTab, loadingDepartments, activeYearFilter, activeMonthFilter, internalActiveSearchQuery, externalActiveSearchQuery]);
-
-  useEffect(() => {
-    if (user && (currentPage > 0 || pageSize !== 10)) {
-      fetchDocuments(currentPage, pageSize);
-    }
-  }, [currentPage, pageSize, user?.id]);
+    if (!user || loadingDepartments || !queryReady || !isPageVisible) return;
+    const t = setTimeout(() => {
+      if (activeTab === "internal") {
+        internalDocsHook.fetchInternalDocuments(currentPage, pageSize);
+      } else {
+        externalDocsHook.fetchExternalDocuments(currentPage, pageSize);
+      }
+    }, 60); // small debounce for rapid input changes
+    return () => clearTimeout(t);
+  }, [
+    user?.id,
+    activeTab,
+    loadingDepartments,
+    queryReady,
+    isPageVisible,
+    // filters / search
+    statusFilter,
+    departmentFilter,
+    internalActiveSearchQuery,
+    externalActiveSearchQuery,
+    activeYearFilter,
+    activeMonthFilter,
+    // pagination
+    currentPage,
+    pageSize,
+    // manual refresh trigger
+    refreshNonce,
+  ]);
 
   // Load read status
-  useEffect(() => {
-    if (externalDocsHook.documents.length > 0) {
-      const documentIds = externalDocsHook.documents
-        .map((doc: any) => Number(doc.id))
-        .filter((id: any) => !isNaN(id));
-      if (documentIds.length > 0) {
-        universalReadStatus.loadBatchReadStatus(
-          documentIds,
-          "OUTGOING_EXTERNAL"
-        );
-      }
-    }
-  }, [externalDocsHook.documents.length]);
+  // useEffect(() => {
+  //   if (externalDocsHook.documents.length > 0) {
+  //     const documentIds = externalDocsHook.documents
+  //       .map((doc: any) => Number(doc.id))
+  //       .filter((id: any) => !isNaN(id));
+  //     if (documentIds.length > 0) {
+  //       universalReadStatus.loadBatchReadStatus(
+  //         documentIds,
+  //         "OUTGOING_EXTERNAL"
+  //       );
+  //     }
+  //   }
+  // }, [externalDocsHook.documents.length]);
 
   useEffect(() => {
+    // Seed read status directly from existing list (documents already include isRead)
     if (internalDocsHook.documents.length > 0) {
-      const documentIds = internalDocsHook.documents.map((doc: any) => doc.id);
-      if (documentIds.length > 0) {
-        universalReadStatus.loadBatchReadStatus(
-          documentIds,
-          "OUTGOING_INTERNAL"
-        );
-      }
+      universalReadStatus.seedReadStatuses(
+        internalDocsHook.documents.map((d: any) => ({ id: d.id, isRead: d.isRead })),
+        "OUTGOING_INTERNAL"
+      );
     }
-  }, [internalDocsHook.documents.length]);
+  }, [internalDocsHook.documents, universalReadStatus]);
 
   // Helper functions
   const getChildDepartmentIds = (departmentId: string) => {
@@ -285,14 +394,10 @@ export default function OutgoingDocumentsPage() {
         try {
           const update = JSON.parse(e.newValue);
           if (update.documentType === "OUTGOING_INTERNAL" || update.documentType === "OUTGOING_EXTERNAL") {
-            // Force refresh of documents to update read status
-            if (activeTab === "internal" && update.documentType === "OUTGOING_INTERNAL") {
-              // Re-trigger internal documents hook
-              setCurrentPage(currentPage);
-            } else if (activeTab === "external" && update.documentType === "OUTGOING_EXTERNAL") {
-              // Re-trigger external documents hook  
-              setCurrentPage(currentPage);
-            }
+            // Instead of refetching list just seed updated doc (optimistic)
+            universalReadStatus.seedReadStatuses([
+              { id: update.documentId, isRead: update.isRead }
+            ], update.documentType);
           }
         } catch (error) {
           // Ignore invalid JSON
@@ -303,14 +408,9 @@ export default function OutgoingDocumentsPage() {
     const handleCustomEvent = (e: CustomEvent) => {
       const update = e.detail;
       if (update.documentType === "OUTGOING_INTERNAL" || update.documentType === "OUTGOING_EXTERNAL") {
-        // Force refresh of documents to update read status
-        if (activeTab === "internal" && update.documentType === "OUTGOING_INTERNAL") {
-          // Re-trigger internal documents hook
-          setCurrentPage(currentPage);
-        } else if (activeTab === "external" && update.documentType === "OUTGOING_EXTERNAL") {
-          // Re-trigger external documents hook
-          setCurrentPage(currentPage);
-        }
+        universalReadStatus.seedReadStatuses([
+          { id: update.documentId, isRead: update.isRead }
+        ], update.documentType);
       }
     };
 
@@ -333,6 +433,9 @@ export default function OutgoingDocumentsPage() {
         doc.id,
         "OUTGOING_INTERNAL"
       );
+
+      // Persist current list state before navigating
+      // Persistence handled by hook (autoSave)
 
       if (!currentReadStatus) {
         try {
@@ -363,9 +466,9 @@ export default function OutgoingDocumentsPage() {
         }
       }
 
-      window.location.href = `/van-ban-di/noi-bo/${doc.id}`;
+      router.push(`/van-ban-di/noi-bo/${doc.id}`);
     } catch (error) {
-      window.location.href = `/van-ban-di/noi-bo/${doc.id}`;
+      router.push(`/van-ban-di/noi-bo/${doc.id}`);
     }
   };
 
@@ -375,6 +478,9 @@ export default function OutgoingDocumentsPage() {
         Number(doc.id),
         "OUTGOING_EXTERNAL"
       );
+
+      // Persist state
+      // Persistence handled by hook
 
       if (!currentReadStatus) {
         try {
@@ -408,16 +514,20 @@ export default function OutgoingDocumentsPage() {
         }
       }
 
-      window.location.href = `/van-ban-di/${doc.id}`;
+      router.push(`/van-ban-di/${doc.id}`);
     } catch (error) {
-      window.location.href = `/van-ban-di/${doc.id}`;
+      router.push(`/van-ban-di/${doc.id}`);
     }
   };
 
-  // Pagination handlers
+  // Manual refresh handler
+  const handleRefresh = () => {
+    setRefreshNonce((n) => n + 1);
+  };
+
+  // Pagination handlers (no direct fetch calls; unified effect will run)
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
-    fetchDocuments(page, pageSize);
   };
 
   const handlePageSizeChange = (size: number) => {

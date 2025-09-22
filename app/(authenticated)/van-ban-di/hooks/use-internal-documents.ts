@@ -37,7 +37,10 @@ export function useInternalDocuments({
   ) => {
     try {
       setLoadingInternal(true);
-      
+      // console.log("Fetching internal documents with params:", {
+      //   page,
+      //   size, year, month, activeSearchQuery
+      // });
       let response_;
       let response;
       
@@ -45,21 +48,11 @@ export function useInternalDocuments({
       if (activeSearchQuery.trim()) {
         response_ = await searchDocuments(activeSearchQuery.trim(), page, size);
         response = response_.data;
+        console.log("Search response:", response_);
         
         if (response && response.content) {
           const documentsWithUpdatedReadStatus = response.content.map(
             (doc: InternalDocument) => {
-              const globalReadStatus = getReadStatus(doc.id);
-              if (
-                globalReadStatus.isRead !== undefined &&
-                globalReadStatus.isRead !== doc.isRead
-              ) {
-                return {
-                  ...doc,
-                  isRead: globalReadStatus.isRead,
-                  readAt: globalReadStatus.readAt || doc.readAt,
-                };
-              }
               return doc;
             }
           );
@@ -74,7 +67,7 @@ export function useInternalDocuments({
               readAt: doc.readAt,
             })
           );
-          updateMultipleReadStatus(readStatusUpdates);
+          // updateMultipleReadStatus(readStatusUpdates);
 
           // Set pagination info from search results
           setTotalItems(response.totalElements || response.content.length);
@@ -84,9 +77,10 @@ export function useInternalDocuments({
         // Sử dụng API mới theo year/month nếu có, fallback về getSentDocuments
         if (year) {
           response_ = await getSentDocumentsByYear(year, month, page, size);
-          
+          // console.log("Fetch by year/month:", year, month, response_);
         } else {
           response_ = await getSentDocuments(page, size);
+          // console.log("Fetch all sent documents:", response_);
         }
         response = response_.data;
 
@@ -94,17 +88,7 @@ export function useInternalDocuments({
           // Cập nhật trạng thái đọc từ global state cho văn bản đi
           const documentsWithUpdatedReadStatus = response.content.map(
             (doc: InternalDocument) => {
-              const globalReadStatus = getReadStatus(doc.id);
-              if (
-                globalReadStatus.isRead !== undefined &&
-                globalReadStatus.isRead !== doc.isRead
-              ) {
-                return {
-                  ...doc,
-                  isRead: globalReadStatus.isRead,
-                  readAt: globalReadStatus.readAt || doc.readAt,
-                };
-              }
+            
               return doc;
             }
           );
@@ -119,7 +103,7 @@ export function useInternalDocuments({
               readAt: doc.readAt,
             })
           );
-          updateMultipleReadStatus(readStatusUpdates);
+          // updateMultipleReadStatus(readStatusUpdates);
 
           // Set pagination info if available
           if (response.totalElements !== undefined) {
