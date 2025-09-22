@@ -228,6 +228,37 @@ export const createInternalDocumentJson = async (document: any) => {
   return response.data;
 };
 
+export const updateInternalDocument = async (
+  documentNumber: string,
+  document: CreateInternalDocumentDTO,
+  files?: File[],
+  descriptions?: string[],
+  onUploadProgress?: (progressEvent: any) => void,
+  cancelToken?: any
+) => {
+  const formData = new FormData();
+  formData.append("document", JSON.stringify(document));
+  if (files) {
+    files.forEach((file, idx) => {
+      formData.append("files", file);
+    });
+  }
+  if (descriptions) {
+    descriptions.forEach((desc) => {
+      formData.append("descriptions", desc);
+    });
+  }
+
+  const response = await api.put(`/internal-documents/${documentNumber}`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+    onUploadProgress,
+    cancelToken,
+    timeout: 600000, // 10 minutes timeout for large files
+  });
+
+  return response.data;
+};
+
 export const getDocumentById = async (id: number) => {
   const response = await api.get(`/internal-documents/${id}`);
   return response.data;
@@ -237,6 +268,7 @@ export const getSentDocuments = async (page = 0, size = 10) => {
   const response = await api.get("/internal-documents/sent", {
     params: { page, size },
   });
+  // console.log("Sent documents response:", response.data);
   return response.data;
 };
 
@@ -249,6 +281,7 @@ export const getSentDocumentsByYear = async (year: number, month?: number, page 
   const response = await api.get(`/internal-documents/sent/by-year/${year}`, {
     params
   });
+
   return response.data;
 };
 
@@ -357,6 +390,7 @@ export const searchDocuments = async (keyword: string, page = 0, size = 10) => {
   const response = await api.get("/internal-documents/search", {
     params: { keyword, page, size },
   });
+  // console.log("Search response:", response.data);
   return response.data;
 };
 

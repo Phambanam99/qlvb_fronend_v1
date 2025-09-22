@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { usePersistentState } from "@/hooks/usePersistentState";
 import {
   Card,
   CardContent,
@@ -86,19 +87,46 @@ export default function AdminGuideFilesPage() {
   const [guideFiles, setGuideFiles] = useState<GuideFileDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  // Persist dialog open state so returning admin doesn't lose unsaved form (session only)
+  const [isDialogOpen, setIsDialogOpen] = usePersistentState<boolean>(false, {
+    storageKey: "admin.guideFiles.dialogOpen",
+  });
   const [editingFile, setEditingFile] = useState<GuideFileDTO | null>(null);
   const [pdfViewerOpen, setPdfViewerOpen] = useState(false);
   const [selectedFileForPreview, setSelectedFileForPreview] =
     useState<GuideFileDTO | null>(null);
 
-  const [formData, setFormData] = useState<CreateGuideFileDTO>({
-    name: "",
-    description: "",
-    category: "",
-    isActive: true,
-  });
+  const [formData, setFormData] = usePersistentState<CreateGuideFileDTO>(
+    {
+      name: "",
+      description: "",
+      category: "",
+      isActive: true,
+    },
+    {
+      storageKey: "admin.guideFiles.formData",
+      validate: (v): v is CreateGuideFileDTO =>
+        !!v && typeof v === "object" && "name" in v,
+    }
+  );
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  // Remember last scroll position
+  const scrollPosRef = useRef<number>(0);
+  useEffect(() => {
+    const stored = sessionStorage.getItem("admin.guideFiles.scrollY");
+    if (stored) {
+      requestAnimationFrame(() => window.scrollTo(0, parseInt(stored, 10)));
+    }
+    const onScroll = () => {
+      scrollPosRef.current = window.scrollY;
+      sessionStorage.setItem(
+        "admin.guideFiles.scrollY",
+        String(scrollPosRef.current)
+      );
+    };
+    window.addEventListener("scroll", onScroll);
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   // Check admin permission
   useEffect(() => {
@@ -120,9 +148,8 @@ export default function AdminGuideFilesPage() {
   const fetchGuideFiles = async () => {
     try {
       setLoading(true);
-      const files_ = await guideFilesAPI.getAllGuideFiles();
-      const files = files_.data;
-      setGuideFiles(files);
+  const files = await guideFilesAPI.getAllGuideFiles();
+  setGuideFiles(files);
     } catch (error) {
       toast({
         title: "Lỗi",
@@ -232,9 +259,8 @@ export default function AdminGuideFilesPage() {
 
   const handleDownload = async (file: GuideFileDTO) => {
     try {
-      const blob_   = await guideFilesAPI.downloadGuideFile(file.id);
-      const blob = blob_.data;
-     
+      const blob = await guideFilesAPI.downloadGuideFile(file.id);
+      if (!(blob instanceof Blob)) throw new Error("Download did not return Blob");
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -260,7 +286,7 @@ export default function AdminGuideFilesPage() {
   };
 
   const resetForm = () => {
-    setFormData({ name: "", description: "", category: "", isActive: true });
+  setFormData({ name: "", description: "", category: "", isActive: true });
     setSelectedFile(null);
     setEditingFile(null);
   };
@@ -275,9 +301,9 @@ export default function AdminGuideFilesPage() {
   const handlePDFDownload = async () => {
     if (!selectedFileForPreview) return null;
     try {
-      const result_ = await guideFilesAPI.downloadGuideFile(selectedFileForPreview.id);
-      const result = result_.data;
-      return result;
+      const blob = await guideFilesAPI.downloadGuideFile(selectedFileForPreview.id);
+      if (!(blob instanceof Blob)) throw new Error("Preview did not return Blob");
+      return blob;
     } catch (error) {
       toast({
         title: "Lỗi",

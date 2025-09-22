@@ -27,10 +27,10 @@ const roleFormSchema = z.object({
     z.string({
       required_error: "Vui lòng chọn vai trò",
     })
-  ),
+  ).min(1, "Vui lòng chọn ít nhất một vai trò"),
   departmentId: z.string({
     required_error: "Vui lòng chọn phòng ban",
-  }),
+  }).min(1, "Vui lòng chọn phòng ban"),
 });
 
 type RoleFormValues = z.infer<typeof roleFormSchema>;
@@ -54,18 +54,32 @@ export default function UserRoleForm({
     resolver: zodResolver(roleFormSchema),
     defaultValues: {
       roles: user.roles?.length
-        ? [user.roles[0]]
-        : ["default-role"],
-      departmentId: user.departmentId?.toString() || "0",
+        ? [user.roles[0].name || user.roles[0]]
+        : [],
+      departmentId: user.departmentId?.toString() || "",
     },
   });
 
-  // Prevent selecting empty values
+  // Update roles when form value changes
   const handleRoleChange = (value: string) => {
     if (value && value.trim() !== "") {
       form.setValue("roles", [value]);
     }
   };
+
+  // Reset form when user data changes
+  useEffect(() => {
+    if (user) {
+      const currentRole = user.roles?.length 
+        ? (user.roles[0].name || user.roles[0])
+        : "";
+      
+      form.reset({
+        roles: currentRole ? [currentRole] : [],
+        departmentId: user.departmentId?.toString() || "",
+      });
+    }
+  }, [user, form]);
 
   return (
     <Form {...form}>
@@ -79,7 +93,8 @@ export default function UserRoleForm({
                 <FormLabel>Vai trò</FormLabel>
                 <Select
                   onValueChange={handleRoleChange}
-                  value={field.value?.[0] || undefined}
+                  value={field.value?.[0] || ""}
+                  defaultValue={field.value?.[0] || ""}
                 >
                   <FormControl>
                     <SelectTrigger>
@@ -108,7 +123,11 @@ export default function UserRoleForm({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Phòng ban</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
+                <Select 
+                  onValueChange={field.onChange} 
+                  value={field.value || ""}
+                  defaultValue={field.value || ""}
+                >
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Chọn phòng ban" />

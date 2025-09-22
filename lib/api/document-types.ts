@@ -23,7 +23,7 @@ export const documentTypesAPI = {
   getAllDocumentTypes: async (): Promise<DocumentTypeDTO[]> => {
     try {
       const response = await api.get("/document-types");
-      return response.data;
+      return response.data.data;
     } catch (error) {
       throw error;
     }

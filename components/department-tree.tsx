@@ -59,6 +59,81 @@ export function DepartmentTree({
   primaryButtonText,
   secondaryButtonText,
 }: Props) {
+  // Custom sorting: Thủ trưởng Cục → Phòng 1,6,7 → Cụm 3,4,5 → Trạm 31,37,39 → còn lại (ABC)
+  const getDeptPriority = (name: string): { group: number; order: number; nameKey: string } => {
+    const n = (name || "").trim();
+    const ascii = n.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const lower = ascii.toLowerCase();
+
+    // 0: Thủ trưởng Cục (exact)
+    if (/^\s*thu\s*truong\s*cuc\s*$/.test(lower)) {
+      return { group: 0, order: 0, nameKey: lower };
+    }
+
+    // 1: Phòng 1,6,7 (in this order)
+    const phongNum = lower.match(/^\s*phong\s*(\d+)/);
+    if (phongNum) {
+      const num = Number(phongNum[1]);
+      const desiredOrder = [1, 6, 7, 9];
+      const idx = desiredOrder.indexOf(num);
+      if (idx !== -1) {
+        return { group: 1, order: idx, nameKey: lower };
+      }
+      // Other numbered rooms will fall through to "còn lại"
+    }
+
+    // 2: Phòng Tham mưu
+    if (/^\s*phong\s*tham\s*m[u]u/.test(lower) || lower.includes("phong tham muu")) {
+      return { group: 2, order: 0, nameKey: lower };
+    }
+
+    // 3: Phòng Chính trị
+    if (/^\s*phong\s*chinh\s*tri/.test(lower)) {
+      return { group: 3, order: 0, nameKey: lower };
+    }
+
+    // 4: Cụm 3,4,5
+    const cumNum = lower.match(/^\s*cum\s*(\d+)/);
+    if (cumNum) {
+      const num = Number(cumNum[1]);
+      const desiredOrder = [3, 4, 5];
+      const idx = desiredOrder.indexOf(num);
+      if (idx !== -1) {
+        return { group: 4, order: idx, nameKey: lower };
+      }
+    }
+
+    // 5: Trạm 31,37,39
+    const tramNum = lower.match(/^\s*tram\s*(\d+)/);
+    if (tramNum) {
+      const num = Number(tramNum[1]);
+      const desiredOrder = [31, 37, 39];
+      const idx = desiredOrder.indexOf(num);
+      if (idx !== -1) {
+        return { group: 5, order: idx, nameKey: lower };
+      }
+    }
+
+    // 6: Còn lại → theo ABC
+    return { group: 6, order: 0, nameKey: lower };
+  };
+
+  const sortDepartments = (items: DepartmentNode[] = []): DepartmentNode[] => {
+    return [...items]
+      .sort((a, b) => {
+        const pa = getDeptPriority(a.name);
+        const pb = getDeptPriority(b.name);
+        if (pa.group !== pb.group) return pa.group - pb.group;
+        if (pa.order !== pb.order) return pa.order - pb.order;
+        return pa.nameKey.localeCompare(pb.nameKey, "vi");
+      })
+      .map((dept) => ({
+        ...dept,
+        children: dept.children && dept.children.length > 0 ? sortDepartments(dept.children) : dept.children,
+      }));
+  };
+
+  const sortedDepartments = sortDepartments(departments);
   if (!departments || departments.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-8 text-center">
@@ -83,7 +158,7 @@ export function DepartmentTree({
         }}
       >
         <div className="space-y-1 py-2 pr-4">
-          {departments.map((dept) => (
+          {sortedDepartments.map((dept) => (
             <DepartmentNode
               key={dept.id}
               department={dept}
@@ -190,7 +265,7 @@ function DepartmentNode({
           isPrimary
             ? "bg-red-50 border-red-200 shadow-sm ring-1 ring-red-200"
             : isSecondary
-            ? "bg-blue-50 border-blue-200 shadow-sm ring-1 ring-blue-200"
+            ? "bg-orange-50 border-orange-200 shadow-sm ring-1 ring-orange-200"
             : "border-transparent hover:bg-accent hover:border-border hover:shadow-sm"
         )}
         style={{ marginLeft: `${level * 16}px` }}
@@ -220,7 +295,7 @@ function DepartmentNode({
                 isPrimary
                   ? "text-red-800"
                   : isSecondary
-                  ? "text-blue-800"
+                  ? "text-orange-800"
                   : "text-foreground"
               )}
             >
@@ -235,7 +310,7 @@ function DepartmentNode({
                   isPrimary
                     ? "bg-red-100 text-red-700 border-red-200"
                     : isSecondary
-                    ? "bg-blue-100 text-blue-700 border-blue-200"
+                    ? "bg-orange-100 text-orange-700 border-orange-200"
                     : "bg-muted text-muted-foreground"
                 )}
               >
@@ -278,8 +353,8 @@ function DepartmentNode({
               className={cn(
                 "h-7 px-3 text-xs font-medium transition-all duration-200",
                 isSecondary
-                  ? "bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
-                  : "hover:bg-blue-50 hover:text-blue-700 opacity-0 group-hover:opacity-100",
+                  ? "bg-orange-600 hover:bg-orange-700 text-white shadow-sm"
+                  : "hover:bg-orange-50 hover:text-orange-700 opacity-0 group-hover:opacity-100",
                 isPrimary && "opacity-50 cursor-not-allowed"
               )}
               onClick={handleSelectSecondary}
@@ -320,7 +395,31 @@ function DepartmentNode({
           {!isLoading && users.length > 0 && (
             <div className="space-y-1 mb-3">
               {users
-                // No filtering - show all users
+                // Sort users by leadership role priority
+                .sort((a, b) => {
+                  const getRolePriority = (user: UserDTO): number => {
+                    const rolePriorityMap: Record<string, number> = {
+                      ROLE_CUC_TRUONG: 1,
+                      ROLE_CHINH_UY: 2,
+                      ROLE_PHO_CUC_TRUONG: 3,
+                      ROLE_PHO_CHINH_UY: 3,
+                      ROLE_TRUONG_PHONG: 5,
+                      ROLE_CUM_TRUONG: 5,
+                      ROLE_PHO_PHONG: 6,
+                      ROLE_CUM_PHO: 6,
+                      ROLE_TRAM_TRUONG: 7,
+                      ROLE_PHO_TRAM_TRUONG: 8,
+                    };
+
+                    if (!user.roles || user.roles.length === 0) return 999;
+
+                    // Tính tổng điểm tất cả các role
+                    return user.roles.reduce((sum, role) => {
+                      return sum + (rolePriorityMap[role] ?? 999);
+                    }, 0);
+                  };
+                  return getRolePriority(a) - getRolePriority(b);
+                })
                 .map((user) => {
                   const leadershipRole = getLeadershipRole?.(user);
                   const roleDisplayName = leadershipRole
@@ -342,7 +441,7 @@ function DepartmentNode({
                         isPrimaryUser
                           ? "bg-red-50 border-red-200 ring-1 ring-red-200"
                           : isSecondaryUser
-                          ? "bg-blue-50 border-blue-200 ring-1 ring-blue-200"
+                          ? "bg-orange-50 border-orange-200 ring-1 ring-orange-200"
                           : "border-transparent hover:bg-accent hover:border-border"
                       )}
                       style={{ marginLeft: `${level * 12}px` }}
@@ -356,7 +455,7 @@ function DepartmentNode({
                               isPrimaryUser
                                 ? "text-red-800"
                                 : isSecondaryUser
-                                ? "text-blue-800"
+                                ? "text-orange-800"
                                 : "text-foreground"
                             )}
                           >
@@ -369,7 +468,7 @@ function DepartmentNode({
                                 isPrimaryUser
                                   ? "text-red-600"
                                   : isSecondaryUser
-                                  ? "text-blue-600"
+                                  ? "text-orange-600"
                                   : "text-muted-foreground"
                               )}
                             >
@@ -415,8 +514,8 @@ function DepartmentNode({
                             className={cn(
                               "h-6 px-2 text-xs transition-all duration-200",
                               isSecondaryUser
-                                ? "bg-blue-600 hover:bg-blue-700 text-white"
-                                : "hover:bg-blue-50 hover:text-blue-700 opacity-0 group-hover:opacity-100",
+                                ? "bg-orange-600 hover:bg-orange-700 text-white"
+                                : "hover:bg-orange-50 hover:text-orange-700 opacity-0 group-hover:opacity-100",
                               isPrimaryUser && "opacity-50 cursor-not-allowed"
                             )}
                             onClick={() =>

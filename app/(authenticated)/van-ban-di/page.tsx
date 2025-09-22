@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Loader2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Building2, Globe } from "lucide-react";
+import { useQuerySync } from "@/hooks/useQuerySync";
+import { useSearchParams, useRouter } from "next/navigation";
+import { useListStatePersistence } from "@/hooks/use-list-state-persistence";
 
 // Import hooks và context
 import { useAuth } from "@/lib/auth-context";
@@ -21,6 +24,7 @@ import { PaginationControls } from "./components/pagination-controls";
 // Import hooks cho documents
 import { useInternalDocuments } from "./hooks/use-internal-documents";
 import { useExternalDocuments } from "./hooks/use-external-documents";
+import { PrintInternalDocumentsButton } from "@/components/print/print-internal-documents-button";
 
 // Import types
 import { InternalDocument } from "@/lib/api/internalDocumentApi";
@@ -38,7 +42,13 @@ interface OutgoingDocument {
 }
 
 export default function OutgoingDocumentsPage() {
-  // Search và filter states - riêng biệt cho từng tab
+  // --- URL SYNCHRONIZED STATE ---
+  // Query params mapping (see useQuerySync):
+  // q, tab, page (1-based in URL), size, status, dept, year, month
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  // Search và filter states - riêng biệt cho từng tab (activeSearchQuery = already applied)
   const [internalSearchQuery, setInternalSearchQuery] = useState("");
   const [externalSearchQuery, setExternalSearchQuery] = useState("");
   const [internalActiveSearchQuery, setInternalActiveSearchQuery] = useState("");
@@ -54,7 +64,7 @@ export default function OutgoingDocumentsPage() {
   const [activeMonthFilter, setActiveMonthFilter] = useState<number | undefined>(undefined);
 
   // Pagination states
-  const [currentPage, setCurrentPage] = useState(0);
+  const [currentPage, setCurrentPage] = useState(0); // 0-based internal
   const [pageSize, setPageSize] = useState(10);
   const [activeTab, setActiveTab] = useState("internal");
 
@@ -97,71 +107,171 @@ export default function OutgoingDocumentsPage() {
     "ROLE_PHO_CHINH_UY",
   ]);
 
-  // Effects
+  // ---------------- URL INITIAL APPLY (only once) ----------------
+  const applyInitialFromURL = useCallback((parsed: any) => {
+    if (parsed.tab === "internal" || parsed.tab === "external") {
+      setActiveTab(parsed.tab);
+    }
+    if (typeof parsed.page === "number" && parsed.page >= 0) {
+      setCurrentPage(parsed.page);
+    }
+    if (typeof parsed.size === "number" && [5,10,20,50].includes(parsed.size)) {
+      setPageSize(parsed.size);
+    }
+    if (parsed.status) setStatusFilter(parsed.status);
+    if (parsed.dept) setDepartmentFilter(parsed.dept);
+    if (parsed.year) {
+      setYearFilter(parsed.year);
+      setActiveYearFilter(parsed.year);
+    }
+    if (parsed.month) {
+      setMonthFilter(parsed.month);
+      setActiveMonthFilter(parsed.month);
+    }
+    if (parsed.q) {
+      // Apply to correct tab
+      if (parsed.tab === "external") {
+        setExternalSearchQuery(parsed.q);
+        setExternalActiveSearchQuery(parsed.q);
+      } else {
+        setInternalSearchQuery(parsed.q);
+        setInternalActiveSearchQuery(parsed.q);
+      }
+    }
+  }, []);
+
+  // Unified persistence hook
+  useListStatePersistence({
+    storageKey: "outgoing-docs-state",
+    state: {
+      activeTab,
+      currentPage,
+      pageSize,
+      statusFilter,
+      departmentFilter,
+      internalSearchQuery,
+      internalActiveSearchQuery,
+      externalSearchQuery,
+      externalActiveSearchQuery,
+      yearFilter,
+      monthFilter,
+      activeYearFilter,
+      activeMonthFilter,
+    },
+    persistKeys: [
+      "activeTab",
+      "currentPage",
+      "pageSize",
+      "statusFilter",
+      "departmentFilter",
+      "internalSearchQuery",
+      "internalActiveSearchQuery",
+      "externalSearchQuery",
+      "externalActiveSearchQuery",
+      "yearFilter",
+      "monthFilter",
+      "activeYearFilter",
+      "activeMonthFilter",
+    ],
+    saveDeps: [
+      activeTab,
+      currentPage,
+      pageSize,
+      statusFilter,
+      departmentFilter,
+      internalSearchQuery,
+      internalActiveSearchQuery,
+      externalSearchQuery,
+      externalActiveSearchQuery,
+      yearFilter,
+      monthFilter,
+      activeYearFilter,
+      activeMonthFilter,
+    ],
+    skipIfHasQueryParams: true,
+    version: 1,
+  });
+
+  const { ready: queryReady } = useQuerySync({
+    select: () => ({
+      // Prefer live input (immediate feedback) then fallback to applied search
+      q: (activeTab === "internal" ? internalSearchQuery : externalSearchQuery) || (activeTab === "internal" ? internalActiveSearchQuery : externalActiveSearchQuery) || undefined,
+      tab: activeTab !== "internal" ? activeTab : undefined,
+      page: currentPage || 0,
+      size: pageSize !== 10 ? pageSize : undefined,
+      status: statusFilter !== "all" ? statusFilter : undefined,
+      dept: departmentFilter !== "all" ? departmentFilter : undefined,
+      year: activeTab === "internal" && activeYearFilter !== new Date().getFullYear() ? activeYearFilter : undefined,
+      month: activeTab === "internal" && activeMonthFilter ? activeMonthFilter : undefined,
+    }),
+    apply: applyInitialFromURL,
+    defaults: { page: 0, size: 10, status: "all" },
+  });
+
+  // Add a refresh nonce similar to incoming documents page
+  const [refreshNonce, setRefreshNonce] = useState(0);
+
+  // Effects (will respond to state + URL) – unified fetching approach
   useEffect(() => {
     const unsubscribe = subscribe();
     return unsubscribe;
   }, []);
 
-  // Refresh data when page becomes visible again
+  // Unified effect: handles filters, pagination, visibility, manual refresh
   useEffect(() => {
-    if (isPageVisible && user && !loadingDepartments) {
-      setTimeout(() => {
-        fetchDocuments(currentPage, pageSize);
-      }, 100);
-    }
-  }, [isPageVisible]);
-
-  // Main fetch function
-  const fetchDocuments = async (page = currentPage, size = pageSize) => {
-    if (activeTab === "internal") {
-      await internalDocsHook.fetchInternalDocuments(page, size);
-    } else {
-      await externalDocsHook.fetchExternalDocuments(page, size);
-    }
-  };
-
-  // Effects để load data - sử dụng activeSearchQuery phù hợp với tab
-  useEffect(() => {
-    if (!user || loadingDepartments) return;
-    setCurrentPage(0);
-    setTimeout(() => {
-      fetchDocuments(0, pageSize);
-    }, 50);
-  }, [user?.id, statusFilter, activeTab, loadingDepartments, activeYearFilter, activeMonthFilter, internalActiveSearchQuery, externalActiveSearchQuery]);
-
-  useEffect(() => {
-    if (user && (currentPage > 0 || pageSize !== 10)) {
-      fetchDocuments(currentPage, pageSize);
-    }
-  }, [currentPage, pageSize, user?.id]);
+    if (!user || loadingDepartments || !queryReady || !isPageVisible) return;
+    const t = setTimeout(() => {
+      if (activeTab === "internal") {
+        internalDocsHook.fetchInternalDocuments(currentPage, pageSize);
+      } else {
+        externalDocsHook.fetchExternalDocuments(currentPage, pageSize);
+      }
+    }, 60); // small debounce for rapid input changes
+    return () => clearTimeout(t);
+  }, [
+    user?.id,
+    activeTab,
+    loadingDepartments,
+    queryReady,
+    isPageVisible,
+    // filters / search
+    statusFilter,
+    departmentFilter,
+    internalActiveSearchQuery,
+    externalActiveSearchQuery,
+    activeYearFilter,
+    activeMonthFilter,
+    // pagination
+    currentPage,
+    pageSize,
+    // manual refresh trigger
+    refreshNonce,
+  ]);
 
   // Load read status
-  useEffect(() => {
-    if (externalDocsHook.documents.length > 0) {
-      const documentIds = externalDocsHook.documents
-        .map((doc: any) => Number(doc.id))
-        .filter((id: any) => !isNaN(id));
-      if (documentIds.length > 0) {
-        universalReadStatus.loadBatchReadStatus(
-          documentIds,
-          "OUTGOING_EXTERNAL"
-        );
-      }
-    }
-  }, [externalDocsHook.documents.length]);
+  // useEffect(() => {
+  //   if (externalDocsHook.documents.length > 0) {
+  //     const documentIds = externalDocsHook.documents
+  //       .map((doc: any) => Number(doc.id))
+  //       .filter((id: any) => !isNaN(id));
+  //     if (documentIds.length > 0) {
+  //       universalReadStatus.loadBatchReadStatus(
+  //         documentIds,
+  //         "OUTGOING_EXTERNAL"
+  //       );
+  //     }
+  //   }
+  // }, [externalDocsHook.documents.length]);
 
   useEffect(() => {
+    // Seed read status directly from existing list (documents already include isRead)
     if (internalDocsHook.documents.length > 0) {
-      const documentIds = internalDocsHook.documents.map((doc: any) => doc.id);
-      if (documentIds.length > 0) {
-        universalReadStatus.loadBatchReadStatus(
-          documentIds,
-          "OUTGOING_INTERNAL"
-        );
-      }
+      universalReadStatus.seedReadStatuses(
+        internalDocsHook.documents.map((d: any) => ({ id: d.id, isRead: d.isRead })),
+        "OUTGOING_INTERNAL"
+      );
     }
-  }, [internalDocsHook.documents.length]);
+  }, [internalDocsHook.documents, universalReadStatus]);
 
   // Helper functions
   const getChildDepartmentIds = (departmentId: string) => {
@@ -277,6 +387,45 @@ export default function OutgoingDocumentsPage() {
     setCurrentPage(0);
   };
 
+  // Cross-tab read status synchronization
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "universalReadStatusUpdate" && e.newValue) {
+        try {
+          const update = JSON.parse(e.newValue);
+          if (update.documentType === "OUTGOING_INTERNAL" || update.documentType === "OUTGOING_EXTERNAL") {
+            // Instead of refetching list just seed updated doc (optimistic)
+            universalReadStatus.seedReadStatuses([
+              { id: update.documentId, isRead: update.isRead }
+            ], update.documentType);
+          }
+        } catch (error) {
+          // Ignore invalid JSON
+        }
+      }
+    };
+
+    const handleCustomEvent = (e: CustomEvent) => {
+      const update = e.detail;
+      if (update.documentType === "OUTGOING_INTERNAL" || update.documentType === "OUTGOING_EXTERNAL") {
+        universalReadStatus.seedReadStatuses([
+          { id: update.documentId, isRead: update.isRead }
+        ], update.documentType);
+      }
+    };
+
+    // Listen for storage events (cross-tab)
+    window.addEventListener("storage", handleStorageChange);
+    
+    // Listen for custom events (same tab) 
+    window.addEventListener("documentReadStatusChanged", handleCustomEvent as EventListener);
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("documentReadStatusChanged", handleCustomEvent as EventListener);
+    };
+  }, [activeTab, currentPage]);
+
   // Document click handlers
   const handleInternalDocumentClick = async (doc: InternalDocument) => {
     try {
@@ -285,17 +434,41 @@ export default function OutgoingDocumentsPage() {
         "OUTGOING_INTERNAL"
       );
 
+      // Persist current list state before navigating
+      // Persistence handled by hook (autoSave)
+
       if (!currentReadStatus) {
         try {
           await universalReadStatus.markAsRead(doc.id, "OUTGOING_INTERNAL");
+          
+          // Trigger cross-tab sync
+          if (typeof window !== "undefined") {
+            const eventData = {
+              documentId: doc.id,
+              documentType: "OUTGOING_INTERNAL",
+              isRead: true,
+              timestamp: Date.now(),
+              source: 'list-page-click'
+            };
+            
+            localStorage.setItem("universalReadStatusUpdate", JSON.stringify(eventData));
+            setTimeout(() => {
+              localStorage.removeItem("universalReadStatusUpdate");
+            }, 100);
+            
+            // Also dispatch custom event for immediate sync
+            window.dispatchEvent(new CustomEvent("documentReadStatusChanged", {
+              detail: eventData
+            }));
+          }
         } catch (markError) {
           // Continue even if marking fails
         }
       }
 
-      window.location.href = `/van-ban-di/noi-bo/${doc.id}`;
+      router.push(`/van-ban-di/noi-bo/${doc.id}`);
     } catch (error) {
-      window.location.href = `/van-ban-di/noi-bo/${doc.id}`;
+      router.push(`/van-ban-di/noi-bo/${doc.id}`);
     }
   };
 
@@ -306,27 +479,55 @@ export default function OutgoingDocumentsPage() {
         "OUTGOING_EXTERNAL"
       );
 
+      // Persist state
+      // Persistence handled by hook
+
       if (!currentReadStatus) {
         try {
           await universalReadStatus.markAsRead(
             Number(doc.id),
             "OUTGOING_EXTERNAL"
           );
+          
+          // Trigger cross-tab sync
+          if (typeof window !== "undefined") {
+            const eventData = {
+              documentId: Number(doc.id),
+              documentType: "OUTGOING_EXTERNAL",
+              isRead: true,
+              timestamp: Date.now(),
+              source: 'list-page-click'
+            };
+            
+            localStorage.setItem("universalReadStatusUpdate", JSON.stringify(eventData));
+            setTimeout(() => {
+              localStorage.removeItem("universalReadStatusUpdate");
+            }, 100);
+            
+            // Also dispatch custom event for immediate sync
+            window.dispatchEvent(new CustomEvent("documentReadStatusChanged", {
+              detail: eventData
+            }));
+          }
         } catch (markError) {
           // Continue even if marking fails
         }
       }
 
-      window.location.href = `/van-ban-di/${doc.id}`;
+      router.push(`/van-ban-di/${doc.id}`);
     } catch (error) {
-      window.location.href = `/van-ban-di/${doc.id}`;
+      router.push(`/van-ban-di/${doc.id}`);
     }
   };
 
-  // Pagination handlers
+  // Manual refresh handler
+  const handleRefresh = () => {
+    setRefreshNonce((n) => n + 1);
+  };
+
+  // Pagination handlers (no direct fetch calls; unified effect will run)
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
-    fetchDocuments(page, pageSize);
   };
 
   const handlePageSizeChange = (size: number) => {
@@ -343,26 +544,28 @@ export default function OutgoingDocumentsPage() {
     internalDocsHook.documents : 
     externalDocsHook.documents;
 
+  // Determine department filter visibility for external outgoing documents
+  const isLeaderRole = hasRole(["ROLE_CUC_TRUONG","ROLE_CUC_PHO","ROLE_CHINH_UY","ROLE_PHO_CHINH_UY"]);
+  const hasChildUnits = (visibleDepartments || []).some((d: any) => d.parentId === user?.departmentId);
+  const showExternalDepartmentFilter = isLeaderRole || hasChildUnits;
+
+  const filteredExternalDocuments = activeTab === "external" && departmentFilter !== "all" && showExternalDepartmentFilter
+    ? externalDocsHook.documents.filter((doc: any) => doc.departmentId?.toString() === departmentFilter)
+    : externalDocsHook.documents;
+
+  const displayedDocuments = activeTab === "external" ? filteredExternalDocuments : internalDocsHook.documents;
+
   const totalItems = activeTab === "internal" ? 
     internalDocsHook.totalItems : 
-    externalDocsHook.totalItems;
+    (activeTab === "external" && departmentFilter !== "all" && showExternalDepartmentFilter
+      ? filteredExternalDocuments.length
+      : externalDocsHook.totalItems);
 
   const totalPages = activeTab === "internal" ? 
     internalDocsHook.totalPages : 
     externalDocsHook.totalPages;
 
-  if (isLoading || loadingDepartments) {
-    return (
-      <div className="flex h-[80vh] items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
-          <p className="mt-2 text-sm text-muted-foreground">
-            Đang tải dữ liệu...
-          </p>
-        </div>
-      </div>
-    );
-  }
+  // NOTE: Removed full-page blocking loader. Show loading only inside table panels.
 
   return (
     <div className="space-y-8">
@@ -387,6 +590,7 @@ export default function OutgoingDocumentsPage() {
         onStatusFilterChange={handleStatusFilterChange}
         onClearFilters={handleClearFilters}
         onTabChange={handleTabChange}
+        // pass through show condition implicitly; component already checks hasFullAccess & activeTab
       />
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
@@ -402,22 +606,45 @@ export default function OutgoingDocumentsPage() {
         </TabsList>
 
         <TabsContent value="internal" className="mt-6">
-          <InternalDocumentsTable
-            documents={internalDocsHook.documents}
-            isLoading={internalDocsHook.loading}
-            universalReadStatus={universalReadStatus}
-            onDocumentClick={handleInternalDocumentClick}
-          />
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <h3 className="text-lg font-medium">Danh sách văn bản nội bộ đi</h3>
+            </div>
+          </div>
+          {isLoading || loadingDepartments ? (
+            <div className="flex h-40 items-center justify-center border rounded-md">
+              <div className="flex flex-col items-center text-center py-4">
+                <Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" />
+                <p className="mt-2 text-xs text-muted-foreground">Đang tải danh sách...</p>
+              </div>
+            </div>
+          ) : (
+            <InternalDocumentsTable
+              documents={internalDocsHook.documents}
+              isLoading={false}
+              universalReadStatus={universalReadStatus}
+              onDocumentClick={handleInternalDocumentClick}
+            />
+          )}
         </TabsContent>
 
         <TabsContent value="external" className="mt-6">
-          <ExternalDocumentsTable
-            documents={externalDocsHook.documents}
-            isLoading={externalDocsHook.loading}
-            hasFullAccess={hasFullAccess}
-            universalReadStatus={universalReadStatus}
-            onDocumentClick={handleExternalDocumentClick}
-          />
+          {isLoading || loadingDepartments ? (
+            <div className="flex h-40 items-center justify-center border rounded-md">
+              <div className="flex flex-col items-center text-center py-4">
+                <Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" />
+                <p className="mt-2 text-xs text-muted-foreground">Đang tải danh sách...</p>
+              </div>
+            </div>
+          ) : (
+            <ExternalDocumentsTable
+              documents={displayedDocuments}
+              isLoading={false}
+              hasFullAccess={hasFullAccess}
+              universalReadStatus={universalReadStatus}
+              onDocumentClick={handleExternalDocumentClick}
+            />
+          )}
         </TabsContent>
       </Tabs>
 
@@ -426,7 +653,7 @@ export default function OutgoingDocumentsPage() {
         totalPages={totalPages}
         pageSize={pageSize}
         totalItems={totalItems}
-        documentsLength={currentDocuments.length}
+        documentsLength={displayedDocuments.length}
         isLoading={isLoading}
         onPageChange={handlePageChange}
         onPageSizeChange={handlePageSizeChange}

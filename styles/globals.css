@@ -11,7 +11,26 @@ body {
     text-wrap: balance;
   }
 }
+@import "@fullcalendar/core/index.css";
+@import "@fullcalendar/daygrid/index.css";
+@import "@fullcalendar/timegrid/index.css";
+@keyframes waveHeader {
+  0% {
+    transform: translateY(0px);
+  }
 
+  50% {
+    transform: translateY(5px);
+  }
+
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+.animate-wave {
+  animation: waveHeader 3s ease-in-out infinite;
+}
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -20,7 +39,7 @@ body {
     --card-foreground: 0 0% 3.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 3.9%;
-    --primary: 0 0% 9%;
+    --primary: 14 90% 50%;
     --primary-foreground: 0 0% 98%;
     --secondary: 0 0% 96.1%;
     --secondary-foreground: 0 0% 9%;

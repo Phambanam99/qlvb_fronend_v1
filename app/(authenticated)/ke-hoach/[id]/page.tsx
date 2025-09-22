@@ -322,9 +322,6 @@ export default function WorkPlanDetailPage({
         <p className="text-red-500 mb-4">
           {error || "Không tìm thấy kế hoạch"}
         </p>
-        <Button asChild>
-          <Link href="/ke-hoach">Quay lại danh sách</Link>
-        </Button>
       </div>
     );
   }

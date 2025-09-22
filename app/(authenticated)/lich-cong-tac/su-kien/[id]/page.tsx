@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Calendar, Clock, MapPin, Users } from "lucide-react";
+import { ArrowLeft, Calendar, Clock, MapPin, Users, Pencil } from "lucide-react";
 import Link from "next/link";
 import { ScheduleEventDTO, schedulesAPI } from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
@@ -153,7 +153,14 @@ export default function EventDetailPage({
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle>{event.title}</CardTitle>
-                {getEventTypeBadge(event.type)}
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href={`/lich-cong-tac/su-kien/${event.id}/chinh-sua`}>
+                      <Pencil className="mr-2 h-4 w-4" /> Chỉnh sửa
+                    </Link>
+                  </Button>
+                  {getEventTypeBadge(event.type)}
+                </div>
               </div>
               <CardDescription>
                 Thuộc lịch:{" "}

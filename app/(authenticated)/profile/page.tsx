@@ -148,9 +148,6 @@ export default function ProfilePage() {
     <div className="space-y-6">
       <div className="flex flex-col space-y-2">
         <h1 className="text-3xl font-bold text-primary">Hồ sơ cá nhân</h1>
-        <p className="text-muted-foreground">
-          Quản lý thông tin cá nhân và tài khoản của bạn
-        </p>
       </div>
 
       <div className="grid gap-6 md:grid-cols-7">

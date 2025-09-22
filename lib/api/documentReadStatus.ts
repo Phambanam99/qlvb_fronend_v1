@@ -7,7 +7,10 @@ export type DocumentType =
   | "OUTGOING_EXTERNAL";
 
 export interface ReadStatusResponse {
-  isRead: boolean;
+  message: string;
+  data: {
+    isRead: boolean;
+  };
 }
 
 export interface UnreadCountResponse {
@@ -99,15 +102,57 @@ export const documentReadStatusAPI = {
     documentIds: number[],
     documentType: DocumentType
   ): Promise<BatchReadStatusResponse> => {
-   
-    const response = await api.post(
-      `/documents/read-status/batch-status`,
-      documentIds,
-      { params: { documentType } }
-    );
-    // Backend returns ResponseDTO<Map<Long, Boolean>>, so we need response.data.data
-    const result = response.data.data || response.data;
-    return result;
+    // console.log("🔍 getBatchReadStatus called with:", { documentIds, documentType });
+    
+    try {
+      // Try GET method with query params first (might be what backend expects)
+      const response = await api.get(
+        `/documents/read-status/batch-status`,
+        { 
+          params: { 
+            documentType,
+            documentIds: documentIds.join(',') // Send as comma-separated string
+          }
+        }
+      );
+      // console.log("✅ getBatchReadStatus response:", response.data);
+      
+      // Backend returns ResponseDTO<Map<Long, Boolean>>, so we need response.data.data
+      const result = response.data.data || response.data;
+      return result;
+    } catch (error: any) {
+      console.error("❌ getBatchReadStatus GET error:", {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        url: error.config?.url,
+        params: error.config?.params
+      });
+      
+      // Fallback to POST method if GET fails
+      try {
+        // console.log("🔄 Trying POST method as fallback...");
+        const response = await api.post(
+          `/documents/read-status/batch-status`,
+          { documentIds }, // Wrap in object
+          { params: { documentType } }
+        );
+        // console.log("✅ getBatchReadStatus POST response:", response.data);
+        
+        const result = response.data.data || response.data;
+        return result;
+      } catch (postError: any) {
+        console.error("❌ getBatchReadStatus POST error:", {
+          status: postError.response?.status,
+          statusText: postError.response?.statusText,
+          data: postError.response?.data,
+          url: postError.config?.url,
+          params: postError.config?.params,
+          requestData: postError.config?.data
+        });
+        throw postError;
+      }
+    }
   },
 
   /**

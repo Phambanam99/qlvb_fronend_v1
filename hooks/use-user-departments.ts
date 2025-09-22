@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { departmentsAPI, DepartmentDTO } from "@/lib/api/departments";
+import { ResponseDTO } from "@/lib/types/common";
 
 export function useUserDepartments() {
   const { user } = useAuth();
@@ -32,13 +33,13 @@ export function useUserDepartments() {
         const currentDepartment = currentDepartment_.data;
         // Khởi tạo danh sách với phòng ban hiện tại
         const userDepartments = [currentDepartment];
-
+          
         try {
           // Thêm các phòng ban con (nếu có)
-          const childDepartments_ = await departmentsAPI.getChildDepartments(
+          const childDepartments_: ResponseDTO<DepartmentDTO> = await departmentsAPI.getChildDepartments(
             user.departmentId
           );
-          const childDepartments = childDepartments_.data;
+          const childDepartments = childDepartments_.data.childDepartments || [];
           if (Array.isArray(childDepartments) && childDepartments.length > 0) {
             userDepartments.push(...childDepartments);
           }

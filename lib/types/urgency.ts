@@ -45,7 +45,7 @@ export const URGENCY_CONFIG = {
     badgeVariant: "destructive" as const,
     color: "#b91c1c", // red-700
     priority: 5,
-    icon: "⚡🔥⏰",
+    icon: "⏰",
   },
 } as const;
 

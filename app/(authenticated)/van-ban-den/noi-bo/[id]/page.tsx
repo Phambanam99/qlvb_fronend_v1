@@ -55,9 +55,17 @@ import {
 import { useDocumentReadStatus } from "@/hooks/use-document-read-status";
 import { useAuth } from "@/lib/auth-context";
 import { downloadPdfWithWatermark, isPdfFile } from "@/lib/utils/pdf-watermark";
+import { useUserDepartmentInfo } from "@/hooks/use-user-department-info";
 import { DocumentReadersDialog } from "@/components/document-readers-dialog";
 import { DocumentReadStats } from "@/components/document-read-stats";
-import { outgoingInternalReadStatus } from "@/lib/api/documentReadStatus";
+import { incomingInternalReadStatus } from "@/lib/api/documentReadStatus";
+import { createPDFBlobUrl, cleanupBlobUrl } from "@/lib/utils/pdf-viewer";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { InternalDocument, InternalDocumentDetail, DocumentHistory,
   DocumentStats,
 } from "@/lib/api/internalDocumentApi";
@@ -68,6 +76,7 @@ export default function InternalDocumentReceivedDetailPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { user } = useAuth();
+  const { departmentName } = useUserDepartmentInfo();
   const [documentDetail, setDocumentDetail] =
     useState<InternalDocumentDetail | null>(null);
   const [documentHistory, setDocumentHistory] = useState<DocumentHistory[]>([]);
@@ -89,6 +98,19 @@ export default function InternalDocumentReceivedDetailPage() {
   // Add state for history visibility
   const [showAllHistory, setShowAllHistory] = useState(false);
   const HISTORY_PREVIEW_COUNT = 5; // Show first 5 history entries by default
+
+  // PDF Preview state
+  const [pdfPreviewOpen, setPdfPreviewOpen] = useState(false);
+  const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
+  const [selectedFileName, setSelectedFileName] = useState<string>("");
+
+  // Cleanup PDF preview URL when dialog closes
+  useEffect(() => {
+    if (!pdfPreviewOpen && pdfPreviewUrl) {
+      cleanupBlobUrl(pdfPreviewUrl);
+      setPdfPreviewUrl(null);
+    }
+  }, [pdfPreviewOpen, pdfPreviewUrl]);
 
   const { markAsRead: globalMarkAsRead } = useDocumentReadStatus();
 
@@ -112,7 +134,7 @@ export default function InternalDocumentReceivedDetailPage() {
           // Automatically mark as read if not already read
           if (!response.isRead) {
             try {
-              await outgoingInternalReadStatus.markAsRead(Number(documentId));
+              await incomingInternalReadStatus.markAsRead(Number(documentId));
               // Update local state
               documentWithAttachments.isRead = true;
               documentWithAttachments.readAt = new Date().toISOString();
@@ -125,12 +147,25 @@ export default function InternalDocumentReceivedDetailPage() {
               if (typeof window !== "undefined") {
                 localStorage.setItem(
                   "documentReadStatusUpdate",
-                  Date.now().toString()
+                  JSON.stringify({
+                    documentId: Number(documentId),
+                    documentType: "INCOMING_INTERNAL",
+                    timestamp: Date.now()
+                  })
                 );
                 // Remove the item immediately to allow future triggers
                 setTimeout(() => {
                   localStorage.removeItem("documentReadStatusUpdate");
                 }, 100);
+
+                // Also dispatch custom event for same-tab communication
+                window.dispatchEvent(new CustomEvent("documentReadStatusUpdate", {
+                  detail: {
+                    documentId: Number(documentId),
+                    documentType: "INCOMING_INTERNAL",
+                    timestamp: Date.now()
+                  }
+                }));
               }
 
             } catch (markError) {
@@ -154,7 +189,7 @@ export default function InternalDocumentReceivedDetailPage() {
     if (documentId) {
       fetchDocument();
     }
-  }, [documentId, toast, globalMarkAsRead]);
+  }, [documentId, globalMarkAsRead]);
 
   useEffect(() => {
     const fetchHistoryAndStats = async () => {
@@ -273,12 +308,13 @@ export default function InternalDocumentReceivedDetailPage() {
       // response.data là Blob từ API
       const fileBlob = response;
       // Kiểm tra nếu là file PDF thì thêm watermark
-      if (isPdfFile(filename, contentType) && user?.fullName) {
+      if (isPdfFile(filename, contentType) && user?.fullName && departmentName) {
         try {
           await downloadPdfWithWatermark(
             fileBlob, // Truyền blob trực tiếp
             filename,
-            user.fullName
+            user.fullName,
+            departmentName
           );
 
           toast({
@@ -319,12 +355,42 @@ export default function InternalDocumentReceivedDetailPage() {
     }
   };
 
+  const handlePreviewPDF = async (
+    attachmentId: number,
+    filename: string,
+    contentType?: string
+  ) => {
+    try {
+      const response = await downloadAttachment(
+        Number(documentId),
+        attachmentId
+      );
+
+      if (!response || !response.data) {
+        throw new Error("Invalid response data");
+      }
+
+      const blob = new Blob([response.data], { type: contentType || 'application/pdf' });
+      const url = createPDFBlobUrl(blob);
+      
+      setSelectedFileName(filename);
+      setPdfPreviewUrl(url);
+      setPdfPreviewOpen(true);
+    } catch (error) {
+      toast({
+        title: "Lỗi",
+        description: "Không thể xem trước file PDF. Vui lòng thử lại sau.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleMarkAsRead = async () => {
     if (!documentDetail) return;
 
     try {
       setMarkingAsRead(true);
-      await outgoingInternalReadStatus.markAsRead(documentDetail.id);
+      await incomingInternalReadStatus.markAsRead(documentDetail.id);
       setDocumentDetail({
         ...documentDetail,
         isRead: true,
@@ -335,11 +401,27 @@ export default function InternalDocumentReceivedDetailPage() {
 
       // Trigger storage event to notify list page to refresh
       if (typeof window !== "undefined") {
-        localStorage.setItem("documentReadStatusUpdate", Date.now().toString());
+        localStorage.setItem(
+          "documentReadStatusUpdate",
+          JSON.stringify({
+            documentId: documentDetail.id,
+            documentType: "INCOMING_INTERNAL",
+            timestamp: Date.now()
+          })
+        );
         // Remove the item immediately to allow future triggers
         setTimeout(() => {
           localStorage.removeItem("documentReadStatusUpdate");
         }, 100);
+
+        // Also dispatch custom event for same-tab communication
+        window.dispatchEvent(new CustomEvent("documentReadStatusUpdate", {
+          detail: {
+            documentId: documentDetail.id,
+            documentType: "INCOMING_INTERNAL",
+            timestamp: Date.now()
+          }
+        }));
       }
 
       toast({
@@ -421,9 +503,7 @@ export default function InternalDocumentReceivedDetailPage() {
             Văn bản nội bộ không tồn tại hoặc đã bị xóa
           </p>
           <Button asChild className="mt-4">
-            <Link href="/van-ban-den">
-              <ArrowLeft className="mr-2 h-4 w-4" /> Quay lại danh sách
-            </Link>
+            
           </Button>
         </div>
       </div>
@@ -494,7 +574,7 @@ export default function InternalDocumentReceivedDetailPage() {
                   <label className="text-sm font-medium text-muted-foreground">
                     Số văn bản
                   </label>
-                  <p className="font-medium">{documentDetail.documentNumber}</p>
+                  <p className="font-medium text-red-700">{documentDetail.documentNumber}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">
@@ -506,7 +586,7 @@ export default function InternalDocumentReceivedDetailPage() {
                   <label className="text-sm font-medium text-muted-foreground">
                     Ngày ký
                   </label>
-                  <p className="font-medium">
+                  <p className="font-medium text-primary">
                     {formatDateOnly(documentDetail.signingDate)}
                   </p>
                 </div>
@@ -562,7 +642,7 @@ export default function InternalDocumentReceivedDetailPage() {
                   <label className="text-sm font-medium text-muted-foreground">
                     Người ký duyệt
                   </label>
-                  <p className="font-medium">
+                  <p className="font-medium text-primary">
                     {documentDetail.documentSigner?.fullName || "Chưa xác định"}
                   </p>
                 </div>
@@ -856,20 +936,36 @@ export default function InternalDocumentReceivedDetailPage() {
                           )}
                         </div>
                       </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          handleDownloadAttachment(
-                            attachment.id,
-                            attachment.filename,
-                            attachment.contentType
-                          )
-                        }
-                      >
-                        <Download className="h-4 w-4 mr-2" />
-                        Tải xuống
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            handlePreviewPDF(
+                              attachment.id,
+                              attachment.filename,
+                              attachment.contentType
+                            )
+                          }
+                        >
+                          <Eye className="h-4 w-4 mr-2" />
+                          Xem trước
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            handleDownloadAttachment(
+                              attachment.id,
+                              attachment.filename,
+                              attachment.contentType
+                            )
+                          }
+                        >
+                          <Download className="h-4 w-4 mr-2" />
+                          Tải xuống
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -906,15 +1002,6 @@ export default function InternalDocumentReceivedDetailPage() {
                 </div>
               </div>
 
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">
-                  Trạng thái văn bản
-                </label>
-                <div className="mt-1">
-                  {getStatusBadge(documentDetail.status)}
-                </div>
-              </div>
-
               <Separator />
 
               <div className="space-y-3">
@@ -922,7 +1009,7 @@ export default function InternalDocumentReceivedDetailPage() {
                   <User className="h-4 w-4 text-muted-foreground" />
                   <div>
                     <p className="text-sm font-medium">Người gửi</p>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-primary">
                       {documentDetail.senderName}
                     </p>
                   </div>
@@ -1100,6 +1187,45 @@ export default function InternalDocumentReceivedDetailPage() {
             )}
         </div>
       </div>
+
+      {/* PDF Preview Dialog */}
+      {pdfPreviewOpen && pdfPreviewUrl && (
+        <Dialog open={pdfPreviewOpen} onOpenChange={setPdfPreviewOpen}>
+          <DialogContent className="max-w-screen-xl h-[90vh] flex flex-col">
+            {/* DialogHeader chỉ cao nhất là title */}
+            <DialogHeader className="h-5">
+              <DialogTitle className="text-lg font-semibold">
+                Xem trước tài liệu: {selectedFileName}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="flex flex-1 flex-col h-full">
+              <div className="flex-1 overflow-hidden">
+                <iframe
+                  src={pdfPreviewUrl}
+                  className="w-full h-full"
+                  title={selectedFileName}
+                />
+              </div>
+              <div className="flex justify-end gap-2 p-4 border-t">
+                <Button variant="outline" onClick={() => setPdfPreviewOpen(false)}>
+                  Đóng
+                </Button>
+                <Button onClick={() => {
+                  const link = document.createElement("a");
+                  link.href = pdfPreviewUrl;
+                  link.download = selectedFileName;
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                  setPdfPreviewOpen(false);
+                }}>
+                  Tải xuống
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

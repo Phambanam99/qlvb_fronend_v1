@@ -68,8 +68,8 @@ export function useDocumentForm() {
     const fetchDocumentTypes = async () => {
       try {
         setIsLoadingDocumentTypes(true);
-        const response_ = await documentTypesAPI.getAllDocumentTypes();
-        const response = response_.data;
+        const response = await documentTypesAPI.getAllDocumentTypes();
+       
         setDocumentTypes(response);
       } catch (error) {
         toast({

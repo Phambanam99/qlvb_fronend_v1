@@ -91,6 +91,7 @@ export function ExternalDocumentsTable({
         <Table>
           <TableHeader className="bg-accent/50">
             <TableRow>
+              <TableHead className="w-16">STT</TableHead>
               <TableHead>Số văn bản</TableHead>
               <TableHead>Ngày nhận</TableHead>
               <TableHead>Trích yếu</TableHead>
@@ -102,7 +103,7 @@ export function ExternalDocumentsTable({
           </TableHeader>
           <TableBody>
             {documents && documents.length > 0 ? (
-              documents.map((doc: any) => {
+              documents.map((doc: any, index: number) => {
                 const isRead = getReadStatus(doc.id!);
               
                 return (
@@ -115,6 +116,9 @@ export function ExternalDocumentsTable({
                     }`}
                     onClick={() => onDocumentClick(doc)}
                   >
+                    <TableCell className="text-center text-muted-foreground">
+                      {index + 1}
+                    </TableCell>
                     <TableCell className="font-medium">
                       {doc.documentNumber}
                     </TableCell>

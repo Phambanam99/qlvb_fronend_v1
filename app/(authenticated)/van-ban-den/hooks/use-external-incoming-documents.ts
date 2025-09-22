@@ -58,7 +58,7 @@ export function useExternalIncomingDocuments({
         }
       }
     } catch (error) {
-      console.error("Error fetching external incoming documents:", error);
+      // console.error("Error fetching external incoming documents:", error);
       toast({
         title: "Lỗi",
         description: "Không thể tải dữ liệu văn bản bên ngoài. Vui lòng thử lại sau.",

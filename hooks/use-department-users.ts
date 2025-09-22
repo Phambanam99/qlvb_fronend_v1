@@ -26,8 +26,12 @@ export function useDepartmentUsers(
 
       // Fetch users for this department from API
       const response_ = await usersAPI.getUsersByDepartmentId(departmentId);
-      const response = response_.data;
-
+      const responseData = response_.data;
+      var response = [];
+      if (responseData.length > 0) { 
+        response = responseData.filter((user: UserDTO) => user.status === 1);
+      }
+      // console.log(`Fetched users for department ${departmentId}:`, response);
       // Sort users by leadership roles
       const sortedUsers = sortUsersByLeadershipRole(response || []);
 

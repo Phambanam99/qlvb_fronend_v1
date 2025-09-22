@@ -34,8 +34,6 @@ export interface RegisterRequest {
   password: string;
   fullName: string;
   email?: string;
-  departmentId: number;
-  roles: string[];
 }
 
 export const authAPI = {
@@ -52,10 +50,11 @@ export const authAPI = {
     rememberMe: boolean = false
   ): Promise<ResponseDTO<AuthResponse>> => {
     try {
+      // Backend expects { username, password } per OpenAPI; keep rememberMe only on client
       const response = await api.post("/auth/login", {
         username,
         password,
-        rememberMe,
+         rememberMe,
       });
 
       return response.data;

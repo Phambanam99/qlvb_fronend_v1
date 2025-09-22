@@ -6,7 +6,7 @@ export default function RegisterLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-[url('/anhnen.png')] bg-cover bg-center">
       <main className="flex-1">{children}</main>
     </div>
   );

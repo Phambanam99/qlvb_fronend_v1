@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { usePersistentState } from "@/hooks/usePersistentState";
 import {
   Card,
   CardContent,
@@ -34,7 +35,14 @@ import PDFViewerModal from "@/components/ui/pdf-viewer-modal";
 import { isPDFFile } from "@/lib/utils/pdf-viewer";
 
 export default function UserGuidePage() {
-  const [activeSection, setActiveSection] = useState("overview");
+  // Persist the active section so when user navigates away & back, their position is restored
+  const [activeSection, setActiveSection] = usePersistentState<string>(
+    "overview",
+    {
+      queryParam: "section",
+      validate: (val): val is string => typeof val === "string",
+    }
+  );
   const [guideFiles, setGuideFiles] = useState<GuideFileDTO[]>([]);
   const [loadingFiles, setLoadingFiles] = useState(true);
   const [pdfViewerOpen, setPdfViewerOpen] = useState(false);
@@ -118,14 +126,6 @@ export default function UserGuidePage() {
               <span className="w-2 h-2 bg-green-500 rounded-full"></span>
               Tạo lịch công tác hàng tuần/tháng
             </li>
-            <li className="flex items-center gap-2">
-              <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-              Phê duyệt và theo dõi thực hiện
-            </li>
-            <li className="flex items-center gap-2">
-              <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-              Báo cáo kết quả công tác
-            </li>
           </ul>
           <h3 className="text-lg font-semibold mt-6">Quản lý kế hoạch</h3>
           <ul className="space-y-2">
@@ -175,10 +175,11 @@ export default function UserGuidePage() {
     const fetchGuideFiles = async () => {
       try {
         setLoadingFiles(true);
-        const files_ = await guideFilesAPI.getActiveGuideFiles();
-        const files = files_.data;
-        setGuideFiles(files);
+  const files = await guideFilesAPI.getActiveGuideFiles();
+  // console.log("Fetched guide files:", files);
+  setGuideFiles(Array.isArray(files) ? files : []);
       } catch (error) {
+        // console.error("Failed to load guide files", error);
         toast({
           title: "Lỗi",
           description: "Không thể tải danh sách file hướng dẫn",
@@ -195,8 +196,10 @@ export default function UserGuidePage() {
   // Handle file download
   const handleDownloadFile = async (file: GuideFileDTO) => {
     try {
-      const blob_ = await guideFilesAPI.downloadGuideFile(file.id);
-      const blob = blob_.data;
+      const blob = await guideFilesAPI.downloadGuideFile(file.id);
+      if (!(blob instanceof Blob)) {
+        throw new Error("Phản hồi tải xuống không phải Blob hợp lệ");
+      }
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -206,6 +209,7 @@ export default function UserGuidePage() {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
     } catch (error) {
+      // console.error("Download file error", error);
       toast({
         title: "Lỗi",
         description: "Không thể tải file",
@@ -224,13 +228,24 @@ export default function UserGuidePage() {
   const handlePDFDownload = async () => {
     if (!selectedFile) return null;
     try {
-      const result_ = await guideFilesAPI.downloadGuideFile(selectedFile.id);
-      const result = result_.data;
-      return result;
+      const blob = await guideFilesAPI.downloadGuideFile(selectedFile.id);
+      if (!(blob instanceof Blob)) {
+        throw new Error("Kết quả tải về không phải Blob");
+      }
+      if (blob.size === 0) {
+        // console.warn("PDF blob size is 0");
+      }
+      // console.log("Downloaded PDF file blob:", {
+      //   size: blob.size,
+      //   type: blob.type,
+      //   name: selectedFile.fileName,
+      // });
+      return blob;
     } catch (error) {
+      // console.error("PDF download error", error);
       toast({
         title: "Lỗi",
-        description: "Không thể tải file PDF",
+        description: `Không thể tải file PDF` ,
         variant: "destructive",
       });
       return null;

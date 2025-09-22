@@ -7,6 +7,7 @@ import { Toaster } from "@/components/ui/toaster"
 import { ToastProvider } from "@/components/ui/use-toast"
 import { AuthProvider } from "@/lib/auth-context"
 import { Providers } from "./providers"
+import { NotificationsProvider } from "@/lib/notifications-context"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -28,8 +29,20 @@ export default function RootLayout({
           <Providers>
             <ToastProvider>
               <AuthProvider>
-                {children}
-                <Toaster />
+                <NotificationsProvider>
+                  {/* Decorative background */}
+                  <div className="fixed inset-0 -z-10 overflow-hidden">
+                    <div className="absolute -top-24 -left-24 h-72 w-72 rounded-full bg-primary/20 blur-3xl" />
+                    <div className="absolute -bottom-24 -right-24 h-72 w-72 rounded-full bg-accent/40 blur-3xl" />
+                    <div className="absolute top-1/3 left-1/2 -translate-x-1/2 h-40 w-40 rounded-full bg-primary/10 blur-2xl" />
+                  </div>
+
+                  {/* Content container */}
+                  <main className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-4 pt-0 ">
+                    {children}
+                  </main>
+                  <Toaster />
+                </NotificationsProvider>
               </AuthProvider>
             </ToastProvider>
           </Providers>

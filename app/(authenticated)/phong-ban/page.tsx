@@ -33,8 +33,10 @@ import { Badge } from "@/components/ui/badge";
 import { PlusIcon, SearchIcon, FilterIcon } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/lib/auth-context";
-import { DepartmentDTO, departmentsAPI, fetchData } from "@/lib/api";
+import { DepartmentDTO, departmentsAPI } from "@/lib/api";
 import { DEPARTMENT_MANAGEMENT_ROLES, hasRoleInGroup } from "@/lib/role-utils";
+import { useListStatePersistence } from "@/hooks/use-list-state-persistence";
+import AuthGuard from "@/components/auth-guard";
 
 export default function DepartmentsPage() {
   const [departments, setDepartments] = useState<DepartmentDTO[]>([]);
@@ -87,35 +89,23 @@ export default function DepartmentsPage() {
       dept.abbreviation.toLowerCase().includes(searchTerm.toLowerCase()) ||
       dept.email?.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesType = typeFilter === "all" || dept.type === typeFilter;
+    const matchesStatus = typeFilter === "all" || dept.group === typeFilter;
 
-    return matchesSearch && matchesType;
+    return matchesSearch && matchesStatus;
   });
 
   const handleAddNew = () => {
     router.push("/phong-ban/them-moi");
   };
 
-  const getTypeBadge = (type: string) => {
-    switch (type) {
-      case "ADMINISTRATIVE":
-        return <Badge variant="default">Hành chính</Badge>;
-      case "PROFESSIONAL":
-        return <Badge variant="secondary">Chuyên môn</Badge>;
-      case "SUPPORT":
-        return <Badge variant="outline">Hỗ trợ</Badge>;
-      case "SUBSIDIARY":
-        return <Badge variant="destructive">Đơn vị trực thuộc</Badge>;
-      case "LEADERSHIP":
-        return (
-          <Badge variant="default" className="bg-amber-500 hover:bg-amber-600">
-            Lãnh đạo
-          </Badge>
-        );
-      default:
-        return <Badge variant="outline">{type}</Badge>;
-    }
-  };
+  // Persist departments search & filter state
+  useListStatePersistence({
+    storageKey: "departments-list-state",
+    state: { searchTerm, typeFilter },
+    persistKeys: ["searchTerm", "typeFilter"],
+    saveDeps: [searchTerm, typeFilter],
+    version: 1,
+  });
 
   if (loading) {
     return (
@@ -132,7 +122,8 @@ export default function DepartmentsPage() {
   }
 
   return (
-    <div className="container mx-auto max-w-full px-4 py-6">
+    <AuthGuard allowedRoles={["ROLE_ADMIN"]}>
+      <div className="container mx-auto max-w-full px-4 py-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Quản lý phòng ban</h1>
         {(user?.roles?.includes("ROLE_ADMIN") ||
@@ -164,18 +155,15 @@ export default function DepartmentsPage() {
             </div>
             <div className="flex items-center space-x-2">
               <FilterIcon className="h-4 w-4 text-gray-500" />
-              <span className="text-sm">Loại phòng ban:</span>
+              <span className="text-sm">Trạng thái:</span>
               <Select value={typeFilter} onValueChange={handleTypeFilterChange}>
                 <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Tất cả loại" />
+                  <SelectValue placeholder="Tất cả trạng thái" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tất cả</SelectItem>
-                  <SelectItem value="ADMINISTRATIVE">Hành chính</SelectItem>
-                  <SelectItem value="PROFESSIONAL">Chuyên môn</SelectItem>
-                  <SelectItem value="SUPPORT">Hỗ trợ</SelectItem>
-                  <SelectItem value="SUBSIDIARY">Đơn vị trực thuộc</SelectItem>
-                  <SelectItem value="LEADERSHIP">Lãnh đạo</SelectItem>
+                  <SelectItem value="ACTIVE">Đang hoạt động</SelectItem>
+                  <SelectItem value="INACTIVE">Không hoạt động</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -188,8 +176,8 @@ export default function DepartmentsPage() {
                   <TableHead>Tên phòng ban</TableHead>
                   <TableHead>Viết tắt</TableHead>
                   <TableHead className="hidden md:table-cell">Email</TableHead>
-                  <TableHead>Loại</TableHead>
-                  <TableHead className="hidden md:table-cell">Nhóm</TableHead>
+                  <TableHead>Mã đơn vị</TableHead>
+                  <TableHead className="hidden md:table-cell">Trạng thái</TableHead>
                   <TableHead className="text-right">Số nhân viên</TableHead>
                 </TableRow>
               </TableHeader>
@@ -215,9 +203,14 @@ export default function DepartmentsPage() {
                       <TableCell className="hidden md:table-cell">
                         {dept.email || "—"}
                       </TableCell>
-                      <TableCell>{getTypeBadge(dept.type)}</TableCell>
+                      <TableCell>{dept.codeDepartment || "—"}</TableCell>
                       <TableCell className="hidden md:table-cell">
-                        {dept.group || "—"}
+                        <Badge 
+                          variant={dept.group === "ACTIVE" ? "default" : "secondary"}
+                          className={dept.group === "ACTIVE" ? "bg-green-500 hover:bg-green-600" : "bg-red-500 hover:bg-red-600"}
+                        >
+                          {dept.group === "ACTIVE" ? "Đang hoạt động" : "Không hoạt động"}
+                        </Badge>
                       </TableCell>
                       <TableCell className="text-right">
                         {dept.userCount}
@@ -236,6 +229,7 @@ export default function DepartmentsPage() {
           </div>
         </CardFooter>
       </Card>
-    </div>
+      </div>
+    </AuthGuard>
   );
 }

@@ -18,8 +18,6 @@ interface ScheduleFiltersProps {
   onYearFilterChange: (value: string) => void;
   
   // Existing filters
-  statusFilter: string;
-  onStatusFilterChange: (value: string) => void;
   departmentFilter: string;
   onDepartmentFilterChange: (value: string) => void;
   visibleDepartments: any[];
@@ -35,8 +33,6 @@ export function ScheduleFilters({
   onMonthFilterChange,
   yearFilter,
   onYearFilterChange,
-  statusFilter,
-  onStatusFilterChange,
   departmentFilter,
   onDepartmentFilterChange,
   visibleDepartments,
@@ -136,19 +132,6 @@ export function ScheduleFilters({
               {week.label}
             </SelectItem>
           ))}
-        </SelectContent>
-      </Select>
-
-      {/* Status filter */}
-      <Select value={statusFilter} onValueChange={onStatusFilterChange}>
-        <SelectTrigger className="w-full sm:w-[180px]">
-          <SelectValue placeholder="Trạng thái" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">Tất cả trạng thái</SelectItem>
-          <SelectItem value="chua_dien_ra">Chưa diễn ra</SelectItem>
-          <SelectItem value="dang_thuc_hien">Đang thực hiện</SelectItem>
-          <SelectItem value="da_thuc_hien">Đã thực hiện</SelectItem>
         </SelectContent>
       </Select>
 

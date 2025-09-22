@@ -19,6 +19,9 @@ export const DEPARTMENT_HEAD_ROLES = [
   "ROLE_CUM_TRUONG", // Cụm trưởng
   "ROLE_PHO_CUM_TRUONG", // Phó cụm trưởng
   "ROLE_TRAM_TRUONG", // Trạm trưởng
+  "ROLE_PHO_TRAM_TRUONG", // Phó trạm trưởng
+  "ROLE_CHINH_TRI_VIEN_TRAM", // Chính trị viên trạm
+  "ROLE_CHINH_TRI_VIEN_CUM", // Chính trị viên cụm
 ];
 
 // Vai trò nhân viên (staff)
@@ -51,12 +54,16 @@ export const FULL_ACCESS_ROLES = [
 export const DEPARTMENT_MANAGEMENT_ROLES = [
   ...SYSTEM_ROLES,
   ...LEADERSHIP_ROLES,
-  "ROLE_TRUONG_PHONG", // Chỉ trưởng phòng (không bao gồm phó phòng)
-  "ROLE_TRUONG_BAN",
-  "ROLE_CUM_TRUONG",
-  "ROLE_TRUONG_TRAM",
-  
-  // Chỉ trưởng ban (không bao gồm phó ban)
+  "ROLE_TRUONG_PHONG", // Trưởng phòng
+  "ROLE_PHO_PHONG", // Phó phòng (thêm mới)
+  "ROLE_TRUONG_BAN", // Trưởng ban
+  "ROLE_PHO_BAN", // Phó ban (thêm mới)
+  "ROLE_CUM_TRUONG", // Cụm trưởng
+  "ROLE_PHO_CUM_TRUONG", // Phó cụm trưởng (thêm mới)
+  "ROLE_TRAM_TRUONG", // Trạm trưởng (sửa từ ROLE_TRUONG_TRAM)
+  "ROLE_PHO_TRAM_TRUONG", // Phó trạm trưởng (thêm mới)
+  "ROLE_CHINH_TRI_VIEN_TRAM", // Chính trị viên trạm (thêm mới)
+  "ROLE_CHINH_TRI_VIEN_CUM", // Chính trị viên cụm (thêm mới)
 ];
 
 // Vai trò có quyền xem thông tin của phòng/đơn vị mình
@@ -124,6 +131,9 @@ export function getRoleDisplayName(roleName: string): string {
     ROLE_CUM_TRUONG: "Cụm trưởng",
     ROLE_PHO_CUM_TRUONG: "Phó cụm trưởng",
     ROLE_TRAM_TRUONG: "Trạm trưởng",
+    ROLE_PHO_TRAM_TRUONG: "Phó trạm trưởng",
+    ROLE_CHINH_TRI_VIEN_TRAM: "Chính trị viên trạm",
+    ROLE_CHINH_TRI_VIEN_CUM: "Chính trị viên cụm",
     ROLE_NHAN_VIEN: "Nhân viên",
     ROLE_TRO_LY: "Trợ lý",
     ROLE_VAN_THU: "Văn thư",

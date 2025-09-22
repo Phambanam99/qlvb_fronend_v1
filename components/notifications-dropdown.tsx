@@ -20,7 +20,7 @@ import { vi } from "date-fns/locale"
 import Link from "next/link"
 
 export default function NotificationsDropdown() {
-  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications()
+  const { notifications, unreadCount, markAsRead, markAllAsRead, isConnected } = useNotifications()
   const [open, setOpen] = useState(false)
 
   const handleMarkAllAsRead = () => {
@@ -53,11 +53,11 @@ export default function NotificationsDropdown() {
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
         <Button
-          variant="outline"
+          variant="ghost"
           size="icon"
-          className="relative rounded-full border-primary/20 hover:bg-primary/10 hover:text-primary"
+          className="relative rounded-full border border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white"
         >
-          <Bell className="h-4 w-4" />
+          <Bell className="h-4 w-4 text-white" />
           {unreadCount > 0 && (
             <Badge
               className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 p-0 text-[10px] text-white"
@@ -70,7 +70,15 @@ export default function NotificationsDropdown() {
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-80" align="end">
         <DropdownMenuLabel className="flex items-center justify-between">
-          <span>Thông báo</span>
+          <div className="flex items-center gap-2">
+            <span>Thông báo</span>
+            {isConnected && (
+              <div className="h-2 w-2 rounded-full bg-green-500" title="Kết nối realtime" />
+            )}
+            {!isConnected && (
+              <div className="h-2 w-2 rounded-full bg-red-500" title="Không kết nối realtime" />
+            )}
+          </div>
           {unreadCount > 0 && (
             <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={handleMarkAllAsRead}>
               Đánh dấu tất cả đã đọc

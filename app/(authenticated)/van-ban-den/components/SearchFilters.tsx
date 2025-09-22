@@ -52,6 +52,8 @@ interface SearchFiltersProps {
   onClearFilters: () => void;
   onRefresh: () => void;
   onTabChange?: (value: string) => void;
+  // Whether to show department filter for external documents
+  showDepartmentFilter?: boolean;
 }
 
 export function SearchFilters({
@@ -82,6 +84,7 @@ export function SearchFilters({
   onIssuingAuthorityChange,
   onClearFilters,
   onRefresh,
+  showDepartmentFilter = false,
 }: SearchFiltersProps) {
   // Dynamic placeholder based on active tab
   const searchPlaceholder = activeTab === "internal" 
@@ -145,6 +148,27 @@ export function SearchFilters({
             >
               Xóa tìm kiếm
             </Button>
+          )}
+
+          {/* Department filter for external documents (leaders & hierarchical units) */}
+          {activeTab === "external" && showDepartmentFilter && (
+            <Select
+              value={departmentFilter}
+              onValueChange={onDepartmentFilterChange}
+            >
+              <SelectTrigger className="w-full sm:w-[220px] border-primary/20 focus:border-primary">
+                <SelectValue placeholder="Phòng ban" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả phòng ban</SelectItem>
+                {visibleDepartments.map((dept: any) => (
+                  <SelectItem key={dept.id} value={dept.id.toString()}>
+                    {dept.level > 0 ? "\u00A0".repeat(dept.level * 2) + "└ " : ""}
+                    {dept.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           )}
 
           {/* Year/Month Filter for Internal Documents - on same row */}

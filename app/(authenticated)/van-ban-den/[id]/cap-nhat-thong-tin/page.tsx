@@ -181,9 +181,7 @@ export default function DocumentUpdatePage({
         <p className="text-muted-foreground mb-4">
           Văn bản này không tồn tại hoặc đã bị xóa
         </p>
-        <Button asChild>
-          <Link href="/van-ban-den">Quay lại danh sách văn bản đến</Link>
-        </Button>
+      
       </div>
     );
   }

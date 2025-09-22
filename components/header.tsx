@@ -37,6 +37,7 @@ import {
   Database,
   FileType,
   Wrench,
+  Globe
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
@@ -84,12 +85,19 @@ export const Header = () => {
       icon: Wrench,
       permission: null, // Tất cả người dùng đều có thể xem
     },
-    {
-      title: "Cài đặt",
-      href: "/cai-dat",
-      icon: Settings,
-      permission: "ROLE_ADMIN",
+     {
+      title: "Web cũ",
+      href: "http://192.168.88.130/dnn",
+      icon: Globe,
+      permission: null, // Tất cả người dùng đều có thể xem
+      external: true, // Đánh dấu là external link
     },
+    // {
+    //   title: "Cài đặt",
+    //   href: "/cai-dat",
+    //   icon: Settings,
+    //   permission: "ROLE_ADMIN",
+    // },
   ];
 
   // Định nghĩa các mục trong Thư viện dữ liệu
@@ -98,7 +106,7 @@ export const Header = () => {
       title: "Người dùng",
       href: "/nguoi-dung",
       icon: Users,
-      permission: "manage_users",
+      permission: "ROLE_ADMIN",
     },
     {
       title: "Vai trò",
@@ -150,33 +158,54 @@ export const Header = () => {
   );
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur-sm supports-[backdrop-filter]:bg-background/60">
-      <div className="flex h-16 items-center px-4">
+    <header className="sticky top-0 z-50 w-full  bg-gradient-to-r from-orange-400 via-orange-600 to-red-500 text-white shadow-md ">
+      <div className="bg-[url('/header.png')]  bg-cover bg-center h-32 ">
+          <div className="absolute bottom-0 flex h-13 items-center px-2 mb-1 w-full">
         {/* Logo */}
         <div className="mr-6">
           <Link href="/" className="flex items-center space-x-2">
-            <FileText className="h-6 w-6 text-primary" />
-            <span className="font-bold text-lg text-primary hidden md:block">
+            <FileText className="h-6 w-6 text-white drop-shadow-sm" />
+            <span className="font-bold text-lg text-white hidden md:block tracking-tight">
               Quản lý Văn bản
             </span>
           </Link>
         </div>
 
         {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center space-x-1 flex-1">
+        <nav className="hidden xl:flex items-center space-x-1 flex-1">
           {/* Main navigation items */}
           {filteredMainNavItems.map((item) => {
             const isActive =
               pathname === item.href || pathname.startsWith(`${item.href}/`);
+            
+            // Render external link differently
+            if (item.external) {
+              return (
+                <a
+                  key={item.href}
+                  href={item.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={cn(
+                    "flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-colors hover:bg-white/10 hover:text-white",
+                    "text-white/90"
+                  )}
+                >
+                  <item.icon className="h-4 w-4" />
+                  {item.title}
+                </a>
+              );
+            }
+            
             return (
               <Link
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-colors hover:bg-accent hover:text-accent-foreground",
+                  "flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-all hover:bg-white/10 hover:text-white hover:shadow-sm",
                   isActive
-                    ? "bg-accent text-accent-foreground"
-                    : "text-muted-foreground"
+                    ? "bg-white/20 text-white"
+                    : "text-white/90"
                 )}
               >
                 <item.icon className="h-4 w-4" />
@@ -195,14 +224,14 @@ export const Header = () => {
                 <Button
                   variant="ghost"
                   className={cn(
-                    "flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-colors hover:bg-accent hover:text-accent-foreground",
+                    "flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-all hover:bg-white/10 hover:text-white hover:shadow-sm",
                     isDataLibraryActive
-                      ? "bg-accent text-accent-foreground"
-                      : "text-muted-foreground"
+                      ? "bg-white/20 text-white"
+                      : "text-white/90"
                   )}
                 >
                   <Database className="h-4 w-4" />
-                  Thư viện dữ liệu
+                  Thư viện
                   <ChevronDown className="h-3 w-3" />
                 </Button>
               </DropdownMenuTrigger>
@@ -235,13 +264,13 @@ export const Header = () => {
         </nav>
 
         {/* Mobile Navigation */}
-        <div className="md:hidden flex-1">
+        <div className="xl:hidden flex-1">
           <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
                 size="sm"
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 text-white hover:bg-white/10"
               >
                 <Menu className="h-4 w-4" />
                 <span>Menu</span>
@@ -257,13 +286,32 @@ export const Header = () => {
                 const isActive =
                   pathname === item.href ||
                   pathname.startsWith(`${item.href}/`);
+                
+                // Render external link differently for mobile
+                if (item.external) {
+                  return (
+                    <DropdownMenuItem key={item.href} asChild>
+                      <a
+                        href={item.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 w-full"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        <item.icon className="h-4 w-4" />
+                        {item.title}
+                      </a>
+                    </DropdownMenuItem>
+                  );
+                }
+                
                 return (
                   <DropdownMenuItem key={item.href} asChild>
                     <Link
                       href={item.href}
                       className={cn(
                         "flex items-center gap-2 w-full",
-                        isActive && "bg-accent"
+                        isActive && "bg-white/10 text-white"
                       )}
                       onClick={() => setIsMenuOpen(false)}
                     >
@@ -289,7 +337,7 @@ export const Header = () => {
                           href={item.href}
                           className={cn(
                             "flex items-center gap-2 w-full",
-                            isActive && "bg-accent"
+                            isActive && "bg-white/10 text-white"
                           )}
                           onClick={() => setIsMenuOpen(false)}
                         >
@@ -313,14 +361,15 @@ export const Header = () => {
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                className="relative h-9 w-9 rounded-full hover:bg-primary/10"
+                className="relative h-9 w-9 rounded-full border border-white/30 bg-white/10 text-white hover:bg-white/20"
               >
-                <Avatar className="h-9 w-9 border border-primary/20">
+                <Avatar className="h-9 w-9">
                   <AvatarImage
-                    src="/placeholder.svg?height=36&width=36"
+                    src="/placeholder-user.jpg"
                     alt="Avatar"
+                    className="rounded-full object-cover"
                   />
-                  <AvatarFallback className="bg-primary/10 text-primary">
+                  <AvatarFallback className="text-white">
                     {user?.fullName ? user.fullName.charAt(0) : "??"}
                   </AvatarFallback>
                 </Avatar>
@@ -361,6 +410,8 @@ export const Header = () => {
           </DropdownMenu>
         </div>
       </div>
+      </div>
+    
     </header>
   );
 };

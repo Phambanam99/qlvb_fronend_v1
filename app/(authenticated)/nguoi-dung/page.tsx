@@ -47,17 +47,27 @@ import { PageResponse, DepartmentDTO } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import {
   DEPARTMENT_MANAGEMENT_ROLES,
+  DEPARTMENT_HEAD_ROLES,
   SYSTEM_ROLES,
   hasRoleInGroup,
 } from "@/lib/role-utils";
+import { useHierarchicalDepartments } from "@/hooks/use-hierarchical-departments";
+import { useListStatePersistence } from "@/hooks/use-list-state-persistence";
 
 export default function UsersPage() {
   // User data states
   const [users, setUsers] = useState<UserDTO[]>([]);
   const [totalUsers, setTotalUsers] = useState<number>(0);
   const [roles, setRoles] = useState<any[]>([]);
-  const [departments, setDepartments] = useState<PageResponse<DepartmentDTO>>();
   const [loading, setLoading] = useState(true);
+
+  // Use hierarchical departments hook
+  const {
+    visibleDepartments,
+    userDepartmentIds,
+    loading: loadingDepartments,
+    error: departmentsError,
+  } = useHierarchicalDepartments();
 
   // Filter states (form values - not yet applied)
   const [searchTerm, setSearchTerm] = useState("");
@@ -98,17 +108,7 @@ export default function UsersPage() {
         "ROLE_CHINH_UY",
         "ROLE_PHO_CHINH_UY",
       ]);
-      const isDepartmentHead = hasRoleInGroup(userRoles, [
-        "ROLE_TRUONG_PHONG",
-        "ROLE_PHO_PHONG",
-        "ROLE_TRUONG_BAN",
-        "ROLE_PHO_BAN",
-        "ROLE_CUM_TRUONG",
-        "ROLE_PHO_CUM_TRUONG",
-        "ROLE_CHINH_TRI_VIEN_CUM",
-        "ROLE_PHO_TRAM_TRUONG",
-        "ROLE_TRAM_TRUONG",
-      ]);
+      const isDepartmentHead = hasRoleInGroup(userRoles, DEPARTMENT_HEAD_ROLES);
 
       // Prepare filter parameters using applied filters
       const params: any = {
@@ -123,7 +123,7 @@ export default function UsersPage() {
 
       // Apply status filter if selected
       if (appliedStatusFilter !== "all") {
-        params.status = appliedStatusFilter === "active" ? 1 : 0;
+        params.status = appliedStatusFilter === "ACTIVE" ? 1 : 0;
       }
 
       // Apply search term if provided
@@ -144,21 +144,8 @@ export default function UsersPage() {
         const usersData_ = await usersAPI.getPaginatedUsers(params);
         usersData = usersData_.data;
       } else if (isDepartmentHead && userDepartmentId) {
-        let departmentIds = [Number(userDepartmentId)];
-
-        try {
-          // Get child departments
-          const childDepartments_ = await departmentsAPI.getChildDepartments(
-            userDepartmentId
-          );
-          const childDepartments = childDepartments_.data;
-          if (Array.isArray(childDepartments) && childDepartments.length > 0) {
-            const childDeptIds = childDepartments.map((dept) => dept.id);
-            departmentIds.push(...childDeptIds);
-          }
-        } catch (error) {
-        }
-
+        // Use userDepartmentIds from hierarchical departments hook
+        const departmentIds = userDepartmentIds.length > 0 ? userDepartmentIds : [Number(userDepartmentId)];
 
         if (
           appliedDepartmentFilter !== "all" &&
@@ -232,87 +219,16 @@ export default function UsersPage() {
     } finally {
       setLoading(false);
     }
-  }, [user, appliedRoleFilter, appliedStatusFilter, appliedSearchTerm, appliedDepartmentFilter, toast]);
+  }, [user, appliedRoleFilter, appliedStatusFilter, appliedSearchTerm, appliedDepartmentFilter, userDepartmentIds, toast]);
 
-  // Fetch initial data: roles and departments
+  // Fetch initial data: roles only (departments handled by hook)
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
-        const [rolesData_, departmentsData_] = await Promise.all([
-          rolesAPI.getAllRoles(),
-          departmentsAPI.getAllDepartments(),
-        ]);
-        const rolesData = rolesData_.data;
-        const departmentsData = departmentsData_.data;
-        setRoles(rolesData);
-
-        // Filter departments based on user permissions
-        const userRoles = user?.roles || [];
-        const userDepartmentId = user?.departmentId;
-
-        const isAdmin = hasRoleInGroup(userRoles, SYSTEM_ROLES);
-        const isLeadership = hasRoleInGroup(userRoles, [
-          "ROLE_CUC_TRUONG",
-          "ROLE_CUC_PHO",
-          "ROLE_CHINH_UY",
-          "ROLE_PHO_CHINH_UY",
-        ]);
-        const isDepartmentHead = hasRoleInGroup(userRoles, [
-          "ROLE_TRUONG_PHONG",
-          "ROLE_PHO_PHONG",
-          "ROLE_TRUONG_BAN",
-          "ROLE_PHO_BAN",
-          "ROLE_CUM_TRUONG",
-          "ROLE_PHO_CUM_TRUONG",
-          "ROLE_CHINH_TRI_VIEN_CUM",
-          "ROLE_PHO_TRAM_TRUONG",
-          "ROLE_TRAM_TRUONG",
-        ]);
-
-        if (isAdmin || isLeadership) {
-          // Admins and leadership see all departments
-          setDepartments(departmentsData);
-        } else if (isDepartmentHead && userDepartmentId) {
-          // Department heads see their department and child departments
-          let allowedDepartments = [];
-
-          // Add current department
-          const currentDept = departmentsData.content.find(
-            (d) => d.id === Number(userDepartmentId)
-          );
-          if (currentDept) {
-            allowedDepartments.push(currentDept);
-          }
-
-          try {
-            // Add child departments
-            const childDepartments_ = await departmentsAPI.getChildDepartments(
-              userDepartmentId
-            );
-            const childDepartments = childDepartments_.data;
-            if (
-              Array.isArray(childDepartments) &&
-              childDepartments.length > 0
-            ) {
-              allowedDepartments.push(...childDepartments);
-            }
-          } catch (error) {
-          }
-
-          // Update departments state with filtered list
-          setDepartments({
-            ...departmentsData,
-            content: allowedDepartments,
-            totalElements: allowedDepartments.length,
-          });
-        } else {
-          // Regular users see no department filter options (they can only see themselves)
-          setDepartments({
-            ...departmentsData,
-            content: [],
-            totalElements: 0,
-          });
-        }
+  // getAllRoles() returns an array, not { data }
+  const rolesData_ = await rolesAPI.getAllRoles();
+  const rolesData = (rolesData_ as any).data;
+  setRoles(Array.isArray(rolesData) ? rolesData : []);
       } catch (error) {
         toast({
           title: "Lỗi",
@@ -329,23 +245,27 @@ export default function UsersPage() {
     }
   }, [user, toast]);
 
-  // Refetch users when applied filters or pagination changes
+  // Hydration lifecycle control (declared early to avoid TDZ in effects)
+  const [hydrated, setHydrated] = useState(false);
+
+  // Refetch users when applied filters or pagination changes (after hydration)
   useEffect(() => {
-    // Skip if user data or roles/departments haven't loaded yet
-    if (!user || !roles.length || !departments) {
+    // Wait for hydration to complete to avoid fetching with default blank filters
+    if (!hydrated) return;
+    if (!user || !Array.isArray(roles) || roles.length === 0 || loadingDepartments) {
       return;
     }
-
-   
-
     fetchUsers(currentPage, itemsPerPage);
   }, [
+    hydrated,
     currentPage,
     itemsPerPage,
     fetchUsers,
     user,
     roles,
-    departments,
+    visibleDepartments,
+    userDepartmentIds,
+    loadingDepartments,
     appliedSearchTerm,
     appliedRoleFilter,
     appliedDepartmentFilter,
@@ -389,13 +309,85 @@ export default function UsersPage() {
     setCurrentPage(0);
   };
 
+  // Persist + restore list state. Use autoSave=false to avoid overwriting stored values with defaults before hydration.
+  const { restore: restoreUsersState, restored: usersStateRestored, save: saveUsersState } = useListStatePersistence({
+    storageKey: "users-list-state",
+    state: {
+      searchTerm,
+      roleFilter,
+      departmentFilter,
+      statusFilter,
+      appliedSearchTerm,
+      appliedRoleFilter,
+      appliedDepartmentFilter,
+      appliedStatusFilter,
+      currentPage,
+      itemsPerPage,
+    },
+    persistKeys: [
+      "searchTerm",
+      "roleFilter",
+      "departmentFilter",
+      "statusFilter",
+      "appliedSearchTerm",
+      "appliedRoleFilter",
+      "appliedDepartmentFilter",
+      "appliedStatusFilter",
+      "currentPage",
+      "itemsPerPage",
+    ],
+    saveDeps: [
+      searchTerm,
+      roleFilter,
+      departmentFilter,
+      statusFilter,
+      appliedSearchTerm,
+      appliedRoleFilter,
+      appliedDepartmentFilter,
+      appliedStatusFilter,
+      currentPage,
+      itemsPerPage,
+    ],
+    version: 1,
+    skipIfHasQueryParams: false,
+    autoSave: false,
+  });
+
+  // (moved hydrated state declaration above)
+
+  // One-time hydration of state before first data fetch
+  useEffect(() => {
+    if (!usersStateRestored || hydrated) return;
+    const restored = restoreUsersState() as any;
+    if (restored) {
+      if (restored.searchTerm !== undefined) setSearchTerm(restored.searchTerm);
+      if (restored.roleFilter !== undefined) setRoleFilter(restored.roleFilter);
+      if (restored.departmentFilter !== undefined) setDepartmentFilter(restored.departmentFilter);
+      if (restored.statusFilter !== undefined) setStatusFilter(restored.statusFilter);
+      if (restored.appliedSearchTerm !== undefined) setAppliedSearchTerm(restored.appliedSearchTerm);
+      if (restored.appliedRoleFilter !== undefined) setAppliedRoleFilter(restored.appliedRoleFilter);
+      if (restored.appliedDepartmentFilter !== undefined) setAppliedDepartmentFilter(restored.appliedDepartmentFilter);
+      if (restored.appliedStatusFilter !== undefined) setAppliedStatusFilter(restored.appliedStatusFilter);
+      if (restored.currentPage !== undefined) setCurrentPage(restored.currentPage);
+      if (restored.itemsPerPage !== undefined) setItemsPerPage(restored.itemsPerPage);
+    }
+    setHydrated(true);
+  }, [usersStateRestored, hydrated, restoreUsersState]);
+
+  // Manual save after any dependency changes post-hydration
+  useEffect(() => {
+    if (!hydrated) return;
+    saveUsersState();
+  }, [hydrated, searchTerm, roleFilter, departmentFilter, statusFilter, appliedSearchTerm, appliedRoleFilter, appliedDepartmentFilter, appliedStatusFilter, currentPage, itemsPerPage, saveUsersState]);
+
   const getRoleName = (roleId: string) => {
-    const role = roles.find((r) => r.id === roleId);
+  const role = (Array.isArray(roles) ? roles : []).find((r) => r.id === roleId);
     return role ? role.name : "Không xác định";
   };
 
-  const getDepartmentName = (departmentId: string) => {
-    const department = departments?.content.find(
+  const getDepartmentName = (departmentId: string | number | undefined) => {
+    if (!departmentId) return "Không xác định";
+    const department = visibleDepartments.find(
       (d) => d.id === Number(departmentId)
     );
     return department ? department.name : "Không xác định";
@@ -461,7 +453,7 @@ export default function UsersPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tất cả vai trò</SelectItem>
-                  {roles.map((role) => (
+                  {(Array.isArray(roles) ? roles : []).map((role) => (
                     <SelectItem key={role.id} value={role.id}>
                       {role.displayName}
                     </SelectItem>
@@ -480,15 +472,28 @@ export default function UsersPage() {
                   <SelectValue placeholder="Chọn phòng ban" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Tất cả phòng ban</SelectItem>
-                  {departments?.content.map((department) => (
-                    <SelectItem
-                      key={department.id}
-                      value={String(department.id)}
-                    >
-                      {department.name}
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="all">
+                    {!loadingDepartments && visibleDepartments && visibleDepartments.length <= 1 
+                      ? "Đơn vị hiện tại" 
+                      : "Tất cả phòng ban"}
+                  </SelectItem>
+                  {!loadingDepartments &&
+                  visibleDepartments &&
+                  visibleDepartments.length > 0
+                    ? visibleDepartments.map((department) => (
+                        <SelectItem
+                          key={department.id}
+                          value={String(department.id)}
+                        >
+                          {department.level > 0 ? "\u00A0".repeat(department.level * 2) + "└ " : ""}
+                          {department.name}
+                        </SelectItem>
+                      ))
+                    : !loadingDepartments && (
+                        <SelectItem value="no-departments" disabled>
+                          Không có phòng ban nào
+                        </SelectItem>
+                      )}
                 </SelectContent>
               </Select>
             </div>
@@ -504,8 +509,8 @@ export default function UsersPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tất cả trạng thái</SelectItem>
-                  <SelectItem value="active">Đang hoạt động</SelectItem>
-                  <SelectItem value="inactive">Đã vô hiệu hóa</SelectItem>
+                  <SelectItem value="ACTIVE">Đang hoạt động</SelectItem>
+                  <SelectItem value="INACTIVE">Đã vô hiệu hóa</SelectItem>
                 </SelectContent>
               </Select>
             </div>

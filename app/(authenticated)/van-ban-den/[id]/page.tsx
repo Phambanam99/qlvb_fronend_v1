@@ -47,6 +47,7 @@ import {
   migrateFromOldUrgency,
 } from "@/lib/types/urgency";
 import { UrgencyBadge } from "@/components/urgency-badge";
+import { useUserDepartmentInfo } from "@/hooks/use-user-department-info";
 import type { DocumentAttachmentDTO } from "@/lib/api/types";
 import { DocumentReadersDialog } from "@/components/document-readers-dialog";
 import { DocumentReadStats } from "@/components/document-read-stats";
@@ -68,6 +69,7 @@ export default function DocumentDetailPage({
 
   const documentId = resolvedParams ? Number.parseInt(resolvedParams.id) : null;
   const { user, hasRole } = useAuth();
+  const { departmentName } = useUserDepartmentInfo();
   const { toast } = useToast();
   const router = useRouter();
 
@@ -184,7 +186,7 @@ export default function DocumentDetailPage({
         relatedDocuments: [],
         responses: [],
       };
-    
+      // console.log("Fetched document data:", documentData);
       setDocument(documentData);
       setError(null);
     } catch (err: any) {
@@ -234,9 +236,9 @@ export default function DocumentDetailPage({
         _document.attachmentFilename.split("/").pop() || "document.pdf";
 
       // Check if it's a PDF file and user has a name for watermark
-      if (isPdfFile(filename) && user?.fullName) {
+      if (isPdfFile(filename) && user?.fullName && departmentName) {
         try {
-          await downloadPdfWithWatermark(blob, filename, user.fullName);
+          await downloadPdfWithWatermark(blob, filename, user.fullName, departmentName);
           toast({
             title: "Thành công",
             description: `Đã tải xuống file PDF với watermark và timestamp: ${filename}`,
@@ -314,10 +316,10 @@ export default function DocumentDetailPage({
       const filename = file.originalFilename;
 
       // Check if it's a PDF file and user has a name for watermark
-      if (isPdfFile(filename) && user?.fullName) {
+      if (isPdfFile(filename) && user?.fullName && departmentName) {
         try {
           
-          await downloadPdfWithWatermark(blob, filename, user.fullName);
+          await downloadPdfWithWatermark(blob, filename, user.fullName, departmentName);
           toast({
             title: "Thành công",
             description: `Đã tải xuống file PDF với watermark và timestamp: ${filename}`,
@@ -792,9 +794,7 @@ export default function DocumentDetailPage({
     return (
       <div className="flex flex-col items-center justify-center h-[calc(100vh-200px)]">
         <p className="text-red-500 mb-4">{error || "Không tìm thấy văn bản"}</p>
-        <Button asChild>
-          <Link href="/van-ban-den">Quay lại danh sách</Link>
-        </Button>
+       
       </div>
     );
   }
@@ -911,12 +911,12 @@ export default function DocumentDetailPage({
                   </p>
                   <p>{_document.receiptNumber || "Chưa có"}</p>
                 </div>
-                <div>
+                {/* <div>
                   <p className="text-sm font-medium text-muted-foreground">
                     Cán bộ xử lý
                   </p>
                   <p>{_document.processingOfficer?.fullName || "Chưa phân công"}</p>
-                </div>
+                </div> */}
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">
                     Độ mật
@@ -1122,13 +1122,8 @@ export default function DocumentDetailPage({
                   Trạng thái
                 </p>
                 <div className="mt-1">
-                  <DocumentStatusBadge
-                    documentId={documentId!}
-                    fallbackStatus={_document.status}
-                    fallbackDisplayStatus={
-                      getStatusByCode(_document.status)?.displayName
-                    }
-                  />
+                  
+                  {getStatusByCode(_document.status)?.displayName}
                 </div>
               </div>
               <Separator className="bg-primary/10" />
