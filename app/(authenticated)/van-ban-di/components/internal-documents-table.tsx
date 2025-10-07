@@ -13,22 +13,34 @@ import {
 import { UrgencyBadge } from "@/components/urgency-badge";
 import { UrgencyLevel, migrateFromOldUrgency } from "@/lib/types/urgency";
 import { InternalDocument } from "@/lib/api/internalDocumentApi";
-import { Edit, Eye } from "lucide-react";
+import { Edit, Eye, Trash2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { deleteInternalDocument } from "@/lib/api/internalDocumentApi";
+import { useAuth } from "@/lib/auth-context";
+import { useState } from "react";
+import { useToast } from "@/components/ui/use-toast";
 
 interface InternalDocumentsTableProps {
   documents: InternalDocument[];
   isLoading: boolean;
   universalReadStatus: any;
   onDocumentClick: (doc: InternalDocument) => void;
+  onDeleted?: () => void; // callback after successful delete
 }
 
+// @ts-ignore
 export function InternalDocumentsTable({
   documents,
   isLoading,
   universalReadStatus,
   onDocumentClick,
+  onDeleted,
 }: InternalDocumentsTableProps) {
+
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+
   const formatDate = (dateString: string) => {
     try {
       if (!dateString) return "Chưa xác định";
@@ -61,14 +73,50 @@ export function InternalDocumentsTable({
     return <UrgencyBadge level={level} size="sm" />;
   };
 
+  //recipients ở đây là string nên nếu chuỗi dài hơn 10 thì cắt bớt và thêm "..."
+  //nếu không có recipients thì trả về "Chưa có người nhận"
+  //nếu có recipients thì trả về recipients
   const getRecipientSummary = (recipients: InternalDocument["recipients"]) => {
-    if (!recipients || recipients.length === 0) return "Chưa có người nhận";
+    if (!recipients) return "Chưa có người nhận";
 
-    if (recipients.length === 1) {
-      return recipients[0].userName || recipients[0].departmentName;
+    let text: string;
+
+    if (Array.isArray(recipients)) {
+      if (recipients.length === 0) return "Chưa có người nhận";
+      text = recipients
+          .map((r: any) => r?.departmentName || r?.userName || r?.name || "")
+          .filter(Boolean)
+          .join(", ");
+    } else {
+      text = String(recipients);
     }
 
-    return `${recipients[0].departmentName} và ${recipients.length - 1} khác`;
+    if (text.length > 10) return text.slice(0, 10) + "...";
+    return text || "Chưa có người nhận";
+  };
+
+  const handleDelete = async (e: React.MouseEvent, doc: InternalDocument) => {
+    e.stopPropagation();
+    if (deletingId) return; // prevent concurrent
+    const confirmed = window.confirm(`Bạn có chắc muốn xóa văn bản số "${doc.documentNumber}"? Hành động này không thể hoàn tác.`);
+    if (!confirmed) return;
+    try {
+      setDeletingId(doc.id);
+      await deleteInternalDocument(doc.id);
+      toast({
+        title: "Đã xóa",
+        description: `Xóa văn bản ${doc.documentNumber} thành công.`,
+      });
+      onDeleted?.();
+    } catch (error: any) {
+      toast({
+        title: "Lỗi xóa văn bản",
+        description: error?.response?.data?.message || "Không thể xóa văn bản. Vui lòng thử lại.",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   return (
@@ -125,7 +173,7 @@ export function InternalDocumentsTable({
                       {doc.documentType}
                     </TableCell>
                     <TableCell className="hidden md:table-cell">
-                      {getRecipientSummary(doc.recipients)}
+                      {getRecipientSummary(doc.recipientNames)}
                     </TableCell>
                     <TableCell>{getUrgencyBadge(doc.priority || "NORMAL")}</TableCell>
                     <TableCell>
@@ -171,7 +219,26 @@ export function InternalDocumentsTable({
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
-                        
+                        {user?.id === doc.senderId && (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  disabled={deletingId === doc.id}
+                                  className="hover:bg-red-50 hover:text-red-600 h-8 w-8 p-0 text-red-600"
+                                  onClick={(e) => handleDelete(e, doc)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>{deletingId === doc.id ? "Đang xóa..." : "Xóa"}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger asChild>

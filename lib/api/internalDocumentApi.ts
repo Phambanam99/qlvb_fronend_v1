@@ -606,3 +606,9 @@ export const getDocumentReadStatistics = async (id: number) => {
   const response = await api.get(`/internal-documents/${id}/read-statistics`);
   return response.data.data;
 };
+
+// NEW: Delete internal document
+export const deleteInternalDocument = async (id: number) => {
+  const response = await api.delete(`/internal-documents/${id}`);
+  return response.data;
+};

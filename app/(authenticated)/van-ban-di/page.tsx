@@ -624,6 +624,14 @@ export default function OutgoingDocumentsPage() {
               isLoading={false}
               universalReadStatus={universalReadStatus}
               onDocumentClick={handleInternalDocumentClick}
+              onDeleted={() => {
+                // If last item on page deleted and not first page, go back a page
+                if (internalDocsHook.documents.length === 1 && currentPage > 0) {
+                  setCurrentPage((p) => Math.max(p - 1, 0));
+                } else {
+                  internalDocsHook.fetchInternalDocuments(currentPage, pageSize);
+                }
+              }}
             />
           )}
         </TabsContent>
