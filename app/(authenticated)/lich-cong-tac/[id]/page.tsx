@@ -12,7 +12,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Printer } from "lucide-react";
+import { ArrowLeft, Printer, Pencil } from "lucide-react";
 import Link from "next/link";
 import { ScheduleDTO, schedulesAPI } from "@/lib/api";
 import { usersAPI } from "@/lib/api/users";
@@ -51,7 +51,7 @@ export default function ScheduleDetailPage({
       
       setUserNames(prevNames => ({ ...prevNames, ...nameMap }));
     } catch (error) {
-      console.error("Error fetching user names:", error);
+      // console.error("Error fetching user names:", error);
     }
   };
 
@@ -189,9 +189,7 @@ export default function ScheduleDetailPage({
         <p className="text-red-500 mb-4">
           {error || "Không tìm thấy lịch công tác"}
         </p>
-        <Button asChild>
-          <Link href="/lich-cong-tac">Quay lại danh sách</Link>
-        </Button>
+       
       </div>
     );
   }
@@ -213,6 +211,12 @@ export default function ScheduleDetailPage({
           <h1 className="text-3xl font-bold">Chi tiết lịch công tác</h1>
         </div>
         <div className="flex items-center space-x-2">
+          <Button variant="outline" size="sm" className="rounded-full" asChild>
+            <Link href={`/lich-cong-tac/${scheduleId}/chinh-sua`}>
+              <Pencil className="mr-2 h-4 w-4" />
+              Chỉnh sửa
+            </Link>
+          </Button>
           <Button variant="outline" size="sm" className="rounded-full">
             <Printer className="mr-2 h-4 w-4" />
             In lịch

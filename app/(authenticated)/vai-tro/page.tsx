@@ -64,9 +64,8 @@ export default function RolesPage() {
     const fetchRoles = async () => {
       try {
         setLoading(true);
-        const rolesData_ = await rolesAPI.getAllRoles();
-        const rolesData = rolesData_.data;
-        setRoles(rolesData);
+  const rolesData = await rolesAPI.getAllRoles();
+  setRoles(Array.isArray(rolesData) ? rolesData : []);
       } catch (error) {
         toast({
           title: "Lỗi",

@@ -51,9 +51,7 @@ export default function UserDetailPage() {
         const userData = (userData_ as any).data || userData_; // Handle wrapped response
         const rolesData = (rolesData_ as any).data || rolesData_; // Handle wrapped response  
         const departmentsData = departmentsData_;
-        console.log("Fetched user data:", userData);
-        console.log("Fetched roles data:", rolesData);
-        console.log("Fetched departments response:", departmentsData);
+     
         
         // Handle departments data structure  
         let finalDepartments: any[] = [];
@@ -62,9 +60,7 @@ export default function UserDetailPage() {
         } else if (Array.isArray(departmentsData)) {
           finalDepartments = departmentsData;
         }
-        
-        console.log("Final departments:", finalDepartments);
-        
+
         setUser(userData);
         setRoles(Array.isArray(rolesData) ? rolesData : []);
         setDepartments(finalDepartments);
@@ -88,8 +84,7 @@ export default function UserDetailPage() {
   const handleUpdateProfile = async (data: any) => {
     try {
       setSaving(true);
-      console.log("Updating user profile with data:", data);
-      
+
       const updateData = {
         fullName: data.fullName,
         email: data.email,
@@ -100,7 +95,7 @@ export default function UserDetailPage() {
         userStatus: data.isActive ? "ACTIVE" : "INACTIVE",
       };
       
-      console.log("Update data prepared:", updateData);
+
       const updatedUser_ = await usersAPI.updateUser(userId, updateData);
       const updatedUser = (updatedUser_ as any).data || updatedUser_; // Handle wrapped response
       setUser(updatedUser);

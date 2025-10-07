@@ -1,21 +1,28 @@
 import axios from "axios";
 
 // API base URL
-export const API_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://192.168.0.103:8080/api";
+// - On the browser, always go through Next.js proxy ("/api") to avoid CORS issues
+// - Allows override via env only for non-browser contexts if ever needed
+const RAW_API_URL = process.env.NEXT_PUBLIC_API_URL;
+export const API_URL = typeof window !== "undefined" ? "/api" : RAW_API_URL || "/api";
 
 // Create axios instance with common configuration
 const api = axios.create({
   baseURL: API_URL,
   headers: {
     "Content-Type": "application/json",
+  Accept: "application/hal+json",
+    "ngrok-skip-browser-warning": "true"
   },
 });
-// List các endpoint không cần auth
+// List các endpoint không cần auth (bao gồm biến thể có/không tiền tố /api)
 const publicEndpoints = [
   "/auth/login",
   "/auth/register",
   "/auth/forgot-password",
+  "/api/auth/login",
+  "/api/auth/register",
+  "/api/auth/forgot-password",
 ];
 // Hàm kiểm tra xem request có cần token không
 function requiresAuth(url?: string): boolean {

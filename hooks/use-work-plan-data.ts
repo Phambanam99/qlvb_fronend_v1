@@ -114,9 +114,6 @@ export function useWorkPlanData() {
         size: pageSize,
       };
 
-      console.log("Fetching work plans with filters:", filters);
-      console.log("Using page params:", params);
-      console.log("Current filters state:", currentFilters);
 
       // Use passed filters or current filters from state
       const activeFilters = filters || currentFilters;
@@ -198,8 +195,7 @@ export function useWorkPlanData() {
         response = await workPlansAPI.getAllWorkPlansWithPagination(params);
       }
 
-      console.log("Fetching work plans with filters:", filters);
-      console.log("Fetched work plans response:", response);
+ 
       
       // Handle paginated response from API
       const { content, totalElements, totalPages, number } = response;

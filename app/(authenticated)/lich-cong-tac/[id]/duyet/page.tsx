@@ -179,9 +179,7 @@ export default function ApproveSchedulePage({
         <p className="text-red-500 mb-4">
           {error || "Không tìm thấy lịch công tác"}
         </p>
-        <Button asChild>
-          <Link href="/lich-cong-tac">Quay lại danh sách</Link>
-        </Button>
+      
       </div>
     );
   }

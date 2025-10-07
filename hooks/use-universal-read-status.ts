@@ -132,101 +132,101 @@ export const useUniversalReadStatus = () => {
   /**
    * Load read status for multiple documents using individual API calls
    */
-  const loadBatchReadStatus = useCallback(async (documentIds: number[], documentType: DocumentType) => {
+  const loadBatchReadStatus = useCallback(async (
+    documentIds: number[],
+    documentType: DocumentType,
+    options?: { concurrency?: number; notifyIntervalMs?: number }
+  ) => {
     try {
-      // Validate input parameters
-      if (!Array.isArray(documentIds) || documentIds.length === 0) {
-        console.log("⚠️ loadBatchReadStatus: Invalid or empty documentIds array");
-        return;
-      }
+      if (!Array.isArray(documentIds) || documentIds.length === 0) return;
+      if (!documentType) return;
 
-      if (!documentType) {
-        console.log("⚠️ loadBatchReadStatus: Missing documentType");
-        return;
-      }
-
-      // Create loading key for this batch to prevent duplicates
       const loadingKey = `${documentIds.sort().join(',')}_${documentType}`;
-      
-      // Check if this batch is already loading
-      if (loadingDocuments.has(loadingKey)) {
-        console.log("⚠️ loadBatchReadStatus: Already loading this batch, skipping");
-        return;
-      }
+      if (loadingDocuments.has(loadingKey)) return; // prevent duplicate concurrent loads
 
-      // Filter out documents that already have read status loaded
-      const documentsToLoad = documentIds.filter(documentId => {
-        const key = getKey(documentId, documentType);
-        return !(key in globalReadStatus);
-      });
+      const documentsToLoad = documentIds.filter(
+        (id) => !(getKey(id, documentType) in globalReadStatus)
+      );
+      if (documentsToLoad.length === 0) return;
 
-      if (documentsToLoad.length === 0) {
-        console.log("✅ loadBatchReadStatus: All documents already have read status loaded");
-        return;
-      }
-
-      console.log("🔍 loadBatchReadStatus called with:", { documentsToLoad, documentType });
-
-      // Mark as loading
       loadingDocuments.add(loadingKey);
 
-      // Use individual API calls instead of batch API
-      const promises = documentsToLoad.map(async (documentId) => {
-        try {
-          const response = await documentReadStatusAPI.isDocumentRead(documentId, documentType);
-          // Response format: { message: "Success", data: { isRead: true } }
-          const isRead = response.data?.isRead || false;
-          return {
-            documentId,
-            isRead
-          };
-        } catch (error: any) {
-          console.warn(`⚠️ Failed to get read status for document ${documentId}:`, error.message);
-          return {
-            documentId,
-            isRead: false // Default to unread if error
-          };
-        }
-      });
-
-      const results = await Promise.all(promises);
-      
-      console.log("✅ loadBatchReadStatus individual results:", results);
-      
-      // Check if any read status actually changed before notifying
-      let hasChanges = false;
-      
-      // Update global state
-      results.forEach(({ documentId, isRead }) => {
-        const key = getKey(documentId, documentType);
-        const currentStatus = globalReadStatus[key];
-        if (currentStatus !== Boolean(isRead)) {
-          globalReadStatus[key] = Boolean(isRead);
-          hasChanges = true;
-        }
-      });
-      
-      // Only notify if there were actual changes
-      if (hasChanges) {
-        notifySubscribers();
+      // --- Preferred path: use backend batch endpoint (single network call) ---
+      try {
+        const batchResult: BatchReadStatusResponse = await documentReadStatusAPI.getBatchReadStatus(
+          documentsToLoad,
+          documentType
+        );
+        let changed = false;
+        Object.entries(batchResult || {}).forEach(([idStr, isRead]) => {
+          const idNum = Number(idStr);
+          if (Number.isNaN(idNum)) return;
+          const key = getKey(idNum, documentType);
+          if (globalReadStatus[key] !== isRead) {
+            globalReadStatus[key] = !!isRead;
+            changed = true;
+          }
+        });
+        if (changed) notifySubscribers();
+        loadingDocuments.delete(loadingKey);
+        return; // success path finished
+      } catch (batchError) {
+        // Fallback to legacy per-document loading if batch fails (older backend)
+        console.warn("⚠️ Batch read status failed, falling back to individual calls:", batchError);
       }
-      
-      // Remove from loading set
+
+      // --- Fallback path: previous concurrency-based implementation ---
+      const concurrency = options?.concurrency ?? 6;
+      const notifyIntervalMs = options?.notifyIntervalMs ?? 40;
+      let pendingNotify: number | null = null;
+      const scheduleNotify = () => {
+        if (pendingNotify != null) return;
+        pendingNotify = window.setTimeout(() => {
+          pendingNotify = null;
+          notifySubscribers();
+        }, notifyIntervalMs);
+      };
+
+      let index = 0;
+      const worker = async () => {
+        while (index < documentsToLoad.length) {
+          const current = documentsToLoad[index++];
+          try {
+            const resp = await documentReadStatusAPI.isDocumentRead(
+              current,
+              documentType
+            );
+            const isRead = resp.data?.isRead || false;
+            const key = getKey(current, documentType);
+            if (globalReadStatus[key] !== isRead) {
+              globalReadStatus[key] = isRead;
+              scheduleNotify();
+            }
+          } catch (e) {
+            const key = getKey(current, documentType);
+            if (!(key in globalReadStatus)) {
+              globalReadStatus[key] = false; // default
+              scheduleNotify();
+            }
+          }
+        }
+      };
+
+      const workers: Promise<void>[] = [];
+      for (let i = 0; i < Math.min(concurrency, documentsToLoad.length); i++) {
+        workers.push(worker());
+      }
+      await Promise.all(workers);
+
+      if (pendingNotify != null) {
+        clearTimeout(pendingNotify);
+        pendingNotify = null;
+      }
+      notifySubscribers();
       loadingDocuments.delete(loadingKey);
-      
-    } catch (error: any) {
-      console.error("❌ loadBatchReadStatus error:", {
-        error: error.message,
-        status: error.response?.status,
-        data: error.response?.data
-      });
-      
-      // Remove from loading set even on error
-      const loadingKey = `${documentIds.sort().join(',')}_${documentType}`;
-      loadingDocuments.delete(loadingKey);
-      
-      // Don't throw the error to prevent breaking the UI
-      // throw error;
+    } catch (error) {
+      loadingDocuments.delete(`${documentIds.sort().join(',')}_${documentType}`);
+      console.error("❌ loadBatchReadStatus error:", error);
     }
   }, []);
 
@@ -272,6 +272,29 @@ export const useUniversalReadStatus = () => {
     notifySubscribers();
   }, []);
 
+  /**
+   * Seed read statuses from an existing documents array to avoid redundant API calls.
+   * Each item should minimally have: { id: number, isRead?: boolean }
+   */
+  const seedReadStatuses = useCallback(
+    (
+      documents: Array<{ id: number; isRead?: boolean; readAt?: string }>,
+      documentType: DocumentType
+    ) => {
+      if (!Array.isArray(documents) || !documentType) return;
+      let changed = false;
+      for (const doc of documents) {
+        if (!doc || typeof doc.id !== 'number') continue;
+        if (doc.isRead === undefined) continue; // nothing to seed
+        const key = getKey(doc.id, documentType);
+        if (!(key in globalReadStatus)) {
+          globalReadStatus[key] = !!doc.isRead;
+          changed = true;
+        }
+      }
+      if (changed) notifySubscribers();
+    }, []);
+
   return {
     markAsRead,
     markAsUnread,
@@ -282,5 +305,6 @@ export const useUniversalReadStatus = () => {
     getUnreadCount,
     toggleReadStatus,
     clearAllReadStatus,
+    seedReadStatuses,
   };
 };

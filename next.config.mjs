@@ -25,9 +25,10 @@ const nextConfig = {
   },
   webpack: (config, { isServer }) => {
     if (!isServer) {
-      // Ignore sockjs-client warnings about missing supports-color
-      config.resolve.fallback = {
-        ...config.resolve.fallback,
+      // Disable node-only debug package and stub 'supports-color' in the browser build
+      config.resolve.alias = {
+        ...(config.resolve.alias || {}),
+        debug: false,
         'supports-color': false,
       };
     }
@@ -35,6 +36,7 @@ const nextConfig = {
   },
   
   async rewrites() {
+    const backend = process.env.BACKEND_URL || 'http://localhost:8080';
     return [
       {
         source: '/ajax.php',
@@ -42,7 +44,7 @@ const nextConfig = {
       },
       {
         source: '/api/:path*',
-        destination: 'http://192.168.0.103:8080/api/:path*', // Proxy to Backend
+        destination: `${backend}/api/:path*`, // Proxy to Backend
       },
     ]
   },

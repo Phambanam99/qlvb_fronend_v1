@@ -138,7 +138,7 @@ export function DepartmentSelection({
       {/* Notes/Content */}
       <div className="space-y-2">
         <Label htmlFor="notes">
-          {documentPurpose === "PROCESS" ? "Ghi chú" : "Nội dung thông báo"}
+          {documentPurpose === "PROCESS" ? "Ý kiến chỉ đạo" : "Nội dung thông báo"}
         </Label>
         <RichTextEditor
           content={documentNotes}

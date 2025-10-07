@@ -2,6 +2,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ScheduleWeekView from "@/components/schedule-week-view";
 import ScheduleMonthView from "@/components/schedule-month-view";
+import dynamic from "next/dynamic";
+
+const FullCalendarView = dynamic(() => import("@/components/schedule/fullcalendar-view"), { ssr: false });
 import ScheduleList from "@/components/schedule-list";
 import { ScheduleSkeleton } from "./schedule-skeleton";
 import { EmptyState } from "./empty-state";
@@ -14,8 +17,8 @@ interface ScheduleTabsProps {
   schedules: any[];
   isLoading: boolean;
   viewMode: ViewMode;
+  date: Date;
   departmentFilter: string;
-  getSchedulesByStatus: (status: string) => any[];
   currentPage: number;
   pageSize: number;
   totalElements: number;
@@ -28,8 +31,8 @@ export function ScheduleTabs({
   schedules,
   isLoading,
   viewMode,
+  date,
   departmentFilter,
-  getSchedulesByStatus,
   currentPage,
   pageSize,
   totalElements,
@@ -42,7 +45,11 @@ export function ScheduleTabs({
       return <ScheduleSkeleton viewMode={viewMode} />;
     }
 
-    if (scheduleList.length === 0) {
+    // Khi không có dữ liệu: vẫn hiển thị lịch đối với chế độ tuần/tháng
+    const isEmpty = scheduleList.length === 0;
+    const showCalendarWhenEmpty = isEmpty && (viewMode === "week" || viewMode === "month");
+    if (isEmpty && !showCalendarWhenEmpty) {
+      // list/table view vẫn dùng empty state cũ
       return <EmptyState />;
     }
 
@@ -67,20 +74,24 @@ export function ScheduleTabs({
         <Card>
           <CardContent className="p-0">
             {viewMode === "week" && (
-              <ScheduleWeekView
-                date={new Date()}
-                department={departmentFilter}
-                type="all"
-                schedules={scheduleList}
-              />
+              <div className="relative">
+                <FullCalendarView mode="week" date={date} schedules={scheduleList} />
+                {isEmpty && (
+                  <div className="absolute inset-0 pointer-events-none flex items-center justify-center text-sm text-muted-foreground">
+                    Không có lịch công tác trong tuần này
+                  </div>
+                )}
+              </div>
             )}
             {viewMode === "month" && (
-              <ScheduleMonthView
-                date={new Date()}
-                department={departmentFilter}
-                type="all"
-                schedules={scheduleList}
-              />
+              <div className="relative">
+                <FullCalendarView mode="month" date={date} schedules={scheduleList} />
+                {isEmpty && (
+                  <div className="absolute inset-0 pointer-events-none flex items-center justify-center text-sm text-muted-foreground">
+                    Không có lịch công tác trong tháng này
+                  </div>
+                )}
+              </div>
             )}
             {viewMode === "list" && (
               <ScheduleList
@@ -109,35 +120,6 @@ export function ScheduleTabs({
   };
 
   return (
-    <Tabs defaultValue="all">
-      <TabsList>
-        <TabsTrigger value="all">Tất cả ({schedules.length})</TabsTrigger>
-        <TabsTrigger value="chua_dien_ra">
-          Chưa diễn ra ({getSchedulesByStatus("chua_dien_ra").length})
-        </TabsTrigger>
-        <TabsTrigger value="dang_thuc_hien">
-          Đang thực hiện ({getSchedulesByStatus("dang_thuc_hien").length})
-        </TabsTrigger>
-        <TabsTrigger value="da_thuc_hien">
-          Đã thực hiện ({getSchedulesByStatus("da_thuc_hien").length})
-        </TabsTrigger>
-      </TabsList>
-
-      <TabsContent value="all" className="mt-4">
-        {renderScheduleView(schedules)}
-      </TabsContent>
-
-      <TabsContent value="chua_dien_ra" className="mt-4">
-        {renderScheduleView(getSchedulesByStatus("chua_dien_ra"))}
-      </TabsContent>
-
-      <TabsContent value="dang_thuc_hien" className="mt-4">
-        {renderScheduleView(getSchedulesByStatus("dang_thuc_hien"))}
-      </TabsContent>
-
-      <TabsContent value="da_thuc_hien" className="mt-4">
-        {renderScheduleView(getSchedulesByStatus("da_thuc_hien"))}
-      </TabsContent>
-    </Tabs>
+    <div className="mt-4">{renderScheduleView(schedules)}</div>
   );
 }

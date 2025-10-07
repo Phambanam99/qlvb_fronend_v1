@@ -35,6 +35,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import { DepartmentDTO, departmentsAPI } from "@/lib/api";
 import { DEPARTMENT_MANAGEMENT_ROLES, hasRoleInGroup } from "@/lib/role-utils";
+import { useListStatePersistence } from "@/hooks/use-list-state-persistence";
 import AuthGuard from "@/components/auth-guard";
 
 export default function DepartmentsPage() {
@@ -96,6 +97,15 @@ export default function DepartmentsPage() {
   const handleAddNew = () => {
     router.push("/phong-ban/them-moi");
   };
+
+  // Persist departments search & filter state
+  useListStatePersistence({
+    storageKey: "departments-list-state",
+    state: { searchTerm, typeFilter },
+    persistKeys: ["searchTerm", "typeFilter"],
+    saveDeps: [searchTerm, typeFilter],
+    version: 1,
+  });
 
   if (loading) {
     return (

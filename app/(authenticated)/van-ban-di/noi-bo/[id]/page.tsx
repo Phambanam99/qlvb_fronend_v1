@@ -460,11 +460,6 @@ export default function InternalDocumentDetailPage() {
           <p className="mt-2 text-sm text-muted-foreground">
             Văn bản nội bộ không tồn tại hoặc đã bị xóa
           </p>
-          <Button asChild className="mt-4">
-            <Link href="/van-ban-di">
-              <ArrowLeft className="mr-2 h-4 w-4" /> Quay lại danh sách
-            </Link>
-          </Button>
         </div>
       </div>
     );
@@ -475,12 +470,6 @@ export default function InternalDocumentDetailPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="outline" asChild>
-            <Link href="/van-ban-di">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Quay lại danh sách
-            </Link>
-          </Button>
 
           <div className="flex items-center space-x-4">
             <h1 className="text-2xl font-bold">Chi tiết văn bản nội bộ</h1>
@@ -531,7 +520,7 @@ export default function InternalDocumentDetailPage() {
                   <label className="text-sm font-medium text-muted-foreground">
                     Số văn bản
                   </label>
-                  <p className="font-medium">{_document.documentNumber}</p>
+                  <p className="font-medium text-red-700">{_document.documentNumber}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">
@@ -582,7 +571,7 @@ export default function InternalDocumentDetailPage() {
                     <label className="text-sm font-medium text-muted-foreground">
                       Đơn vị soạn thảo
                     </label>
-                    <p className="font-medium">
+                    <p className="font-medium text-primary">
                       {_document.draftingDepartment?.name || _document.senderDepartment || "Chưa xác định"}
                     </p>
                   </div>
@@ -602,13 +591,13 @@ export default function InternalDocumentDetailPage() {
                     <label className="text-sm font-medium text-muted-foreground">
                       Người ký duyệt
                     </label>
-                    <p className="font-medium">{_document.documentSigner?.fullName || "Chưa xác định"}</p>
+                    <p className="font-medium text-primary">{_document.documentSigner?.fullName || "Chưa xác định"}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-muted-foreground">
+                    <label className="text-sm font-medium text-muted-foreground ">
                       Hạn xử lý
                     </label>
-                    <p className="font-medium">
+                    <p className="font-medium text-primary">
                       {_document.processingDeadline ? formatDateOnly(_document.processingDeadline) : "Chưa xác định"}
                     </p>
                   </div>
@@ -946,16 +935,9 @@ export default function InternalDocumentDetailPage() {
           {/* Status & Meta */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Trạng thái & Thông tin</CardTitle>
+              <CardTitle className="text-lg">Thông tin</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">
-                  Trạng thái hiện tại
-                </label>
-                <div className="mt-1">{getStatusBadge(_document.status)}</div>
-              </div>
-
               <Separator />
 
               <div className="space-y-3">
@@ -963,7 +945,7 @@ export default function InternalDocumentDetailPage() {
                   <User className="h-4 w-4 text-muted-foreground" />
                   <div>
                     <p className="text-sm font-medium">Người gửi</p>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-primary">
                       {_document.senderName}
                     </p>
                   </div>
@@ -974,7 +956,7 @@ export default function InternalDocumentDetailPage() {
                   <Building className="h-4 w-4 text-muted-foreground" />
                   <div>
                     <p className="text-sm font-medium">Đơn vị gửi</p>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-primary">
                       {_document.senderDepartment}
                     </p>
                   </div>

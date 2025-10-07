@@ -1,0 +1,24 @@
+Hướng dẫn sử dụng hệ thống chia sẻ file
+=======================================
+
+1. Tạo link chia sẻ:
+   - Truy cập trang "Quản lý chia sẻ"
+   - Nhấn "Tạo link chia sẻ"
+   - Nhập đường dẫn thư mục (ví dụ: shared-documents)
+   - Chọn thời hạn (tùy chọn)
+   - Nhấn "Tạo link"
+
+2. Chia sẻ link:
+   - Sao chép link được tạo
+   - Gửi cho người cần truy cập
+   - Họ có thể truy cập mà không cần đăng nhập
+
+3. Quản lý:
+   - Xem danh sách tất cả link chia sẻ
+   - Vô hiệu hóa link khi cần
+   - Theo dõi trạng thái và thời hạn
+
+Lưu ý bảo mật:
+- Chỉ chia sẻ với người tin cậy
+- Đặt thời gian hết hạn phù hợp
+- Kiểm tra định kỳ và xóa link không cần thiết

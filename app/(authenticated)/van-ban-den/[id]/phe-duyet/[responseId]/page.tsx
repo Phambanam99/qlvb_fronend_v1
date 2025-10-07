@@ -79,9 +79,7 @@ export default function DocumentApprovalPage({ params }: { params: { id: string;
       <div className="flex flex-col items-center justify-center h-[50vh]">
         <h2 className="text-2xl font-bold mb-2">Không tìm thấy thông tin</h2>
         <p className="text-muted-foreground mb-4">Văn bản hoặc phản hồi không tồn tại hoặc đã bị xóa</p>
-        <Button asChild>
-          <Link href="/van-ban-den">Quay lại danh sách văn bản đến</Link>
-        </Button>
+        
       </div>
     )
   }

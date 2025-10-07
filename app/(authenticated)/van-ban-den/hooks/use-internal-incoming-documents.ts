@@ -60,7 +60,7 @@ export function useInternalIncomingDocuments({
       } else if (yearFilter) {
         // Use year/month filter API when year is specified
         response = await getReceivedDocumentsByYear(yearFilter, monthFilter, page, size);
-        
+        // console.log("Fetch by year/month:", yearFilter, monthFilter, response);
         if (response?.data?.content) {
           setDocuments(response.data.content);
           setTotalItems(response.data.totalElements || response.data.content.length);
@@ -86,7 +86,7 @@ export function useInternalIncomingDocuments({
         }
       }
     } catch (error) {
-      console.error("Error fetching internal incoming documents:", error);
+      // console.error("Error fetching internal incoming documents:", error);
       toast({
         title: "Lỗi",
         description: "Không thể tải dữ liệu văn bản nội bộ. Vui lòng thử lại sau.",

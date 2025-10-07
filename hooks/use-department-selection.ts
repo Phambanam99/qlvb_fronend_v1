@@ -77,10 +77,12 @@ export function useDepartmentSelection() {
     try {
       const response_ = await departmentsAPI.getAllDepartments();
       const response = response_.data;
+      console.log("Fetched departments:", response);
       const departmentData = response.content || [];
-      console.log("Loaded departments:", departmentData);
+      const departmentFilter = departmentData.filter(dept => dept.group == "ACTIVE"); // Loại bỏ phòng ban có id = 1
+      // console.log("Loaded departments:", departmentData);
       // Transform flat list to hierarchical structure
-      const hierarchicalData = buildDepartmentTree(departmentData);
+      const hierarchicalData = buildDepartmentTree(departmentFilter);
       setDepartments(hierarchicalData);
     } catch (error) {
       console.error("Error loading departments:", error);
@@ -184,18 +186,18 @@ export function useDepartmentSelection() {
 
   const selectSecondaryDepartment = useCallback(
     (departmentId: number | string, forceAdd = false) => {
-      console.log('🔄 selectSecondaryDepartment called with:', departmentId, 'forceAdd:', forceAdd);
+      // console.log('🔄 selectSecondaryDepartment called with:', departmentId, 'forceAdd:', forceAdd);
       
       // Handle composite IDs (departmentId-userId) for individual users
       const id = typeof departmentId === "string" ? departmentId : departmentId;
       
       if (typeof id === "number" && id === primaryDepartment) {
-        console.log('⚠️ Cannot select as secondary - already primary:', id);
+        // console.log('⚠️ Cannot select as secondary - already primary:', id);
         return; // Cannot be both primary and secondary
       }
 
       setSecondaryDepartments((prev) => {
-        console.log('📝 Current secondary departments:', prev);
+        // console.log('📝 Current secondary departments:', prev);
         
         if (prev.includes(id as any)) {
           if (forceAdd) {
@@ -205,13 +207,13 @@ export function useDepartmentSelection() {
           } else {
             // If already selected, remove it (toggle behavior for UI)
             const newSelection = prev.filter((existingId) => existingId !== id);
-            console.log('➖ Removing from selection:', id, 'New selection:', newSelection);
+            // console.log('➖ Removing from selection:', id, 'New selection:', newSelection);
             return newSelection;
           }
         } else {
           // If not selected, add it
           const newSelection = [...prev, id as any];
-          console.log('➕ Adding to selection:', id, 'New selection:', newSelection);
+          // console.log('➕ Adding to selection:', id, 'New selection:', newSelection);
           return newSelection;
         }
       });

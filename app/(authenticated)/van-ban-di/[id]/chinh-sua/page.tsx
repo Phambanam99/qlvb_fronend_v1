@@ -140,7 +140,9 @@ function EditOutgoingDocumentPage() {
     // Nếu là người tạo văn bản và văn bản đang ở trạng thái nháp hoặc đã bị từ chối
     if (
       hasRole(["ROLE_DRAF", "ROLE_TRO_LY"]) &&
-      (doc.status === "draft" || doc.status === "leader_commented")
+      (doc.status === "draft"
+        || doc.status === "leader_commented"
+        || doc.status === "department_commented")
     ) {
       return true;
     }
@@ -389,14 +391,15 @@ function EditOutgoingDocumentPage() {
       // Update document metadata first
       await workflowAPI.updateOutgoingDocumentWorkflow(
         documentId,
-        documentData
+        documentData,
+        attachment
       );
 
-      // Upload new attachment if any
-      if (attachment) {
-        // Use uploadAttachment instead of updateOutgoingDocument for file uploads
-        await outgoingDocumentsAPI.uploadAttachment(documentId, attachment);
-      }
+      // // Upload new attachment if any
+      // if (attachment) {
+      //   // Use uploadAttachment instead of updateOutgoingDocument for file uploads
+      //   await outgoingDocumentsAPI.uploadAttachment(documentId, attachment);
+      // }
 
       toast({
         title: "Thành công",
@@ -454,12 +457,7 @@ function EditOutgoingDocumentPage() {
         <p className="text-muted-foreground">
           Văn bản không tồn tại hoặc đã bị xóa
         </p>
-        <Button variant="outline" asChild>
-          <Link href="/van-ban-di">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Quay lại danh sách
-          </Link>
-        </Button>
+        
       </div>
     );
   }
@@ -732,29 +730,7 @@ function EditOutgoingDocumentPage() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="signer">Người ký</Label>
-                <Input
-                  id="signer"
-                  name="signer"
-                  value={formData.signer}
-                  onChange={handleInputChange}
-                  placeholder="Nhập tên người ký"
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="signerPosition">Chức vụ</Label>
-                <Input
-                  id="signerPosition"
-                  name="signerPosition"
-                  value={formData.signerPosition}
-                  onChange={handleInputChange}
-                  placeholder="Nhập chức vụ người ký"
-                  required
-                />
-              </div>
+       
 
               <div className="space-y-2">
                 <Label htmlFor="priority">Độ ưu tiên</Label>

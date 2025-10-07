@@ -57,6 +57,22 @@ export const workflowAPI = {
   },
 
   /**
+   * Update processing status (alias of changeDocumentStatus) with extended fields like progress/deadline
+   * @param documentId Document ID
+   * @param processingData Data including status, comments, processingProgress, deadline, etc.
+   */
+  updateProcessingStatus: async (
+    documentId: number | string,
+    processingData: Partial<DocumentWorkflowDTO> & Record<string, any>
+  ) => {
+    const response = await api.put(
+      `/workflow/${documentId}/status`,
+      processingData
+    );
+    return response.data;
+  },
+
+  /**
    * Assign document to specialist
    * @param documentId Document ID
    * @param workflowData Workflow data with assignedToId

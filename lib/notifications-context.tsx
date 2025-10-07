@@ -59,7 +59,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   // Kết nối WebSocket khi có user đăng nhập
   useEffect(() => {
     if (user) {
-      console.log('🔗 Connecting to WebSocket for notifications...')
+      // console.log('🔗 Connecting to WebSocket for notifications...')
       
       // Lấy token từ localStorage (key được sử dụng trong auth-context)
       const token = localStorage.getItem('accessToken')
@@ -70,7 +70,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
 
         // Handler để nhận realtime notifications
         const handleRealtimeNotification = (realtimeNotification: RealTimeNotification) => {
-          console.log('📨 Context received realtime notification:', realtimeNotification)
+          // console.log('📨 Context received realtime notification:', realtimeNotification)
           
           // Show toast notification
           if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
@@ -92,18 +92,18 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
             documentId: realtimeNotification.entityId,
           }
 
-          console.log('📝 Adding notification to context:', notification)
+          // console.log('📝 Adding notification to context:', notification)
 
           // Thêm vào danh sách notifications
           setNotifications(prev => {
             // Kiểm tra không trùng lặp
             const exists = prev.find(n => n.id === notification.id)
             if (exists) {
-              console.log('⚠️ Notification already exists:', notification.id)
+              // console.log('⚠️ Notification already exists:', notification.id)
               return prev
             }
             
-            console.log('✅ Adding new notification to list')
+            // console.log('✅ Adding new notification to list')
             return [notification, ...prev]
           })
         }
@@ -118,7 +118,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
 
         // Cleanup khi unmount
         return () => {
-          console.log('🔌 Disconnecting WebSocket...')
+          // console.log('🔌 Disconnecting WebSocket...')
           notificationsRealtime.disconnect()
           setIsConnected(false)
         }

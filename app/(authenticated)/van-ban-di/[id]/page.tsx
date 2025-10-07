@@ -176,7 +176,6 @@ export default function OutgoingDocumentDetailPage({
     };
   }, [
     documentId,
-    toast,
     router,
     hasRole,
     incomingDocumentsAPI,
@@ -600,9 +599,9 @@ export default function OutgoingDocumentDetailPage({
     // Kiểm tra xem văn bản có bị từ chối không
     const wasRejected = _document.history?.some(
       (item: any) =>
-        item.newStatus === "leader_commented" ||
+        item.newStatus === "leader_commented" ||  item.newStatus === "deparment_commented" ||
         (item.comments && item.comments.toLowerCase().includes("từ chối")) ||
-        (item.description && item.description.toLowerCase().includes("từ chối"))
+        (item.description && item.description.toLowerCase().includes("từ chối")) ||  _document.status === "department_commented"
     );
 
     // Kiểm tra xem văn bản có bị văn thư trả lại không
@@ -1266,9 +1265,7 @@ export default function OutgoingDocumentDetailPage({
     return (
       <div className="flex flex-col items-center justify-center h-[calc(100vh-200px)]">
         <p className="text-red-500 mb-4">{error || "Không tìm thấy văn bản"}</p>
-        <Button asChild>
-          <Link href="/van-ban-di">Quay lại danh sách</Link>
-        </Button>
+       
       </div>
     );
   }
@@ -1354,12 +1351,7 @@ export default function OutgoingDocumentDetailPage({
                         "Chưa xác định"}
                   </p>
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Người soạn thảo
-                  </p>
-                  <p>{_document.creator?.fullName || "Không xác định"}</p>
-                </div>
+
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">
                     Người ký
@@ -1398,12 +1390,7 @@ export default function OutgoingDocumentDetailPage({
                       : _document.securityLevel || "Thường"}
                   </Badge>
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Người ký duyệt
-                  </p>
-                  <p>{_document.signer?.fullName || "Chưa xác định"}</p>
-                </div>
+          
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">
                     Chuyển bằng điện mật
@@ -1464,7 +1451,7 @@ export default function OutgoingDocumentDetailPage({
                 </p>
                 <div
                   className="rounded-md border p-4 bg-accent/30 whitespace-pre-line"
-                  dangerouslySetInnerHTML={{ __html: _document.summary }}
+                  dangerouslySetInnerHTML={{ __html: _document.summary as any }}
                 ></div>
               </div>
               <Separator className="bg-primary/10" />

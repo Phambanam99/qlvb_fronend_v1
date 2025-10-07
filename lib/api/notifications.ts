@@ -124,7 +124,7 @@ export const notificationsAPI = {
 
 // ===== Notification Types for Internal Documents =====
 
-export type InternalDocumentNotificationType = 
+export type InternalDocumentNotificationType =
   | 'INTERNAL_DOCUMENT_RECEIVED'
   | 'INTERNAL_DOCUMENT_READ'
   | 'INTERNAL_DOCUMENT_SENT'
@@ -177,7 +177,6 @@ export function mapBackendNotification(backendNotification: BackendNotification)
   }
 }
 
-import SockJS from 'sockjs-client'
 import { Client, Frame } from '@stomp/stompjs'
 
 type NotificationHandler = (notification: RealTimeNotification) => void
@@ -189,12 +188,21 @@ class NotificationsRealtimeClient {
   private internalDocHandlers: Map<InternalDocumentNotificationType, InternalDocumentHandler[]> = new Map()
   private reconnectAttempts = 0
   private token: string | null = null
-  private baseUrl: string
   private static instance: NotificationsRealtimeClient
+  private wsBaseUrl: string
+  private wsPath: string
+  private debugEnabled: boolean
 
   private constructor() {
-    // Lấy base URL từ biến môi trường
-    this.baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
+    const envWs = process.env.NEXT_PUBLIC_WS_URL
+    const envApi = process.env.NEXT_PUBLIC_API_URL
+    // Prefer explicit WS base; else derive from API URL by removing trailing /api; else default
+    const derived = envApi ? envApi.replace(/\/?api\/?$/i, '') : undefined
+    this.wsBaseUrl = envWs || derived || 'http://localhost:8080'
+    // Allow overriding WS path (default '/ws')
+    this.wsPath = process.env.NEXT_PUBLIC_WS_PATH || '/ws'
+    // Enable verbose STOMP debug logs with env flag
+    this.debugEnabled = /^true$/i.test(process.env.NEXT_PUBLIC_WS_DEBUG || '')
   }
 
   public static getInstance() {
@@ -209,33 +217,37 @@ class NotificationsRealtimeClient {
       // console.log('🔗 STOMP client already connected')
       return
     }
-    
+
     // console.log('🚀 Connecting to WebSocket...')
     // console.log('📍 Backend URL:', this.baseUrl)
     // console.log('🔑 Token (first 30 chars):', token.substring(0, 30) + '...')
-    
+
     this.token = token
+
+    // Prefer native WebSocket STOMP directly to backend; no SockJS (avoids /ws/info 404)
+    const qp = '' // append query only if backend requires; headers are preferred
+    const wsSchemeBase = this.wsBaseUrl.replace(/^http(s?):/, 'ws$1:')
+    const path = this.wsPath.startsWith('/') ? this.wsPath : `/${this.wsPath}`
+    const brokerURL = `${wsSchemeBase}${path}${qp}`
+
+    if (this.debugEnabled) {
+      console.log('[WS] Connecting to brokerURL:', brokerURL)
+    }
+
     this.stompClient = new Client({
-      brokerURL: `${this.baseUrl.replace('http', 'ws')}/ws`,
+      brokerURL,
       connectHeaders: {
-        Authorization: `Bearer ${token}`
+        Authorization: `Bearer ${token}`,
       },
       // debug: (str) => console.log('🔵 STOMP Debug:', str),
       reconnectDelay: 5000,
       heartbeatIncoming: 4000,
       heartbeatOutgoing: 4000,
+      // Abort connect if handshake takes too long
+      connectionTimeout: 10000,
     })
 
-    // console.log('🌐 WebSocket URL:', `${this.baseUrl.replace('http', 'ws')}/ws`)
-
-    // Use SockJS for better compatibility
-    this.stompClient.webSocketFactory = () => {
-      // console.log('🔌 Creating SockJS connection...')
-      return new SockJS(`${this.baseUrl}/ws`, null, {
-        transports: ['websocket', 'xhr-polling'], // Fallback transports
-        timeout: 10000,
-      }) as any
-    }
+    // No SockJS fallback: enforcing native WebSocket only to avoid /ws/info
 
     this.stompClient.onConnect = (frame: Frame) => {
       console.log('✅ WebSocket connected successfully!', frame)
@@ -253,7 +265,16 @@ class NotificationsRealtimeClient {
       this.handleConnectionError()
     }
 
-    this.stompClient.onWebSocketClose = () => {
+    this.stompClient.onWebSocketClose = (evt?: CloseEvent) => {
+      if (evt) {
+        console.warn('WebSocket closed:', {
+          code: (evt as any).code,
+          reason: (evt as any).reason,
+          wasClean: (evt as any).wasClean,
+        })
+      } else {
+        console.warn('WebSocket closed (no event details)')
+      }
       this.handleConnectionError()
     }
 
@@ -262,6 +283,9 @@ class NotificationsRealtimeClient {
     }
 
     console.log('🚀 Activating STOMP client...')
+    if (this.debugEnabled) {
+      this.stompClient.debug = (str) => console.log('[STOMP]', str)
+    }
     this.stompClient.activate()
   }
 
@@ -287,26 +311,26 @@ class NotificationsRealtimeClient {
         console.log('📨 Raw WebSocket message received!')
         console.log('📄 Message body:', message.body)
         console.log('📋 Message headers:', message.headers)
-        
+
         const backendNotification: BackendNotification = JSON.parse(message.body)
         console.log('🔍 Parsed backend notification:', backendNotification)
-        
+
         const notification: RealTimeNotification = mapBackendNotification(backendNotification)
         console.log('✅ Mapped frontend notification:', notification)
-        
+
         this.handleMessage(notification)
       } catch (error) {
         console.error('❌ Error parsing notification:', error)
         console.error('📄 Raw message body:', message.body)
       }
     })
-    
+
     console.log('✅ Successfully subscribed to /user/queue/notifications')
   }
 
   private handleMessage(notification: RealTimeNotification) {
     console.log('🔔 Received notification:', notification)
-    
+
     // Handle general notification handlers
     const handlers = this.handlers.get(notification.type)
     if (handlers && handlers.length > 0) {
@@ -325,7 +349,7 @@ class NotificationsRealtimeClient {
 
   private handleInternalDocumentNotification(notification: InternalDocumentNotification) {
     console.log('📋 Processing Internal Document notification:', notification.type)
-    
+
     const handlers = this.internalDocHandlers.get(notification.type)
     if (handlers && handlers.length > 0) {
       console.log(`✅ Found ${handlers.length} internal doc handlers for type: ${notification.type}`)
@@ -337,11 +361,11 @@ class NotificationsRealtimeClient {
 
   private handleConnectionError() {
     this.cleanup()
-    
+
     if (this.reconnectAttempts < 10 && this.token) {
       const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000)
       console.log(`🔄 Attempting to reconnect WebSocket in ${delay}ms (attempt ${this.reconnectAttempts + 1}/10)`)
-      
+
       setTimeout(() => {
         this.reconnectAttempts++
         this.connect(this.token!)
@@ -372,7 +396,7 @@ class NotificationsRealtimeClient {
 
   // Internal Document specific handlers
   public onInternalDocumentNotification(
-    type: InternalDocumentNotificationType, 
+    type: InternalDocumentNotificationType,
     handler: InternalDocumentHandler
   ) {
     if (!this.internalDocHandlers.has(type)) {
@@ -382,7 +406,7 @@ class NotificationsRealtimeClient {
   }
 
   public offInternalDocumentNotification(
-    type: InternalDocumentNotificationType, 
+    type: InternalDocumentNotificationType,
     handler: InternalDocumentHandler
   ) {
     const handlers = this.internalDocHandlers.get(type)

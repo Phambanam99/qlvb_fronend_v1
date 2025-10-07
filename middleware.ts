@@ -9,7 +9,7 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Danh sách các đường dẫn công khai (không cần xác thực)
-  const publicPaths = ["/dang-nhap", "/quen-mat-khau", "/dang-ky"];
+  const publicPaths = ["/dang-nhap", "/quen-mat-khau", "/dang-ky", "/share"];
 
   // Kiểm tra nếu đường dẫn là API hoặc các tài nguyên tĩnh
   const isApiOrStaticPath =

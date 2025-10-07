@@ -5,7 +5,6 @@ interface UseScheduleFiltersProps {
     weekFilter?: string;
     monthFilter?: string;
     yearFilter?: string;
-    statusFilter?: string;
     departmentFilter?: string;
   }) => void;
   filterTimeoutRef: React.MutableRefObject<ReturnType<
@@ -35,28 +34,33 @@ export function useScheduleFilters({
   const [weekFilter, setWeekFilter] = useState(getCurrentWeek().toString());
   const [monthFilter, setMonthFilter] = useState("all");
   const [yearFilter, setYearFilter] = useState(getCurrentYear());
-  
+
   // Existing filters
   const [departmentFilter, setDepartmentFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all");
   const [isFiltering, setIsFiltering] = useState(false);
 
   // Helper functions để handle mutual exclusion
-  const handleWeekChange = useCallback((value: string) => {
-    setWeekFilter(value);
-    // Nếu chọn tuần (khác "all"), reset tháng về "all"
-    if (value !== "all" && monthFilter !== "all") {
-      setMonthFilter("all");
-    }
-  }, [monthFilter]);
+  const handleWeekChange = useCallback(
+    (value: string) => {
+      setWeekFilter(value);
+      // Nếu chọn tuần (khác "all"), reset tháng về "all"
+      if (value !== "all" && monthFilter !== "all") {
+        setMonthFilter("all");
+      }
+    },
+    [monthFilter]
+  );
 
-  const handleMonthChange = useCallback((value: string) => {
-    setMonthFilter(value);
-    // Nếu chọn tháng (khác "all"), reset tuần về "all"
-    if (value !== "all" && weekFilter !== "all") {
-      setWeekFilter("all");
-    }
-  }, [weekFilter]);
+  const handleMonthChange = useCallback(
+    (value: string) => {
+      setMonthFilter(value);
+      // Nếu chọn tháng (khác "all"), reset tuần về "all"
+      if (value !== "all" && weekFilter !== "all") {
+        setWeekFilter("all");
+      }
+    },
+    [weekFilter]
+  );
 
   // Manual filter application function
   const handleApplyFilters = useCallback(() => {
@@ -73,7 +77,6 @@ export function useScheduleFilters({
         weekFilter,
         monthFilter,
         yearFilter,
-        statusFilter,
         departmentFilter,
       });
       setIsFiltering(false);
@@ -82,7 +85,6 @@ export function useScheduleFilters({
     weekFilter,
     monthFilter,
     yearFilter,
-    statusFilter,
     departmentFilter,
     applyFilters,
     filterTimeoutRef,
@@ -95,7 +97,6 @@ export function useScheduleFilters({
         weekFilter,
         monthFilter,
         yearFilter,
-        statusFilter,
         departmentFilter,
       });
     }
@@ -109,12 +110,10 @@ export function useScheduleFilters({
     setMonthFilter: handleMonthChange,
     yearFilter,
     setYearFilter,
-    
+
     // Existing filters
     departmentFilter,
     setDepartmentFilter,
-    statusFilter,
-    setStatusFilter,
     handleApplyFilters,
     isFiltering,
   };

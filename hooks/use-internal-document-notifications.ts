@@ -68,36 +68,36 @@ export function useInternalDocumentNotifications(callbacks?: InternalDocumentNot
   }, [toast])
 
   const handleReceivedNotification = useCallback((notification: InternalDocumentNotification) => {
-    console.log('RECEIVED notification in hook:', notification)
+    // console.log('RECEIVED notification in hook:', notification)
     showNotificationToast(notification)
     callbacksRef.current?.onReceived?.(notification)
   }, [showNotificationToast])
 
   const handleReadNotification = useCallback((notification: InternalDocumentNotification) => {
-    console.log('READ notification in hook:', notification)
+    // console.log('READ notification in hook:', notification)
     showNotificationToast(notification)
     callbacksRef.current?.onRead?.(notification)
   }, [showNotificationToast])
 
   const handleSentNotification = useCallback((notification: InternalDocumentNotification) => {
-    console.log('SENT notification in hook:', notification)
+    // console.log('SENT notification in hook:', notification)
     showNotificationToast(notification)
     callbacksRef.current?.onSent?.(notification)
   }, [showNotificationToast])
 
   const handleUpdatedNotification = useCallback((notification: InternalDocumentNotification) => {
-    console.log('UPDATED notification in hook:', notification)
+    // console.log('UPDATED notification in hook:', notification)
     showNotificationToast(notification)
     callbacksRef.current?.onUpdated?.(notification)
   }, [showNotificationToast])
 
   useEffect(() => {
     if (!isConnected) {
-      console.log('[Hook] WebSocket not connected, skipping subscription')
+      // console.log('[Hook] WebSocket not connected, skipping subscription')
       return
     }
 
-    console.log('[Hook] Setting up Internal Document notification subscriptions')
+    // console.log('[Hook] Setting up Internal Document notification subscriptions')
     
     // Subscribe to Internal Document notifications
     notificationsRealtime.subscribeToInternalDocumentUpdates({
@@ -107,11 +107,11 @@ export function useInternalDocumentNotifications(callbacks?: InternalDocumentNot
       onUpdated: handleUpdatedNotification,
     })
 
-    console.log('[Hook] Internal Document subscriptions established')
+    // console.log('[Hook] Internal Document subscriptions established')
 
     // Cleanup subscription on unmount
     return () => {
-      console.log('[Hook] Cleaning up Internal Document notification subscriptions')
+      // console.log('[Hook] Cleaning up Internal Document notification subscriptions')
       notificationsRealtime.offInternalDocumentNotification('INTERNAL_DOCUMENT_RECEIVED', handleReceivedNotification)
       notificationsRealtime.offInternalDocumentNotification('INTERNAL_DOCUMENT_READ', handleReadNotification)
       notificationsRealtime.offInternalDocumentNotification('INTERNAL_DOCUMENT_SENT', handleSentNotification)

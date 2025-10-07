@@ -127,7 +127,7 @@ export default function AddUserPage() {
         roles: [selectedRole],
         userStatus: isActive ? "ACTIVE" : "INACTIVE",
       };
-       console.log("userData", userData);
+    
       // Gọi API để tạo người dùng mới
       await usersAPI.createUser_(userData);
 

@@ -1,0 +1,28 @@
+[
+  {
+    "id": "995197ae-d69c-4202-b83f-e4c079a3677f",
+    "token": "2d71775c-838f-45f2-8234-c4b60eaceb71",
+    "folderPath": "shared-documents/tai-lieu",
+    "createdAt": "2025-10-02T00:56:32.547Z",
+    "isActive": false,
+    "createdBy": "admin",
+    "description": "share tài liệu và phần mềm"
+  },
+  {
+    "id": "22c984c8-c08f-44d3-8167-1419f31e4199",
+    "token": "1c3e453e-9cdd-487c-b280-4832ae226720",
+    "folderPath": "shared-documents/tai-lieu",
+    "createdAt": "2025-10-02T01:01:45.420Z",
+    "isActive": true,
+    "createdBy": "admin"
+  },
+  {
+    "id": "974dbd26-9cd5-4f9f-8269-bdbd3dced8fa",
+    "token": "db52bce9-fcdf-4903-ae24-17838b304640",
+    "folderPath": "shared-documents",
+    "createdAt": "2025-10-02T01:02:42.264Z",
+    "isActive": true,
+    "createdBy": "admin",
+    "description": "Test folder"
+  }
+]

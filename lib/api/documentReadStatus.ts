@@ -102,7 +102,7 @@ export const documentReadStatusAPI = {
     documentIds: number[],
     documentType: DocumentType
   ): Promise<BatchReadStatusResponse> => {
-    console.log("🔍 getBatchReadStatus called with:", { documentIds, documentType });
+    // console.log("🔍 getBatchReadStatus called with:", { documentIds, documentType });
     
     try {
       // Try GET method with query params first (might be what backend expects)
@@ -115,7 +115,7 @@ export const documentReadStatusAPI = {
           }
         }
       );
-      console.log("✅ getBatchReadStatus response:", response.data);
+      // console.log("✅ getBatchReadStatus response:", response.data);
       
       // Backend returns ResponseDTO<Map<Long, Boolean>>, so we need response.data.data
       const result = response.data.data || response.data;
@@ -131,13 +131,13 @@ export const documentReadStatusAPI = {
       
       // Fallback to POST method if GET fails
       try {
-        console.log("🔄 Trying POST method as fallback...");
+        // console.log("🔄 Trying POST method as fallback...");
         const response = await api.post(
           `/documents/read-status/batch-status`,
           { documentIds }, // Wrap in object
           { params: { documentType } }
         );
-        console.log("✅ getBatchReadStatus POST response:", response.data);
+        // console.log("✅ getBatchReadStatus POST response:", response.data);
         
         const result = response.data.data || response.data;
         return result;

@@ -99,7 +99,7 @@ const result = handleApiResponse(response, toast, 'Tạo văn bản thành công
 
 if (result) {
   // Success case
-  console.log('Created document:', result);
+  // console.log('Created document:', result);
 }
 ```
 

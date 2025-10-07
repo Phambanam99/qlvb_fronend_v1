@@ -529,11 +529,7 @@ export default function ReplyInternalDocumentPage() {
           <p className="mt-2 text-sm text-muted-foreground">
             Không thể tải thông tin văn bản gốc để trả lời
           </p>
-          <Button asChild className="mt-4">
-            <Link href="/van-ban-den">
-              <ArrowLeft className="mr-2 h-4 w-4" /> Quay lại danh sách
-            </Link>
-          </Button>
+         
         </div>
       </div>
     );

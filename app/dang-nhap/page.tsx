@@ -30,6 +30,25 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sessionExpired, setSessionExpired] = useState(false);
+  const [showAdminNotice, setShowAdminNotice] = useState(false);
+
+  // Hiển thị thông báo liên hệ Admin lần đầu truy cập trang đăng nhập
+  useEffect(() => {
+    try {
+      const flag = typeof window !== 'undefined' ? localStorage.getItem('qlvb:firstLoginNoticeShown') : '1';
+      if (!flag) {
+        setShowAdminNotice(true);
+        // Tự ẩn sau 10s
+        const timer = setTimeout(() => {
+          setShowAdminNotice(false);
+          localStorage.setItem('qlvb:firstLoginNoticeShown', '1');
+        }, 10000);
+        return () => clearTimeout(timer);
+      }
+    } catch (e) {
+      // ignore storage errors
+    }
+  }, []);
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -88,12 +107,7 @@ export default function LoginPage() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen">
       <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-primary">
-            Hệ thống quản lý văn bản
-          </h1>
-          <p className="text-muted-foreground mt-2">Đăng nhập để tiếp tục</p>
-        </div>
+     
 
         <Card className="border-primary/10 shadow-md">
           <CardHeader className="space-y-1">
@@ -103,6 +117,14 @@ export default function LoginPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {showAdminNotice && (
+              <Alert className="mb-4 animate-in fade-in slide-in-from-top-1">
+                <InfoIcon className="h-4 w-4" />
+                <AlertDescription>
+                  Sau khi đăng nhập lần đầu, vui lòng liên hệ <span className="font-medium">Admin (Đ/c Hiếu/PTM – Trợ lý KHQS; Đ/c Nam – Phòng 7)</span> để được cập nhật / chuẩn hóa chức vụ và phòng ban.
+                </AlertDescription>
+              </Alert>
+            )}
             {sessionExpired && (
               <Alert className="mb-4">
                 <InfoIcon className="h-4 w-4" />
@@ -150,9 +172,6 @@ export default function LoginPage() {
                     Ghi nhớ đăng nhập
                   </Label>
                 </div>
-                <Button variant="link" className="p-0 h-auto text-sm" asChild>
-                  <a href="/quen-mat-khau">Quên mật khẩu?</a>
-                </Button>
               </div>
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? (

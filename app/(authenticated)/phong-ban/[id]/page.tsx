@@ -143,7 +143,7 @@ export default function DepartmentDetailPage({
           departmentId
         );
         const departmentData = departmentData_.data || departmentData_;
-        console.log('📂 Loaded department data:', departmentData);
+       
         setDepartment(departmentData);
 
         // Lấy danh sách phòng ban cha

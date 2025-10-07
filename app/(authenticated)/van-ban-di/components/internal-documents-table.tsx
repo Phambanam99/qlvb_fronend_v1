@@ -91,10 +91,7 @@ export function InternalDocumentsTable({
           <TableBody>
             {documents.length > 0 ? (
               documents.map((doc, index) => {
-                const isRead = universalReadStatus.getReadStatus(
-                  doc.id,
-                  "OUTGOING_INTERNAL"
-                );
+                const isRead = doc.isRead;
                 return (
                   <TableRow
                     key={doc.id}
@@ -140,13 +137,13 @@ export function InternalDocumentsTable({
                             ? "text-green-600 hover:text-green-700"
                             : "text-blue-600 hover:text-blue-700"
                         }`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          universalReadStatus.toggleReadStatus(
-                            doc.id,
-                            "OUTGOING_INTERNAL"
-                          );
-                        }}
+                        // onClick={(e) => {
+                        //   e.stopPropagation();
+                        //   universalReadStatus.toggleReadStatus(
+                        //     doc.id,
+                        //     "OUTGOING_INTERNAL"
+                        //   );
+                        // }}
                       >
                         {isRead ? "Đã đọc" : "Chưa đọc"}
                       </Button>
