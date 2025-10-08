@@ -7,7 +7,7 @@ import { useScheduleFilters } from "@/hooks/use-schedule-filters";
 import { ScheduleHeader } from "@/components/schedule/schedule-header";
 import { ScheduleFilters } from "@/components/schedule/schedule-filters";
 import { ScheduleTabs } from "@/components/schedule/schedule-tabs";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function SchedulesPage() {
   // Custom hooks for data management
@@ -82,6 +82,18 @@ export default function SchedulesPage() {
 
   // View mode and computed date from filters
   const [viewMode, setViewMode] = useState<"week" | "month" | "table">("week");
+  const [scheduleScope, setScheduleScope] = useState<'all' | 'personal'>('all');
+
+  useEffect(() => {
+    applyFilters({
+      weekFilter,
+      monthFilter,
+      yearFilter,
+      departmentFilter,
+      scheduleScope,
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scheduleScope]);
   const computeDateFromFilters = () => {
     const yearNum = parseInt(yearFilter || "" + new Date().getFullYear());
     if (viewMode === "week" && weekFilter && weekFilter !== "all") {
@@ -133,13 +145,21 @@ export default function SchedulesPage() {
       />
 
       {/* View mode toggler for Week/Month */}
-      <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as any)}>
-        <TabsList>
-          <TabsTrigger value="week">Tuần</TabsTrigger>
-          <TabsTrigger value="month">Tháng</TabsTrigger>
-          <TabsTrigger value="table">Danh sách</TabsTrigger>
-        </TabsList>
-      </Tabs>
+      <div className="flex items-center gap-4 flex-wrap">
+        <Tabs value={scheduleScope} onValueChange={(v) => setScheduleScope(v as any)}>
+          <TabsList>
+            <TabsTrigger value="all">Tất cả</TabsTrigger>
+            <TabsTrigger value="personal">Cá nhân</TabsTrigger>
+          </TabsList>
+        </Tabs>
+        <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as any)}>
+          <TabsList>
+            <TabsTrigger value="week">Tuần</TabsTrigger>
+            <TabsTrigger value="month">Tháng</TabsTrigger>
+            <TabsTrigger value="table">Danh sách</TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
 
       <ScheduleTabs
         schedules={schedules}

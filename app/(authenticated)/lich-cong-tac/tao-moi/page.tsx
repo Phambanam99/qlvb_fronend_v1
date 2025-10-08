@@ -76,6 +76,7 @@ export default function CreateSchedulePage() {
   const [endDate, setEndDate] = useState<Date>();
   const [scheduleItems, setScheduleItems] = useState<any[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [visibility, setVisibility] = useState<"PUBLIC" | "PERSONAL">("PUBLIC");
 
   // Dữ liệu mẫu cho phòng ban
   const [departments, setDepartments] = useState<any[]>([]);
@@ -169,6 +170,7 @@ export default function CreateSchedulePage() {
         description,
         departmentId: department,
         period: scheduleType, // Đổi tên trường để thống nhất với backend
+        visibility, // PUBLIC hoặc PERSONAL
         startDate: startDate ? normalizeDate(startDate) : undefined,
         endDate: endDate ? normalizeDate(endDate) : undefined,
         events: scheduleItems.map((item) => ({
@@ -243,8 +245,7 @@ export default function CreateSchedulePage() {
         // Kiểm tra trước khi gọi API lấy danh sách cán bộ
         if (staffMembers.length === 0) {
           setIsLoadingStaff(true);
-          const usersData_ = await usersAPI.getAllUsers();
-          const usersData = usersData_.data;
+          const usersData = await usersAPI.getAllUsers();
           if (Array.isArray(usersData)) {
             setStaffMembers(usersData);
           } else {
@@ -279,10 +280,9 @@ export default function CreateSchedulePage() {
       try {
         setIsLoadingStaff(true);
         // Sửa gọi API đúng - department đã là ID (string)
-        const usersData_ = await usersAPI.getUsersByDepartmentId(
+        const usersData = await usersAPI.getUsersByDepartmentId(
           Number(department)
         );
-        const usersData = usersData_.data;
         setStaffMembers(usersData);
       } catch (error) {
         addNotification({
@@ -409,6 +409,23 @@ export default function CreateSchedulePage() {
                     <SelectContent>
                       <SelectItem value="week">Lịch tuần</SelectItem>
                       <SelectItem value="month">Lịch tháng</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="visibility" className="text-base">
+                    Chế độ hiển thị
+                  </Label>
+                  <Select
+                    value={visibility}
+                    onValueChange={(val: "PUBLIC" | "PERSONAL") => setVisibility(val)}
+                  >
+                    <SelectTrigger id="visibility" className="h-11">
+                      <SelectValue placeholder="Chọn chế độ" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="PUBLIC">Phòng ban / Công khai nội bộ</SelectItem>
+                      <SelectItem value="PERSONAL">Cá nhân (chỉ mình tôi)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

@@ -26,6 +26,7 @@ export interface ScheduleDTO {
   departmentName: string;
   period: string;
   status: string;
+  visibility?: string;
   createdById: number;
   createdByName: string;
   approvedById?: number;
@@ -69,6 +70,7 @@ export interface ScheduleListParams {
   // Date filtering parameters - backend uses fromDate/toDate
   fromDate?: string; // format: YYYY-MM-DD
   toDate?: string;   // format: YYYY-MM-DD
+  visibility?: string; // PERSONAL to fetch only personal schedules
 }
 
 export const schedulesAPI = {

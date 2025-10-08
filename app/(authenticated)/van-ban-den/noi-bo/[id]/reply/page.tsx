@@ -35,7 +35,7 @@ import { useNotifications } from "@/lib/notifications-context";
 import { useToast } from "@/components/ui/use-toast";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import RichTextEditorDynamic from "@/components/ui/rich-text-editor.dynamic";
 import { DatePicker } from "@/components/ui/date-picker";
 import {
   Select,
@@ -1042,7 +1042,7 @@ export default function ReplyInternalDocumentPage() {
                 <Label htmlFor="summary">
                   Nội dung trả lời <span className="text-red-500">*</span>
                 </Label>
-                <RichTextEditor
+                <RichTextEditorDynamic
                   content={formData.summary}
                   onChange={handleRichTextChange("summary")}
                   placeholder="Nhập nội dung trả lời"
@@ -1059,7 +1059,7 @@ export default function ReplyInternalDocumentPage() {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="notes">Ghi chú</Label>
-                  <RichTextEditor
+                  <RichTextEditorDynamic
                     content={formData.notes}
                     onChange={handleRichTextChange("notes")}
                     placeholder="Nhập ghi chú (nếu có)"

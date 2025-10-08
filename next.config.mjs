@@ -1,3 +1,5 @@
+import bundleAnalyzer from '@next/bundle-analyzer'
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: false,
@@ -10,7 +12,8 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  output: 'standalone', // ✅ Temporarily disabled to avoid symlink issues on Windows
+  // Removed 'standalone' output to avoid Windows symlink (EPERM) issues during build
+  // output: 'standalone',
   devIndicators: false,
   // Cấu hình cho phép truy cập từ các IP trong mạng LAN
   experimental: {
@@ -50,4 +53,6 @@ const nextConfig = {
   },
 }
 
-export default nextConfig
+// Enable with: $env:ANALYZE="true"; pnpm build
+const withAnalyzer = bundleAnalyzer({ enabled: process.env.ANALYZE === 'true' })
+export default withAnalyzer(nextConfig)

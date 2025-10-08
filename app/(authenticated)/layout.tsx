@@ -6,7 +6,7 @@ import { useAuth } from "@/lib/auth-context";
 import { Header } from "@/components/header";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { NotificationsProvider } from "@/lib/notifications-context";
+import NotificationsProviderDynamic from "@/lib/notifications-provider.dynamic";
 
 export default function AuthenticatedLayout({
   children,
@@ -75,13 +75,13 @@ export default function AuthenticatedLayout({
   }
 
   return (
-    <NotificationsProvider>
+    <NotificationsProviderDynamic>
       <div className="flex min-h-screen flex-col">
         <Header />
         <main className="flex-1 overflow-auto px-6 py-6 bg-gray-100 dark:bg-gray-900">
           {children}
         </main>
       </div>
-    </NotificationsProvider>
+    </NotificationsProviderDynamic>
   );
 }

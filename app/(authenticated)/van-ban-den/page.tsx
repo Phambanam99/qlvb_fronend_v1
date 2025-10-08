@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, Building2, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -16,14 +16,27 @@ import { useUniversalReadStatus } from "@/hooks/use-universal-read-status";
 
 // Import new components and hooks
 import { SearchFilters } from "./components/SearchFilters";
-import { InternalDocumentsTable } from "./components/InternalDocumentsTable";
-import { ExternalDocumentsTable } from "./components/ExternalDocumentsTable";
+// Dynamic import the two large tables so only the active tab's table code loads initially
+import dynamic from "next/dynamic";
+const TableSkeleton = () => (
+  <div className="flex h-40 items-center justify-center border rounded-md text-xs text-muted-foreground">
+    Đang tải bảng...
+  </div>
+)
+const InternalDocumentsTable = dynamic(
+  () => import("./components/InternalDocumentsTable").then(m => m.InternalDocumentsTable),
+  { ssr: false, loading: () => <TableSkeleton /> }
+);
+const ExternalDocumentsTable = dynamic(
+  () => import("./components/ExternalDocumentsTable").then(m => m.ExternalDocumentsTable),
+  { ssr: false, loading: () => <TableSkeleton /> }
+);
 import { DocumentPagination } from "./components/DocumentPagination";
 
 // Import new custom hooks
 import { useInternalIncomingDocuments } from "./hooks/use-internal-incoming-documents";
 import { useExternalIncomingDocuments } from "./hooks/use-external-incoming-documents";
-import { PrintInternalDocumentsButton } from "@/components/print/print-internal-documents-button";
+// Removed unused PrintInternalDocumentsButton import to reduce bundle; re-add if needed.
 
 // Custom hooks (keep existing)
 import { useDocumentHandlers } from "./hooks/useDocumentHandlers";
@@ -437,7 +450,7 @@ export default function IncomingDocumentsPage() {
 
   const handleRefresh = () => {
     // bump nonce to trigger effect
-    setRefreshNonce((n) => n + 1);
+  setRefreshNonce((n: number) => n + 1);
   };
 
   const handleAddDocument = () => {
@@ -544,11 +557,11 @@ export default function IncomingDocumentsPage() {
   };
 
   const handlePreviousPage = () => {
-    setCurrentPage((p) => Math.max(0, p - 1));
+  setCurrentPage((p: number) => Math.max(0, p - 1));
   };
 
   const handleNextPage = () => {
-    setCurrentPage((p) => p + 1);
+  setCurrentPage((p: number) => p + 1);
   };
 
   // Get current state

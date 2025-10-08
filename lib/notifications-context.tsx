@@ -32,29 +32,35 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   const [isConnected, setIsConnected] = useState(false)
   const { user } = useAuth()
 
-  // Tải thông báo từ localStorage khi khởi động
-  useEffect(() => {
-    const storedNotifications = localStorage.getItem("notifications")
-    if (storedNotifications) {
+  // Helper: unified browser notification (request permission if not denied)
+  const showBrowserNotification = useCallback((title: string, body: string) => {
+    if (typeof window === 'undefined') return
+    if (!('Notification' in window)) return
+    const spawn = () => {
       try {
-        const parsedNotifications = JSON.parse(storedNotifications)
-        // Chuyển đổi chuỗi ngày thành đối tượng Date
-        const formattedNotifications = parsedNotifications.map((notification: any) => ({
-          ...notification,
-          createdAt: new Date(notification.createdAt),
-        }))
-        setNotifications(formattedNotifications)
-      } catch (error) {
-        console.error('Error loading notifications from localStorage:', error)
-        localStorage.removeItem("notifications")
+        new Notification(title, { body, icon: '/favicon.ico' })
+      } catch {
+        // ignore
       }
+    }
+    if (Notification.permission === 'granted') {
+      spawn()
+    } else if (Notification.permission !== 'denied') {
+      Notification.requestPermission().then(p => { if (p === 'granted') spawn() }).catch(()=>{})
     }
   }, [])
 
-  // Lưu thông báo vào localStorage khi có thay đổi
+  // Notifications now fully managed by backend realtime + in-memory only.
+  // Clean up any legacy localStorage data once (migration step).
   useEffect(() => {
-    localStorage.setItem("notifications", JSON.stringify(notifications))
-  }, [notifications])
+    try {
+      if (typeof window !== 'undefined') {
+        if (localStorage.getItem('notifications')) {
+          localStorage.removeItem('notifications')
+        }
+      }
+    } catch {/* ignore */}
+  }, [])
 
   // Kết nối WebSocket khi có user đăng nhập
   useEffect(() => {
@@ -72,13 +78,8 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         const handleRealtimeNotification = (realtimeNotification: RealTimeNotification) => {
           // console.log('📨 Context received realtime notification:', realtimeNotification)
           
-          // Show toast notification
-          if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
-            new Notification(getNotificationTitle(realtimeNotification), {
-              body: realtimeNotification.content,
-              icon: '/favicon.ico'
-            })
-          }
+          // Browser notification for realtime events
+          showBrowserNotification(getNotificationTitle(realtimeNotification), realtimeNotification.content)
           
           // Chuyển đổi realtime notification thành format của UI
           const notification: Notification = {
@@ -127,7 +128,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         setIsConnected(false)
       }
     }
-  }, [user])
+  }, [user, showBrowserNotification])
 
   // Helper functions để chuyển đổi notification format
   const getNotificationTitle = (realtimeNotification: RealTimeNotification): string => {
@@ -186,6 +187,8 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       read: false,
     }
     setNotifications((prev) => [newNotification, ...prev])
+    // Trigger browser notification for all app-level notifications
+    showBrowserNotification(newNotification.title, newNotification.message)
   }
 
   const markAsRead = (id: string) => {

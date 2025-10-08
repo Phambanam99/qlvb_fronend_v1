@@ -39,11 +39,13 @@ export function useScheduleData() {
     monthFilter?: string;
     yearFilter?: string;
     departmentFilter?: string;
+    scheduleScope?: string;
   }>({
     weekFilter: getCurrentWeek().toString(),
     monthFilter: "all",
     yearFilter: getCurrentYear(),
     departmentFilter: "all",
+    scheduleScope: 'all'
   });
 
   // Refs to prevent infinite loops
@@ -174,6 +176,7 @@ export function useScheduleData() {
       monthFilter?: string;
       yearFilter?: string;
       departmentFilter?: string;
+      scheduleScope?: string;
     }) => {
       // Store current filters for pagination
       setCurrentFilters(filters);
@@ -186,6 +189,9 @@ export function useScheduleData() {
         page: 0,
         size: pageSize,
       };
+      if (filters?.scheduleScope === 'personal') {
+        params.visibility = 'PERSONAL';
+      }
 
       // console.log("Schedule filters received:", filters);
 
@@ -364,6 +370,9 @@ export function useScheduleData() {
       } else if (!hasFullAccess && userDepartmentIds.length > 0) {
         params.departmentId = userDepartmentIds[0];
       }
+      if (currentFilters?.scheduleScope === 'personal') {
+        params.visibility = 'PERSONAL';
+      }
 
       fetchSchedulesWithDebounce(params);
     },
@@ -463,6 +472,9 @@ export function useScheduleData() {
         params.departmentId = parseInt(currentFilters.departmentFilter);
       } else if (!hasFullAccess && userDepartmentIds.length > 0) {
         params.departmentId = userDepartmentIds[0];
+      }
+      if (currentFilters?.scheduleScope === 'personal') {
+        params.visibility = 'PERSONAL';
       }
 
       fetchSchedulesWithDebounce(params);

@@ -29,7 +29,7 @@ import { UrgencyLevel, URGENCY_LEVELS } from "@/lib/types/urgency";
 import { UrgencySelect } from "@/components/urgency-select";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import RichTextEditorDynamic from "@/components/ui/rich-text-editor.dynamic";
 import { DatePicker } from "@/components/ui/date-picker";
 import {
   Select,
@@ -588,7 +588,7 @@ export default function CreateExternalOutgoingDocumentPage() {
                   <div className="space-y-2 h-full flex flex-col">
                     <Label htmlFor="content">Nội dung văn bản</Label>
                     <div className="flex-1">
-                      <RichTextEditor
+                <RichTextEditorDynamic
                         content={formData.content}
                         onChange={handleRichTextChange("content")}
                         placeholder="Nhập nội dung văn bản"
@@ -675,7 +675,7 @@ export default function CreateExternalOutgoingDocumentPage() {
             <CardContent className="pt-6">
               <div className="space-y-2">
                 <Label htmlFor="note">Ghi chú</Label>
-                <RichTextEditor
+                <RichTextEditorDynamic
                   content={formData.note}
                   onChange={handleRichTextChange("note")}
                   placeholder="Nhập ghi chú cho người phê duyệt (nếu có)"
