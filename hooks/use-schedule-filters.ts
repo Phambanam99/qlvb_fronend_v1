@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 
 interface UseScheduleFiltersProps {
   applyFilters: (filters: {
@@ -91,8 +91,10 @@ export function useScheduleFilters({
   ]);
 
   // Auto-apply filters khi component mount với tuần hiện tại
+  const hasInitializedRef = useRef(false);
   useEffect(() => {
-    if (!loadingDepartments) {
+    if (!loadingDepartments && !hasInitializedRef.current) {
+      hasInitializedRef.current = true;
       applyFilters({
         weekFilter,
         monthFilter,
@@ -100,7 +102,8 @@ export function useScheduleFilters({
         departmentFilter,
       });
     }
-  }, [loadingDepartments]); // Chỉ chạy khi departments đã load xong
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadingDepartments]); // Chỉ chạy một lần khi departments đã load xong
 
   return {
     // Date filters

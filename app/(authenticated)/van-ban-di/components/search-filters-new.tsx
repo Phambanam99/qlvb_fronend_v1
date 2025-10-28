@@ -214,7 +214,7 @@ export function SearchFilters({
             }
             className="flex items-center"
           >
-            <Plus className="mr-2 h-4 w-4" /> Thêm mới
+            <Plus className="mr-2 h-4 w-4" />
           </Link>
         </Button>
       </div>

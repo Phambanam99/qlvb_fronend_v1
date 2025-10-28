@@ -12,8 +12,8 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  // Removed 'standalone' output to avoid Windows symlink (EPERM) issues during build
-  // output: 'standalone',
+  // Enable standalone output for optimized production image (Node server.js + minimal files)
+  output: 'standalone',
   devIndicators: false,
   // Cấu hình cho phép truy cập từ các IP trong mạng LAN
   experimental: {

@@ -14,6 +14,7 @@ import { UrgencyBadge } from "@/components/urgency-badge";
 import { UrgencyLevel, migrateFromOldUrgency } from "@/lib/types/urgency";
 import { InternalDocument } from "@/lib/api/internalDocumentApi";
 import { Edit, Eye, Trash2 } from "lucide-react";
+import { Check } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { deleteInternalDocument } from "@/lib/api/internalDocumentApi";
 import { useAuth } from "@/lib/auth-context";
@@ -91,7 +92,6 @@ export function InternalDocumentsTable({
       text = String(recipients);
     }
 
-    if (text.length > 10) return text.slice(0, 10) + "...";
     return text || "Chưa có người nhận";
   };
 
@@ -125,15 +125,13 @@ export function InternalDocumentsTable({
         <Table>
           <TableHeader className="bg-accent/50">
             <TableRow>
-              <TableHead className="w-16">STT</TableHead>
-              <TableHead>Số văn bản</TableHead>
-              <TableHead className="hidden md:table-cell">Ngày ký</TableHead>
-              <TableHead>Tiêu đề</TableHead>
-              <TableHead className="hidden lg:table-cell">Loại</TableHead>
-              <TableHead className="hidden md:table-cell">Người nhận</TableHead>
-              <TableHead>Độ khẩn</TableHead>
-              <TableHead>Trạng thái đọc</TableHead>
-              <TableHead className="text-right">Thao tác</TableHead>
+              <TableHead style={{ width: '4.1667%' }}>STT</TableHead>
+              <TableHead style={{ width: '4.1667' }}>Số vb</TableHead>
+              <TableHead style={{ width: '58.333%' }}>Tiêu đề</TableHead>
+              <TableHead style={{ width: '12.5%' }} className="hidden md:table-cell">Người nhận</TableHead>
+              <TableHead style={{ width: '4.1667%' }}>Độ khẩn</TableHead>
+              <TableHead style={{ width: '4.1667%' }}></TableHead>
+              <TableHead style={{ width: '8.333%' }} className="text-right"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -146,20 +144,17 @@ export function InternalDocumentsTable({
                     className={`hover:bg-accent/30 cursor-pointer ${
                       !isRead
                         ? "bg-blue-50/50 border-l-4 border-l-blue-500 text-red-600"
-                        : "text-black"
+                        : "text-foreground"
                     }`}
                     onClick={() => onDocumentClick(doc)}
                   >
-                    <TableCell className="text-center text-muted-foreground">
+                    <TableCell style={{ width: '4.1667%' }} className="text-center text-muted-foreground">
                       {index + 1}
                     </TableCell>
-                    <TableCell className="font-medium">
+                    <TableCell style={{ width: '4.1667%' }} className="font-medium">
                       {doc.documentNumber}
                     </TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      {formatDate(doc.signingDate)}
-                    </TableCell>
-                    <TableCell className="max-w-[300px] truncate">
+                    <TableCell style={{ width: '58.333%' }}>
                       <div className="flex items-center gap-2">
                         {!isRead && (
                           <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />
@@ -169,17 +164,17 @@ export function InternalDocumentsTable({
                         </span>
                       </div>
                     </TableCell>
-                    <TableCell className="hidden lg:table-cell">
+                    {/* <TableCell style={{ width: '4.1667%' }} className="hidden lg:table-cell">
                       {doc.documentType}
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">
+                    </TableCell> */}
+                    <TableCell style={{ width: '4.1667%' }} className="hidden md:table-cell">
                       {getRecipientSummary(doc.recipientNames)}
                     </TableCell>
-                    <TableCell>{getUrgencyBadge(doc.priority || "NORMAL")}</TableCell>
-                    <TableCell>
+                    <TableCell style={{ width: '4.1667%' }}>{getUrgencyBadge(doc.priority || "NORMAL")}</TableCell>
+                    <TableCell style={{ width: '4.1667%' }}>
                       <Button
                         variant="ghost"
-                        size="sm"
+                        size="icon"
                         className={`${
                           isRead
                             ? "text-green-600 hover:text-green-700"
@@ -193,10 +188,10 @@ export function InternalDocumentsTable({
                         //   );
                         // }}
                       >
-                        {isRead ? "Đã đọc" : "Chưa đọc"}
+                        {isRead ? <Check className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </Button>
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell style={{ width: '8.333%' }} className="text-right">
                       <div className="flex items-center justify-end gap-2">
                         <TooltipProvider>
                           <Tooltip>
@@ -239,7 +234,7 @@ export function InternalDocumentsTable({
                             </Tooltip>
                           </TooltipProvider>
                         )}
-                        <TooltipProvider>
+                        {/* <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <Button
@@ -258,7 +253,7 @@ export function InternalDocumentsTable({
                               <p>Chi tiết</p>
                             </TooltipContent>
                           </Tooltip>
-                        </TooltipProvider>
+                        </TooltipProvider> */}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -266,7 +261,7 @@ export function InternalDocumentsTable({
               })
             ) : (
               <TableRow>
-                <TableCell colSpan={9} className="h-24 text-center">
+                <TableCell colSpan={8} className="h-24 text-center">
                   {documents.length === 0 && !isLoading
                     ? "Chưa có văn bản nội bộ nào"
                     : "Không có văn bản nào phù hợp với điều kiện tìm kiếm"}

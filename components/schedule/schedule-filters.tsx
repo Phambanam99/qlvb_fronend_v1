@@ -7,6 +7,7 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Filter } from "lucide-react";
+import { useEffect } from "react";
 
 interface ScheduleFiltersProps {
   // Date filters - thay thế search
@@ -24,6 +25,8 @@ interface ScheduleFiltersProps {
   loadingDepartments: boolean;
   onApplyFilters: () => void;
   isFiltering: boolean;
+  hideDateFilters?: boolean;
+  autoApply?: boolean; // if true, hide button and auto apply outside
 }
 
 export function ScheduleFilters({
@@ -39,7 +42,16 @@ export function ScheduleFilters({
   loadingDepartments,
   onApplyFilters,
   isFiltering,
+  hideDateFilters = false,
+  autoApply = false,
 }: ScheduleFiltersProps) {
+  // Auto-select first department if no department is selected and departments are loaded
+  useEffect(() => {
+    if (!loadingDepartments && visibleDepartments.length > 0 && departmentFilter === "all") {
+      onDepartmentFilterChange(visibleDepartments[0].id.toString());
+    }
+  }, [loadingDepartments, visibleDepartments, departmentFilter, onDepartmentFilterChange]);
+
   // Generate years list (current year ± 5 years)
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 11 }, (_, i) => currentYear - 5 + i);
@@ -68,88 +80,84 @@ export function ScheduleFilters({
 
   return (
     <div className="flex flex-col sm:flex-row gap-4">
-      {/* Date filters - thay thế search */}
-      <Select value={yearFilter} onValueChange={onYearFilterChange}>
-        <SelectTrigger className="w-full sm:w-[140px]">
-          <SelectValue placeholder="Năm" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">Tất cả năm</SelectItem>
-          {years.map((year) => (
-            <SelectItem key={year} value={String(year)}>
-              {year}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      {!hideDateFilters && (
+        <>
+          <Select value={yearFilter} onValueChange={onYearFilterChange}>
+            <SelectTrigger className="w-full sm:w-[140px]">
+              <SelectValue placeholder="Năm" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tất cả năm</SelectItem>
+              {years.map((year) => (
+                <SelectItem key={year} value={String(year)}>
+                  {year}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-      <Select 
-        value={monthFilter} 
-        onValueChange={(value: string) => {
-          onMonthFilterChange(value);
-          // Nếu chọn tháng (khác "all"), reset tuần về "all"
-          if (value !== "all" && weekFilter !== "all") {
-            onWeekFilterChange("all");
-          }
-        }}
-      >
-        <SelectTrigger 
-          className="w-full sm:w-[140px]"
-          disabled={weekFilter !== "all"} // Disable khi đã chọn tuần
-        >
-          <SelectValue placeholder="Tháng" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">Tất cả tháng</SelectItem>
-          {months.map((month) => (
-            <SelectItem key={month.value} value={month.value}>
-              {month.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+          <Select
+            value={monthFilter}
+            onValueChange={(value: string) => {
+              onMonthFilterChange(value);
+              if (value !== "all" && weekFilter !== "all") {
+                onWeekFilterChange("all");
+              }
+            }}
+          >
+            <SelectTrigger
+              className="w-full sm:w-[140px]"
+              disabled={weekFilter !== "all"}
+            >
+              <SelectValue placeholder="Tháng" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tất cả tháng</SelectItem>
+              {months.map((month) => (
+                <SelectItem key={month.value} value={month.value}>
+                  {month.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-      <Select 
-        value={weekFilter} 
-        onValueChange={(value: string) => {
-          onWeekFilterChange(value);
-          // Nếu chọn tuần (khác "all"), reset tháng về "all"
-          if (value !== "all" && monthFilter !== "all") {
-            onMonthFilterChange("all");
-          }
-        }}
-      >
-        <SelectTrigger 
-          className="w-full sm:w-[140px]"
-          disabled={monthFilter !== "all"} // Disable khi đã chọn tháng
-        >
-          <SelectValue placeholder="Tuần" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">Tất cả tuần</SelectItem>
-          {weeks.map((week) => (
-            <SelectItem key={week.value} value={week.value}>
-              {week.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+          <Select
+            value={weekFilter}
+            onValueChange={(value: string) => {
+              onWeekFilterChange(value);
+              if (value !== "all" && monthFilter !== "all") {
+                onMonthFilterChange("all");
+              }
+            }}
+          >
+            <SelectTrigger
+              className="w-full sm:w-[140px]"
+              disabled={monthFilter !== "all"}
+            >
+              <SelectValue placeholder="Tuần" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tất cả tuần</SelectItem>
+              {weeks.map((week) => (
+                <SelectItem key={week.value} value={week.value}>
+                  {week.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </>
+      )}
 
       <Select value={departmentFilter} onValueChange={onDepartmentFilterChange}>
         <SelectTrigger
           className="w-full sm:w-[300px]"
-          disabled={loadingDepartments}
+          disabled={loadingDepartments || visibleDepartments.length === 0}
         >
           <SelectValue
             placeholder={loadingDepartments ? "Đang tải..." : "Chọn đơn vị"}
           />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="all">
-            {!loadingDepartments && visibleDepartments && visibleDepartments.length <= 1 
-              ? "Đơn vị hiện tại" 
-              : "Tất cả đơn vị"}
-          </SelectItem>
           {!loadingDepartments &&
           visibleDepartments &&
           visibleDepartments.length > 0
@@ -167,15 +175,16 @@ export function ScheduleFilters({
         </SelectContent>
       </Select>
 
-      {/* Filter button */}
-      <Button
-        onClick={onApplyFilters}
-        disabled={isFiltering || loadingDepartments}
-        className="w-full sm:w-auto"
-      >
-        <Filter className="h-4 w-4 mr-2" />
-        {isFiltering ? "Đang lọc..." : "Lọc"}
-      </Button>
+      {!autoApply && (
+        <Button
+          onClick={onApplyFilters}
+          disabled={isFiltering || loadingDepartments}
+          className="w-full sm:w-auto"
+        >
+          <Filter className="h-4 w-4 mr-2" />
+          {isFiltering ? "Đang lọc..." : "Lọc"}
+        </Button>
+      )}
     </div>
   );
 }

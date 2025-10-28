@@ -14,6 +14,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Eye } from "lucide-react";
+import { Check } from "lucide-react";
 
 interface InternalDocumentsTableProps {
   documents: any[];
@@ -33,20 +35,19 @@ export function InternalDocumentsTable({
   onReadStatusToggle,
   getReadStatus,
 }: InternalDocumentsTableProps) {
+  console.log("Rendering InternalDocumentsTable with documents:", documents);
   return (
     <Card className="border-primary/10 shadow-sm">
       <CardContent className="p-0">
         <Table>
           <TableHeader className="bg-accent/50">
             <TableRow>
-              <TableHead className="w-16">STT</TableHead>
-              <TableHead>Số văn bản</TableHead>
-              <TableHead>Ngày ký</TableHead>
-              <TableHead>Tiêu đề</TableHead>
-              <TableHead>Người gửi</TableHead>
-             
-              <TableHead>Trạng thái đọc</TableHead>
-              <TableHead>Thao tác</TableHead>
+              <TableHead style={{ width: '2.1667%' }}>STT</TableHead>
+              <TableHead style={{ width: '4.3334%' }}>Số văn bản</TableHead>
+              <TableHead style={{ width: '4.3334%' }}>Ngày gửi</TableHead>
+              <TableHead style={{ width: '79%' }}>Tiêu đề</TableHead>
+              <TableHead style={{ width: '4.1667%' }}></TableHead>
+              {/* <TableHead style={{ width: '4.1667%' }}>Thao tác</TableHead> */}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -67,14 +68,16 @@ export function InternalDocumentsTable({
                     }`}
                     onClick={() => onDocumentClick(doc)}
                   >
-                    <TableCell className="text-center text-muted-foreground">
+                    <TableCell style={{ width: '4.1667%' }} className="text-center text-muted-foreground">
                       {index + 1}
                     </TableCell>
-                    <TableCell className="font-medium">
+                    <TableCell style={{ width: '8.5%' }} className="font-medium">
                       {doc.documentNumber}
                     </TableCell>
-                    <TableCell>{formatDate(doc.signingDate)}</TableCell>
-                    <TableCell className="max-w-[300px] truncate">
+                    <TableCell style={{ width: '8.5%' }}>
+                      {formatDate(doc.createdAt)}
+                    </TableCell>
+                    <TableCell style={{ width: '75%' }}>
                       <div className="flex items-center gap-2">
                         {!isRead && (
                           <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />
@@ -84,51 +87,44 @@ export function InternalDocumentsTable({
                         </span>
                       </div>
                     </TableCell>
-                    <TableCell>{doc.senderName}</TableCell>
 
-                  <TableCell>
+                  <TableCell style={{ width: '4.1667%' }}>
                     {universalReadStatus && getReadStatus ? (
                       // Use Button for read status toggle like văn bản đi
                       <Button
                         variant="ghost"
-                        size="sm"
+                        size="icon"
                         className={`${
                           isRead
                             ? "text-green-600 hover:text-green-700"
                             : "text-blue-600 hover:text-blue-700"
                         }`}
-                        // onClick={(e: React.MouseEvent) => {
-                        //   e.stopPropagation();
-                        //   if (onReadStatusToggle) {
-                        //     onReadStatusToggle(doc.id);
-                        //   }
-                        // }}
                       >
-                        {isRead ? "Đã đọc" : "Chưa đọc"}
+                        {isRead ? <Check className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </Button>
                     ) : (
                       // Fallback to Badge for backward compatibility
                       <Badge variant={isRead ? "default" : "outline"}>
-                        {isRead ? "Đã đọc" : "Chưa đọc"}
+                        {isRead ? <Check className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </Badge>
                     )}
                   </TableCell>
-                  <TableCell>
+                  {/* <TableCell style={{ width: '4.1667%' }}>
                     <Button
                       variant="ghost"
-                      size="sm"
+                      size="icon"
                       onClick={() => onDocumentClick(doc)}
                       className="hover:bg-primary/10 hover:text-primary"
                     >
-                      Chi tiết
+                      <Eye className="h-4 w-4" />
                     </Button>
-                  </TableCell>
+                  </TableCell> */}
                 </TableRow>
               );
               })
             ) : (
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center">
+                <TableCell colSpan={5} className="h-24 text-center">
                   Chưa có văn bản nội bộ nào
                 </TableCell>
               </TableRow>

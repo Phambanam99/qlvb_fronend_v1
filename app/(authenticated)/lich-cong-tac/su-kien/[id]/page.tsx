@@ -85,7 +85,7 @@ export default function EventDetailPage({
         const eventsData_ = await schedulesAPI.getScheduleEvents({
           date: eventData.date,
           excludeId: eventId,
-          departmentId: String(user?.departmentId),
+          departmentId: user?.departmentId || undefined,
         });
         const eventsData = eventsData_.data;
         setRelatedEvents(eventsData.slice(0, 3)); // Limit to 3 related events

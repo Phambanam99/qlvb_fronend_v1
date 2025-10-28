@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,10 +22,12 @@ const normalizeDate = (date: Date | null | undefined): Date | undefined => {
 	return new Date(date.getFullYear(), date.getMonth(), date.getDate());
 };
 
-export default function EditEventPage({ params }: { params: { id: string } }) {
+export default function EditEventPage() {
 	const router = useRouter();
 	const { addNotification } = useNotifications();
-	const eventId = params.id;
+	// Use Next.js app router hook to get dynamic route param. Avoid direct props access (params is now a Promise in newer Next.js versions)
+	const routeParams = useParams<{ id: string }>();
+	const eventId = routeParams?.id;
 
 	const [loading, setLoading] = useState(true);
 	const [isSubmitting, setIsSubmitting] = useState(false);
@@ -41,6 +43,7 @@ export default function EditEventPage({ params }: { params: { id: string } }) {
 	const [scheduleId, setScheduleId] = useState<number | null>(null);
 
 	useEffect(() => {
+		if (!eventId) return; // Wait until param is available
 		const fetchEvent = async () => {
 			try {
 				setLoading(true);
@@ -67,6 +70,10 @@ export default function EditEventPage({ params }: { params: { id: string } }) {
 		e.preventDefault();
 		if (!title || !date) {
 			addNotification({ title: "Lỗi", message: "Vui lòng nhập đủ tiêu đề và ngày", type: "error" });
+			return;
+		}
+		if (!eventId) {
+			addNotification({ title: "Lỗi", message: "Thiếu mã sự kiện", type: "error" });
 			return;
 		}
 		setIsSubmitting(true);

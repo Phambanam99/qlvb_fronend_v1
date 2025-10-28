@@ -511,7 +511,7 @@ export default function InternalDocumentReceivedDetailPage() {
   }
 
   return (
-    <div className="container mx-auto py-6 space-y-8">
+    <div className="container mx-auto py-0 space-y-2">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
@@ -520,14 +520,7 @@ export default function InternalDocumentReceivedDetailPage() {
               <ArrowLeft className="h-4 w-4" />
             </Link>
           </Button>
-          <div className="space-y-1">
-            <h1 className="text-2xl font-bold tracking-tight text-primary">
-              Chi tiết văn bản nội bộ nhận được
-            </h1>
-            <p className="text-muted-foreground">
-              Thông tin chi tiết của văn bản {documentDetail.documentNumber}
-            </p>
-          </div>
+          
         </div>
 
         <div className="flex items-center space-x-2">
@@ -743,6 +736,146 @@ export default function InternalDocumentReceivedDetailPage() {
           </Card>
 
 
+
+          {/* Document Replies */}
+          {documentReplies && documentReplies.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <MessageSquare className="h-5 w-5" />
+                  Văn bản trả lời ({documentReplies.length})
+                </CardTitle>
+                <CardDescription>
+                  Danh sách các văn bản trả lời cho văn bản này
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {documentReplies.map((reply) => (
+                    <div
+                      key={reply.id}
+                      className="border rounded-lg p-4 hover:bg-gray-50"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <h4 className="font-medium text-sm">
+                              {reply.documentNumber}
+                            </h4>
+                            {getPriorityBadge(reply.urgencyLevel)}
+                            {getStatusBadge(reply.status)}
+                          </div>
+                          <h5 className="font-semibold text-base mb-2">
+                            {reply.title}
+                          </h5>
+                          {reply.summary && (
+                            <p
+                              className="text-sm text-gray-600 mb-2 line-clamp-2"
+                              dangerouslySetInnerHTML={{
+                                __html: reply.summary,
+                              }}
+                            ></p>
+                          )}
+                          <div className="flex items-center gap-4 text-xs text-gray-500">
+                            <span>
+                              <User className="h-3 w-3 inline mr-1" />
+                              {reply.senderName}
+                            </span>
+                            <span>
+                              <Calendar className="h-3 w-3 inline mr-1" />
+                              {formatDate(reply.createdAt)}
+                            </span>
+                          </div>
+                        </div>
+                        <Button variant="outline" size="sm" asChild>
+                          <Link href={`/van-ban-den/noi-bo/${reply.id}`}>
+                            Xem chi tiết
+                          </Link>
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+ {/* Attachments */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Paperclip className="h-5 w-5" />
+                File đính kèm ({documentDetail.attachments?.length || 0})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {documentDetail.attachments &&
+              documentDetail.attachments.length > 0 ? (
+                <div className="space-y-3">
+                  {documentDetail.attachments.map((attachment) => (
+                    <div
+                      key={attachment.id}
+                      className="flex items-center justify-between p-3 border rounded-lg"
+                    >
+                      <div className="flex items-center space-x-3">
+                        <div className="flex-shrink-0">
+                          <FileText className="h-8 w-8 text-blue-500" />
+                        </div>
+                        <div>
+                          <p className="font-medium">{attachment.filename}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {formatFileSize(attachment.fileSize)} •{" "}
+                            {attachment.contentType}
+                          </p>
+                          {attachment.description && (
+                            <p className="text-sm text-muted-foreground">
+                              {attachment.description}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            handlePreviewPDF(
+                              attachment.id,
+                              attachment.filename,
+                              attachment.contentType
+                            )
+                          }
+                        >
+                          <Eye className="h-4 w-4 mr-2" />
+                          Xem trước
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            handleDownloadAttachment(
+                              attachment.id,
+                              attachment.filename,
+                              attachment.contentType
+                            )
+                          }
+                        >
+                          <Download className="h-4 w-4 mr-2" />
+                          Tải xuống
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <Paperclip className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-500">
+                    Văn bản này không có file đính kèm
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
           {/* Interaction History */}
           <Card>
             <CardHeader>
@@ -838,147 +971,7 @@ export default function InternalDocumentReceivedDetailPage() {
               )}
             </CardContent>
           </Card>
-
-          {/* Document Replies */}
-          {documentReplies && documentReplies.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <MessageSquare className="h-5 w-5" />
-                  Văn bản trả lời ({documentReplies.length})
-                </CardTitle>
-                <CardDescription>
-                  Danh sách các văn bản trả lời cho văn bản này
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {documentReplies.map((reply) => (
-                    <div
-                      key={reply.id}
-                      className="border rounded-lg p-4 hover:bg-gray-50"
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <h4 className="font-medium text-sm">
-                              {reply.documentNumber}
-                            </h4>
-                            {getPriorityBadge(reply.urgencyLevel)}
-                            {getStatusBadge(reply.status)}
-                          </div>
-                          <h5 className="font-semibold text-base mb-2">
-                            {reply.title}
-                          </h5>
-                          {reply.summary && (
-                            <p
-                              className="text-sm text-gray-600 mb-2 line-clamp-2"
-                              dangerouslySetInnerHTML={{
-                                __html: reply.summary,
-                              }}
-                            ></p>
-                          )}
-                          <div className="flex items-center gap-4 text-xs text-gray-500">
-                            <span>
-                              <User className="h-3 w-3 inline mr-1" />
-                              {reply.senderName}
-                            </span>
-                            <span>
-                              <Calendar className="h-3 w-3 inline mr-1" />
-                              {formatDate(reply.createdAt)}
-                            </span>
-                          </div>
-                        </div>
-                        <Button variant="outline" size="sm" asChild>
-                          <Link href={`/van-ban-den/noi-bo/${reply.id}`}>
-                            Xem chi tiết
-                          </Link>
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Attachments */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Paperclip className="h-5 w-5" />
-                File đính kèm ({documentDetail.attachments?.length || 0})
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {documentDetail.attachments &&
-              documentDetail.attachments.length > 0 ? (
-                <div className="space-y-3">
-                  {documentDetail.attachments.map((attachment) => (
-                    <div
-                      key={attachment.id}
-                      className="flex items-center justify-between p-3 border rounded-lg"
-                    >
-                      <div className="flex items-center space-x-3">
-                        <div className="flex-shrink-0">
-                          <FileText className="h-8 w-8 text-blue-500" />
-                        </div>
-                        <div>
-                          <p className="font-medium">{attachment.filename}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {formatFileSize(attachment.fileSize)} •{" "}
-                            {attachment.contentType}
-                          </p>
-                          {attachment.description && (
-                            <p className="text-sm text-muted-foreground">
-                              {attachment.description}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() =>
-                            handlePreviewPDF(
-                              attachment.id,
-                              attachment.filename,
-                              attachment.contentType
-                            )
-                          }
-                        >
-                          <Eye className="h-4 w-4 mr-2" />
-                          Xem trước
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() =>
-                            handleDownloadAttachment(
-                              attachment.id,
-                              attachment.filename,
-                              attachment.contentType
-                            )
-                          }
-                        >
-                          <Download className="h-4 w-4 mr-2" />
-                          Tải xuống
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <Paperclip className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                  <p className="text-gray-500">
-                    Văn bản này không có file đính kèm
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+         
         </div>
 
         {/* Sidebar */}
@@ -987,23 +980,9 @@ export default function InternalDocumentReceivedDetailPage() {
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Trạng thái & Thông tin</CardTitle>
+              <Separator className="my-2" />
             </CardHeader>
             <CardContent className="space-y-4">
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">
-                  Trạng thái đọc
-                </label>
-                <div className="mt-1">
-                  <Badge
-                    variant={documentDetail.isRead ? "default" : "outline"}
-                  >
-                    {documentDetail.isRead ? "Đã đọc" : "Chưa đọc"}
-                  </Badge>
-                </div>
-              </div>
-
-              <Separator />
-
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <User className="h-4 w-4 text-muted-foreground" />
@@ -1081,7 +1060,7 @@ export default function InternalDocumentReceivedDetailPage() {
             <CardHeader>
               <CardTitle className="text-lg">Thao tác</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-0">
               {!documentDetail.isRead && (
                 <Button
                   className="w-full"

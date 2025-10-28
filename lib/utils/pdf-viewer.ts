@@ -35,16 +35,40 @@ export const isPDFFile = (fileType: string, fileName?: string): boolean => {
 
 /**
  * Create a blob URL for PDF viewing
+ * @throws Error if browser doesn't support Blob URLs
  */
 export const createPDFBlobUrl = (blob: Blob): string => {
-  return window.URL.createObjectURL(blob);
+  // Check for URL API support (including vendor prefixes for older browsers)
+  const URL = window.URL || (window as any).webkitURL || (window as any).mozURL;
+
+  if (!URL || !URL.createObjectURL) {
+    throw new Error('Browser does not support Blob URLs');
+  }
+
+  try {
+    return URL.createObjectURL(blob);
+  } catch (error) {
+    throw new Error('Failed to create Blob URL: ' + (error instanceof Error ? error.message : 'Unknown error'));
+  }
 };
 
 /**
  * Cleanup blob URL to free memory
  */
 export const cleanupBlobUrl = (url: string): void => {
-  window.URL.revokeObjectURL(url);
+  if (!url) return;
+
+  try {
+    // Check for URL API support (including vendor prefixes for older browsers)
+    const URL = window.URL || (window as any).webkitURL || (window as any).mozURL;
+
+    if (URL && URL.revokeObjectURL) {
+      URL.revokeObjectURL(url);
+    }
+  } catch (error) {
+    // Silently fail - not critical if cleanup fails
+    console.warn('Failed to revoke Blob URL:', error);
+  }
 };
 
 /**
@@ -99,33 +123,92 @@ export const downloadFile = (blob: Blob, filename: string): void => {
 };
 
 /**
- * Open PDF in new window/tab
+ * Open PDF in new window/tab with fallback for older browsers
  */
 export const openPDFInNewWindow = (
   blob: Blob,
   title?: string
 ): Window | null => {
-  const url = createPDFBlobUrl(blob);
-  const newWindow = window.open(url, "_blank");
+  try {
+    const url = createPDFBlobUrl(blob);
+    const newWindow = window.open(url, "_blank");
 
-  if (newWindow && title) {
-    newWindow.document.title = title;
+    // Check if popup was blocked
+    if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+      cleanupBlobUrl(url);
+
+      // Fallback: trigger download instead
+      console.warn('Popup blocked or failed, falling back to download');
+      downloadFile(blob, title || 'document.pdf');
+      return null;
+    }
+
+    // Set title if supported
+    if (newWindow && title) {
+      try {
+        newWindow.document.title = title;
+      } catch (e) {
+        // Ignore if setting title fails (cross-origin issues)
+      }
+    }
+
+    // Cleanup URL after some delay (window should have loaded by then)
+    setTimeout(() => {
+      cleanupBlobUrl(url);
+    }, 5000);
+
+    return newWindow;
+  } catch (error) {
+    console.error('Failed to open PDF in new window:', error);
+
+    // Fallback: trigger download
+    try {
+      downloadFile(blob, title || 'document.pdf');
+    } catch (downloadError) {
+      console.error('Download fallback also failed:', downloadError);
+    }
+
+    return null;
   }
-
-  // Cleanup URL after some delay (window should have loaded by then)
-  setTimeout(() => {
-    cleanupBlobUrl(url);
-  }, 5000);
-
-  return newWindow;
 };
 
 /**
  * Check if browser supports PDF viewing
  */
 export const supportsPDFViewing = (): boolean => {
-  // Most modern browsers support PDF viewing
-  return true;
+  try {
+    // Check if browser supports Blob URLs
+    if (!window.URL || !window.URL.createObjectURL) {
+      return false;
+    }
+
+    // Check if browser supports Blob
+    if (typeof Blob === 'undefined') {
+      return false;
+    }
+
+    // Try to create a test blob URL
+    const testBlob = new Blob(['test'], { type: 'application/pdf' });
+    const url = window.URL.createObjectURL(testBlob);
+    window.URL.revokeObjectURL(url);
+
+    return true;
+  } catch (error) {
+    return false;
+  }
+};
+
+/**
+ * Simple URLSearchParams polyfill for older browsers
+ */
+const buildQueryString = (params: Record<string, string>): string => {
+  const parts: string[] = [];
+  for (const key in params) {
+    if (params.hasOwnProperty(key)) {
+      parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(params[key]));
+    }
+  }
+  return parts.join('&');
 };
 
 /**
@@ -135,16 +218,16 @@ export const getPDFViewerUrl = (
   blobUrl: string,
   options: PDFViewerOptions = {}
 ): string => {
-  const params = new URLSearchParams();
+  const params: Record<string, string> = {};
 
   if (!options.allowDownload) {
-    params.append("toolbar", "0");
+    params["toolbar"] = "0";
   }
 
   if (!options.allowPrint) {
-    params.append("navpanes", "0");
+    params["navpanes"] = "0";
   }
 
-  const queryString = params.toString();
-  return queryString ? `${blobUrl}#${queryString}` : blobUrl;
+  const queryString = buildQueryString(params);
+  return queryString ? blobUrl + '#' + queryString : blobUrl;
 };

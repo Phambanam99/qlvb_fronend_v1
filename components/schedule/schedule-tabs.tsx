@@ -25,6 +25,7 @@ interface ScheduleTabsProps {
   totalPages: number;
   onPageChange: (page: number) => void;
   onPageSizeChange: (size: number) => void;
+  onDateRangeChange?: (start: Date, end: Date, mode: 'week' | 'month') => void;
 }
 
 export function ScheduleTabs({
@@ -39,6 +40,7 @@ export function ScheduleTabs({
   totalPages,
   onPageChange,
   onPageSizeChange,
+  onDateRangeChange,
 }: ScheduleTabsProps) {
   const renderScheduleView = (scheduleList: any[]) => {
     if (isLoading) {
@@ -75,7 +77,12 @@ export function ScheduleTabs({
           <CardContent className="p-0">
             {viewMode === "week" && (
               <div className="relative">
-                <FullCalendarView mode="week" date={date} schedules={scheduleList} />
+                <FullCalendarView
+                  mode="week"
+                  date={date}
+                  schedules={scheduleList}
+                  onDateChange={(start,end)=> onDateRangeChange?.(start,end,'week')}
+                />
                 {isEmpty && (
                   <div className="absolute inset-0 pointer-events-none flex items-center justify-center text-sm text-muted-foreground">
                     Không có lịch công tác trong tuần này
@@ -85,7 +92,12 @@ export function ScheduleTabs({
             )}
             {viewMode === "month" && (
               <div className="relative">
-                <FullCalendarView mode="month" date={date} schedules={scheduleList} />
+                <FullCalendarView
+                  mode="month"
+                  date={date}
+                  schedules={scheduleList}
+                  onDateChange={(start,end)=> onDateRangeChange?.(start,end,'month')}
+                />
                 {isEmpty && (
                   <div className="absolute inset-0 pointer-events-none flex items-center justify-center text-sm text-muted-foreground">
                     Không có lịch công tác trong tháng này

@@ -602,8 +602,9 @@ export default function IncomingDocumentsPage() {
   // Keep page layout mounted so filters & tabs are visible immediately.
 
   return (
-    <div className="space-y-8">
-      {/* Search Filters */}
+    <div className="space-y-2">
+      
+  {/* Search Filters */}
       <SearchFilters
   searchQuery={activeTab === "internal" ? internalSearchQuery : externalSearchQuery}
         setSearchQuery={activeTab === "internal" ? setInternalSearchQuery : setExternalSearchQuery}
@@ -653,11 +654,8 @@ export default function IncomingDocumentsPage() {
         </TabsList>
 
         {/* Internal Documents Tab */}
-        <TabsContent value="internal" className="mt-6">
+        <TabsContent value="internal" className="mt-0">
           <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <h3 className="text-lg font-medium">Danh sách văn bản nội bộ đến</h3>
-            </div>
             {hasVanThuRole && (
               <Button
                 size="sm"
@@ -693,9 +691,8 @@ export default function IncomingDocumentsPage() {
         </TabsContent>
 
         {/* External Documents Tab */}
-        <TabsContent value="external" className="mt-6">
+        <TabsContent value="external" className="mt-0">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-medium">Danh sách văn bản bên ngoài đến</h3>
             {hasVanThuRole && (
               <Button
                 size="sm"
@@ -737,6 +734,8 @@ export default function IncomingDocumentsPage() {
           )}
         </TabsContent>
       </Tabs>
+    
+    
 
       {/* Pagination */}
       <DocumentPagination

@@ -1,7 +1,7 @@
 "use client"
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react"
-import { notificationsRealtime, type RealTimeNotification } from "@/lib/api/notifications"
+import { notificationsRealtime, notificationsAPI, type RealTimeNotification, type NotificationDTO } from "@/lib/api/notifications"
 import { useAuth } from "@/lib/auth-context"
 
 export interface Notification {
@@ -129,6 +129,33 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       }
     }
   }, [user, showBrowserNotification])
+
+  // Initial load from backend (first page) so UI is not empty before realtime events arrive
+  useEffect(() => {
+    let cancelled = false
+    const loadInitial = async () => {
+      if (!user?.id) return
+      try {
+        const page = await notificationsAPI.getAllNotifications(0, 20)
+        if (cancelled) return
+  const mapped: Notification[] = (page?.content || []).map((n: any) => ({
+          id: (n.id ?? n.notificationId ?? Date.now()).toString(),
+            title: n.title || n.type || 'Thông báo',
+            message: n.message || n.content || '',
+            type: (n.type && ['info','success','warning','error'].includes(n.type) ? n.type : 'info') as Notification['type'],
+            createdAt: new Date(n.createdAt || n.timestamp || Date.now()),
+            read: !!n.read,
+            link: n.link,
+            documentId: n.entityId,
+        }))
+        setNotifications(prev => prev.length === 0 ? mapped : prev) // don't overwrite if realtime already filled
+      } catch (err) {
+        console.warn('Failed to load initial notifications:', err)
+      }
+    }
+    loadInitial()
+    return () => { cancelled = true }
+  }, [user])
 
   // Helper functions để chuyển đổi notification format
   const getNotificationTitle = (realtimeNotification: RealTimeNotification): string => {

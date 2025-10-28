@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
@@ -12,12 +12,13 @@ type CalendarMode = "week" | "month";
 
 interface FullCalendarViewProps {
 	mode: CalendarMode;
-	date: Date;
+	date: Date; // external reference date (start of week or month)
 	schedules: any[];
 	onEventClick?: (eventId: string | number) => void;
+	onDateChange?: (activeStart: Date, activeEnd: Date) => void; // fired when user navigates
 }
 
-export default function FullCalendarView({ mode, date, schedules, onEventClick }: FullCalendarViewProps) {
+export default function FullCalendarView({ mode, date, schedules, onEventClick, onDateChange }: FullCalendarViewProps) {
 	const router = useRouter();
 
 	// Tooltip state for beautiful hover content
@@ -46,7 +47,46 @@ export default function FullCalendarView({ mode, date, schedules, onEventClick }
 		};
 	}, [hoverTip.visible]);
 	const initialView = mode === "week" ? "timeGridWeek" : "dayGridMonth";
-	const initialDate = useMemo(() => date.toISOString().split("T")[0], [date]);
+	const calendarRef = useRef<FullCalendar | null>(null);
+	const isProgrammaticNavigationRef = useRef(false);
+	const lastUserActionTimeRef = useRef<number>(0);
+
+	// Imperatively navigate when external date changes (avoid relying on initialDate which only applies once)
+	useEffect(() => {
+		if (calendarRef.current) {
+			const api = (calendarRef.current as any).getApi?.();
+			if (api) {
+				const currentDate = api.getDate();
+				// Only navigate if the date actually changed (compare year, month, date)
+				if (
+					currentDate.getFullYear() !== date.getFullYear() ||
+					currentDate.getMonth() !== date.getMonth() ||
+					currentDate.getDate() !== date.getDate()
+				) {
+					isProgrammaticNavigationRef.current = true;
+					api.gotoDate(date);
+					// Reset flag after a short delay to allow datesSet to process
+					setTimeout(() => {
+						isProgrammaticNavigationRef.current = false;
+					}, 100);
+				}
+			}
+		}
+	}, [date]);
+
+	// Keep internal FullCalendar view in sync with parent-controlled mode
+	useEffect(() => {
+		if (calendarRef.current) {
+			const api = (calendarRef.current as any).getApi?.();
+			if (api) {
+				isProgrammaticNavigationRef.current = true;
+				api.changeView(mode === "week" ? "timeGridWeek" : "dayGridMonth");
+				setTimeout(() => {
+					isProgrammaticNavigationRef.current = false;
+				}, 100);
+			}
+		}
+	}, [mode]);
 
 	// Vibrant color palette for distinct schedules
 	const colorPalette = useMemo(
@@ -100,17 +140,50 @@ export default function FullCalendarView({ mode, date, schedules, onEventClick }
 	return (
 		<>
 		<FullCalendar
+			ref={calendarRef as any}
 			plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+			firstDay={1} // Start week on Monday to align with ISO week calculations
 			locales={[viLocale]}
 			locale="vi"
 			initialView={initialView}
-			initialDate={initialDate}
-			headerToolbar={{ left: "prev,next today", center: "title", right: "dayGridMonth,timeGridWeek,timeGridDay" }}
+			headerToolbar={{ left: "prev,next today", center: "title", right: "" }}
+			views={{
+				timeGridWeek: {
+					titleFormat: { year: 'numeric', month: 'long' }
+				},
+				dayGridMonth: {
+					titleFormat: { year: 'numeric', month: 'long' }
+				}
+			}}
+			customButtons={{
+				prev: {
+					click: () => {
+						lastUserActionTimeRef.current = Date.now();
+						const api = calendarRef.current?.getApi();
+						if (api) api.prev();
+					}
+				},
+				next: {
+					click: () => {
+						lastUserActionTimeRef.current = Date.now();
+						const api = calendarRef.current?.getApi();
+						if (api) api.next();
+					}
+				},
+				today: {
+					text: 'hôm nay',
+					click: () => {
+						lastUserActionTimeRef.current = Date.now();
+						const api = calendarRef.current?.getApi();
+						if (api) api.today();
+					}
+				}
+			}}
 			events={events}
 			height="auto"
 			editable={false}
 			selectable={false}
-			dayHeaderFormat={{ weekday: "short", day: "2-digit", month: "2-digit" }}
+			dayHeaderFormat={{ weekday: "short" }}
 			slotLabelFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
 			eventTimeFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
 			eventClassNames={() => ["!rounded-md", "!border-0"]}
@@ -214,7 +287,19 @@ export default function FullCalendarView({ mode, date, schedules, onEventClick }
 					router.push(`/lich-cong-tac/su-kien/${info.event.id}`);
 				}
 			}}
-		/>
+		// Trigger when the visible date range changes (prev/next, today, view switch)
+		datesSet={(arg) => {
+			const now = Date.now();
+			const timeSinceUserAction = now - lastUserActionTimeRef.current;
+			const isUserAction = timeSinceUserAction < 500; // 500ms window after user click
+			
+			// Only trigger parent callback if this is REAL USER navigation
+			if (onDateChange && !isProgrammaticNavigationRef.current && isUserAction) {
+				// arg.start is inclusive, arg.end is exclusive; pass both
+				onDateChange(arg.start, arg.end);
+			}
+		}}
+	/>
 
 		{hoverTip.visible && hoverTip.rect && hoverTip.content && (
 			<div

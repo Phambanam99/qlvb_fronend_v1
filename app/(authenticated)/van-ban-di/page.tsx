@@ -568,7 +568,7 @@ export default function OutgoingDocumentsPage() {
   // NOTE: Removed full-page blocking loader. Show loading only inside table panels.
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-2">
       <SearchFilters
         searchQuery={activeTab === "internal" ? internalSearchQuery : externalSearchQuery}
         setSearchQuery={activeTab === "internal" ? setInternalSearchQuery : setExternalSearchQuery}
@@ -605,11 +605,8 @@ export default function OutgoingDocumentsPage() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="internal" className="mt-6">
+        <TabsContent value="internal" className="mt-0">
           <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <h3 className="text-lg font-medium">Danh sách văn bản nội bộ đi</h3>
-            </div>
           </div>
           {isLoading || loadingDepartments ? (
             <div className="flex h-40 items-center justify-center border rounded-md">
@@ -636,7 +633,7 @@ export default function OutgoingDocumentsPage() {
           )}
         </TabsContent>
 
-        <TabsContent value="external" className="mt-6">
+        <TabsContent value="external" className="mt-0">
           {isLoading || loadingDepartments ? (
             <div className="flex h-40 items-center justify-center border rounded-md">
               <div className="flex flex-col items-center text-center py-4">

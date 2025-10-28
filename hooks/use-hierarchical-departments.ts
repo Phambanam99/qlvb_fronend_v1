@@ -35,11 +35,11 @@ export function useHierarchicalDepartments() {
       try {
         setLoading(true);
         setError(null);
-        
 
         // Test if API is working at all
 
         const response = await departmentsAPI.getAllDepartments(0, 500);
+        console.log("Fetched departments response:", response);
 
         // Handle the response structure: {message: "Success", data: {content: [...], ...}}
         let departments: DepartmentDTO[] = [];
@@ -52,23 +52,20 @@ export function useHierarchicalDepartments() {
           Array.isArray(response.data.content)
         ) {
           departments = response.data.content;
-        
         } else if (
           response &&
           (response as any).content &&
           Array.isArray((response as any).content)
         ) {
           departments = (response as any).content;
-         
         } else if (response && Array.isArray(response)) {
           departments = response as any;
         }
 
         if (departments.length > 0) {
           setAllDepartments(departments);
-         
         } else {
-                   // Fallback: Create some test departments if API returns empty
+          // Fallback: Create some test departments if API returns empty
           const fallbackDepts: DepartmentDTO[] = [
             {
               id: 1,
@@ -97,7 +94,6 @@ export function useHierarchicalDepartments() {
           setAllDepartments(fallbackDepts);
         }
       } catch (err: any) {
-      
         setError(
           `API Error: ${err.response?.status || "Unknown"} - ${err.message}`
         );
@@ -218,14 +214,14 @@ export function useHierarchicalDepartments() {
     );
   }, [flattenedDepartments, user?.departmentId]);
 
-  // Danh sách phòng ban sẽ hiển thị trong select tùy theo quyền của người dùng
+  // Danh sách phòng ban sẽ hiển thị trong select - CHỈ hiển thị phòng ban user + con
   const visibleDepartments = useMemo(() => {
-    const result = hasFullAccess
-      ? flattenedDepartments
-      : userDepartmentWithChildren;
-   
-    return result;
-  }, [hasFullAccess, flattenedDepartments, userDepartmentWithChildren, user]);
+    // LUÔN LUÔN chỉ hiển thị phòng ban của user và đơn vị con
+    if( hasFullAccess ) {
+      return flattenedDepartments;
+    }
+    return userDepartmentWithChildren;
+  }, [userDepartmentWithChildren]);
 
   // Danh sách các ID phòng ban của user (bao gồm phòng ban con)
   const userDepartmentIds = useMemo(() => {
