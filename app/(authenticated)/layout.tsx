@@ -5,7 +5,7 @@ import type React from "react";
 import { useAuth } from "@/lib/auth-context";
 import { Header } from "@/components/header";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import NotificationsProviderDynamic from "@/lib/notifications-provider.dynamic";
 
 export default function AuthenticatedLayout({
@@ -16,54 +16,39 @@ export default function AuthenticatedLayout({
   const { isAuthenticated, loading, dataLoading, setDataLoaded, user } =
     useAuth();
   const router = useRouter();
-  const [renderContent, setRenderContent] = useState(false);
+  const [initialCheckDone, setInitialCheckDone] = useState(false);
+  const hasSetDataLoaded = useRef(false);
 
+  // Redirect to login if not authenticated
   useEffect(() => {
     if (!loading && !isAuthenticated) {
       router.push("/dang-nhap");
     }
   }, [isAuthenticated, loading, router]);
 
+  // Set data loaded immediately when user is available
   useEffect(() => {
-    if (isAuthenticated && !loading && !dataLoading) {
-      setRenderContent(true);
-    } else {
-      setRenderContent(false);
+    if (isAuthenticated && user && dataLoading && !hasSetDataLoaded.current) {
+      hasSetDataLoaded.current = true;
+      setDataLoaded();
     }
-  }, [isAuthenticated, loading, dataLoading]);
+  }, [isAuthenticated, user, dataLoading, setDataLoaded]);
 
+  // Mark initial check as done once authentication completes
   useEffect(() => {
-    let timeoutId: NodeJS.Timeout | undefined;
-
-    if (isAuthenticated && user && dataLoading) {
-      try {
-        timeoutId = setTimeout(() => {
-          setDataLoaded();
-        }, 1000); 
-      } catch (error) {
-       
-        setDataLoaded();
-      }
+    if (!loading && !dataLoading) {
+      setInitialCheckDone(true);
     }
+  }, [loading, dataLoading]);
 
-    return () => {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-    };
-  }, [isAuthenticated, dataLoading, setDataLoaded, user]);
-
-  if (loading || dataLoading || !renderContent) {
+  // Only show loading screen during initial authentication check
+  if (!initialCheckDone && (loading || dataLoading)) {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
           <p className="text-sm text-muted-foreground">
-            {loading
-              ? "Đang xác thực..."
-              : dataLoading
-              ? "Đang tải dữ liệu..."
-              : "Đang chuẩn bị hiển thị..."}
+            {loading ? "Đang xác thực..." : "Đang tải dữ liệu..."}
           </p>
         </div>
       </div>

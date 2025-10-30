@@ -35,7 +35,7 @@ export function InternalDocumentsTable({
   onReadStatusToggle,
   getReadStatus,
 }: InternalDocumentsTableProps) {
-  console.log("Rendering InternalDocumentsTable with documents:", documents);
+  // console.log("Rendering InternalDocumentsTable with documents:", documents);
   return (
     <Card className="border-primary/10 shadow-sm">
       <CardContent className="p-0">

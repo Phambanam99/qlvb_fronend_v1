@@ -126,9 +126,9 @@ export default function DocumentDetailPage({
   useEffect(() => {
     // Chỉ đặt isLoading = false khi tất cả dữ liệu đã tải xong
     setLoading(
-      isDocumentLoading || isWorkflowLoading || isHistoryLoading || !user
+      isDocumentLoading || isWorkflowLoading || isHistoryLoading
     );
-  }, [isDocumentLoading, isWorkflowLoading, isHistoryLoading, user]);
+  }, [isDocumentLoading, isWorkflowLoading, isHistoryLoading]);
 
   // Fetch document data
   useEffect(() => {
@@ -140,13 +140,13 @@ export default function DocumentDetailPage({
 
   // Fetch main document data
   useEffect(() => {
-    if (!documentId || !user) return;
+    if (!documentId ) return;
 
     fetchDocument();
-  }, [documentId, user]);
+  }, [documentId]);
 
   const fetchDocument = async () => {
-    if (!documentId || !user) {
+    if (!documentId) {
       return; // Tránh gọi API khi không có ID hoặc user
     }
 

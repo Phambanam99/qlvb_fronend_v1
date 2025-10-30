@@ -39,7 +39,7 @@ export function useHierarchicalDepartments() {
         // Test if API is working at all
 
         const response = await departmentsAPI.getAllDepartments(0, 500);
-        console.log("Fetched departments response:", response);
+        // console.log("Fetched departments response:", response);
 
         // Handle the response structure: {message: "Success", data: {content: [...], ...}}
         let departments: DepartmentDTO[] = [];
