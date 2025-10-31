@@ -19,7 +19,7 @@ export function useScheduleData() {
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(0);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = useState(50);
   const [totalElements, setTotalElements] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
 
@@ -39,11 +39,13 @@ export function useScheduleData() {
     monthFilter?: string;
     yearFilter?: string;
     departmentFilter?: string;
+    scheduleScope?: string;
   }>({
     weekFilter: getCurrentWeek().toString(),
     monthFilter: "all",
     yearFilter: getCurrentYear(),
     departmentFilter: "all",
+    scheduleScope: "all",
   });
 
   // Refs to prevent infinite loops
@@ -65,6 +67,20 @@ export function useScheduleData() {
   } = useHierarchicalDepartments();
 
   const isPageVisible = usePageVisibility();
+
+  // Auto-update currentFilters when departments load and departmentFilter is still "all"
+  useEffect(() => {
+    if (
+      !loadingDepartments &&
+      visibleDepartments.length > 0 &&
+      currentFilters.departmentFilter === "all"
+    ) {
+      setCurrentFilters((prev) => ({
+        ...prev,
+        departmentFilter: visibleDepartments[0].id.toString(),
+      }));
+    }
+  }, [loadingDepartments, visibleDepartments, currentFilters.departmentFilter]);
 
   // Debug visibleDepartments to see if they're loading
   useEffect(() => {
@@ -96,7 +112,11 @@ export function useScheduleData() {
 
   // SINGLE CENTRALIZED API CALL FUNCTION - all API calls must go through this
   const fetchSchedulesWithDebounce = useCallback(
-    (params: ScheduleListParams, showToast = false) => {
+    (
+      apiCall: () => Promise<ResponseDTO<PaginatedScheduleResponse>>,
+      requestInfo: { page?: number; size?: number },
+      showToast = false
+    ) => {
       // Clear any existing timer
       if (apiDebounceTimerRef.current) {
         clearTimeout(apiDebounceTimerRef.current);
@@ -113,8 +133,7 @@ export function useScheduleData() {
         apiCallInProgressRef.current = true;
         setLoading(true);
 
-        schedulesAPI
-          .getAllSchedules(params)
+        apiCall()
           .then((response) => {
             if (response.message === "Success" && response.data) {
               const paginatedData = response.data;
@@ -126,12 +145,12 @@ export function useScheduleData() {
               setTotalPages(paginatedData.totalPages);
 
               // Only update page/size if they match the request
-              if (params.page !== undefined) {
-                setCurrentPage(params.page);
+              if (requestInfo.page !== undefined) {
+                setCurrentPage(requestInfo.page);
               }
 
-              if (params.size !== undefined) {
-                setPageSize(params.size);
+              if (requestInfo.size !== undefined) {
+                setPageSize(requestInfo.size);
               }
 
               if (showToast) {
@@ -167,6 +186,83 @@ export function useScheduleData() {
 
   // Note: Initial fetch is now handled by filters auto-applying default values
 
+  // Helper function to build API call based on filters
+  const buildApiCall = useCallback(
+    (
+      weekFilter: string | undefined,
+      monthFilter: string | undefined,
+      yearFilter: string | undefined,
+      departmentId: number | undefined,
+      page: number,
+      size: number
+    ): (() => Promise<ResponseDTO<PaginatedScheduleResponse>>) => {
+      // CHỈ GET khi có departmentId
+      if (!departmentId) {
+        // Trả về empty result nếu không có department
+        return () =>
+          Promise.resolve({
+            message: "Success",
+            success: true,
+            data: {
+              content: [],
+              pageable: { pageNumber: 0, pageSize: size, sort: [], offset: 0 },
+              totalElements: 0,
+              totalPages: 0,
+              size: size,
+              number: 0,
+              sort: [],
+              numberOfElements: 0,
+            },
+          });
+      }
+
+      // LUÔN LUÔN dùng endpoint có department
+      if (
+        weekFilter &&
+        weekFilter !== "all" &&
+        yearFilter &&
+        yearFilter !== "all"
+      ) {
+        const year = parseInt(yearFilter);
+        const week = parseInt(weekFilter);
+        return () =>
+          schedulesAPI.getSchedulesByDepartmentAndWeek(
+            departmentId,
+            year,
+            week,
+            { page, size }
+          );
+      } else if (
+        monthFilter &&
+        monthFilter !== "all" &&
+        yearFilter &&
+        yearFilter !== "all"
+      ) {
+        const year = parseInt(yearFilter);
+        const month = parseInt(monthFilter);
+        return () =>
+          schedulesAPI.getSchedulesByDepartmentAndMonth(
+            departmentId,
+            year,
+            month,
+            { page, size }
+          );
+      } else if (yearFilter && yearFilter !== "all") {
+        const year = parseInt(yearFilter);
+        return () =>
+          schedulesAPI.getSchedulesByDepartmentAndYear(departmentId, year, {
+            page,
+            size,
+          });
+      } else {
+        // Fallback: dùng getAllSchedules với departmentId filter
+        const params: ScheduleListParams = { page, size, departmentId };
+        return () => schedulesAPI.getAllSchedules(params);
+      }
+    },
+    []
+  );
+
   // Significantly simplified filter logic - now called manually via button
   const applyFilters = useCallback(
     (filters: {
@@ -174,6 +270,7 @@ export function useScheduleData() {
       monthFilter?: string;
       yearFilter?: string;
       departmentFilter?: string;
+      scheduleScope?: string;
     }) => {
       // Store current filters for pagination
       setCurrentFilters(filters);
@@ -181,100 +278,36 @@ export function useScheduleData() {
       // Reset to first page
       setCurrentPage(0);
 
-      // Build API parameters
-      const params: ScheduleListParams = {
-        page: 0,
-        size: pageSize,
-      };
+      const page = 0;
+      const size = pageSize;
 
-      // console.log("Schedule filters received:", filters);
-
-      // Helper functions để convert date filters thành date ranges
-      const getWeekDateRange = (year: number, week: number) => {
-        const startOfYear = new Date(year, 0, 1);
-        const daysToAdd = (week - 1) * 7 - startOfYear.getDay();
-        const startOfWeek = new Date(
-          startOfYear.getTime() + daysToAdd * 24 * 60 * 60 * 1000
-        );
-        const endOfWeek = new Date(
-          startOfWeek.getTime() + 6 * 24 * 60 * 60 * 1000
-        );
-
-        return {
-          fromDate: startOfWeek.toISOString().split("T")[0], // YYYY-MM-DD
-          toDate: endOfWeek.toISOString().split("T")[0],
-        };
-      };
-
-      const getMonthDateRange = (year: number, month: number) => {
-        const startOfMonth = new Date(year, month - 1, 1);
-        const endOfMonth = new Date(year, month, 0); // Last day of month
-
-        return {
-          fromDate: startOfMonth.toISOString().split("T")[0],
-          toDate: endOfMonth.toISOString().split("T")[0],
-        };
-      };
-
-      const getYearDateRange = (year: number) => {
-        return {
-          fromDate: `${year}-01-01`,
-          toDate: `${year}-12-31`,
-        };
-      };
-
-      // Determine which API endpoint to call based on date filters
-      // Priority: Week > Month > Year > General (tuần có ưu tiên cao nhất)
-      // Convert date filters to fromDate/toDate format that backend expects
-
-      // Apply date filters to params
-      if (
-        filters?.weekFilter &&
-        filters.weekFilter !== "all" &&
-        filters?.yearFilter &&
-        filters.yearFilter !== "all"
-      ) {
-        // Add week range to params
-        const year = parseInt(filters.yearFilter);
-        const week = parseInt(filters.weekFilter);
-        const { fromDate, toDate } = getWeekDateRange(year, week);
-        params.fromDate = fromDate;
-        params.toDate = toDate;
-        
-      } else if (
-        filters?.monthFilter &&
-        filters.monthFilter !== "all" &&
-        filters?.yearFilter &&
-        filters.yearFilter !== "all"
-      ) {
-        // Add month range to params
-        const year = parseInt(filters.yearFilter);
-        const month = parseInt(filters.monthFilter);
-        const { fromDate, toDate } = getMonthDateRange(year, month);
-        params.fromDate = fromDate;
-        params.toDate = toDate;
-        
-      } else if (filters?.yearFilter && filters.yearFilter !== "all") {
-        // Add year range to params
-        const year = parseInt(filters.yearFilter);
-        const { fromDate, toDate } = getYearDateRange(year);
-        params.fromDate = fromDate;
-        params.toDate = toDate;
-        
-      }
-
-      // Apply department filter with same logic as work plans
+      // Determine department filter
+      let departmentId: number | undefined;
       if (filters?.departmentFilter && filters.departmentFilter !== "all") {
-        params.departmentId = parseInt(filters.departmentFilter);
+        departmentId = parseInt(filters.departmentFilter);
       } else if (!hasFullAccess && userDepartmentIds.length > 0) {
-        // If "all" selected but user doesn't have full access, use user's department
-        params.departmentId = userDepartmentIds[0];
+        departmentId = userDepartmentIds[0];
       }
 
-      // console.log("Final schedule params:", params);
-      fetchSchedulesWithDebounce(params);
+      // Build API call using helper
+      const apiCall = buildApiCall(
+        filters?.weekFilter,
+        filters?.monthFilter,
+        filters?.yearFilter,
+        departmentId,
+        page,
+        size
+      );
+
+      fetchSchedulesWithDebounce(apiCall, { page, size });
     },
-    [fetchSchedulesWithDebounce, pageSize, hasFullAccess, userDepartmentIds]
+    [
+      fetchSchedulesWithDebounce,
+      pageSize,
+      hasFullAccess,
+      userDepartmentIds,
+      buildApiCall,
+    ]
   );
 
   // Simplified page change handler
@@ -282,90 +315,30 @@ export function useScheduleData() {
     (page: number) => {
       setCurrentPage(page);
 
-      // Build params with current filters and new page
-      const params: ScheduleListParams = {
-        page,
-        size: pageSize,
-      };
+      const size = pageSize;
 
-      // Helper functions để convert date filters thành date ranges (same as applyFilters)
-      const getWeekDateRange = (year: number, week: number) => {
-        const startOfYear = new Date(year, 0, 1);
-        const daysToAdd = (week - 1) * 7 - startOfYear.getDay();
-        const startOfWeek = new Date(
-          startOfYear.getTime() + daysToAdd * 24 * 60 * 60 * 1000
-        );
-        const endOfWeek = new Date(
-          startOfWeek.getTime() + 6 * 24 * 60 * 60 * 1000
-        );
-
-        return {
-          fromDate: startOfWeek.toISOString().split("T")[0],
-          toDate: endOfWeek.toISOString().split("T")[0],
-        };
-      };
-
-      const getMonthDateRange = (year: number, month: number) => {
-        const startOfMonth = new Date(year, month - 1, 1);
-        const endOfMonth = new Date(year, month, 0);
-
-        return {
-          fromDate: startOfMonth.toISOString().split("T")[0],
-          toDate: endOfMonth.toISOString().split("T")[0],
-        };
-      };
-
-      const getYearDateRange = (year: number) => {
-        return {
-          fromDate: `${year}-01-01`,
-          toDate: `${year}-12-31`,
-        };
-      };
-
-      // Apply current date filters
-      if (
-        currentFilters?.weekFilter &&
-        currentFilters.weekFilter !== "all" &&
-        currentFilters?.yearFilter &&
-        currentFilters.yearFilter !== "all"
-      ) {
-        const year = parseInt(currentFilters.yearFilter);
-        const week = parseInt(currentFilters.weekFilter);
-        const { fromDate, toDate } = getWeekDateRange(year, week);
-        params.fromDate = fromDate;
-        params.toDate = toDate;
-      } else if (
-        currentFilters?.monthFilter &&
-        currentFilters.monthFilter !== "all" &&
-        currentFilters?.yearFilter &&
-        currentFilters.yearFilter !== "all"
-      ) {
-        const year = parseInt(currentFilters.yearFilter);
-        const month = parseInt(currentFilters.monthFilter);
-        const { fromDate, toDate } = getMonthDateRange(year, month);
-        params.fromDate = fromDate;
-        params.toDate = toDate;
-      } else if (
-        currentFilters?.yearFilter &&
-        currentFilters.yearFilter !== "all"
-      ) {
-        const year = parseInt(currentFilters.yearFilter);
-        const { fromDate, toDate } = getYearDateRange(year);
-        params.fromDate = fromDate;
-        params.toDate = toDate;
-      }
-
-      // Apply current filters
+      // Determine department filter from current filters
+      let departmentId: number | undefined;
       if (
         currentFilters?.departmentFilter &&
         currentFilters.departmentFilter !== "all"
       ) {
-        params.departmentId = parseInt(currentFilters.departmentFilter);
+        departmentId = parseInt(currentFilters.departmentFilter);
       } else if (!hasFullAccess && userDepartmentIds.length > 0) {
-        params.departmentId = userDepartmentIds[0];
+        departmentId = userDepartmentIds[0];
       }
 
-      fetchSchedulesWithDebounce(params);
+      // Build API call using helper
+      const apiCall = buildApiCall(
+        currentFilters?.weekFilter,
+        currentFilters?.monthFilter,
+        currentFilters?.yearFilter,
+        departmentId,
+        page,
+        size
+      );
+
+      fetchSchedulesWithDebounce(apiCall, { page, size });
     },
     [
       pageSize,
@@ -373,6 +346,7 @@ export function useScheduleData() {
       currentFilters,
       hasFullAccess,
       userDepartmentIds,
+      buildApiCall,
     ]
   );
 
@@ -382,104 +356,78 @@ export function useScheduleData() {
       setPageSize(size);
       setCurrentPage(0);
 
-      // Build params with current filters and new page size
-      const params: ScheduleListParams = {
-        page: 0,
-        size,
-      };
+      const page = 0;
 
-      // Helper functions để convert date filters thành date ranges (same as applyFilters)
-      const getWeekDateRange = (year: number, week: number) => {
-        const startOfYear = new Date(year, 0, 1);
-        const daysToAdd = (week - 1) * 7 - startOfYear.getDay();
-        const startOfWeek = new Date(
-          startOfYear.getTime() + daysToAdd * 24 * 60 * 60 * 1000
-        );
-        const endOfWeek = new Date(
-          startOfWeek.getTime() + 6 * 24 * 60 * 60 * 1000
-        );
-
-        return {
-          fromDate: startOfWeek.toISOString().split("T")[0],
-          toDate: endOfWeek.toISOString().split("T")[0],
-        };
-      };
-
-      const getMonthDateRange = (year: number, month: number) => {
-        const startOfMonth = new Date(year, month - 1, 1);
-        const endOfMonth = new Date(year, month, 0);
-
-        return {
-          fromDate: startOfMonth.toISOString().split("T")[0],
-          toDate: endOfMonth.toISOString().split("T")[0],
-        };
-      };
-
-      const getYearDateRange = (year: number) => {
-        return {
-          fromDate: `${year}-01-01`,
-          toDate: `${year}-12-31`,
-        };
-      };
-
-      // Apply current date filters
-      if (
-        currentFilters?.weekFilter &&
-        currentFilters.weekFilter !== "all" &&
-        currentFilters?.yearFilter &&
-        currentFilters.yearFilter !== "all"
-      ) {
-        const year = parseInt(currentFilters.yearFilter);
-        const week = parseInt(currentFilters.weekFilter);
-        const { fromDate, toDate } = getWeekDateRange(year, week);
-        params.fromDate = fromDate;
-        params.toDate = toDate;
-      } else if (
-        currentFilters?.monthFilter &&
-        currentFilters.monthFilter !== "all" &&
-        currentFilters?.yearFilter &&
-        currentFilters.yearFilter !== "all"
-      ) {
-        const year = parseInt(currentFilters.yearFilter);
-        const month = parseInt(currentFilters.monthFilter);
-        const { fromDate, toDate } = getMonthDateRange(year, month);
-        params.fromDate = fromDate;
-        params.toDate = toDate;
-      } else if (
-        currentFilters?.yearFilter &&
-        currentFilters.yearFilter !== "all"
-      ) {
-        const year = parseInt(currentFilters.yearFilter);
-        const { fromDate, toDate } = getYearDateRange(year);
-        params.fromDate = fromDate;
-        params.toDate = toDate;
-      }
-
-      // Apply current filters
+      // Determine department filter from current filters
+      let departmentId: number | undefined;
       if (
         currentFilters?.departmentFilter &&
         currentFilters.departmentFilter !== "all"
       ) {
-        params.departmentId = parseInt(currentFilters.departmentFilter);
+        departmentId = parseInt(currentFilters.departmentFilter);
       } else if (!hasFullAccess && userDepartmentIds.length > 0) {
-        params.departmentId = userDepartmentIds[0];
+        departmentId = userDepartmentIds[0];
       }
 
-      fetchSchedulesWithDebounce(params);
+      // Build API call using helper
+      const apiCall = buildApiCall(
+        currentFilters?.weekFilter,
+        currentFilters?.monthFilter,
+        currentFilters?.yearFilter,
+        departmentId,
+        page,
+        size
+      );
+
+      fetchSchedulesWithDebounce(apiCall, { page, size });
     },
     [
       fetchSchedulesWithDebounce,
       currentFilters,
       hasFullAccess,
       userDepartmentIds,
+      buildApiCall,
     ]
   );
 
   // Simplified force refresh
   const handleForceRefresh = useCallback(() => {
     setRefreshing(true);
-    fetchSchedulesWithDebounce({ page: currentPage, size: pageSize }, true);
-  }, [currentPage, pageSize, fetchSchedulesWithDebounce]);
+
+    const page = currentPage;
+    const size = pageSize;
+
+    // Determine department filter from current filters
+    let departmentId: number | undefined;
+    if (
+      currentFilters?.departmentFilter &&
+      currentFilters.departmentFilter !== "all"
+    ) {
+      departmentId = parseInt(currentFilters.departmentFilter);
+    } else if (!hasFullAccess && userDepartmentIds.length > 0) {
+      departmentId = userDepartmentIds[0];
+    }
+
+    // Build API call using helper
+    const apiCall = buildApiCall(
+      currentFilters?.weekFilter,
+      currentFilters?.monthFilter,
+      currentFilters?.yearFilter,
+      departmentId,
+      page,
+      size
+    );
+
+    fetchSchedulesWithDebounce(apiCall, { page, size }, true);
+  }, [
+    currentPage,
+    pageSize,
+    fetchSchedulesWithDebounce,
+    currentFilters,
+    hasFullAccess,
+    userDepartmentIds,
+    buildApiCall,
+  ]);
 
   return {
     schedules,

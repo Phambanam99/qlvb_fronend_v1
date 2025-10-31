@@ -189,16 +189,11 @@ class NotificationsRealtimeClient {
   private reconnectAttempts = 0
   private token: string | null = null
   private static instance: NotificationsRealtimeClient
-  private wsBaseUrl: string
   private wsPath: string
   private debugEnabled: boolean
 
   private constructor() {
-    const envWs = process.env.NEXT_PUBLIC_WS_URL
-    const envApi = process.env.NEXT_PUBLIC_API_URL
-    // Prefer explicit WS base; else derive from API URL by removing trailing /api; else default
-    const derived = envApi ? envApi.replace(/\/?api\/?$/i, '') : undefined
-    this.wsBaseUrl = envWs || derived || 'http://localhost:8080'
+  
     // Allow overriding WS path (default '/ws')
     this.wsPath = process.env.NEXT_PUBLIC_WS_PATH || '/ws'
     // Enable verbose STOMP debug logs with env flag
@@ -214,21 +209,36 @@ class NotificationsRealtimeClient {
 
   public connect(token: string) {
     if (this.stompClient?.connected) {
-      // console.log('🔗 STOMP client already connected')
       return
     }
-
-    // console.log('🚀 Connecting to WebSocket...')
-    // console.log('📍 Backend URL:', this.baseUrl)
-    // console.log('🔑 Token (first 30 chars):', token.substring(0, 30) + '...')
-
     this.token = token
 
-    // Prefer native WebSocket STOMP directly to backend; no SockJS (avoids /ws/info 404)
-    const qp = '' // append query only if backend requires; headers are preferred
-    const wsSchemeBase = this.wsBaseUrl.replace(/^http(s?):/, 'ws$1:')
+   // 1. Kiểm tra xem có đang ở trình duyệt không
+    if (typeof window === 'undefined') {
+        console.error("WebSocket connect() chỉ có thể được gọi từ trình duyệt.");
+        return;
+    }
+
+    // 2. Lấy host và protocol động từ trình duyệt
+    // window.location.host sẽ là "192.168.88.130" HOẶC "129.100.8.88"
+    const host_ = window.location.host 
+    //convert to port 8080 for backend 
+    const host = host_.includes(':') ? host_.split(':')[0] + ':8080' : host_ + ':8080' 
+    console.log('🏠 Detected host:', host)
+    // window.location.protocol sẽ là "http:" (hoặc "https:" nếu bạn dùng SSL)
+    const protocol = window.location.protocol
+
+    // 3. Chuyển đổi http: -> ws: hoặc https: -> wss:
+    const wsScheme = protocol === 'https:' ? 'wss:' : 'ws:'
+    
+    // 4. Lấy đường dẫn (path)
     const path = this.wsPath.startsWith('/') ? this.wsPath : `/${this.wsPath}`
-    const brokerURL = `${wsSchemeBase}${path}${qp}`
+    
+    // 5. Tạo URL động hoàn chỉnh
+    // Ví dụ: "ws://192.168.88.130/ws" hoặc "ws://129.100.8.88/ws"
+    const brokerURL = `${wsScheme}//${host}${path}`
+    console.log(' Constructed WebSocket URL:', brokerURL)
+    // === KẾT THÚC PHẦN THAY ĐỔI ===
 
     if (this.debugEnabled) {
       console.log('[WS] Connecting to brokerURL:', brokerURL)

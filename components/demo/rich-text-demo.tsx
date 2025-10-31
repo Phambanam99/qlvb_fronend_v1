@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import RichTextEditorDynamic from "@/components/ui/rich-text-editor.dynamic";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -57,7 +57,7 @@ export default function RichTextDemo() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <RichTextEditor
+      <RichTextEditorDynamic
               content={content}
               onChange={setContent}
               placeholder="Nhập nội dung ở đây..."
@@ -91,7 +91,7 @@ export default function RichTextDemo() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <RichTextEditor
+            <RichTextEditorDynamic
               content={simpleContent}
               onChange={setSimpleContent}
               placeholder="Bắt đầu viết nội dung của bạn..."
@@ -125,7 +125,7 @@ export default function RichTextDemo() {
             <pre className="text-sm">
               {`const [content, setContent] = useState('');
 
-<RichTextEditor
+              <RichTextEditorDynamic
   content={content}
   onChange={setContent}
   placeholder="Nhập nội dung..."

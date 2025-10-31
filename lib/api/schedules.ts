@@ -26,6 +26,7 @@ export interface ScheduleDTO {
   departmentName: string;
   period: string;
   status: string;
+  visibility?: string;
   createdById: number;
   createdByName: string;
   approvedById?: number;
@@ -68,7 +69,8 @@ export interface ScheduleListParams {
   departmentId?: number;
   // Date filtering parameters - backend uses fromDate/toDate
   fromDate?: string; // format: YYYY-MM-DD
-  toDate?: string;   // format: YYYY-MM-DD
+  toDate?: string; // format: YYYY-MM-DD
+  visibility?: string; // PERSONAL to fetch only personal schedules
 }
 
 export const schedulesAPI = {
@@ -80,8 +82,24 @@ export const schedulesAPI = {
   getAllSchedules: async (
     params?: ScheduleListParams
   ): Promise<ResponseDTO<PaginatedScheduleResponse>> => {
-    logger.api("GET", "/schedules", params);
-    const response = await api.get("/schedules", { params });
+    // Filter out null/undefined values to avoid sending "null" as string
+    const cleanParams: Record<string, any> = {};
+    if (params) {
+      if (params.page !== undefined) cleanParams.page = params.page;
+      if (params.size !== undefined) cleanParams.size = params.size;
+      if (params.sort) cleanParams.sort = params.sort;
+      if (params.search) cleanParams.search = params.search;
+      if (params.status) cleanParams.status = params.status;
+      if (params.departmentId !== undefined && params.departmentId !== null) {
+        cleanParams.departmentId = params.departmentId;
+      }
+      if (params.fromDate) cleanParams.fromDate = params.fromDate;
+      if (params.toDate) cleanParams.toDate = params.toDate;
+      if (params.visibility) cleanParams.visibility = params.visibility;
+    }
+
+    logger.api("GET", "/schedules", cleanParams);
+    const response = await api.get("/schedules", { params: cleanParams });
     logger.debug("getAllSchedules response", {
       count: response.data?.data?.content?.length,
       totalElements: response.data?.data?.totalElements,
@@ -103,7 +121,10 @@ export const schedulesAPI = {
     params?: { page?: number; size?: number }
   ): Promise<ResponseDTO<PaginatedScheduleResponse>> => {
     logger.api("GET", `/schedules/week/${year}/${week}`, params);
-    const response = await api.get(`/schedules/week/${year}/${week}`, { params });
+    const response = await api.get(`/schedules/week/${year}/${week}`, {
+      params,
+    });
+    console.log("[schedulesAPI getSchedulesByWeek] response", response.data);
     return response.data;
   },
 
@@ -120,7 +141,9 @@ export const schedulesAPI = {
     params?: { page?: number; size?: number }
   ): Promise<ResponseDTO<PaginatedScheduleResponse>> => {
     logger.api("GET", `/schedules/month/${year}/${month}`, params);
-    const response = await api.get(`/schedules/month/${year}/${month}`, { params });
+    const response = await api.get(`/schedules/month/${year}/${month}`, {
+      params,
+    });
     return response.data;
   },
 
@@ -153,8 +176,15 @@ export const schedulesAPI = {
     week: number,
     params?: { page?: number; size?: number }
   ): Promise<ResponseDTO<PaginatedScheduleResponse>> => {
-    logger.api("GET", `/schedules/department/${departmentId}/week/${year}/${week}`, params);
-    const response = await api.get(`/schedules/department/${departmentId}/week/${year}/${week}`, { params });
+    logger.api(
+      "GET",
+      `/schedules/department/${departmentId}/week/${year}/${week}`,
+      params
+    );
+    const response = await api.get(
+      `/schedules/department/${departmentId}/week/${year}/${week}`,
+      { params }
+    );
     return response.data;
   },
 
@@ -172,8 +202,15 @@ export const schedulesAPI = {
     month: number,
     params?: { page?: number; size?: number }
   ): Promise<ResponseDTO<PaginatedScheduleResponse>> => {
-    logger.api("GET", `/schedules/department/${departmentId}/month/${year}/${month}`, params);
-    const response = await api.get(`/schedules/department/${departmentId}/month/${year}/${month}`, { params });
+    logger.api(
+      "GET",
+      `/schedules/department/${departmentId}/month/${year}/${month}`,
+      params
+    );
+    const response = await api.get(
+      `/schedules/department/${departmentId}/month/${year}/${month}`,
+      { params }
+    );
     return response.data;
   },
 
@@ -189,8 +226,15 @@ export const schedulesAPI = {
     year: number,
     params?: { page?: number; size?: number }
   ): Promise<ResponseDTO<PaginatedScheduleResponse>> => {
-    logger.api("GET", `/schedules/department/${departmentId}/year/${year}`, params);
-    const response = await api.get(`/schedules/department/${departmentId}/year/${year}`, { params });
+    logger.api(
+      "GET",
+      `/schedules/department/${departmentId}/year/${year}`,
+      params
+    );
+    const response = await api.get(
+      `/schedules/department/${departmentId}/year/${year}`,
+      { params }
+    );
     return response.data;
   },
 
@@ -266,8 +310,16 @@ export const schedulesAPI = {
   getScheduleEvents: async (
     params: ScheduleEventParams
   ): Promise<ScheduleEventDTO[]> => {
-    logger.api("GET", "/schedules/events", params);
-    const response = await api.get("/schedules/events", { params });
+    // Filter out null/undefined values to avoid sending "null" as string
+    const cleanParams: Record<string, string> = {};
+    if (params.date) cleanParams.date = params.date;
+    if (params.excludeId) cleanParams.excludeId = params.excludeId;
+    if (params.departmentId) cleanParams.departmentId = params.departmentId;
+
+    logger.api("GET", "/schedules/events", cleanParams);
+    const response = await api.get("/schedules/events", {
+      params: cleanParams,
+    });
     logger.debug("getScheduleEvents response", {
       count: response.data?.length,
     });

@@ -17,7 +17,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
-import { Loader2, InfoIcon } from "lucide-react";
+import { Loader2, InfoIcon, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import Link from "next/link";
@@ -31,24 +31,25 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [sessionExpired, setSessionExpired] = useState(false);
   const [showAdminNotice, setShowAdminNotice] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   // Hiển thị thông báo liên hệ Admin lần đầu truy cập trang đăng nhập
-  useEffect(() => {
-    try {
-      const flag = typeof window !== 'undefined' ? localStorage.getItem('qlvb:firstLoginNoticeShown') : '1';
-      if (!flag) {
-        setShowAdminNotice(true);
-        // Tự ẩn sau 10s
-        const timer = setTimeout(() => {
-          setShowAdminNotice(false);
-          localStorage.setItem('qlvb:firstLoginNoticeShown', '1');
-        }, 10000);
-        return () => clearTimeout(timer);
-      }
-    } catch (e) {
-      // ignore storage errors
-    }
-  }, []);
+  // useEffect(() => {
+  //   try {
+  //     const flag = typeof window !== 'undefined' ? localStorage.getItem('qlvb:firstLoginNoticeShown') : '1';
+  //     if (!flag) {
+  //       setShowAdminNotice(true);
+  //       // Tự ẩn sau 10s
+  //       const timer = setTimeout(() => {
+  //         setShowAdminNotice(false);
+  //         localStorage.setItem('qlvb:firstLoginNoticeShown', '1');
+  //       }, 10000);
+  //       return () => clearTimeout(timer);
+  //     }
+  //   } catch (e) {
+  //     // ignore storage errors
+  //   }
+  // }, []);
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -117,14 +118,6 @@ export default function LoginPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {showAdminNotice && (
-              <Alert className="mb-4 animate-in fade-in slide-in-from-top-1">
-                <InfoIcon className="h-4 w-4" />
-                <AlertDescription>
-                  Sau khi đăng nhập lần đầu, vui lòng liên hệ <span className="font-medium">Admin (Đ/c Hiếu/PTM – Trợ lý KHQS; Đ/c Nam – Phòng 7)</span> để được cập nhật / chuẩn hóa chức vụ và phòng ban.
-                </AlertDescription>
-              </Alert>
-            )}
             {sessionExpired && (
               <Alert className="mb-4">
                 <InfoIcon className="h-4 w-4" />
@@ -149,15 +142,27 @@ export default function LoginPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password">Mật khẩu</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Nhập mật khẩu"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  disabled={isLoading}
-                />
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Nhập mật khẩu"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    disabled={isLoading}
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    className="absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground hover:text-foreground"
+                    tabIndex={-1}
+                    aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">

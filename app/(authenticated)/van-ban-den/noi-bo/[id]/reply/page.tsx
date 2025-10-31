@@ -35,7 +35,7 @@ import { useNotifications } from "@/lib/notifications-context";
 import { useToast } from "@/components/ui/use-toast";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import RichTextEditorDynamic from "@/components/ui/rich-text-editor.dynamic";
 import { DatePicker } from "@/components/ui/date-picker";
 import {
   Select,
@@ -536,7 +536,7 @@ export default function ReplyInternalDocumentPage() {
   }
 
   return (
-    <div className="container mx-auto py-8 max-w-7xl px-4 sm:px-6 lg:px-8">
+    <div className="container mx-auto py-8 w-full px-4 sm:px-6 lg:px-8">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-2">
           <Button variant="outline" size="icon" asChild>
@@ -544,9 +544,7 @@ export default function ReplyInternalDocumentPage() {
               <ArrowLeft className="h-4 w-4" />
             </Link>
           </Button>
-          <h1 className="text-2xl font-bold tracking-tight text-primary">
-            Trả lời văn bản nội bộ
-          </h1>
+         
         </div>
         <div className="flex items-center space-x-2">
           <Button
@@ -579,7 +577,7 @@ export default function ReplyInternalDocumentPage() {
         </div>
       </div>
 
-      <div className="space-y-6">
+      <div className="space-y-2">
         {/* Original Document Card */}
         <Card>
           <CardHeader className="bg-secondary/10 border-b">
@@ -587,7 +585,6 @@ export default function ReplyInternalDocumentPage() {
               <MessageSquare className="h-5 w-5" />
               Văn bản gốc
             </CardTitle>
-            <CardDescription>Thông tin văn bản đang trả lời</CardDescription>
           </CardHeader>
           <CardContent className="pt-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -646,16 +643,10 @@ export default function ReplyInternalDocumentPage() {
           <Card>
             <CardHeader className="bg-primary/5 border-b">
               <CardTitle>Thông tin văn bản trả lời</CardTitle>
-              <CardDescription>
-                Nhập thông tin cho văn bản trả lời
-              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-8 pt-6">
               {/* Basic Information Section */}
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-primary border-b pb-2">
-                  Thông tin cơ bản
-                </h3>
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="documentNumber">
@@ -1042,7 +1033,7 @@ export default function ReplyInternalDocumentPage() {
                 <Label htmlFor="summary">
                   Nội dung trả lời <span className="text-red-500">*</span>
                 </Label>
-                <RichTextEditor
+                <RichTextEditorDynamic
                   content={formData.summary}
                   onChange={handleRichTextChange("summary")}
                   placeholder="Nhập nội dung trả lời"
@@ -1059,7 +1050,7 @@ export default function ReplyInternalDocumentPage() {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="notes">Ghi chú</Label>
-                  <RichTextEditor
+                  <RichTextEditorDynamic
                     content={formData.notes}
                     onChange={handleRichTextChange("notes")}
                     placeholder="Nhập ghi chú (nếu có)"

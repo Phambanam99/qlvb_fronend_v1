@@ -77,7 +77,7 @@ export function useInternalDocuments({
         // Sử dụng API mới theo year/month nếu có, fallback về getSentDocuments
         if (year) {
           response_ = await getSentDocumentsByYear(year, month, page, size);
-          // console.log("Fetch by year/month:", year, month, response_);
+          console.log("Fetch by year/month:", year, month, response_);
         } else {
           response_ = await getSentDocuments(page, size);
           // console.log("Fetch all sent documents:", response_);

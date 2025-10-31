@@ -19,13 +19,13 @@ const utilities = [
     icon: FileText,
     color: "bg-red-100 text-red-600",
   },
-  {
-    title: "Chữ ký số",
-    description: "Quản lý và sử dụng chữ ký số để ký tài liệu PDF",
-    href: "/tien-ich/chu-ky-so",
-    icon: PenSquare,
-    color: "bg-green-100 text-green-600",
-  },
+  // {
+  //   title: "Chữ ký số",
+  //   description: "Quản lý và sử dụng chữ ký số để ký tài liệu PDF",
+  //   href: "/tien-ich/chu-ky-so",
+  //   icon: PenSquare,
+  //   color: "bg-green-100 text-green-600",
+  // },
   // Có thể thêm các tiện ích khác trong tương lai
   // {
   //   title: "Tách File PDF",

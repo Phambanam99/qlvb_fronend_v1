@@ -1,3 +1,4 @@
+import "@/lib/polyfills"
 import type React from "react"
 import "./globals.css"
 import type { Metadata } from "next"
@@ -38,7 +39,7 @@ export default function RootLayout({
                   </div>
 
                   {/* Content container */}
-                  <main className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-4 pt-0 ">
+                  <main className="relative  w-screen min-h-screen overflow-x-hidden">
                     {children}
                   </main>
                   <Toaster />

@@ -19,7 +19,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/lib/auth-context";
 import { useNotifications } from "@/lib/notifications-context";
-import { Loader2, Save } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { Loader2, Save, Eye, EyeOff } from "lucide-react";
 import { usersAPI } from "@/lib/api/users";
 import UserProfileForm from "@/components/user-profile-form";
 
@@ -28,6 +29,34 @@ export default function ProfilePage() {
   const { addNotification } = useNotifications();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
+  // Inline errors for password change form
+  const [currentPasswordError, setCurrentPasswordError] = useState<string | null>(null);
+  const [newPasswordError, setNewPasswordError] = useState<string | null>(null);
+  const [confirmPasswordError, setConfirmPasswordError] = useState<string | null>(null);
+  // visibility toggles
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  const { toast } = useToast();
+
+  // Helper: show browser notification (only on demand to avoid spamming permission dialog)
+  const showBrowserNotification = (title: string, body: string) => {
+    if (typeof window === 'undefined') return;
+    if (!('Notification' in window)) return; // Browser not support
+    const spawn = () => {
+      try {
+        new Notification(title, { body });
+      } catch {}
+    };
+    if (Notification.permission === 'granted') {
+      spawn();
+    } else if (Notification.permission !== 'denied') {
+      Notification.requestPermission().then(p => {
+        if (p === 'granted') spawn();
+      }).catch(()=>{});
+    }
+  };
 
   const handleUpdateProfile = async (profileData: any) => {
     const updateProfile = {
@@ -73,6 +102,10 @@ export default function ProfilePage() {
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    // reset inline errors
+    setCurrentPasswordError(null);
+    setNewPasswordError(null);
+    setConfirmPasswordError(null);
 
     try {
       // Lấy giá trị mật khẩu từ form
@@ -83,22 +116,14 @@ export default function ProfilePage() {
 
       // Kiểm tra mật khẩu mới và xác nhận mật khẩu có khớp không
       if (newPassword !== confirmPassword) {
-        addNotification({
-          title: "Lỗi xác nhận mật khẩu",
-          message: "Mật khẩu mới và xác nhận mật khẩu không khớp nhau.",
-          type: "error",
-        });
+        setConfirmPasswordError("Mật khẩu xác nhận không khớp");
         setIsSubmitting(false);
         return;
       }
 
       // Kiểm tra độ mạnh của mật khẩu
       if (newPassword.length < 8) {
-        addNotification({
-          title: "Mật khẩu không đủ mạnh",
-          message: "Mật khẩu mới phải có ít nhất 8 ký tự.",
-          type: "error",
-        });
+        setNewPasswordError("Mật khẩu phải có ít nhất 8 ký tự");
         setIsSubmitting(false);
         return;
       }
@@ -111,11 +136,7 @@ export default function ProfilePage() {
         );
         const valid = data_.valid;
         if (!valid) {
-          addNotification({
-            title: "Mật khẩu hiện tại không đúng",
-            message: "Vui lòng nhập đúng mật khẩu hiện tại của bạn.",
-            type: "error",
-          });
+          setCurrentPasswordError("Mật khẩu hiện tại không đúng");
           setIsSubmitting(false);
           return;
         }
@@ -127,11 +148,20 @@ export default function ProfilePage() {
         formElement.reset();
 
         // Thông báo thành công
+        // Toast (nếu hoạt động)
+        toast({
+          title: "Đổi mật khẩu thành công",
+          description: "Mật khẩu của bạn đã được thay đổi thành công.",
+          variant: "success",
+        });
+        // Fallback thêm thông báo hệ thống
         addNotification({
           title: "Đổi mật khẩu thành công",
           message: "Mật khẩu của bạn đã được thay đổi thành công.",
           type: "success",
         });
+        // Browser notification
+        showBrowserNotification("Đổi mật khẩu thành công", "Mật khẩu của bạn đã được thay đổi.");
       }
     } catch (error) {
       addNotification({
@@ -210,6 +240,8 @@ export default function ProfilePage() {
                 <CardContent>
                   <UserProfileForm 
                     user={user}
+                    roles={[]}
+                    departments={[]}
                     onSubmit={handleUpdateProfile}
                     saving={isUpdatingProfile}
                     isProfileEdit={true}
@@ -231,17 +263,77 @@ export default function ProfilePage() {
                       <Label htmlFor="current-password">
                         Mật khẩu hiện tại
                       </Label>
-                      <Input id="current-password" type="password" required />
+                      <div className="relative">
+                        <Input 
+                          id="current-password" 
+                          type={showCurrentPassword ? "text" : "password"} 
+                          required 
+                          className={currentPasswordError ? "pr-10 border-red-500 focus-visible:ring-red-500" : "pr-10"}
+                          onChange={() => currentPasswordError && setCurrentPasswordError(null)}
+                        />
+                        <button
+                          type="button"
+                          aria-label={showCurrentPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                          className="absolute inset-y-0 right-0 flex items-center px-2 text-muted-foreground hover:text-foreground"
+                          onClick={() => setShowCurrentPassword(v => !v)}
+                          tabIndex={-1}
+                        >
+                          {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
+                      {currentPasswordError && (
+                        <p className="text-xs text-red-600">{currentPasswordError}</p>
+                      )}
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="new-password">Mật khẩu mới</Label>
-                      <Input id="new-password" type="password" required />
+                      <div className="relative">
+                        <Input 
+                          id="new-password" 
+                          type={showNewPassword ? "text" : "password"} 
+                          required 
+                          className={newPasswordError ? "pr-10 border-red-500 focus-visible:ring-red-500" : "pr-10"}
+                          onChange={() => newPasswordError && setNewPasswordError(null)}
+                        />
+                        <button
+                          type="button"
+                          aria-label={showNewPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                          className="absolute inset-y-0 right-0 flex items-center px-2 text-muted-foreground hover:text-foreground"
+                          onClick={() => setShowNewPassword(v => !v)}
+                          tabIndex={-1}
+                        >
+                          {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
+                      {newPasswordError && (
+                        <p className="text-xs text-red-600">{newPasswordError}</p>
+                      )}
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="confirm-password">
                         Xác nhận mật khẩu mới
                       </Label>
-                      <Input id="confirm-password" type="password" required />
+                      <div className="relative">
+                        <Input 
+                          id="confirm-password" 
+                          type={showConfirmPassword ? "text" : "password"} 
+                          required 
+                          className={confirmPasswordError ? "pr-10 border-red-500 focus-visible:ring-red-500" : "pr-10"}
+                          onChange={() => confirmPasswordError && setConfirmPasswordError(null)}
+                        />
+                        <button
+                          type="button"
+                          aria-label={showConfirmPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                          className="absolute inset-y-0 right-0 flex items-center px-2 text-muted-foreground hover:text-foreground"
+                          onClick={() => setShowConfirmPassword(v => !v)}
+                          tabIndex={-1}
+                        >
+                          {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
+                      {confirmPasswordError && (
+                        <p className="text-xs text-red-600">{confirmPasswordError}</p>
+                      )}
                     </div>
                   </CardContent>
                   <CardFooter>

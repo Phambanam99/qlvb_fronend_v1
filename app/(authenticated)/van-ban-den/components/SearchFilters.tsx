@@ -6,6 +6,7 @@
 import { Search, X, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import HomePage from '../../page';
 import {
   Select,
   SelectContent,
@@ -136,7 +137,6 @@ export function SearchFilters({
             disabled={!searchQuery.trim()}
           >
             <Search className="h-4 w-4 mr-1" />
-            Tìm kiếm
           </Button>
           
           {activeSearchQuery && (
@@ -175,7 +175,6 @@ export function SearchFilters({
           {activeTab === "internal" && (
             <>
               <div className="flex items-center space-x-2">
-                <span className="text-sm font-medium whitespace-nowrap">Năm:</span>
                 <Select
                   value={yearFilter?.toString() || ""}
                   onValueChange={(value: string) => onYearFilterChange?.(value ? Number(value) : currentYear)}
@@ -194,7 +193,6 @@ export function SearchFilters({
               </div>
               
               <div className="flex items-center space-x-2">
-                <span className="text-sm font-medium whitespace-nowrap">Tháng:</span>
                 <Select
                   value={monthFilter?.toString() || "all"}
                   onValueChange={(value: string) => onMonthFilterChange?.(value === "all" ? undefined : Number(value))}
@@ -220,23 +218,21 @@ export function SearchFilters({
                 className="whitespace-nowrap bg-primary hover:bg-primary/90"
               >
                 <Filter className="h-4 w-4 mr-1" />
-                Áp dụng
               </Button>
+                        <Button 
+                variant="outline" 
+                
+            onClick={onClearFilters}
+            size="sm"
+                className="whitespace-nowrap bg-primary hover:bg-primary/90"
+          >
+            <X className="h-4 w-4 mr-2" />
+          </Button>
             </>
           )}
         </div>
 
-        {/* Right side: Clear filters button */}
-        <div className="flex w-full sm:w-auto items-center space-x-2">
-          <Button 
-            variant="outline" 
-            onClick={onClearFilters}
-            className="border-primary/20 hover:bg-primary/10"
-          >
-            <X className="h-4 w-4 mr-2" />
-            Xóa bộ lọc
-          </Button>
-        </div>
+        
       </div>
 
       {/* Search Status Indicator */}

@@ -7,7 +7,8 @@ import { useScheduleFilters } from "@/hooks/use-schedule-filters";
 import { ScheduleHeader } from "@/components/schedule/schedule-header";
 import { ScheduleFilters } from "@/components/schedule/schedule-filters";
 import { ScheduleTabs } from "@/components/schedule/schedule-tabs";
-import { useState } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { getISOWeek, getISOWeekYear } from "date-fns";
 
 export default function SchedulesPage() {
   // Custom hooks for data management
@@ -54,50 +55,128 @@ export default function SchedulesPage() {
     loadingDepartments,
   });
 
-  // Helper functions
-  const getStatusBadge = (status: string) => {
-    const simplifiedStatus = getSimplifiedStatus(status);
 
-    switch (simplifiedStatus) {
-      case "chua_dien_ra":
-        return <Badge variant="secondary">Chưa diễn ra</Badge>;
-      case "dang_thuc_hien":
-        return <Badge variant="default">Đang thực hiện</Badge>;
-      case "da_thuc_hien":
-        return (
-          <Badge className="bg-green-500 hover:bg-green-600 text-white">
-            Đã thực hiện
-          </Badge>
-        );
-      default:
-        return <Badge variant="outline">Không xác định</Badge>;
-    }
-  };
-
-  const getSchedulesByStatus = (status: string) => {
-    return schedules.filter(
-      (schedule) => getSimplifiedStatus(schedule.status) === status
-    );
-  };
 
   // View mode and computed date from filters
   const [viewMode, setViewMode] = useState<"week" | "month" | "table">("week");
-  const computeDateFromFilters = () => {
-    const yearNum = parseInt(yearFilter || "" + new Date().getFullYear());
-    if (viewMode === "week" && weekFilter && weekFilter !== "all") {
-      const weekNum = parseInt(weekFilter);
-      const jan1 = new Date(yearNum, 0, 1);
-      const jan1Day = jan1.getDay() || 7;
-      const daysOffset = (weekNum - 1) * 7 - (jan1Day - 1);
-      return new Date(yearNum, 0, 1 + daysOffset);
+  const [scheduleScope, setScheduleScope] = useState<'all' | 'personal'>('all');
+  
+  // Track calendar display date independently to avoid race conditions with filter state
+  const [calendarDisplayDate, setCalendarDisplayDate] = useState<Date>(() => {
+    // Initialize to current week's Monday
+    const now = new Date();
+    const day = now.getDay();
+    const diff = now.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
+    return new Date(now.setDate(diff));
+  });
+
+  // Track previous scope/department to avoid re-fetching on navigation filter changes
+  const prevScopeRef = useRef(scheduleScope);
+  const prevDepartmentRef = useRef(departmentFilter);
+
+  // Chỉ refetch khi thay đổi scope (all/personal). Điều hướng tuần/tháng xử lý riêng.
+  useEffect(() => {
+    if (prevScopeRef.current !== scheduleScope) {
+      prevScopeRef.current = scheduleScope;
+      applyFilters({
+        weekFilter,
+        monthFilter,
+        yearFilter,
+        departmentFilter,
+        scheduleScope,
+      });
     }
-    if (viewMode === "month" && monthFilter && monthFilter !== "all") {
-      const monthNum = parseInt(monthFilter);
-      return new Date(yearNum, monthNum - 1, 1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scheduleScope]);
+
+  // Auto apply khi đổi đơn vị (departmentFilter)
+  useEffect(() => {
+    if (!departmentFilter) return;
+    if (prevDepartmentRef.current !== departmentFilter) {
+      prevDepartmentRef.current = departmentFilter;
+      applyFilters({
+        weekFilter,
+        monthFilter,
+        yearFilter,
+        departmentFilter,
+        scheduleScope,
+      });
     }
-    return new Date();
-  };
-  const selectedDate = computeDateFromFilters();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [departmentFilter]);
+
+  // Handle calendar navigation: compute corresponding week/month + year, update filters then fetch
+  // Track last applied visible range to suppress duplicate or oscillating fetches
+  const lastRangeRef = useRef<{start:number;end:number;mode:'week'|'month'} | null>(null);
+
+  const handleDateRangeChange = useCallback((start: Date, end: Date, mode: 'week' | 'month') => {
+    const startMs = start.getTime();
+    const endMs = end.getTime();
+    if (lastRangeRef.current &&
+        lastRangeRef.current.start === startMs &&
+        lastRangeRef.current.end === endMs &&
+        lastRangeRef.current.mode === mode) {
+      return; // identical range already handled
+    }
+    const startDate = new Date(start);
+    if (mode === 'week') {
+      // Use date-fns ISO week helpers for consistency with backend expectations
+      const weekNo = getISOWeek(startDate);
+      const isoYear = getISOWeekYear(startDate).toString();
+      
+      // Guard: if nothing actually changes, skip to avoid loops
+      if (
+        weekFilter === String(weekNo) &&
+        yearFilter === isoYear &&
+        monthFilter === 'all'
+      ) {
+        lastRangeRef.current = {start:startMs,end:endMs,mode};
+        return;
+      }
+      
+      setCalendarDisplayDate(startDate); // Update display date immediately
+      setYearFilter(isoYear);
+      setWeekFilter(String(weekNo));
+      setMonthFilter('all');
+      applyFilters({
+        weekFilter: String(weekNo),
+        monthFilter: 'all',
+        yearFilter: isoYear,
+        departmentFilter,
+        scheduleScope,
+      });
+      lastRangeRef.current = {start:startMs,end:endMs,mode};
+    } else if (mode === 'month') {
+      // FullCalendar month view's visible range start (activeStart) thường là cuối/tháng trước.
+      // Lấy midpoint của khoảng (start..end) để chắc chắn nằm trong tháng thực sự.
+      const midTime = start.getTime() + (end.getTime() - start.getTime()) / 2;
+      const midDate = new Date(midTime);
+      const realMonth = (midDate.getMonth() + 1).toString();
+      const realYear = midDate.getFullYear().toString();
+      
+      if (
+        monthFilter === realMonth &&
+        yearFilter === realYear &&
+        weekFilter === 'all'
+      ) {
+        lastRangeRef.current = {start:startMs,end:endMs,mode};
+        return; // Không thay đổi gì → tránh vòng lặp & double shift cảm giác
+      }
+      
+      setCalendarDisplayDate(midDate); // Update display date immediately
+      setYearFilter(realYear);
+      setMonthFilter(realMonth);
+      setWeekFilter('all');
+      applyFilters({
+        weekFilter: 'all',
+        monthFilter: realMonth,
+        yearFilter: realYear,
+        departmentFilter,
+        scheduleScope,
+      });
+      lastRangeRef.current = {start:startMs,end:endMs,mode};
+    }
+  }, [applyFilters, departmentFilter, scheduleScope, setWeekFilter, setMonthFilter, setYearFilter, weekFilter, monthFilter, yearFilter]);
 
   return (
     <div className="space-y-6">
@@ -115,37 +194,44 @@ export default function SchedulesPage() {
       )}
 
       <ScheduleFilters
-        // Date filters
         weekFilter={weekFilter}
         onWeekFilterChange={setWeekFilter}
         monthFilter={monthFilter}
         onMonthFilterChange={setMonthFilter}
         yearFilter={yearFilter}
         onYearFilterChange={setYearFilter}
-        
-        // Existing filters
         departmentFilter={departmentFilter}
         onDepartmentFilterChange={setDepartmentFilter}
         visibleDepartments={visibleDepartments}
         loadingDepartments={loadingDepartments}
         onApplyFilters={handleApplyFilters}
         isFiltering={isFiltering}
+        hideDateFilters
+        autoApply
       />
 
       {/* View mode toggler for Week/Month */}
-      <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as any)}>
-        <TabsList>
-          <TabsTrigger value="week">Tuần</TabsTrigger>
-          <TabsTrigger value="month">Tháng</TabsTrigger>
-          <TabsTrigger value="table">Danh sách</TabsTrigger>
-        </TabsList>
-      </Tabs>
+      <div className="flex items-center gap-4 flex-wrap">
+        <Tabs value={scheduleScope} onValueChange={(v) => setScheduleScope(v as any)}>
+          <TabsList>
+            <TabsTrigger value="all">Tất cả</TabsTrigger>
+            <TabsTrigger value="personal">Cá nhân</TabsTrigger>
+          </TabsList>
+        </Tabs>
+        <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as any)}>
+          <TabsList>
+            <TabsTrigger value="week">Tuần</TabsTrigger>
+            <TabsTrigger value="month">Tháng</TabsTrigger>
+            <TabsTrigger value="table">Danh sách</TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
 
       <ScheduleTabs
         schedules={schedules}
         isLoading={loading}
         viewMode={viewMode}
-        date={selectedDate}
+        date={calendarDisplayDate}
         departmentFilter={departmentFilter}
         currentPage={currentPage}
         pageSize={pageSize}
@@ -153,6 +239,7 @@ export default function SchedulesPage() {
         totalPages={totalPages}
         onPageChange={handlePageChange}
         onPageSizeChange={handlePageSizeChange}
+        onDateRangeChange={handleDateRangeChange}
       />
     </div>
   );

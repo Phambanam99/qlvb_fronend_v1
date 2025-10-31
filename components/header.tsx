@@ -160,11 +160,10 @@ export const Header = () => {
   return (
     <header className="sticky top-0 z-50 w-full  bg-gradient-to-r from-orange-400 via-orange-600 to-red-500 text-white shadow-md ">
       <div className="bg-[url('/header.png')]  bg-cover bg-center h-32 ">
-          <div className="absolute bottom-0 flex h-13 items-center px-2 mb-1 w-full">
+          <div className="absolute bottom-0 flex h-13 items-center px-2 mb-1 w-full px-6">
         {/* Logo */}
         <div className="mr-6">
           <Link href="/" className="flex items-center space-x-2">
-            <FileText className="h-6 w-6 text-white drop-shadow-sm" />
             <span className="font-bold text-lg text-white hidden md:block tracking-tight">
               Quản lý Văn bản
             </span>

@@ -76,6 +76,7 @@ export default function CreateSchedulePage() {
   const [endDate, setEndDate] = useState<Date>();
   const [scheduleItems, setScheduleItems] = useState<any[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [visibility, setVisibility] = useState<"PUBLIC" | "PERSONAL">("PUBLIC");
 
   // Dữ liệu mẫu cho phòng ban
   const [departments, setDepartments] = useState<any[]>([]);
@@ -86,6 +87,9 @@ export default function CreateSchedulePage() {
   // Thêm các state và hooks cần thiết
   const { addNotification } = useNotifications();
   const router = useRouter();
+
+  // Defensive: always treat staffMembers as array to avoid runtime errors if API shape changes
+  const safeStaffMembers = Array.isArray(staffMembers) ? staffMembers : [];
 
   const addScheduleItem = () => {
     const newItem = {
@@ -169,6 +173,7 @@ export default function CreateSchedulePage() {
         description,
         departmentId: department,
         period: scheduleType, // Đổi tên trường để thống nhất với backend
+        visibility, // PUBLIC hoặc PERSONAL
         startDate: startDate ? normalizeDate(startDate) : undefined,
         endDate: endDate ? normalizeDate(endDate) : undefined,
         events: scheduleItems.map((item) => ({
@@ -243,18 +248,20 @@ export default function CreateSchedulePage() {
         // Kiểm tra trước khi gọi API lấy danh sách cán bộ
         if (staffMembers.length === 0) {
           setIsLoadingStaff(true);
-          const usersData_ = await usersAPI.getAllUsers();
-          const usersData = usersData_.data;
-          if (Array.isArray(usersData)) {
-            setStaffMembers(usersData);
-          } else {
-            setStaffMembers([]);
+          const usersDataRaw = await usersAPI.getAllUsers();
+          const usersArr = Array.isArray(usersDataRaw)
+            ? usersDataRaw
+            : Array.isArray((usersDataRaw as any)?.data)
+            ? (usersDataRaw as any).data
+            : [];
+          if (usersArr.length === 0 && usersDataRaw) {
             addNotification({
               title: "Lỗi",
               message: "Định dạng dữ liệu người dùng không đúng",
               type: "error",
             });
           }
+          setStaffMembers(usersArr);
           setIsLoadingStaff(false);
         }
       } catch (error) {
@@ -282,7 +289,7 @@ export default function CreateSchedulePage() {
         const usersData_ = await usersAPI.getUsersByDepartmentId(
           Number(department)
         );
-        const usersData = usersData_.data;
+        const usersData = Array.isArray(usersData_) ? usersData_ : [];
         setStaffMembers(usersData);
       } catch (error) {
         addNotification({
@@ -409,6 +416,23 @@ export default function CreateSchedulePage() {
                     <SelectContent>
                       <SelectItem value="week">Lịch tuần</SelectItem>
                       <SelectItem value="month">Lịch tháng</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="visibility" className="text-base">
+                    Chế độ hiển thị
+                  </Label>
+                  <Select
+                    value={visibility}
+                    onValueChange={(val: "PUBLIC" | "PERSONAL") => setVisibility(val)}
+                  >
+                    <SelectTrigger id="visibility" className="h-11">
+                      <SelectValue placeholder="Chọn chế độ" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="PUBLIC">Phòng ban / Công khai nội bộ</SelectItem>
+                      <SelectItem value="PERSONAL">Cá nhân (chỉ mình tôi)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -694,7 +718,7 @@ export default function CreateSchedulePage() {
                                       : item.participants.length === 1
                                       ? `${item.participants.length} người được chọn`
                                       : item.participants.length ===
-                                        staffMembers.length
+                                        safeStaffMembers.length
                                       ? "Tất cả người dùng"
                                       : `${item.participants.length} người được chọn`}
                                     <ChevronDown className="h-4 w-4 opacity-50" />
@@ -714,7 +738,7 @@ export default function CreateSchedulePage() {
                                         <CommandItem
                                           onSelect={() => {
                                             if (
-                                              staffMembers.length ===
+                                              safeStaffMembers.length ===
                                               item.participants.length
                                             ) {
                                               // If all are selected, deselect all
@@ -728,7 +752,7 @@ export default function CreateSchedulePage() {
                                               updateScheduleItem(
                                                 item.id,
                                                 "participants",
-                                                staffMembers.map((staff) =>
+                                                safeStaffMembers.map((staff) =>
                                                   staff.id.toString()
                                                 )
                                               );
@@ -738,8 +762,8 @@ export default function CreateSchedulePage() {
                                           <div className="flex items-center gap-2">
                                             <Checkbox
                                               checked={
-                                                staffMembers.length > 0 &&
-                                                staffMembers.length ===
+                                                safeStaffMembers.length > 0 &&
+                                                safeStaffMembers.length ===
                                                   item.participants.length
                                               }
                                               onCheckedChange={() => {}}
@@ -747,7 +771,7 @@ export default function CreateSchedulePage() {
                                             <span>Tất cả</span>
                                           </div>
                                         </CommandItem>
-                                        {staffMembers.map((staff) => (
+                                        {safeStaffMembers.map((staff) => (
                                           <CommandItem
                                             key={staff.id}
                                             onSelect={() => {

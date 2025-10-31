@@ -60,8 +60,9 @@ export default function CreateWorkPlanPage() {
   const [users, setUsers] = useState<{ id: string; name: string }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Fetch departments on mount
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchDepartments = async () => {
       try {
         setIsLoading(true);
 
@@ -70,38 +71,23 @@ export default function CreateWorkPlanPage() {
         const departmentsData = departmentsData_.data;
 
         // Kiểm tra và xử lý nhiều trường hợp cấu trúc dữ liệu
+        let deptList: any[] = [];
         if (Array.isArray(departmentsData)) {
-          setDepartments(departmentsData);
+          deptList = departmentsData;
         } else if (departmentsData && Array.isArray(departmentsData.content)) {
-          // Trường hợp dữ liệu được bọc trong thuộc tính content
-          setDepartments(departmentsData.content);
-        } else {
-          // Nếu không phải mảng, khởi tạo một mảng rỗng
-          setDepartments([]);
+          deptList = departmentsData.content;
         }
-
-        // Fetch users
-        const usersData_ = await usersAPI.getAllUsers();
-        const usersData = usersData_.data;
-
-        // Thêm log để xem cấu trúc dữ liệu người dùng
-
-        // Đảm bảo dữ liệu người dùng có cả id và name
-        const formattedUsers = Array.isArray(usersData)
-          ? usersData.map((user) => ({
-              id: user.id.toString(),
-              name:
-                user.fullName || user.username
-                  ? `${user.fullName}`
-                  : "Người dùng",
-            }))
-          : [];
-
-        setUsers(formattedUsers);
+        
+        // Format departments to match state type
+        const formattedDepts = deptList.map((dept) => ({
+          id: dept.id.toString(),
+          name: dept.name,
+        }));
+        setDepartments(formattedDepts);
       } catch (error) {
         toast({
           title: "Lỗi",
-          description: "Không thể tải dữ liệu. Vui lòng thử lại sau.",
+          description: "Không thể tải dữ liệu phòng ban. Vui lòng thử lại sau.",
           variant: "destructive",
         });
       } finally {
@@ -109,8 +95,44 @@ export default function CreateWorkPlanPage() {
       }
     };
 
-    fetchData();
+    fetchDepartments();
   }, [toast]);
+
+  // Fetch users when department changes - CHỈ LẤY USERS ACTIVE CỦA PHÒNG BAN
+  useEffect(() => {
+    const fetchDepartmentUsers = async () => {
+      if (!department) {
+        setUsers([]);
+        return;
+      }
+
+      try {
+        // Fetch users by department ID - CHỈ LẤY USERS ACTIVE
+        const usersData_ = await usersAPI.getUsersByDepartmentId(Number(department));
+        const usersData = usersData_.data;
+        console.log("usersData", usersData);
+        // Filter chỉ lấy users ACTIVE và format data
+        const formattedUsers = usersData
+          .filter((user: any) => user.isActive === true || user.status === 1) // Lọc CHỈ users ACTIVE
+          .map((user: any) => ({
+            id: user.id?.toString() || "",
+            name: user.fullName || user.username || "Người dùng",
+          }))
+          .filter((user: any) => user.id !== ""); // Loại bỏ users không có ID
+
+        setUsers(formattedUsers);
+      } catch (error) {
+        toast({
+          title: "Lỗi",
+          description: "Không thể tải danh sách người dùng. Vui lòng thử lại sau.",
+          variant: "destructive",
+        });
+        setUsers([]);
+      }
+    };
+
+    fetchDepartmentUsers();
+  }, [department, toast]);
 
   const addTask = () => {
     const newTask: Task = {
@@ -206,16 +228,15 @@ export default function CreateWorkPlanPage() {
         })),
       };
 
-      const response_ = await workPlansAPI.createWorkPlan(workPlanData);
-      const response = response_.data;
-
+      const response = await workPlansAPI.createWorkPlan(workPlanData);
+      console.log("response", response);
 
       toast({
         title: "Thành công",
         description: "Kế hoạch đã được tạo thành công",
       });
 
-      router.push(`/ke-hoach/${response.id}`);
+      router.push(`/ke-hoach/${response.data.id}`);
     } catch (error: any) {
       toast({
         title: "Lỗi",
@@ -461,7 +482,15 @@ export default function CreateWorkPlanPage() {
                               updateTask(task.id, "startDate", date)
                             }
                             placeholder="Ngày bắt đầu"
+                            fromDate={startDate}
+                            toDate={endDate}
+                            disabled={!startDate || !endDate}
                           />
+                          {(!startDate || !endDate) && (
+                            <p className="text-xs text-muted-foreground">
+                              Vui lòng chọn thời gian thực hiện của kế hoạch trước
+                            </p>
+                          )}
                         </div>
                         <div className="space-y-2">
                           <Label>Ngày kết thúc</Label>
@@ -471,7 +500,15 @@ export default function CreateWorkPlanPage() {
                               updateTask(task.id, "endDate", date)
                             }
                             placeholder="Ngày kết thúc"
+                            fromDate={task.startDate || startDate}
+                            toDate={endDate}
+                            disabled={!startDate || !endDate}
                           />
+                          {(!startDate || !endDate) && (
+                            <p className="text-xs text-muted-foreground">
+                              Vui lòng chọn thời gian thực hiện của kế hoạch trước
+                            </p>
+                          )}
                         </div>
                       </div>
                     </CardContent>

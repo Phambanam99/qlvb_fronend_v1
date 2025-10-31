@@ -17,9 +17,18 @@ interface DatePickerProps {
   setDate: (date: Date | undefined) => void
   placeholder?: string
   disabled?: boolean
+  fromDate?: Date  // Ngày tối thiểu
+  toDate?: Date    // Ngày tối đa
 }
 
-export function DatePicker({ date, setDate, placeholder = "Chọn ngày", disabled = false }: DatePickerProps) {
+export function DatePicker({ 
+  date, 
+  setDate, 
+  placeholder = "Chọn ngày", 
+  disabled = false,
+  fromDate,
+  toDate 
+}: DatePickerProps) {
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -41,6 +50,14 @@ export function DatePicker({ date, setDate, placeholder = "Chọn ngày", disabl
           selected={date}
           onSelect={setDate}
           initialFocus
+          fromDate={fromDate}
+          toDate={toDate}
+          disabled={(day) => {
+            // Disable dates outside the range
+            if (fromDate && day < fromDate) return true;
+            if (toDate && day > toDate) return true;
+            return false;
+          }}
         />
       </PopoverContent>
     </Popover>

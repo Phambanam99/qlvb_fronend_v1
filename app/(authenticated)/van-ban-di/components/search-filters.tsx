@@ -79,7 +79,7 @@ export function SearchFilters({
   ];
 
   return (
-    <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+    <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center">
       {/* Search section - Tối ưu cho từng tab */}
       <div className="flex w-full lg:w-auto items-center space-x-2 flex-wrap gap-y-2">
         <div className="flex items-center space-x-2">
@@ -107,7 +107,7 @@ export function SearchFilters({
             disabled={!searchQuery.trim()}
           >
             <Search className="h-4 w-4 mr-1" />
-            Tìm kiếm
+            
           </Button>
           {/* Clear search button */}
           {activeSearchQuery && (
@@ -160,7 +160,7 @@ export function SearchFilters({
         {activeTab === "internal" && (
           <>
             <div className="flex items-center space-x-2">
-              <span className="text-sm font-medium whitespace-nowrap">Năm:</span>
+              {/* <span className="text-sm font-medium whitespace-nowrap">Năm:</span> */}
               <Select
                 value={yearFilter?.toString() || currentYear.toString()}
                 onValueChange={(value: string) => onYearFilterChange?.(Number(value))}
@@ -179,7 +179,7 @@ export function SearchFilters({
             </div>
             
             <div className="flex items-center space-x-2">
-              <span className="text-sm font-medium whitespace-nowrap">Tháng:</span>
+              {/* <span className="text-sm font-medium whitespace-nowrap">Tháng:</span> */}
               <Select
                 value={monthFilter?.toString() || "all"}
                 onValueChange={(value: string) => onMonthFilterChange?.(value === "all" ? undefined : Number(value))}
@@ -206,7 +206,6 @@ export function SearchFilters({
               className="whitespace-nowrap bg-black hover:bg-gray-200 text-white"
             >
               <Filter className="h-4 w-4 mr-1" />
-              Áp dụng bộ lọc
             </Button>
           </>
         )}
@@ -220,7 +219,7 @@ export function SearchFilters({
         >
           <Filter className="h-4 w-4" />
         </Button>
-        <Button asChild className="bg-primary hover:bg-primary/90">
+        <Button asChild className="bg-primary hover:bg-primary/90" title="Thêm mới">
           <Link
             href={
               activeTab === "internal"
@@ -229,7 +228,7 @@ export function SearchFilters({
             }
             className="flex items-center"
           >
-            <Plus className="mr-2 h-4 w-4" /> Thêm mới
+            <Plus className="mr-2 h-4 w-4" />
           </Link>
         </Button>
       </div>

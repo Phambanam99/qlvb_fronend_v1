@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -67,7 +68,8 @@ export default function WorkPlanDetailPage({
   params,
 }: {
   params: { id: string };
-}) {
+  }) {
+  const router = useRouter();
   const unwrappedParams = use(params);
   const { id } = unwrappedParams;
 
@@ -225,7 +227,7 @@ export default function WorkPlanDetailPage({
       });
 
       // Redirect to list page
-      window.location.href = "/ke-hoach";
+      router.push("/ke-hoach");
     } catch (err: any) {
       toast({
         title: "Lỗi",
