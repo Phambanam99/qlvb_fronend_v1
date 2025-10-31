@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import dynamic from "next/dynamic";
 import {
   Dialog,
   DialogContent,
@@ -17,6 +18,20 @@ import {
   PDFViewerOptions,
 } from "@/lib/utils/pdf-viewer";
 import { useToast } from "@/components/ui/use-toast";
+
+// Dynamic import to avoid SSR issues with react-pdf
+const PDFViewerOptimized = dynamic(
+  () => import("@/components/ui/pdf-viewer-optimized"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex items-center justify-center h-full">
+        <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+        <p className="ml-2 text-sm text-gray-500">Đang tải PDF viewer...</p>
+      </div>
+    ),
+  }
+);
 
 interface PDFViewerModalProps {
   isOpen: boolean;
@@ -40,6 +55,7 @@ export default function PDFViewerModal({
   onDownload,
 }: PDFViewerModalProps) {
   const [pdfUrl, setPdfUrl] = useState<string>("");
+  const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>("");
   const { toast } = useToast();
@@ -49,14 +65,18 @@ export default function PDFViewerModal({
     height = "80vh",
     allowDownload = true,
     allowPrint = true,
+    useOptimizedViewer = true, // Mặc định dùng optimized viewer cho máy yếu
   } = options;
 
   useEffect(() => {
-    if (isOpen && !pdfUrl) {
+    if (isOpen && !pdfUrl && !pdfBlob) {
       if (fileBlob) {
         // Use provided blob
-        const url = createPDFBlobUrl(fileBlob);
-        setPdfUrl(url);
+        setPdfBlob(fileBlob);
+        if (!useOptimizedViewer) {
+          const url = createPDFBlobUrl(fileBlob);
+          setPdfUrl(url);
+        }
       } else if (onDownload) {
         // Fetch blob using onDownload function
         loadPDF();
@@ -68,8 +88,11 @@ export default function PDFViewerModal({
         cleanupBlobUrl(pdfUrl);
         setPdfUrl("");
       }
+      if (!isOpen) {
+        setPdfBlob(null);
+      }
     };
-  }, [isOpen, fileBlob, onDownload]);
+  }, [isOpen, fileBlob, onDownload, useOptimizedViewer]);
 
   const loadPDF = async () => {
     if (!onDownload) return;
@@ -80,8 +103,11 @@ export default function PDFViewerModal({
     try {
       const blob = await onDownload();
       if (blob) {
-        const url = createPDFBlobUrl(blob);
-        setPdfUrl(url);
+        setPdfBlob(blob);
+        if (!useOptimizedViewer) {
+          const url = createPDFBlobUrl(blob);
+          setPdfUrl(url);
+        }
       } else {
         setError("Không thể tải file PDF");
       }
@@ -218,7 +244,23 @@ export default function PDFViewerModal({
             </div>
           )}
 
-          {pdfUrl && !isLoading && !error && (
+          {/* Render optimized viewer for better performance on weak devices */}
+          {useOptimizedViewer && pdfBlob && !isLoading && !error && (
+            <PDFViewerOptimized
+              file={pdfBlob}
+              onLoadError={(err) => {
+                setError(err.message);
+                toast({
+                  title: "Lỗi",
+                  description: "Không thể tải file PDF",
+                  variant: "destructive",
+                });
+              }}
+            />
+          )}
+
+          {/* Fallback to iframe for legacy support */}
+          {!useOptimizedViewer && pdfUrl && !isLoading && !error && (
             <iframe
               src={pdfUrl}
               className="w-full h-full border-none"

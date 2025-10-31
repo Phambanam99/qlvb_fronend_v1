@@ -12,6 +12,7 @@ export interface PDFViewerOptions {
   height?: string;
   allowDownload?: boolean;
   allowPrint?: boolean;
+  useOptimizedViewer?: boolean; // Use react-pdf optimized viewer (better for weak devices)
 }
 
 
