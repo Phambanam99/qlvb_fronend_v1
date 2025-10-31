@@ -15,6 +15,8 @@ const nextConfig = {
   // Enable standalone output for optimized production image (Node server.js + minimal files)
   output: 'standalone',
   devIndicators: false,
+  // Transpile react-pdf for better compatibility
+  transpilePackages: ['react-pdf', 'pdfjs-dist'],
   // Cấu hình cho phép truy cập từ các IP trong mạng LAN
   experimental: {
     allowedDevOrigins: [
@@ -35,6 +37,11 @@ const nextConfig = {
         'supports-color': false,
       };
     }
+
+    // Configure canvas for react-pdf
+    config.resolve.alias.canvas = false;
+    config.resolve.alias.encoding = false;
+
     return config;
   },
   
